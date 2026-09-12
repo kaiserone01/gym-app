@@ -1,0 +1,101 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ── gym-app: modelos (Paso 1) ──────────────────────────────
+
+model Gym {
+  id              String    @id @default(cuid())
+  nombre          String
+  diasGracia      Int       @default(0) // días después del vencimiento antes de marcar "vencido"
+  tasaCambioUSD   Decimal?  @db.Decimal(10, 2) // tasa Bs/USD vigente, editable por el dueño
+  createdAt       DateTime  @default(now())
+
+  usuarios        UsuarioAdmin[]
+  entrenadores    Entrenador[]
+  miembros        Miembro[]
+  pagos           Pago[]
+  checkIns        CheckIn[]
+}
+
+model UsuarioAdmin {
+  id            String   @id @default(cuid())
+  gymId         String
+  gym           Gym      @relation(fields: [gymId], references: [id])
+  email         String   @unique
+  passwordHash  String
+  rol           String   @default("dueño") // "dueño" | "empleado" (futuro)
+  createdAt     DateTime @default(now())
+}
+
+model Entrenador {
+  id        String    @id @default(cuid())
+  gymId     String
+  gym       Gym       @relation(fields: [gymId], references: [id])
+  nombre    String
+  telefono  String?
+  activo    Boolean   @default(true)
+
+  miembros  Miembro[]
+}
+
+enum PlanTipo {
+  SIN_ENTRENADOR
+  CON_ENTRENADOR
+}
+
+model Miembro {
+  id                String     @id @default(cuid())
+  gymId             String
+  gym               Gym        @relation(fields: [gymId], references: [id])
+  nombre            String
+  cedula            String     // única POR gym (ver @@unique abajo)
+  fechaNacimiento   DateTime?
+  celular           String?
+  fotoUrl           String?
+  entrenadorId      String?
+  entrenador        Entrenador? @relation(fields: [entrenadorId], references: [id])
+  planTipo          PlanTipo   @default(SIN_ENTRENADOR)
+  precioPlan        Decimal    @db.Decimal(10, 2) // 25.00 o 30.00, editable por gym
+  fechaUltimoPago   DateTime?
+  fechaVencimiento  DateTime?
+  activo            Boolean    @default(true) // baja lógica del miembro (no confundir con status de pago)
+  createdAt         DateTime   @default(now())
+
+  pagos             Pago[]
+  checkIns          CheckIn[]
+
+  @@unique([gymId, cedula]) // misma cédula puede existir en gyms distintos, no repetida en el mismo gym
+}
+
+model Pago {
+  id            String   @id @default(cuid())
+  gymId         String
+  gym           Gym      @relation(fields: [gymId], references: [id])
+  miembroId     String
+  miembro       Miembro  @relation(fields: [miembroId], references: [id])
+  monto         Decimal  @db.Decimal(10, 2)
+  metodo        String   // "efectivo_usd" | "efectivo_bs" | "pago_movil" | etc.
+  tasaCambio    Decimal? @db.Decimal(10, 2) // tasa usada si fue pago en bolívares
+  fechaPago     DateTime @default(now())
+}
+
+model CheckIn {
+  id              String   @id @default(cuid())
+  gymId           String
+  gym             Gym      @relation(fields: [gymId], references: [id])
+  miembroId       String
+  miembro         Miembro  @relation(fields: [miembroId], references: [id])
+  fechaHora       DateTime @default(now())
+  estadoAlMomento String   // "activo" | "vencido" — snapshot histórico, no cambia si luego el miembro paga
+}

@@ -1,15 +1,11 @@
 // Script manual (no hay framework de tests en el repo todavía) para verificar
 // AuthorizationService + CrearUsuarioAdmin contra datos reales: corre
-// `npx tsx prisma/verificar-autorizacion.ts` desde packages/db.
-import { PrismaClient } from "../generated/prisma/client";
-import { PrismaPg } from "@prisma/adapter-pg";
+// `npx tsx scripts/verificar-autorizacion.ts` desde apps/web-admin.
+import { prisma } from "../lib/prisma";
 import bcrypt from "bcryptjs";
 import { PrismaUsuarioAdminRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaUsuarioAdminRepository";
 import { AuthorizationService } from "@gym-app/domain/services/AuthorizationService";
 import { crearUsuarioAdmin, NoAutorizadoError } from "@gym-app/domain/use-cases/CrearUsuarioAdmin";
-
-const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
-const prisma = new PrismaClient({ adapter });
 
 async function main() {
   const organizacion = await prisma.organizacion.findUnique({ where: { slug: "gym-demo" } });

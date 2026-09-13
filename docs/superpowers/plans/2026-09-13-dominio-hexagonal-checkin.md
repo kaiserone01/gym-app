@@ -901,10 +901,12 @@ git commit -m "refactor: app/api/checkin/route.ts delgado, usa RegistrarCheckIn 
 
 ### Task 11: Actualizar `seed.ts` + script de verificación de autorización
 
+> **Corrección aplicada durante la ejecución:** el diseño original de esta tarea ponía `verificar-autorizacion.ts` dentro de `packages/db` con `@gym-app/domain`/`@gym-app/infrastructure` como dependencias de `packages/db/package.json`. Turborepo detectó una **dependencia circular** (`packages/infrastructure` ya depende de `@gym-app/db` desde la Tarea 7) — `db` es la capa más baja del monorepo y no debe depender de capas superiores. El script se movió a **`apps/web-admin/scripts/verificar-autorizacion.ts`** (las apps son hojas del grafo de dependencias, sin este problema) y reutiliza el `prisma` singleton de `lib/prisma.ts` en vez de crear su propia conexión. `packages/db/package.json` no gana ninguna dependencia nueva; en cambio, `apps/web-admin/package.json` agrega `bcryptjs`/`@types/bcryptjs` a `devDependencies` (solo los usa este script).
+
 **Files:**
 - Modify: `packages/db/prisma/seed.ts`
-- Modify: `packages/db/package.json` (agregar `@gym-app/domain`/`@gym-app/infrastructure`)
-- Create: `packages/db/prisma/verificar-autorizacion.ts`
+- Modify: `apps/web-admin/package.json` (agregar `bcryptjs`/`@types/bcryptjs` a `devDependencies`)
+- Create: `apps/web-admin/scripts/verificar-autorizacion.ts`
 
 **Interfaces:**
 - Consumes: todo lo anterior.
@@ -1039,7 +1041,7 @@ Expected: exit 0.
 - [ ] **Step 6: Commit**
 
 ```bash
-git add packages/db/prisma/seed.ts packages/db/prisma/verificar-autorizacion.ts packages/db/package.json package-lock.json
+git add packages/db/prisma/seed.ts apps/web-admin/scripts/verificar-autorizacion.ts apps/web-admin/package.json package-lock.json
 git commit -m "feat: actualiza seed.ts (Suscripcion de Rodrigo Lara, apiKey) y agrega script de verificación de autorización"
 ```
 
@@ -1068,10 +1070,11 @@ npx prisma db seed
 
 Anotar la nueva `apiKey de prueba` impresa (reemplaza al `sucursalId` que usábamos antes).
 
-- [ ] **Step 3: Verificación de autorización**
+- [ ] **Step 3: Verificación de autorización** (desde `apps/web-admin`, no desde `packages/db` — ver la nota de corrección en la Tarea 11)
 
 ```powershell
-npx tsx prisma/verificar-autorizacion.ts
+cd ..\..\apps\web-admin
+npx tsx scripts/verificar-autorizacion.ts
 ```
 
 Expected: los dos ✅ del script.

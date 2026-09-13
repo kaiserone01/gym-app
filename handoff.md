@@ -1,10 +1,28 @@
 # Handoff — gym-app
 
 ## Objetivo
-Migrar `gym-app` de app única a monorepo Turborepo, de schema single-tenant a SaaS multi-tenant, de lógica inline a arquitectura hexagonal, agregar login/sesión y CRUD de `Miembro` al panel admin — siguiendo el ADR-001 (v1 + v2) y `docs/ROADMAP.md`, con superpowers (`writing-plans` + `executing-plans`).
+Migrar `gym-app` de app única a monorepo Turborepo, de schema single-tenant a SaaS multi-tenant, de lógica inline a arquitectura hexagonal, agregar login/sesión y CRUD de `Miembro` al panel admin (API + UI real) — siguiendo el ADR-001 (v1 + v2) y `docs/ROADMAP.md`, con superpowers (`writing-plans` + `executing-plans` + `subagent-driven-development`).
 
-## Estado actual — Planes 1–7 completos al 100%, todos verificados contra la base y la API reales. Sin bloqueadores 🔴 pendientes en `docs/ROADMAP.md`.
-- **Plan 1** (Turborepo scaffold), **Plan 2** (schema Organizacion/Sucursal), **Plan 3** (dominio hexagonal), **Plan 4** (login/sesión del panel admin), **Plan 5** (gestión de `Miembro`), **Plan 6** (gestión de Pago/Suscripcion/Plan), **Plan 7** (`docs/superpowers/plans/2026-09-13-integracion-bcv.md` — integración API BCV): completos, ver detalle abajo.
+## Estado actual — Planes 1–8 completos al 100%. Planes 1–7 verificados contra la base y la API reales; Plan 8 verificado sin DB (tsc/build/lint), falta la Tarea 10 (prueba en el navegador contra la base real, la corre el usuario). Sin bloqueadores 🔴 pendientes en `docs/ROADMAP.md`.
+- **Plan 1** (Turborepo scaffold), **Plan 2** (schema Organizacion/Sucursal), **Plan 3** (dominio hexagonal), **Plan 4** (login/sesión del panel admin), **Plan 5** (gestión de `Miembro`, API), **Plan 6** (gestión de Pago/Suscripcion/Plan), **Plan 7** (`docs/superpowers/plans/2026-09-13-integracion-bcv.md` — integración API BCV): completos, ver detalle abajo.
+- **Plan 8** (`docs/superpowers/plans/2026-09-13-panel-admin-miembros.md` — Panel Admin, pantalla de Miembros): completo, ejecutado con `superpowers:subagent-driven-development` (un implementer + un reviewer fresco por tarea, Tareas 1–9, más una revisión final de todo el branch). Ver detalle abajo.
+
+## Plan 8 — Panel Admin: pantalla de Miembros (UI real)
+- Primera UI real del panel (`apps/web-admin`) — hasta ahora todo se probaba solo con `curl`. Server Components + Server Actions que llaman **directo** a los casos de uso de dominio del Plan 5 (no pasan por `/api/miembros*`, que quedan intactas para consumidores externos).
+- **Creados:**
+  - `packages/ui/components/{Button,Input,Badge,Sidebar}.tsx` — primeros componentes reales de `packages/ui` (antes vacío), `peerDependencies` a `next`/`react`.
+  - `apps/web-admin/app/(panel)/layout.tsx` — layout con sidebar (Miembros/Pagos/Planes, solo Miembros con contenido), redirige a `/login` sin sesión.
+  - `apps/web-admin/app/(panel)/miembros/actions.ts` — Server Actions `crearMiembroAction`, `actualizarMiembroAction`, `darDeBajaAction`, `reactivarAction` (agregada en la revisión final).
+  - `apps/web-admin/app/(panel)/miembros/FormularioMiembro.tsx` — formulario compartido alta/edición (`useActionState`, cédula deshabilitada en edición).
+  - `apps/web-admin/app/(panel)/miembros/page.tsx` (listado), `.../nuevo/page.tsx` (alta), `.../[id]/page.tsx` (edición + baja lógica + reactivación).
+- **Modificados:** `packages/ui/package.json`, `apps/web-admin/package.json` (+ `@gym-app/ui`), `apps/web-admin/next.config.ts` (+ `transpilePackages`), `apps/web-admin/app/globals.css` (+ `@source` para Tailwind v4), `apps/web-admin/lib/sesion.ts` (+ `obtenerUsuarioDeSesionActual` para Server Components, sin tocar la función existente que usan las rutas API), `apps/web-admin/app/page.tsx` (reemplazado el boilerplate por un redirect), `apps/web-admin/app/login/page.tsx` (redirige a `/miembros` en vez de `/`).
+- **Revisión final de todo el branch (opus):** 2 hallazgos Important, ambos gaps del plan original (no errores de transcripción) — corregidos en un solo commit de fix + re-review acotada, limpia:
+  1. Panel ilegible en dark mode (ningún componente nuevo tenía variantes `dark:`) → fix mínimo: `bg-white text-neutral-900` explícito en el layout del panel (theming completo queda diferido a `packages/theming`, en el roadmap).
+  2. No había forma de reactivar un miembro dado de baja desde la UI (dominio/API ya lo soportaban) → se agregó `reactivarAction` + botón "Reactivar" condicional.
+- **5 hallazgos Minor parqueados con ruling** (no bloquean, no ameritan otra ronda): `precioPlan` acepta 0/negativo (mismo defecto ya en la API REST, no es regresión), un cast de `planTipo` en `actualizarMiembroAction` podría pasar `""` a Prisma si se craftea el payload a mano (no alcanzable desde el formulario real), no hay botón de logout visible en el panel, comentario desactualizado en `lib/sesion.ts` sobre la ausencia de `middleware.ts`, y el `app/layout.tsx` raíz sigue con el título/lang de `create-next-app` (fuera del diff de este plan). Detalle completo en el ledger (ya borrado tras el merge, ver `git log` de los commits `2db7e36..69cb643`).
+- **Verificación sin DB (todo verde):** `tsc --noEmit`, `turbo run build --filter=web-admin` (rutas `/`, `/miembros`, `/miembros/nuevo`, `/miembros/[id]` en el build), `turbo run lint --filter=web-admin`.
+- **Pendiente del usuario:** Tarea 10 del plan — probar en el navegador contra la base real (login → redirect a `/miembros`, listar, crear, cédula duplicada inline, editar, cédula deshabilitada, dar de baja, reactivar, acceso sin sesión redirige a `/login`).
+- Todo commiteado a `main` (working directo, sin worktree — decisión del usuario). Commits: `2db7e36`, `1f504b3`, `b6b8b53`, `be5f565`, `0244425`, `c939fea`, `c159c8d`, `3254aed`, `69cb643`.
 - **Plan 7 — Tarea 8 (pruebas contra la API y la DB reales) verificada por el usuario, los 5 casos pasaron:**
   1. `npm install` + `npm run actualizar-tasa` → `✅ Tasa BCV actualizada: 832.4883 VES/USD (2026-09-11T00:00:00.000Z)` ✅
   2. Fila en `TasaCambio` → 1 fila, `fuente:"BCV"`, `valor:832.4883` ✅

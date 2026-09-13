@@ -51,6 +51,18 @@ Checklist vivo del proyecto. Se actualiza marcando `- [x]` a medida que se compl
 - [x] `apps/worker` — app nueva del monorepo con el script `actualizar-tasa` (sin daemon, pensado para un cron externo) + `GET /api/tasa-cambio` protegida por sesión
 - [x] Todo verificado extremo a extremo contra la API real y la base de datos real: tasa guardada correctamente, idempotencia confirmada (correr el script 2 veces no duplica la fila), lectura con sesión (200) y sin sesión (401)
 
+### Plan 8 — Panel Admin: pantalla de Miembros (UI real)
+- [x] `packages/ui` poblado por primera vez: `Button`, `Input`, `Badge`, `Sidebar` (peerDependencies a next/react, no dependencies)
+- [x] `obtenerUsuarioDeSesionActual()` en `lib/sesion.ts` — helper de sesión para Server Components/Actions (no toca la función existente usada por las rutas API)
+- [x] Layout `(panel)` con sidebar (Miembros/Pagos/Planes, solo Miembros con contenido) + `app/page.tsx` como redirect + `/login` redirige a `/miembros`
+- [x] Server Actions `crearMiembroAction`/`actualizarMiembroAction`/`darDeBajaAction`/`reactivarAction` (llaman directo a los casos de uso de dominio del Plan 5, mismo patrón de repositorio que las rutas API)
+- [x] `FormularioMiembro` compartido (alta/edición) con `useActionState`, cédula deshabilitada en edición
+- [x] Páginas `/miembros` (listado), `/miembros/nuevo` (alta), `/miembros/[id]` (edición + baja lógica + reactivación)
+- [x] Verificado sin DB: `tsc --noEmit`, `turbo run build --filter=web-admin` (rutas `/`, `/miembros`, `/miembros/nuevo`, `/miembros/[id]` en el build), `turbo run lint --filter=web-admin`
+- [x] Revisión final de todo el branch: 2 hallazgos Important corregidos (panel ilegible en dark mode — sin fix de theming completo, solo `bg-white`/`text-neutral-900` explícito en el layout; faltaba reactivar un miembro dado de baja desde la UI) — ambos gaps del plan original, no de la implementación
+- [ ] **Pendiente del usuario:** Tarea 10 del plan — probar en el navegador contra la base real (login → redirect a `/miembros`, listar, crear, cédula duplicada inline, editar, dar de baja, reactivar, acceso sin sesión redirige a `/login`)
+- Diferido explícitamente: pantallas de Pagos/Planes (sidebar ya tiene los links, dan 404), asignar Entrenador desde la UI, dashboard general, búsqueda/filtro/paginación, subida real de `fotoUrl`, gestión de `UsuarioAdmin` desde la UI, botón de logout visible, theming/dark mode completo (queda para `packages/theming`)
+
 ---
 
 ## 🔴 Bloqueadores antes de exponer nada a un usuario real

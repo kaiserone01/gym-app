@@ -3,9 +3,14 @@
 ## Objetivo
 Migrar `gym-app` de app única a monorepo Turborepo, de schema single-tenant a SaaS multi-tenant, de lógica inline a arquitectura hexagonal, agregar login/sesión y CRUD de `Miembro` al panel admin — siguiendo el ADR-001 (v1 + v2) y `docs/ROADMAP.md`, con superpowers (`writing-plans` + `executing-plans`).
 
-## Estado actual — Planes 1–6 completos al 100% (verificados contra la base real). Sin bloqueadores 🔴 pendientes en `docs/ROADMAP.md`. Plan 7 en curso (Tareas 1–7 hechas, Tarea 8 pendiente en la máquina del usuario)
-- **Plan 1** (Turborepo scaffold), **Plan 2** (schema Organizacion/Sucursal), **Plan 3** (dominio hexagonal), **Plan 4** (login/sesión del panel admin), **Plan 5** (gestión de `Miembro`), **Plan 6** (gestión de Pago/Suscripcion/Plan): completos, ver detalle abajo.
-- **Plan 7** (`docs/superpowers/plans/2026-09-13-integracion-bcv.md` — integración API BCV): Tareas 1–7 completas y verificadas sin DB ni red externa. Tarea 8 (correr el worker contra la API real y la DB real) queda para el usuario.
+## Estado actual — Planes 1–7 completos al 100%, todos verificados contra la base y la API reales. Sin bloqueadores 🔴 pendientes en `docs/ROADMAP.md`.
+- **Plan 1** (Turborepo scaffold), **Plan 2** (schema Organizacion/Sucursal), **Plan 3** (dominio hexagonal), **Plan 4** (login/sesión del panel admin), **Plan 5** (gestión de `Miembro`), **Plan 6** (gestión de Pago/Suscripcion/Plan), **Plan 7** (`docs/superpowers/plans/2026-09-13-integracion-bcv.md` — integración API BCV): completos, ver detalle abajo.
+- **Plan 7 — Tarea 8 (pruebas contra la API y la DB reales) verificada por el usuario, los 5 casos pasaron:**
+  1. `npm install` + `npm run actualizar-tasa` → `✅ Tasa BCV actualizada: 832.4883 VES/USD (2026-09-11T00:00:00.000Z)` ✅
+  2. Fila en `TasaCambio` → 1 fila, `fuente:"BCV"`, `valor:832.4883` ✅
+  3. Correr el script de nuevo → mismo `id`, sigue habiendo 1 sola fila (upsert idempotente confirmado) ✅
+  4. `GET /api/tasa-cambio` con cookie → `200`, `{"valor":832.4883,"fuente":"BCV",...}` ✅
+  5. `GET /api/tasa-cambio` sin cookie → `401 "No autenticado."` ✅
 
 ## Archivos y cambios (Plan 7 — integración API BCV)
 - **Creados:**
@@ -78,14 +83,9 @@ Migrar `gym-app` de app única a monorepo Turborepo, de schema single-tenant a S
 - **No usar `@default(uuid())`/similares a nivel de Prisma** para generar valores en creación — generar explícito en código (`randomUUID()`/`randomBytes()` de `node:crypto`).
 - Esta sandbox no tiene acceso TCP crudo a la DB real (`31.220.56.1:5456`) — todas las tareas que tocan la DB (migraciones, seed, curl contra el server corriendo) las corre el usuario en su máquina y pega el resultado acá.
 
-## Pendiente inmediato — Tarea 8 del Plan 7 (requiere la máquina del usuario, hay red a la DB real y a internet)
-Comandos exactos en `docs/superpowers/plans/2026-09-13-integracion-bcv.md`, sección "Task 8". Resumen: `npm install` → `npm run actualizar-tasa` (debe imprimir `✅ Tasa BCV actualizada: ...`) → verificar en Prisma Studio que la tabla `TasaCambio` tiene una fila nueva/actualizada con `fuente: "BCV"` → correr el script una segunda vez y confirmar que NO duplica la fila (mismo día, `upsert`) → levantar `apps/web-admin`, login, `GET /api/tasa-cambio` (200 con la tasa real) y sin cookie (401) → opcional: simular que la API falla (cortar red o cambiar la URL temporalmente) y confirmar que el script cae al fallback sin crashear.
-
-Si algo falla, pegar la salida completa para diagnosticar — mismo patrón que todos los planes anteriores.
-
 ## Próximos pasos
-Una vez confirmada la Tarea 8 del Plan 7, quedan (sin bloqueadores 🔴, todo es funcionalidad 🟡/🟢):
-1. Agendar el cron externo real para `npm run actualizar-tasa` (Easypanel scheduled job u otro) — sugerido `0 23 * * 1-5` UTC (7pm VET, lunes a viernes). No configurado en este plan.
+`docs/ROADMAP.md` ya refleja el Plan 7 cerrado — **sin bloqueadores 🔴 pendientes**. Queda, sin urgencia:
+1. Agendar el cron externo real para `npm run actualizar-tasa` (Easypanel scheduled job u otro) — sugerido `0 23 * * 1-5` UTC (7pm VET, lunes a viernes). No configurado en ningún plan todavía — es deploy, no código.
 2. Integrar `ConvertirMontoUSDaVES` en algún consumidor real (ej. `RegistrarPago` mostrando el equivalente en VES) cuando haga falta.
 3. **App de kiosco física** (`apps/kiosk`) — hoy `/api/checkin` solo se prueba con `curl`.
 4. Rotación de `apiKey` de `Sucursal`, matriz de permisos más granular — ver `docs/ROADMAP.md` para el detalle.

@@ -44,6 +44,13 @@ Checklist vivo del proyecto. Se actualiza marcando `- [x]` a medida que se compl
 - [x] Rutas `GET/POST /api/planes`, `PATCH /api/planes/[id]`, `GET/POST /api/pagos`, todas protegidas por sesión
 - [x] Todo verificado extremo a extremo contra la base de datos real (11 casos): listar planes del seed, crear plan `TODA_LA_ORGANIZACION`, rechazar `SEDE_UNICA` sin sucursales (400), editar plan, registrar pago (extiende a hoy+30), listar historial de pagos, segundo pago inmediato (extiende a hoy+60 desde el `fin` anterior, no desde hoy), pago contra plan inexistente (404)
 
+### Plan 7 — Integración API BCV
+- [x] Entidad `TasaCambio` + puertos `IExchangeRateService`/`ITasaCambioRepository`
+- [x] Casos de uso `ActualizarTasaDiaria` (con fallback a la última tasa guardada si la API falla, sin crear filas falsas), `ObtenerTasaActual`, `ConvertirMontoUSDaVES`
+- [x] `BcvApiAdapter` contra `dolarapi.com` (`https://ve.dolarapi.com/v1/dolares/oficial`) + `PrismaTasaCambioRepository` (upsert idempotente por día calendario)
+- [x] `apps/worker` — app nueva del monorepo con el script `actualizar-tasa` (sin daemon, pensado para un cron externo) + `GET /api/tasa-cambio` protegida por sesión
+- [x] Todo verificado extremo a extremo contra la API real y la base de datos real: tasa guardada correctamente, idempotencia confirmada (correr el script 2 veces no duplica la fila), lectura con sesión (200) y sin sesión (401)
+
 ---
 
 ## 🔴 Bloqueadores antes de exponer nada a un usuario real
@@ -57,7 +64,7 @@ Sin bloqueadores 🔴 pendientes. Lo que sigue es funcionalidad core (🟡) y ex
 
 ## 🟡 Funcionalidad core pendiente (definida en el ADR, no implementada)
 
-- [ ] **Integración real de la API BCV** — `BcvApiAdapter` (packages/infrastructure/exchange-rate, hoy vacío), `apps/worker` (no existe como app todavía), caso de uso `ActualizarTasaDiaria`. La tabla `TasaCambio` existe pero nada la llena. Proveedor aprobado: API no oficial tipo pydolarve/dolarapi (endpoint concreto sin fijar).
+- [x] ~~Integración real de la API BCV~~ — Plan 7, completo y verificado contra la API y la base reales. Pendiente aparte (no bloqueante): agendar el cron externo real (`0 23 * * 1-5` UTC sugerido) y, cuando exista un consumidor real, integrar `ConvertirMontoUSDaVES`/`Sucursal.tasaCambioUSD` en `RegistrarPago`.
 - [ ] **App de kiosco física** (`apps/kiosk`) — hoy `/api/checkin` se prueba con `curl`; no existe ninguna interfaz real para el kiosco (PWA, según el ADR).
 - [ ] **Rotación/regeneración de `apiKey` de una `Sucursal`** — hoy solo se genera al crear la fila, sin manera de rotarla si se filtra.
 - [ ] **Matriz de permisos granular** — hoy solo existe una regla ("crear `UsuarioAdmin` es exclusivo de `DUENO`"). Graduar cuando un segundo caso de uso real lo exija (regla explícita del ADR, no antes).

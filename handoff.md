@@ -3,8 +3,24 @@
 ## Objetivo
 Migrar `gym-app` de app única a monorepo Turborepo, de schema single-tenant a SaaS multi-tenant, de lógica inline a arquitectura hexagonal, agregar login/sesión y CRUD de `Miembro` al panel admin — siguiendo el ADR-001 (v1 + v2) y `docs/ROADMAP.md`, con superpowers (`writing-plans` + `executing-plans`).
 
-## Estado actual — Planes 1–6 completos al 100%, todos verificados contra la base real. Sin bloqueadores 🔴 pendientes en `docs/ROADMAP.md`.
-- **Plan 1** (Turborepo scaffold), **Plan 2** (schema Organizacion/Sucursal), **Plan 3** (dominio hexagonal), **Plan 4** (login/sesión del panel admin), **Plan 5** (gestión de `Miembro`), **Plan 6** (`docs/superpowers/plans/2026-09-13-gestion-pagos-suscripciones.md` — gestión de Pago/Suscripcion/Plan): completos, ver detalle abajo.
+## Estado actual — Planes 1–6 completos al 100% (verificados contra la base real). Sin bloqueadores 🔴 pendientes en `docs/ROADMAP.md`. Plan 7 en curso (Tareas 1–7 hechas, Tarea 8 pendiente en la máquina del usuario)
+- **Plan 1** (Turborepo scaffold), **Plan 2** (schema Organizacion/Sucursal), **Plan 3** (dominio hexagonal), **Plan 4** (login/sesión del panel admin), **Plan 5** (gestión de `Miembro`), **Plan 6** (gestión de Pago/Suscripcion/Plan): completos, ver detalle abajo.
+- **Plan 7** (`docs/superpowers/plans/2026-09-13-integracion-bcv.md` — integración API BCV): Tareas 1–7 completas y verificadas sin DB ni red externa. Tarea 8 (correr el worker contra la API real y la DB real) queda para el usuario.
+
+## Archivos y cambios (Plan 7 — integración API BCV)
+- **Creados:**
+  - `packages/domain/entities/TasaCambio.ts`
+  - `packages/domain/ports/{IExchangeRateService,ITasaCambioRepository}.ts`
+  - `packages/domain/use-cases/{ActualizarTasaDiaria,ObtenerTasaActual,ConvertirMontoUSDaVES}.ts` — `ActualizarTasaDiaria` llama a `IExchangeRateService`, guarda en `TasaCambio`, y si la API falla cae al último valor ya guardado (`SinTasaDisponibleError` solo si no hay ninguno todavía) sin crear una fila falsa.
+  - `packages/infrastructure/exchange-rate/BcvApiAdapter.ts` — pega contra `https://ve.dolarapi.com/v1/dolares/oficial` (forma real del JSON verificada por el usuario), usa el campo `promedio`.
+  - `packages/infrastructure/persistence/prisma/PrismaTasaCambioRepository.ts` — `upsert` por día calendario (normaliza `fecha` a medianoche UTC) para que el `@@unique` de `TasaCambio.fecha` no duplique filas en reintentos del mismo día.
+  - **`apps/worker`** — app nueva del monorepo (sin Next.js): `package.json`, `tsconfig.json`, `src/actualizar-tasa.ts`. Se corre con `npm run actualizar-tasa` (delegado desde el `package.json` raíz). Sin daemon — se agenda con un cron externo (Easypanel/GitHub Actions), no configurado en este plan.
+  - `apps/web-admin/app/api/tasa-cambio/route.ts` — GET, protegida por sesión, devuelve la última `TasaCambio` guardada (404 si `apps/worker` nunca corrió).
+- **Modificado:** `package.json` raíz (+ script `actualizar-tasa`).
+- **Sin migración** — el modelo `TasaCambio` ya existía desde el Plan 2.
+- **Decisiones de alcance:** frecuencia 1 vez/día hábil (la tasa oficial del BCV se publica así, no hay webhook real); `Sucursal.tasaCambioUSD` y la integración con `RegistrarPago`/`BinanceP2PAdapter` quedan explícitamente diferidas (sin consumidor real todavía).
+- **Verificación sin DB/red externa (todo verde):** `tsc --noEmit` en `apps/worker` y `apps/web-admin` (con un fix de tipos: `fetch().json()` devuelve `unknown` sin la lib `dom`, se casteó explícito a `RespuestaDolarApi`), `turbo run build --filter=web-admin` (ruta `/api/tasa-cambio` visible, sin dependencia circular), `turbo run lint --filter=web-admin`.
+- Todo commiteado y pusheado a `main` y a `claude/gifted-hawking-ikltak` (últimos commits: `4466a8a`, `9832e50`, `1865739`, `b639187`, `dd71c60`, `f728cf0`, `a0d361d`).
 - **Plan 6 — Tarea 10 (pruebas contra la DB real) verificada por el usuario, los 11 casos pasaron:**
   1. Login → `200` + cookie de sesión ✅
   2. `GET /api/planes` → `200`, incluye "Sede Única" del seed ✅
@@ -62,9 +78,15 @@ Migrar `gym-app` de app única a monorepo Turborepo, de schema single-tenant a S
 - **No usar `@default(uuid())`/similares a nivel de Prisma** para generar valores en creación — generar explícito en código (`randomUUID()`/`randomBytes()` de `node:crypto`).
 - Esta sandbox no tiene acceso TCP crudo a la DB real (`31.220.56.1:5456`) — todas las tareas que tocan la DB (migraciones, seed, curl contra el server corriendo) las corre el usuario en su máquina y pega el resultado acá.
 
+## Pendiente inmediato — Tarea 8 del Plan 7 (requiere la máquina del usuario, hay red a la DB real y a internet)
+Comandos exactos en `docs/superpowers/plans/2026-09-13-integracion-bcv.md`, sección "Task 8". Resumen: `npm install` → `npm run actualizar-tasa` (debe imprimir `✅ Tasa BCV actualizada: ...`) → verificar en Prisma Studio que la tabla `TasaCambio` tiene una fila nueva/actualizada con `fuente: "BCV"` → correr el script una segunda vez y confirmar que NO duplica la fila (mismo día, `upsert`) → levantar `apps/web-admin`, login, `GET /api/tasa-cambio` (200 con la tasa real) y sin cookie (401) → opcional: simular que la API falla (cortar red o cambiar la URL temporalmente) y confirmar que el script cae al fallback sin crashear.
+
+Si algo falla, pegar la salida completa para diagnosticar — mismo patrón que todos los planes anteriores.
+
 ## Próximos pasos
-`docs/ROADMAP.md` ya refleja el Plan 6 cerrado — **sin bloqueadores 🔴 pendientes**. Lo que sigue es funcionalidad core (🟡) y expansión futura (🟢), ningún ítem con decisiones de diseño ya tomadas todavía:
-1. **Integración real de la API BCV** — `BcvApiAdapter`, `apps/worker`, caso de uso `ActualizarTasaDiaria`. Requiere elegir el proveedor concreto (pydolarve/dolarapi u otro) antes de poder escribir el plan.
-2. **App de kiosco física** (`apps/kiosk`) — hoy `/api/checkin` solo se prueba con `curl`.
-3. Rotación de `apiKey` de `Sucursal`, matriz de permisos más granular — ver `docs/ROADMAP.md` para el detalle.
-4. `packages/db/Dockerfile.migrate` sigue en el repo, inofensivo, se puede borrar cuando se confirme que ya no hace falta.
+Una vez confirmada la Tarea 8 del Plan 7, quedan (sin bloqueadores 🔴, todo es funcionalidad 🟡/🟢):
+1. Agendar el cron externo real para `npm run actualizar-tasa` (Easypanel scheduled job u otro) — sugerido `0 23 * * 1-5` UTC (7pm VET, lunes a viernes). No configurado en este plan.
+2. Integrar `ConvertirMontoUSDaVES` en algún consumidor real (ej. `RegistrarPago` mostrando el equivalente en VES) cuando haga falta.
+3. **App de kiosco física** (`apps/kiosk`) — hoy `/api/checkin` solo se prueba con `curl`.
+4. Rotación de `apiKey` de `Sucursal`, matriz de permisos más granular — ver `docs/ROADMAP.md` para el detalle.
+5. `packages/db/Dockerfile.migrate` sigue en el repo, inofensivo, se puede borrar cuando se confirme que ya no hace falta.

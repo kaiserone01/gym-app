@@ -6,4 +6,5 @@ export interface IMemberRepository {
   listarPorOrganizacion(organizacionId: string): Promise<Miembro[]>;
   crear(datos: DatosNuevoMiembro): Promise<Miembro>;
   actualizar(organizacionId: string, id: string, cambios: CambiosMiembro): Promise<Miembro | null>;
+  actualizarFechasPago(id: string, fechaUltimoPago: Date, fechaVencimiento: Date): Promise<void>;
 }

@@ -99,4 +99,11 @@ export class PrismaMemberRepository implements IMemberRepository {
 
     return mapear(miembro);
   }
+
+  async actualizarFechasPago(id: string, fechaUltimoPago: Date, fechaVencimiento: Date): Promise<void> {
+    await this.prisma.miembro.update({
+      where: { id },
+      data: { fechaUltimoPago, fechaVencimiento },
+    });
+  }
 }

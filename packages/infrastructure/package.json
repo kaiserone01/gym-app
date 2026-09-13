@@ -1,5 +1,9 @@
 {
   "name": "@gym-app/infrastructure",
   "version": "0.0.0",
-  "private": true
+  "private": true,
+  "dependencies": {
+    "@gym-app/db": "*",
+    "@gym-app/domain": "*"
+  }
 }

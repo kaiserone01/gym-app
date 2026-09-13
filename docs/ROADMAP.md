@@ -32,13 +32,20 @@ Checklist vivo del proyecto. Se actualiza marcando `- [x]` a medida que se compl
 - [x] Rutas `/api/auth/login`, `/api/auth/logout`, `/api/usuarios` (protegida) + página `/login`
 - [x] Todo verificado extremo a extremo contra la base de datos real, incluida la página `/login` en el navegador
 
+### Plan 5 — Gestión de Miembro
+- [x] `Miembro` extendido (`entrenadorNombre`, `fechaVencimiento`) + `IMemberRepository` con `buscarPorId`/`listarPorOrganizacion`/`crear`/`actualizar`
+- [x] Casos de uso `CrearMiembro` (con `CedulaDuplicadaError`), `ListarMiembros`, `ObtenerMiembro`, `ActualizarMiembro` (cada uno con su `MiembroNoEncontradoError`)
+- [x] `PrismaMemberRepository` extendido + rutas `GET/POST /api/miembros` y `GET/PATCH /api/miembros/[id]`, todas protegidas por sesión
+- [x] Todo verificado extremo a extremo contra la base de datos real: login, 401 sin sesión, 201 al crear, 409 por cédula duplicada, 200 en detalle/edición, baja lógica con `activo:false`, 404 en id inexistente
+
 ---
 
 ## 🔴 Bloqueadores antes de exponer nada a un usuario real
 
 - [x] **Login/sesión del panel admin** — Plan 4, completo y verificado contra la base real.
 - [x] **Endpoint HTTP para `CrearUsuarioAdmin`** — `POST /api/usuarios`, protegido por sesión, verificado (401 sin sesión, 201 con sesión de DUENO).
-- [ ] **Endpoints de gestión de `Miembro`/`Pago`/`Suscripcion`** — hoy solo se crean vía `seed.ts`. El panel admin no tiene ninguna pantalla ni API para altas/bajas reales todavía.
+- [x] **Endpoints de gestión de `Miembro`** — Plan 5, completo y verificado contra la base real (alta, detalle, edición, baja lógica).
+- [ ] **Endpoints de gestión de `Pago`/`Suscripcion`** — hoy solo se crean vía `seed.ts`. Diseño ya acordado: `RegistrarPago` crea/extiende la `Suscripcion` `ACTIVA` del `Plan` correspondiente. Próximo plan natural.
 
 ## 🟡 Funcionalidad core pendiente (definida en el ADR, no implementada)
 

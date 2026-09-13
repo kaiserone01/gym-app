@@ -1,6 +1,7 @@
 import { PrismaClient } from "../generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import bcrypt from "bcryptjs";
+import { randomUUID } from "node:crypto";
 
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
 const prisma = new PrismaClient({ adapter });
@@ -18,6 +19,11 @@ async function main() {
       nombre: "Sede Principal",
       diasGracia: 3,
       tasaCambioUSD: 40.5,
+      // Se genera explícito en vez de confiar en @default(uuid()) del schema:
+      // el motor de Prisma 7 (client-engine-runtime) no lo estaba aplicando
+      // en las pruebas de esta sesión — más robusto generarlo en código de
+      // todos modos, tratándose de un token de autenticación.
+      apiKey: randomUUID(),
     },
   });
   console.log("✅ Sucursal creada:", sucursal.nombre);

@@ -35,6 +35,7 @@ model Sucursal {
   diasGracia     Int          @default(0) // días después del vencimiento antes de marcar "vencido"
   tasaCambioUSD  Decimal?     @db.Decimal(10, 2) // fallback manual si la API BCV falla (ver ADR v1 §7)
   createdAt      DateTime     @default(now())
+  apiKey         String       @unique @default(uuid()) // el kiosco se autentica con esto (header X-Kiosk-Api-Key), nunca manda sucursalId directo (ADR v1 §4.2)
 
   usuariosAdmin UsuarioAdmin[]
   entrenadores  Entrenador[]

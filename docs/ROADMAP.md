@@ -26,19 +26,18 @@ Checklist vivo del proyecto. Se actualiza marcando `- [x]` a medida que se compl
 - [x] Enforcement de "crear `UsuarioAdmin` es exclusivo de `DUENO`" (`AuthorizationService`, verificado con script manual)
 - [x] Todo verificado extremo a extremo contra la base de datos real
 
-### Plan 4 — Login/sesión del panel admin (en curso)
-- [x] Modelo `Sesion` (tabla nueva, código de las Tareas 1–9)
+### Plan 4 — Login/sesión del panel admin
+- [x] Modelo `Sesion` (tabla nueva, migrada y aplicada contra la base real)
 - [x] `IniciarSesion`/`CerrarSesion`/`ValidarSesion` + `BcryptPasswordHasher`/`PrismaSesionRepository`
 - [x] Rutas `/api/auth/login`, `/api/auth/logout`, `/api/usuarios` (protegida) + página `/login`
-- [x] Build/lint verificados sin DB
-- [ ] Tarea 10: migrar + probar contra la base real (pendiente, requiere red del usuario)
+- [x] Todo verificado extremo a extremo contra la base de datos real, incluida la página `/login` en el navegador
 
 ---
 
 ## 🔴 Bloqueadores antes de exponer nada a un usuario real
 
-- [ ] **Login/sesión del panel admin** — código completo (Plan 4, Tareas 1-9), falta la Tarea 10 (migrar + probar contra la DB real).
-- [ ] **Endpoint HTTP para `CrearUsuarioAdmin`** — ya implementado y protegido por sesión (`POST /api/usuarios`, Plan 4), pendiente de la misma Tarea 10 para probarlo contra la DB real.
+- [x] **Login/sesión del panel admin** — Plan 4, completo y verificado contra la base real.
+- [x] **Endpoint HTTP para `CrearUsuarioAdmin`** — `POST /api/usuarios`, protegido por sesión, verificado (401 sin sesión, 201 con sesión de DUENO).
 - [ ] **Endpoints de gestión de `Miembro`/`Pago`/`Suscripcion`** — hoy solo se crean vía `seed.ts`. El panel admin no tiene ninguna pantalla ni API para altas/bajas reales todavía.
 
 ## 🟡 Funcionalidad core pendiente (definida en el ADR, no implementada)

@@ -3,9 +3,20 @@
 ## Objetivo
 Migrar `gym-app` de app única a monorepo Turborepo, de schema single-tenant a SaaS multi-tenant, de lógica inline a arquitectura hexagonal, agregar login/sesión y CRUD de `Miembro` al panel admin — siguiendo el ADR-001 (v1 + v2) y `docs/ROADMAP.md`, con superpowers (`writing-plans` + `executing-plans`).
 
-## Estado actual — Planes 1–5 completos al 100% (verificados contra la base real); Plan 6 en curso (Tareas 1–9 hechas, Tarea 10 pendiente en la máquina del usuario)
-- **Plan 1** (Turborepo scaffold), **Plan 2** (schema Organizacion/Sucursal), **Plan 3** (dominio hexagonal), **Plan 4** (login/sesión del panel admin), **Plan 5** (gestión de `Miembro`): completos, ver detalle abajo.
-- **Plan 6** (`docs/superpowers/plans/2026-09-13-gestion-pagos-suscripciones.md` — gestión de Pago/Suscripcion/Plan): Tareas 1–9 completas y verificadas sin DB. Tarea 10 (pruebas contra la DB real) queda para el usuario.
+## Estado actual — Planes 1–6 completos al 100%, todos verificados contra la base real. Sin bloqueadores 🔴 pendientes en `docs/ROADMAP.md`.
+- **Plan 1** (Turborepo scaffold), **Plan 2** (schema Organizacion/Sucursal), **Plan 3** (dominio hexagonal), **Plan 4** (login/sesión del panel admin), **Plan 5** (gestión de `Miembro`), **Plan 6** (`docs/superpowers/plans/2026-09-13-gestion-pagos-suscripciones.md` — gestión de Pago/Suscripcion/Plan): completos, ver detalle abajo.
+- **Plan 6 — Tarea 10 (pruebas contra la DB real) verificada por el usuario, los 11 casos pasaron:**
+  1. Login → `200` + cookie de sesión ✅
+  2. `GET /api/planes` → `200`, incluye "Sede Única" del seed ✅
+  3. `POST /api/planes` (`TODA_LA_ORGANIZACION`, sin `sucursalIds`) → `201`, "VIP Multi-sede" creado ✅
+  4. `POST /api/planes` (`SEDE_UNICA`, sin `sucursalIds`) → `400 "Un plan que no es TODA_LA_ORGANIZACION necesita al menos una sucursal asignada."` ✅
+  5. `PATCH /api/planes/[id]` (bajar `precioUSD`) → `200`, `precioUSD:35` ✅
+  6. `POST /api/pagos` (Julio César Bastidas × "Sede Única") → `201` ✅
+  7. `GET /api/miembros/[id]` → `fechaVencimiento` = hoy + 30 días ✅
+  8. `GET /api/pagos?miembroId=` → `200`, historial con el pago de $25 ✅
+  9. Segundo `POST /api/pagos` inmediato al mismo miembro/plan → `201` ✅
+  10. `GET /api/miembros/[id]` tras el 2º pago → `fechaVencimiento` = hoy + 60 días (se sumó desde el `fin` anterior, no desde hoy — confirma la lógica de extensión) ✅
+  11. `POST /api/pagos` con `planId` inexistente → `404 "No se encontró el plan."` ✅
 
 ## Archivos y cambios (Plan 6 — gestión de Pago/Suscripcion/Plan)
 - **Creados:**
@@ -51,12 +62,9 @@ Migrar `gym-app` de app única a monorepo Turborepo, de schema single-tenant a S
 - **No usar `@default(uuid())`/similares a nivel de Prisma** para generar valores en creación — generar explícito en código (`randomUUID()`/`randomBytes()` de `node:crypto`).
 - Esta sandbox no tiene acceso TCP crudo a la DB real (`31.220.56.1:5456`) — todas las tareas que tocan la DB (migraciones, seed, curl contra el server corriendo) las corre el usuario en su máquina y pega el resultado acá.
 
-## Pendiente inmediato — Tarea 10 del Plan 6 (requiere la máquina del usuario, hay red a la DB real)
-Comandos exactos en `docs/superpowers/plans/2026-09-13-gestion-pagos-suscripciones.md`, sección "Task 10". Resumen: regenerar cliente + levantar server → login → `GET /api/planes` (debe listar "Sede Única" del seed) → `POST /api/planes` con `TODA_LA_ORGANIZACION` (201) → `POST /api/planes` con `SEDE_UNICA` sin `sucursalIds` (400 esperado) → `PATCH /api/planes/[id]` (200) → `POST /api/pagos` contra Julio César Bastidas (miembro vencido del seed) y el plan "Sede Única" (201) → `GET /api/miembros/[id]` para confirmar que `fechaVencimiento` quedó en hoy+30 días → `GET /api/pagos?miembroId=` (200 con el historial) → repetir el `POST /api/pagos` inmediatamente (debe extender a hoy+60, no crear otra suscripción) → `POST /api/pagos` con un `planId` inexistente (404 esperado).
-
-Si algo falla, pegar la salida completa para diagnosticar — mismo patrón que todos los planes anteriores.
-
 ## Próximos pasos
-Una vez confirmada la Tarea 10 del Plan 6, actualizar `docs/ROADMAP.md` para cerrar el último bloqueador 🔴. Después de eso:
-1. Integración real de la API BCV, app de kiosco física, rotación de `apiKey`, matriz de permisos más granular — ver `docs/ROADMAP.md` para el detalle y prioridad de cada uno.
-2. `packages/db/Dockerfile.migrate` sigue en el repo, inofensivo, se puede borrar cuando se confirme que ya no hace falta.
+`docs/ROADMAP.md` ya refleja el Plan 6 cerrado — **sin bloqueadores 🔴 pendientes**. Lo que sigue es funcionalidad core (🟡) y expansión futura (🟢), ningún ítem con decisiones de diseño ya tomadas todavía:
+1. **Integración real de la API BCV** — `BcvApiAdapter`, `apps/worker`, caso de uso `ActualizarTasaDiaria`. Requiere elegir el proveedor concreto (pydolarve/dolarapi u otro) antes de poder escribir el plan.
+2. **App de kiosco física** (`apps/kiosk`) — hoy `/api/checkin` solo se prueba con `curl`.
+3. Rotación de `apiKey` de `Sucursal`, matriz de permisos más granular — ver `docs/ROADMAP.md` para el detalle.
+4. `packages/db/Dockerfile.migrate` sigue en el repo, inofensivo, se puede borrar cuando se confirme que ya no hace falta.

@@ -38,6 +38,12 @@ Checklist vivo del proyecto. Se actualiza marcando `- [x]` a medida que se compl
 - [x] `PrismaMemberRepository` extendido + rutas `GET/POST /api/miembros` y `GET/PATCH /api/miembros/[id]`, todas protegidas por sesión
 - [x] Todo verificado extremo a extremo contra la base de datos real: login, 401 sin sesión, 201 al crear, 409 por cédula duplicada, 200 en detalle/edición, baja lógica con `activo:false`, 404 en id inexistente
 
+### Plan 6 — Gestión de Pago/Suscripcion/Plan
+- [x] Entidades `Plan`/`Pago` + `IPlanRepository`/`IPagoRepository`, extensión de `ISuscripcionRepository` (`buscarActivaVigentePorMiembroYPlan`/`extenderFin`/`crear`) y de `IMemberRepository` (`actualizarFechasPago`)
+- [x] Casos de uso `CrearPlan` (valida `sucursalIds` por organización), `ListarPlanes`, `ActualizarPlan`, `RegistrarPago` (extiende la `Suscripcion ACTIVA` 30 días desde `max(fin, hoy)` o crea una nueva, sincroniza `Miembro.fechaUltimoPago`/`fechaVencimiento`, rechaza planes inactivos), `ListarPagos`
+- [x] Rutas `GET/POST /api/planes`, `PATCH /api/planes/[id]`, `GET/POST /api/pagos`, todas protegidas por sesión
+- [x] Todo verificado extremo a extremo contra la base de datos real (11 casos): listar planes del seed, crear plan `TODA_LA_ORGANIZACION`, rechazar `SEDE_UNICA` sin sucursales (400), editar plan, registrar pago (extiende a hoy+30), listar historial de pagos, segundo pago inmediato (extiende a hoy+60 desde el `fin` anterior, no desde hoy), pago contra plan inexistente (404)
+
 ---
 
 ## 🔴 Bloqueadores antes de exponer nada a un usuario real
@@ -45,7 +51,9 @@ Checklist vivo del proyecto. Se actualiza marcando `- [x]` a medida que se compl
 - [x] **Login/sesión del panel admin** — Plan 4, completo y verificado contra la base real.
 - [x] **Endpoint HTTP para `CrearUsuarioAdmin`** — `POST /api/usuarios`, protegido por sesión, verificado (401 sin sesión, 201 con sesión de DUENO).
 - [x] **Endpoints de gestión de `Miembro`** — Plan 5, completo y verificado contra la base real (alta, detalle, edición, baja lógica).
-- [ ] **Endpoints de gestión de `Pago`/`Suscripcion`** — hoy solo se crean vía `seed.ts`. Diseño ya acordado: `RegistrarPago` crea/extiende la `Suscripcion` `ACTIVA` del `Plan` correspondiente. Próximo plan natural.
+- [x] **Endpoints de gestión de `Pago`/`Suscripcion`/`Plan`** — Plan 6, completo y verificado contra la base real.
+
+Sin bloqueadores 🔴 pendientes. Lo que sigue es funcionalidad core (🟡) y expansión futura (🟢) — ver abajo.
 
 ## 🟡 Funcionalidad core pendiente (definida en el ADR, no implementada)
 

@@ -3,31 +3,38 @@
 ## Objetivo
 Migrar `gym-app` de app única a monorepo Turborepo, de schema single-tenant a SaaS multi-tenant, y de lógica inline a arquitectura hexagonal (`packages/domain`/`packages/infrastructure`) para el flujo de check-in, siguiendo el ADR-001 (v1 + v2) con superpowers (`writing-plans` + `executing-plans`).
 
-## Estado actual
-- **Plan 1** (Turborepo scaffold) y **Plan 2** (schema Organizacion/Sucursal): completos y verificados extremo a extremo contra la base real por el usuario — ver commits previos.
-- **Plan 3** (`docs/superpowers/plans/2026-09-13-dominio-hexagonal-checkin.md`, dominio hexagonal): **Tareas 1–11 completas y verificadas** (schema + código + build + lint, todo sin tocar la DB real). **Tarea 12 pendiente** (requiere red hacia `31.220.56.1:5456` — la corre el usuario):
-  1. `Sucursal.apiKey` agregado al schema (pendiente de migrar contra la DB real).
-  2–6. `packages/domain`: entidades planas, 7 puertos, casos de uso `RegistrarCheckIn`, `ValidarAccesoSucursalPorPlan`, `CrearUsuarioAdmin` + `AuthorizationService`.
-  7–8. `packages/infrastructure`: 4 adaptadores Prisma + `KioskTokenValidator`.
-  9. `apps/web-admin`: dependencias de workspace + `transpilePackages` en `next.config.ts`.
-  10. `app/api/checkin/route.ts` reescrito delgado — el kiosco ahora se autentica con el header `X-Kiosk-Api-Key` (ya no manda `sucursalId` en el body), y el estado (`activo`/`vencido`) ahora sale de `Suscripcion`/`Plan`, no de `Miembro.fechaVencimiento`.
-  11. `seed.ts` actualizado (Suscripcion nueva para Rodrigo Lara, imprime `apiKey` en vez de `sucursalId`) + script manual `apps/web-admin/scripts/verificar-autorizacion.ts` para probar `CrearUsuarioAdmin`/`AuthorizationService` sin exponer un endpoint HTTP.
-- Verificado en este sandbox (sin DB): `npx tsc --noEmit`, `npx turbo run build --filter=web-admin`, `npx turbo run lint --filter=web-admin`, y una prueba directa del server `standalone` (confirma que Turbopack empaqueta `@gym-app/domain`/`@gym-app/infrastructure` dentro del bundle — no aparecen como `node_modules/@gym-app/*` separados, y eso es correcto, no un bug).
+## Estado actual — 3 planes completos y verificados
+- **Plan 1** (Turborepo scaffold), **Plan 2** (schema Organizacion/Sucursal), **Plan 3** (`docs/superpowers/plans/2026-09-13-dominio-hexagonal-checkin.md`, dominio hexagonal): **las 12 tareas del Plan 3 completas**, incluida la Tarea 12 (migración + seed + verificación de autorización + pruebas del endpoint) corrida por el usuario contra la base real (`31.220.56.1:5456/gym-pg`).
+- Resumen del Plan 3: `Sucursal.apiKey` (autenticación del kiosco por header), `packages/domain` (5 entidades, 7 puertos, 3 casos de uso, `AuthorizationService`), `packages/infrastructure` (4 adaptadores Prisma + `KioskTokenValidator`), `app/api/checkin/route.ts` reescrito delgado (el estado ahora sale de `Suscripcion`/`Plan`, no de `Miembro.fechaVencimiento`; el kiosco ya no manda `sucursalId` en el body).
+- **Pruebas manuales verificadas contra la DB real por el usuario:**
+  - Script `verificar-autorizacion.ts`: DUENO crea RECEPCION ✅ / GERENTE rechazado al intentarlo ✅.
+  - `/api/checkin` con `X-Kiosk-Api-Key` válida → `estado: activo` (Rayza Aray) ✅.
+  - Sin header → `401 {"error":"Falta el header X-Kiosk-Api-Key."}` ✅.
+  - Header inválido → `401 {"error":"API key de sucursal inválida."}` ✅.
+  - Idempotencia (misma llamada repetida) → misma respuesta ✅.
+  - Miembro sin `Suscripcion` (Julio César Bastidas) → `estado: vencido` ✅.
 - Todo commiteado y pusheado a `main` y a `claude/gifted-hawking-ikltak`.
 
 ## Archivos y cambios (Plan 3)
 - **Creados:** `packages/domain/entities/{Sucursal,Miembro,Suscripcion,CheckIn,UsuarioAdmin}.ts`, `packages/domain/ports/*.ts` (7 puertos), `packages/domain/use-cases/{RegistrarCheckIn,ValidarAccesoSucursalPorPlan,CrearUsuarioAdmin}.ts`, `packages/domain/services/AuthorizationService.ts`, `packages/infrastructure/persistence/prisma/*.ts` (4 adaptadores), `packages/infrastructure/auth/KioskTokenValidator.ts`, `apps/web-admin/scripts/verificar-autorizacion.ts`.
-- **Modificados:** `packages/db/prisma/schema.prisma` (+`Sucursal.apiKey`), `packages/db/prisma/seed.ts`, `apps/web-admin/{package.json,next.config.ts,lib/prisma.ts no tocado,app/api/checkin/route.ts}`, `packages/infrastructure/package.json`.
+- **Modificados:** `packages/db/prisma/schema.prisma` (+`Sucursal.apiKey`), `packages/db/prisma/seed.ts` (apiKey explícito, Suscripcion de Rodrigo Lara), `apps/web-admin/{package.json,next.config.ts,app/api/checkin/route.ts}`, `packages/infrastructure/package.json`.
+- **Migración nueva:** `packages/db/prisma/migrations/20260913035019_sucursal_api_key/` (con backfill manual — ver desvíos abajo).
 
-## Intentos fallidos / desvíos resueltos
-- **Dependencia circular real** detectada por Turborepo: `packages/infrastructure` depende de `@gym-app/db`, y el diseño original ponía el script de verificación dentro de `packages/db` dependiendo de `@gym-app/infrastructure` — ciclo `db → infrastructure → db`. Se movió el script a `apps/web-admin/scripts/` (las apps son hojas del grafo, sin este problema). Confirmado sin advertencia de ciclo tras el fix.
-- Verifiqué manualmente que el output `standalone` de Next.js (usado por el `Dockerfile` de producción) sí funciona con los paquetes internos nuevos, corriendo el `server.js` compilado y golpeando `/api/checkin` directamente — no crasheó por módulos faltantes, solo colgó por la falta de red hacia la DB (esperado en este sandbox).
+## Intentos fallidos / desvíos resueltos (Plan 3)
+- **Dependencia circular real** detectada por Turborepo (`packages/db ↔ packages/infrastructure`) — el script de verificación se movió de `packages/db` a `apps/web-admin/scripts/` (las apps son hojas del grafo).
+- **`@default(uuid())` de Prisma no se puede aplicar a una columna requerida en una tabla con filas existentes** — Prisma se negó a generar la migración directa; hubo que usar `migrate dev --create-only` y editar el SQL a mano: agregar la columna opcional, `UPDATE ... SET apiKey = gen_random_uuid()::text` para la fila existente, y solo entonces `SET NOT NULL` + el índice único.
+- **BOM en el archivo editado:** `Set-Content -Encoding utf8` de PowerShell agrega un BOM que Postgres no puede parsear (`syntax error at or near "﻿"`) — se resolvió escribiendo el archivo con `[System.IO.File]::WriteAllText(..., New-Object System.Text.UTF8Encoding $false)`.
+- **Migración fallida a mitad de aplicar** (por el problema del `@default`) dejó `_prisma_migrations` en estado inconsistente — se resolvió con `npx prisma migrate resolve --rolled-back <nombre>` antes de reintentar.
+- **`@default(uuid())` tampoco se aplicó en runtime** al crear una `Sucursal` nueva vía `prisma.sucursal.create()` (motor `client-engine-runtime` de Prisma 7) — se resolvió generando el valor explícito en `seed.ts` con `randomUUID()` de `node:crypto`, en vez de depender del default del schema.
+- **Cliente de Prisma desactualizado en la máquina del usuario** tras el cambio de schema (el cliente generado no se versiona) — causó `Unknown argument apiKey`; se resolvió con `npx prisma generate`.
+- **Servidor de desarrollo viejo corriendo en el puerto 3000** desde una sesión anterior (con el código pre-hexagonal) — hubo que matarlo (`taskkill`) antes de levantar el nuevo, para no probar contra código stale.
+- Verifiqué en este sandbox (sin DB) que el output `standalone` de Next.js empaqueta correctamente `@gym-app/domain`/`@gym-app/infrastructure` dentro del bundle (Turbopack los inlinea, no quedan como `node_modules/@gym-app/*` separados — confirmado corriendo el `server.js` compilado y golpeándolo con `curl`, no crasheó).
 
 ## Próximos pasos
-1. **Tarea 12 del Plan 3 (bloqueante, requiere tu máquina):**
-   - `cd packages\db && npx prisma migrate dev --name sucursal_api_key`
-   - `npx prisma db seed` (anotar la `apiKey` impresa)
-   - `cd ..\..\apps\web-admin && npx tsx scripts\verificar-autorizacion.ts` (esperar los 2 ✅)
-   - Probar `/api/checkin` con el nuevo contrato: header `X-Kiosk-Api-Key` en vez de `sucursalId` en el body (ver Tarea 12 del plan para los comandos `curl` exactos — incluye casos: sin header, header inválido, idempotencia, vencido).
-2. **Borrar `packages/db/Dockerfile.migrate`** — ya cumplió su propósito (opcional, es inofensivo dejarlo).
-3. Fuera de alcance del Plan 3, explícitamente diferido: integración real de la API BCV (`BcvApiAdapter`/`apps/worker`), endpoint HTTP para `CrearUsuarioAdmin` (no hay login/sesión de panel admin todavía — exponerlo sin protección sería inseguro), matriz de permisos más allá de "crear UsuarioAdmin es exclusivo de DUENO", rotación de `apiKey` de una Sucursal existente.
+1. **Borrar `packages/db/Dockerfile.migrate`** — ya cumplió su propósito (opcional, es inofensivo dejarlo).
+2. Fuera de alcance del Plan 3, explícitamente diferido:
+   - Integración real de la API BCV (`BcvApiAdapter`/`apps/worker`/`ActualizarTasaDiaria`) — la tabla `TasaCambio` existe pero nada la llena.
+   - Endpoint HTTP para `CrearUsuarioAdmin` — no hay login/sesión de panel admin todavía; exponerlo sin protección sería inseguro.
+   - Matriz de permisos más allá de "crear UsuarioAdmin es exclusivo de DUENO".
+   - Rotación/regeneración de `apiKey` de una `Sucursal` ya creada.
+3. **Nota para el próximo schema change:** después de cualquier cambio a `packages/db/prisma/schema.prisma`, correr `npx prisma generate` en cada máquina antes de usar el cliente — no se versiona, y un cliente desactualizado falla de forma confusa (`Unknown argument`).

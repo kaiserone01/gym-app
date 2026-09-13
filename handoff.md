@@ -1,28 +1,40 @@
 # Handoff — gym-app
 
 ## Objetivo
-Ejecutar (vía superpowers:executing-plans) el plan `docs/superpowers/plans/2026-09-13-turborepo-monorepo-scaffold.md`: convertir el repo de app única a monorepo Turborepo (`apps/web-admin` + `packages/*`), sin tocar `schema.prisma` ni ejecutar migraciones, como paso previo a la redesign SaaS multi-tenant (Organización → Sucursal) descrita en `docs/adr/ADR-001-gym-app-sesion-v2.md`.
+Migrar `gym-app` de app única a monorepo Turborepo y de schema single-tenant (`Gym`) a SaaS multi-tenant (`Organizacion → Sucursal → Miembro` con `Plan`/`Suscripcion`/`RolUsuario`/`RegistroAuditoria`), siguiendo el ADR-001 (v1 + v2) y ejecutando ambos planes con superpowers (`writing-plans` + `executing-plans`). Incluye corregir el `Dockerfile` de despliegue en Easypanel y validar el endpoint `/api/checkin` extremo a extremo contra una base de datos real.
 
-## Estado actual
-- Tareas 1–6 del plan **completadas y verificadas** en el working tree (sin commits — ver regla de git del proyecto). Nada está aún en el historial de git más allá de lo que ya existía antes de esta sesión.
-- Tarea 7 (gate de aprobación de schema) **bloqueada intencionalmente**: no se tocó `schema.prisma`, no hay migraciones nuevas.
-- `npm run build` (`turbo run build`) y `npm run lint` (`turbo run lint`) pasan en verde para `apps/web-admin`. Segunda corrida de build confirma `>>> FULL TURBO` (cache hit).
+## Estado actual — TODO completado y verificado
+- **Plan 1** (`docs/superpowers/plans/2026-09-13-turborepo-monorepo-scaffold.md`): monorepo Turborepo con `apps/web-admin` + `packages/*`. Completo.
+- **Plan 2** (`docs/superpowers/plans/2026-09-13-schema-organizacion-sucursal.md`): las 8 tareas completas:
+  1. Topología de `packages/*` corregida para igualar la v1 del ADR (`domain/{entities,use-cases,ports}`, `domain-custom`, `infrastructure/{exchange-rate,persistence/prisma,auth}`, `db`, `design-system`, `theming`, `ui`, `config`).
+  2. `prisma/` movido a `packages/db` (único dueño de `schema.prisma` y del cliente generado).
+  3. `schema.prisma` reescrito con el modelo SaaS multi-tenant completo, aprobado por el usuario.
+  4. Migración `20260913024831_organizacion_sucursal_plan_suscripcion` creada y aplicada contra la base real (`31.220.56.1:5456/gym-pg`, confirmada como base de prueba descartable).
+  5. `apps/web-admin/lib/prisma.ts` apunta a `@gym-app/db` y carga `.env` desde la raíz del monorepo explícitamente.
+  6. `packages/db/prisma/seed.ts` reescrito y corrido con éxito contra la base real.
+  7. `app/api/checkin/route.ts` adaptado a `Sucursal`/`Organizacion`, con idempotencia (ventana de 2 min, responde con el CheckIn existente en vez de duplicar).
+  8. Build (`turbo run build`) y las 4 pruebas manuales del endpoint, verificadas contra la base real por el usuario: miembro activo ✅, idempotencia confirmada en Prisma Studio (2 llamadas idénticas → 1 sola fila en `CheckIn`) ✅, miembro vencido ✅, sucursal inexistente → 404 ✅.
+- `Dockerfile` de producción (Easypanel) corregido tras la reestructuración de `packages/*` (rutas `COPY` + `prisma generate` desde `packages/db`) y verificado con un build real en Easypanel.
+- Todo commiteado y pusheado directo a `main` (y a la rama de sesión `claude/gifted-hawking-ikltak`), según instrucción explícita del usuario de trabajar siempre sobre `main`.
 
-## Archivos y cambios
-- **Movidos con `git mv` (historial preservado) a `apps/web-admin/`:** `app/`, `lib/`, `prisma/` (incluye `migrations/` y `seed.ts`), `public/`, `next.config.ts`, `eslint.config.mjs`, `postcss.config.mjs`, `tsconfig.json`, `prisma7.config.ts`.
-- **Creados:** `turbo.json`, `apps/web-admin/package.json`, `packages/database/package.json`, `packages/domain/package.json`, `packages/ui/package.json` (+ `.gitkeep` en cada uno), `docs/adr/ADR-001-gym-app-sesion-v2.md`, `docs/adr/handoff.md`, `docs/superpowers/plans/2026-09-13-turborepo-monorepo-scaffold.md`.
-- **Modificados:** `package.json` raíz (campo `workspaces`, `packageManager`, scripts delegados a `turbo run`, dependencias movidas a `apps/web-admin/package.json`), `.gitignore` (patrones `/x` → `**/x` para que apliquen dentro de `apps/web-admin`, agregado `.turbo`), `CLAUDE.md` (vaciado — referenciaba `@AGENTS.md`, eliminado).
-- **Eliminados:** `AGENTS.md`.
-- **Sin modificar:** `prisma/schema.prisma` (solo se movió de ubicación, contenido idéntico), `app/api/checkin/route.ts` (solo se movió, contenido idéntico — el bug de idempotencia conocido sigue presente, sin tocar).
+## Archivos y cambios (acumulado de ambos planes)
+- **Monorepo:** `turbo.json`, `package.json` raíz (`workspaces`, `packageManager`), `apps/web-admin/` (contenido movido desde la raíz), `packages/db|domain|domain-custom|infrastructure|design-system|theming|ui|config/`.
+- **Schema:** `packages/db/schema.prisma`, `packages/db/prisma/migrations/20260913024831_organizacion_sucursal_plan_suscripcion/`, `packages/db/prisma/seed.ts`, `packages/db/prisma7.config.ts` (carga `.env` de la raíz explícitamente).
+- **App:** `apps/web-admin/lib/prisma.ts`, `apps/web-admin/app/api/checkin/route.ts`.
+- **Despliegue:** `Dockerfile` (producción, Easypanel), `packages/db/Dockerfile.migrate` (temporal, para correr migraciones desde un servidor con red hacia la DB — ya no se necesita, se puede borrar).
+- **Documentación:** `docs/adr/ADR-001-gym-app-sesion.md` (v1), `docs/adr/ADR-001-gym-app-sesion-v2.md`, `docs/adr/handoff.md`, `docs/superpowers/plans/*.md` (2 planes).
+- **Eliminados:** `AGENTS.md`, el modelo `Gym` completo, la migración `20260908121026_init` (obsoleta).
 
-## Intentos fallidos / desvíos resueltos
-- Primer `turbo run build` falló: `turbo` requiere el campo `packageManager` en el `package.json` raíz (no estaba en el plan original) — se agregó `"packageManager": "npm@10.9.7"`.
-- Segundo intento falló: `Module not found: '../app/generated/prisma/client'` — el cliente Prisma generado nunca se había commiteado (está en `.gitignore`) y no existía tras el `npm install` limpio. Se ejecutó `npx prisma generate` (sin tocar `schema.prisma`, sin migraciones) para regenerarlo — condición preexistente del repo, no causada por el movimiento a monorepo.
-- Cache de Turborepo no funcionaba (`0 cached` en la segunda corrida) porque `.gitignore` tenía patrones anclados a la raíz (`/.next/`, `/app/generated/prisma`) que no cubrían `apps/web-admin/.next` ni `apps/web-admin/app/generated/prisma` tras el movimiento. Se cambiaron a patrones recursivos (`**/.next/`, etc.). Confirmado con `>>> FULL TURBO` en la segunda corrida tras el fix.
+## Intentos fallidos / desvíos resueltos (los más relevantes)
+- Este sandbox no tiene salida TCP hacia la base de datos (solo HTTPS vía proxy) — todas las operaciones que tocan la DB real (`migrate dev`, `db seed`, pruebas del endpoint) las corrió el usuario en su máquina local, no yo.
+- `Dockerfile` de producción quedó desactualizado tras renombrar `packages/database` → `packages/db` (Easypanel lo detectó al reconstruir automático) — corregido.
+- `packages/db/Dockerfile.migrate` usaba `--skip-seed`, flag que no existe en Prisma 7.10 (`migrate reset` solo tiene `-f/--force`) — corregido con `|| true` para tolerar el auto-seed fallido contra una base aún sin tablas.
+- La migración vieja (`20260908121026_init`, modelo `Gym`) seguía en el repo tras moverla con `git mv` en vez de borrarla — causó que el primer `migrate dev` del usuario la reaplicara y confundiera el diff. Se eliminó.
+- `apps/web-admin/lib/prisma.ts` no cargaba `.env` de la raíz del monorepo (Next.js solo carga `.env` de su propia carpeta) — causaba `ECONNREFUSED` al correr `next dev` fuera de Turborepo. Corregido con `dotenv.config()` explícito apuntando a la raíz.
 
 ## Próximos pasos
-1. **Decisión del usuario (Tarea 7 del plan, bloqueante):** aprobar u objetar los modelos `Plan`/`Suscripción`/`PlanSucursalAcceso`, el rol `UsuarioAdmin.rol`/`RolUsuario`, `RegistroAuditoria`, la regla de idempotencia de `RegistrarCheckIn` (¿rechazar con 409 o responder con el check-in existente?), y la fuente de la API BCV — todo en `docs/adr/ADR-001-gym-app-sesion-v2.md` secciones 13 y 16.
-2. Resolver además: relación `Entrenador`↔`Sucursal`, alcance de `TemaOrganizacion` (¿override por sucursal?), y si `GERENTE` puede crear `UsuarioAdmin` con rol `RECEPCION`.
-3. Confirmar la topología de `packages/*` creada en la Tarea 5 (`database`, `domain`, `ui`) contra la sección 5 de la v1 del ADR (no disponible en esta sesión) — corregir nombres/estructura si no coincide.
-4. Solo después de 1–3: escribir el plan de seguimiento `docs/superpowers/plans/YYYY-MM-DD-schema-organizacion-sucursal.md` para la migración real de `schema.prisma` (fuera del alcance de este plan).
-5. Revisar los commits sugeridos abajo y ejecutarlos manualmente (no se hizo commit automático).
+1. **Borrar `packages/db/Dockerfile.migrate`** (o dejarlo, es inofensivo) — ya cumplió su propósito.
+2. **Plan de dominio hexagonal** (explícitamente diferido en el Plan 2): `ValidarAccesoSucursalPorPlan` como caso de uso real, redefinir `estadoAlMomento` en función de `Suscripcion` en vez de `Miembro.fechaVencimiento`, `IKioskAuthValidator` (el `sucursalId` sigue viajando sin firmar en el body — hallazgo 🔴 crítico del ADR v1 §3.1, aún no cerrado), y los adaptadores en `packages/infrastructure` (hoy vacío).
+3. **Integración real de la API BCV** (`BcvApiAdapter`, `apps/worker`, `ActualizarTasaDiaria`) — la tabla `TasaCambio` existe pero nada la llena todavía. Proveedor aprobado: API no oficial tipo pydolarve/dolarapi (sin URL concreta fijada aún).
+4. **Login del panel admin** — `bcryptjs` está en las dependencias correctas de `packages/db`, pero no existe ninguna ruta de login en `apps/web-admin` todavía.
+5. Enforcement de que `GERENTE` no pueda crear `UsuarioAdmin` de rol `RECEPCION` (regla de autorización aprobada, sin implementar — depende del plan de dominio hexagonal).

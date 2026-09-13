@@ -24,6 +24,7 @@ COPY packages/ui/package.json packages/ui/package.json
 
 RUN npm ci
 
+COPY turbo.json turbo.json
 COPY apps/kiosk apps/kiosk
 
 # Fija en build time (decisión de esta sesión) — un build por entorno

@@ -14,6 +14,7 @@ export default function PaginaConfiguracion() {
   // después del montaje, en un efecto.
   useEffect(() => {
     const guardado = obtenerApiKey();
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- lee localStorage tras el montaje (SSR-safe, ver ADR de output: "export")
     if (guardado) setApiKey(guardado);
   }, []);
 

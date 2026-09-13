@@ -28,6 +28,7 @@ export default function PaginaCheckIn() {
       router.replace("/config");
       return;
     }
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- lee localStorage tras el montaje (SSR-safe, ver ADR de output: "export")
     setApiKey(clave);
   }, [router]);
 

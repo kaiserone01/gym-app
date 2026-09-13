@@ -1,0 +1,80 @@
+import type { PrismaClient } from "@gym-app/db/generated/prisma/client";
+import type { IPlanRepository } from "@gym-app/domain/ports/IPlanRepository";
+import type { Plan, DatosNuevoPlan, CambiosPlan } from "@gym-app/domain/entities/Plan";
+
+type FilaPlan = {
+  id: string;
+  organizacionId: string;
+  nombre: string;
+  tipoAcceso: Plan["tipoAcceso"];
+  precioUSD: { toNumber(): number };
+  activo: boolean;
+};
+
+function mapear(plan: FilaPlan): Plan {
+  return {
+    id: plan.id,
+    organizacionId: plan.organizacionId,
+    nombre: plan.nombre,
+    tipoAcceso: plan.tipoAcceso,
+    precioUSD: plan.precioUSD.toNumber(),
+    activo: plan.activo,
+  };
+}
+
+export class PrismaPlanRepository implements IPlanRepository {
+  constructor(private readonly prisma: PrismaClient) {}
+
+  async listarPorOrganizacion(organizacionId: string): Promise<Plan[]> {
+    const planes = await this.prisma.plan.findMany({
+      where: { organizacionId },
+      orderBy: { nombre: "asc" },
+    });
+
+    return planes.map(mapear);
+  }
+
+  async buscarPorId(organizacionId: string, id: string): Promise<Plan | null> {
+    const plan = await this.prisma.plan.findUnique({ where: { id } });
+
+    if (!plan || plan.organizacionId !== organizacionId) return null;
+
+    return mapear(plan);
+  }
+
+  async sucursalesValidas(organizacionId: string, sucursalIds: string[]): Promise<boolean> {
+    const cantidad = await this.prisma.sucursal.count({
+      where: { id: { in: sucursalIds }, organizacionId },
+    });
+
+    return cantidad === sucursalIds.length;
+  }
+
+  async crear(datos: DatosNuevoPlan): Promise<Plan> {
+    const plan = await this.prisma.plan.create({
+      data: {
+        organizacionId: datos.organizacionId,
+        nombre: datos.nombre,
+        tipoAcceso: datos.tipoAcceso,
+        precioUSD: datos.precioUSD,
+        ...(datos.tipoAcceso !== "TODA_LA_ORGANIZACION"
+          ? { sucursalesAcceso: { create: datos.sucursalIds.map((sucursalId) => ({ sucursalId })) } }
+          : {}),
+      },
+    });
+
+    return mapear(plan);
+  }
+
+  async actualizar(organizacionId: string, id: string, cambios: CambiosPlan): Promise<Plan | null> {
+    const actual = await this.prisma.plan.findUnique({ where: { id } });
+
+    if (!actual || actual.organizacionId !== organizacionId) {
+      return null;
+    }
+
+    const plan = await this.prisma.plan.update({ where: { id }, data: cambios });
+
+    return mapear(plan);
+  }
+}

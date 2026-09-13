@@ -27,7 +27,7 @@ export class ErrorCheckIn extends Error {
 // (se lanza ErrorCheckIn, no es reintentable).
 export async function registrarCheckIn(apiKey: string, cedula: string): Promise<ResultadoCheckIn> {
   if (!URL_API) {
-    throw new Error("NEXT_PUBLIC_API_URL no está configurada en este build.");
+    throw new ErrorCheckIn("NEXT_PUBLIC_API_URL no está configurada en este build.", 0);
   }
 
   const respuesta = await fetch(`${URL_API}/api/checkin`, {
@@ -39,10 +39,10 @@ export async function registrarCheckIn(apiKey: string, cedula: string): Promise<
     body: JSON.stringify({ cedula }),
   });
 
-  const datos = await respuesta.json();
+  const datos = await respuesta.json().catch(() => ({}));
 
   if (!respuesta.ok) {
-    throw new ErrorCheckIn(datos.error ?? "Error al registrar el check-in.", respuesta.status);
+    throw new ErrorCheckIn(datos.error ?? `Error ${respuesta.status} al registrar el check-in.`, respuesta.status);
   }
 
   return datos as ResultadoCheckIn;

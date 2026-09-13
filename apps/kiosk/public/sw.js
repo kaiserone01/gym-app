@@ -27,6 +27,18 @@ self.addEventListener("activate", (evento) => {
 self.addEventListener("fetch", (evento) => {
   if (evento.request.method !== "GET") return;
 
+  if (evento.request.mode === "navigate") {
+    evento.respondWith(
+      fetch(evento.request)
+        .then((respuesta) => {
+          caches.open(CACHE).then((cache) => cache.put(evento.request, respuesta.clone()));
+          return respuesta;
+        })
+        .catch(() => caches.match(evento.request).then((cacheada) => cacheada || caches.match("/")))
+    );
+    return;
+  }
+
   evento.respondWith(
     caches.match(evento.request).then((respuestaCacheada) => {
       return respuestaCacheada || fetch(evento.request).catch(() => caches.match("/"));

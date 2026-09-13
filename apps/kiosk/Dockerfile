@@ -32,10 +32,12 @@ COPY apps/kiosk apps/kiosk
 ARG NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 
+RUN test -n "$NEXT_PUBLIC_API_URL" || (echo "NEXT_PUBLIC_API_URL es obligatorio" && exit 1)
+
 RUN npx turbo run build --filter=kiosk
 
 # ---- runner: sirve el export estático con un servidor mínimo -------------
-FROM node:${NODE_VERSION}-alpine AS runner
+FROM node:${NODE_VERSION} AS runner
 WORKDIR /app
 
 RUN npm install -g serve@14

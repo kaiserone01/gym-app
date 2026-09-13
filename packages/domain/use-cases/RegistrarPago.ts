@@ -1,0 +1,78 @@
+import { IPagoRepository } from "../ports/IPagoRepository";
+import { ISuscripcionRepository } from "../ports/ISuscripcionRepository";
+import { IMemberRepository } from "../ports/IMemberRepository";
+import { IPlanRepository } from "../ports/IPlanRepository";
+import { Pago } from "../entities/Pago";
+
+const DURACION_SUSCRIPCION_DIAS = 30;
+
+export class MiembroNoEncontradoError extends Error {
+  constructor() {
+    super("No se encontró el miembro.");
+  }
+}
+
+export class PlanNoEncontradoError extends Error {
+  constructor() {
+    super("No se encontró el plan.");
+  }
+}
+
+export class PlanInactivoError extends Error {
+  constructor() {
+    super("No se puede registrar un pago contra un plan inactivo.");
+  }
+}
+
+export interface RegistrarPagoDeps {
+  pagos: IPagoRepository;
+  suscripciones: ISuscripcionRepository;
+  miembros: IMemberRepository;
+  planes: IPlanRepository;
+}
+
+export interface DatosRegistrarPago {
+  organizacionId: string;
+  miembroId: string;
+  planId: string;
+  monto: number;
+  metodo: string;
+  tasaCambio: number | null;
+}
+
+export async function registrarPago(deps: RegistrarPagoDeps, input: DatosRegistrarPago): Promise<Pago> {
+  const miembro = await deps.miembros.buscarPorId(input.organizacionId, input.miembroId);
+  if (!miembro) {
+    throw new MiembroNoEncontradoError();
+  }
+
+  const plan = await deps.planes.buscarPorId(input.organizacionId, input.planId);
+  if (!plan) {
+    throw new PlanNoEncontradoError();
+  }
+  if (!plan.activo) {
+    throw new PlanInactivoError();
+  }
+
+  const ahora = new Date();
+  const activa = await deps.suscripciones.buscarActivaVigentePorMiembroYPlan(input.miembroId, input.planId, ahora);
+
+  const base = activa && activa.fin > ahora ? activa.fin : ahora;
+  const fin = new Date(base);
+  fin.setDate(fin.getDate() + DURACION_SUSCRIPCION_DIAS);
+
+  if (activa) {
+    await deps.suscripciones.extenderFin(activa.id, fin);
+  } else {
+    await deps.suscripciones.crear({ miembroId: input.miembroId, planId: input.planId, inicio: ahora, fin });
+  }
+
+  await deps.miembros.actualizarFechasPago(input.miembroId, ahora, fin);
+
+  return deps.pagos.crear({
+    miembroId: input.miembroId,
+    monto: input.monto,
+    metodo: input.metodo,
+    tasaCambio: input.tasaCambio,
+  });
+}

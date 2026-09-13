@@ -124,10 +124,19 @@ async function main() {
       fechaVencimiento: en20Dias,
     },
   });
+  await prisma.suscripcion.create({
+    data: {
+      miembroId: miembroSinEntrenador.id,
+      planId: planSedeUnica.id,
+      inicio: hoy,
+      fin: en20Dias,
+      estado: "ACTIVA",
+    },
+  });
   console.log("✅ Miembro sin entrenador creado:", miembroSinEntrenador.nombre);
 
   console.log("\n🎉 Seed completado con éxito.");
-  console.log(`   sucursalId de prueba para /api/checkin: ${sucursal.id}`);
+  console.log(`   apiKey de prueba para el header X-Kiosk-Api-Key: ${sucursal.apiKey}`);
 }
 
 main()

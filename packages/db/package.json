@@ -9,7 +9,9 @@
   },
   "dependencies": {
     "@prisma/client": "^7.10.0",
-    "@prisma/adapter-pg": "^7.10.0"
+    "@prisma/adapter-pg": "^7.10.0",
+    "@gym-app/domain": "*",
+    "@gym-app/infrastructure": "*"
   },
   "devDependencies": {
     "prisma": "^7.10.0",

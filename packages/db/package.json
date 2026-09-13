@@ -1,5 +1,21 @@
 {
-  "name": "@gym-app/database",
+  "name": "@gym-app/db",
   "version": "0.0.0",
-  "private": true
+  "private": true,
+  "scripts": {
+    "generate": "prisma generate",
+    "migrate:dev": "prisma migrate dev",
+    "db:seed": "prisma db seed"
+  },
+  "dependencies": {
+    "@prisma/client": "^7.10.0",
+    "@prisma/adapter-pg": "^7.10.0"
+  },
+  "devDependencies": {
+    "prisma": "^7.10.0",
+    "dotenv": "^17.4.2",
+    "tsx": "^4.23.13",
+    "bcryptjs": "^3.0.3",
+    "@types/bcryptjs": "^2.4.6"
+  }
 }

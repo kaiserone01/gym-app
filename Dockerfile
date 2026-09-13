@@ -12,8 +12,12 @@ WORKDIR /repo
 
 COPY package.json package-lock.json ./
 COPY apps/web-admin/package.json apps/web-admin/package.json
-COPY packages/database/package.json packages/database/package.json
+COPY packages/db/package.json packages/db/package.json
 COPY packages/domain/package.json packages/domain/package.json
+COPY packages/infrastructure/package.json packages/infrastructure/package.json
+COPY packages/design-system/package.json packages/design-system/package.json
+COPY packages/theming/package.json packages/theming/package.json
+COPY packages/config/package.json packages/config/package.json
 COPY packages/ui/package.json packages/ui/package.json
 
 RUN npm ci
@@ -25,7 +29,7 @@ WORKDIR /repo
 COPY --from=deps /repo/node_modules ./node_modules
 COPY . .
 
-RUN npx prisma generate --schema apps/web-admin/prisma/schema.prisma
+RUN cd packages/db && npx prisma generate
 RUN npx turbo run build --filter=web-admin
 
 # ---- runner: imagen final mínima, corre el server.js standalone ----------

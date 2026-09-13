@@ -1,0 +1,29 @@
+# syntax=docker/dockerfile:1
+# Imagen TEMPORAL para correr la migración de Prisma desde el servidor
+# (que sí tiene red hacia la base de datos — este sandbox de desarrollo no).
+# No es parte del despliegue de producción; bórrala cuando termines.
+#
+# Build context = RAÍZ del repo (necesita el árbol completo para que
+# `npm install` resuelva los workspaces sin errores de paquetes faltantes).
+#
+# Uso (desde la raíz del repo, en el servidor):
+#   docker build -f packages/db/Dockerfile.migrate -t gym-app-migrate .
+#   docker run --rm \
+#     -e DATABASE_URL="<tu DATABASE_URL>" \
+#     -v "$(pwd)/packages/db/prisma/migrations:/repo/packages/db/prisma/migrations" \
+#     gym-app-migrate
+
+FROM node:22-alpine
+WORKDIR /repo
+
+COPY . .
+RUN npm install
+
+WORKDIR /repo/packages/db
+
+# 1. Borra el historial de migraciones viejo (modelo Gym, ya no existe en el schema).
+# 2. Resetea la base de forma NO interactiva (--force, sin selector de confirmación).
+# 3. Genera y aplica la migración nueva contra una base ya limpia (nada que perder,
+#    por eso no debería pedir confirmación).
+# 4. Siembra los datos de prueba.
+CMD ["sh", "-c", "rm -rf prisma/migrations/* && npx prisma migrate reset --force --skip-seed && npx prisma migrate dev --name organizacion_sucursal_plan_suscripcion && npx prisma db seed"]

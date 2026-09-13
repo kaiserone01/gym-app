@@ -105,3 +105,15 @@ export async function darDeBajaAction(id: string): Promise<void> {
 
   revalidatePath("/miembros");
 }
+
+export async function reactivarAction(id: string): Promise<void> {
+  const usuario = await obtenerUsuarioDeSesionActual();
+  if (!usuario) redirect("/login");
+
+  await actualizarMiembro(
+    { miembros: new PrismaMemberRepository(prisma) },
+    { organizacionId: usuario.organizacionId, id, cambios: { activo: true } }
+  );
+
+  revalidatePath("/miembros");
+}

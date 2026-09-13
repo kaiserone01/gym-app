@@ -10,7 +10,7 @@ export default async function PanelLayout({ children }: { children: React.ReactN
   }
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen bg-white text-neutral-900">
       <Sidebar
         items={[
           { href: "/miembros", label: "Miembros" },

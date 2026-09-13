@@ -4,7 +4,7 @@ import { obtenerUsuarioDeSesionActual } from "@/lib/sesion";
 import { PrismaMemberRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaMemberRepository";
 import { obtenerMiembro, MiembroNoEncontradoError } from "@gym-app/domain/use-cases/ObtenerMiembro";
 import { FormularioMiembro } from "../FormularioMiembro";
-import { actualizarMiembroAction, darDeBajaAction } from "../actions";
+import { actualizarMiembroAction, darDeBajaAction, reactivarAction } from "../actions";
 import { Button } from "@gym-app/ui/components/Button";
 
 export default async function PaginaEditarMiembro({ params }: { params: Promise<{ id: string }> }) {
@@ -38,10 +38,16 @@ export default async function PaginaEditarMiembro({ params }: { params: Promise<
         }}
       />
 
-      {miembro.activo && (
+      {miembro.activo ? (
         <form action={darDeBajaAction.bind(null, id)} className="mt-6">
           <Button variant="peligro" type="submit">
             Dar de baja
+          </Button>
+        </form>
+      ) : (
+        <form action={reactivarAction.bind(null, id)} className="mt-6">
+          <Button variant="secundario" type="submit">
+            Reactivar
           </Button>
         </form>
       )}

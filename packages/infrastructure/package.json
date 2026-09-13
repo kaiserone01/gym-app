@@ -4,6 +4,10 @@
   "private": true,
   "dependencies": {
     "@gym-app/db": "*",
-    "@gym-app/domain": "*"
+    "@gym-app/domain": "*",
+    "bcryptjs": "^3.0.3"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6"
   }
 }

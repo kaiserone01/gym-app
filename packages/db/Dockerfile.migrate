@@ -23,7 +23,10 @@ WORKDIR /repo/packages/db
 
 # 1. Borra el historial de migraciones viejo (modelo Gym, ya no existe en el schema).
 # 2. Resetea la base de forma NO interactiva (--force, sin selector de confirmación).
+#    Esta versión de Prisma no tiene --skip-seed: el intento de auto-seed que
+#    dispara `migrate reset` va a fallar (la base queda sin tablas todavía) —
+#    se ignora con "|| true" porque el reset en sí ya se completó bien.
 # 3. Genera y aplica la migración nueva contra una base ya limpia (nada que perder,
 #    por eso no debería pedir confirmación).
 # 4. Siembra los datos de prueba.
-CMD ["sh", "-c", "rm -rf prisma/migrations/* && npx prisma migrate reset --force --skip-seed && npx prisma migrate dev --name organizacion_sucursal_plan_suscripcion && npx prisma db seed"]
+CMD ["sh", "-c", "rm -rf prisma/migrations/* && (npx prisma migrate reset --force || true) && npx prisma migrate dev --name organizacion_sucursal_plan_suscripcion && npx prisma db seed"]

@@ -1,0 +1,203 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ── gym-app: modelos SaaS multi-tenant (ADR-001 v1 §6 + v2 §13) ──────────
+
+model Organizacion {
+  id        String   @id @default(cuid())
+  nombre    String
+  slug      String   @unique
+  plan      String   @default("basico")
+  createdAt DateTime @default(now())
+
+  sucursales    Sucursal[]
+  usuariosAdmin UsuarioAdmin[]
+  miembros      Miembro[]
+  planes        Plan[]
+  tema          TemaOrganizacion?
+}
+
+model Sucursal {
+  id             String       @id @default(cuid())
+  organizacionId String
+  organizacion   Organizacion @relation(fields: [organizacionId], references: [id])
+  nombre         String
+  direccion      String?
+  diasGracia     Int          @default(0) // días después del vencimiento antes de marcar "vencido"
+  tasaCambioUSD  Decimal?     @db.Decimal(10, 2) // fallback manual si la API BCV falla (ver ADR v1 §7)
+  createdAt      DateTime     @default(now())
+
+  usuariosAdmin UsuarioAdmin[]
+  entrenadores  Entrenador[]
+  checkIns      CheckIn[]
+  planesAcceso  PlanSucursalAcceso[]
+}
+
+enum RolUsuario {
+  DUENO // acceso total a la Organización, todas las sucursales
+  GERENTE // administra 1+ sucursales asignadas
+  RECEPCION // solo check-in, cobros y consulta de estado de miembros
+  ENTRENADOR // acceso de solo lectura a su cartera de miembros asignados
+}
+
+model UsuarioAdmin {
+  id             String       @id @default(cuid())
+  organizacionId String
+  organizacion   Organizacion @relation(fields: [organizacionId], references: [id])
+  sucursalId     String? // null = acceso a toda la organización (dueño/gerente general)
+  sucursal       Sucursal?    @relation(fields: [sucursalId], references: [id])
+  rol            RolUsuario
+  email          String       @unique
+  passwordHash   String
+  createdAt      DateTime     @default(now())
+
+  registrosAuditoria RegistroAuditoria[]
+}
+
+model Entrenador {
+  id         String   @id @default(cuid())
+  sucursalId String // Entrenador pertenece a una Sucursal fija (decisión aprobada, ADR v2 §16)
+  sucursal   Sucursal @relation(fields: [sucursalId], references: [id])
+  nombre     String
+  telefono   String?
+  activo     Boolean  @default(true)
+
+  miembros Miembro[]
+}
+
+enum PlanTipo {
+  SIN_ENTRENADOR
+  CON_ENTRENADOR
+}
+
+model Miembro {
+  id               String       @id @default(cuid())
+  organizacionId   String // el Miembro cuelga de la Organización, no de una Sucursal (ADR v1 §4.1)
+  organizacion     Organizacion @relation(fields: [organizacionId], references: [id])
+  nombre           String
+  cedula           String // única POR organización (ver @@unique abajo)
+  fechaNacimiento  DateTime?
+  celular          String?
+  fotoUrl          String?
+  entrenadorId     String?
+  entrenador       Entrenador?  @relation(fields: [entrenadorId], references: [id])
+  planTipo         PlanTipo     @default(SIN_ENTRENADOR) // recargo por entrenador personal — independiente del Plan/Suscripcion de acceso a sucursales
+  precioPlan       Decimal      @db.Decimal(10, 2)
+  fechaUltimoPago  DateTime?
+  fechaVencimiento DateTime?
+  activo           Boolean      @default(true) // baja lógica del miembro
+  createdAt        DateTime     @default(now())
+
+  pagos         Pago[]
+  checkIns      CheckIn[]
+  suscripciones Suscripcion[]
+
+  @@unique([organizacionId, cedula])
+}
+
+enum TipoAccesoPlan {
+  SEDE_UNICA // acceso a 1 sola sucursal, definida en PlanSucursalAcceso
+  LISTA_CERRADA // acceso a un subconjunto explícito de sucursales
+  TODA_LA_ORGANIZACION // "VIP Multi-sede": acceso a todas las sucursales actuales y futuras
+}
+
+model Plan {
+  id             String         @id @default(cuid())
+  organizacionId String
+  organizacion   Organizacion   @relation(fields: [organizacionId], references: [id])
+  nombre         String // "Sede Única", "VIP Multi-sede"
+  tipoAcceso     TipoAccesoPlan
+  precioUSD      Decimal        @db.Decimal(10, 2)
+  activo         Boolean        @default(true)
+
+  suscripciones    Suscripcion[]
+  sucursalesAcceso PlanSucursalAcceso[] // solo relevante si tipoAcceso = SEDE_UNICA o LISTA_CERRADA
+}
+
+model PlanSucursalAcceso {
+  planId     String
+  sucursalId String
+  plan       Plan     @relation(fields: [planId], references: [id])
+  sucursal   Sucursal @relation(fields: [sucursalId], references: [id])
+
+  @@id([planId, sucursalId])
+}
+
+enum EstadoSuscripcion {
+  ACTIVA
+  VENCIDA
+  CANCELADA
+  PAUSADA
+}
+
+model Suscripcion {
+  id        String            @id @default(cuid())
+  miembroId String
+  miembro   Miembro           @relation(fields: [miembroId], references: [id])
+  planId    String
+  plan      Plan              @relation(fields: [planId], references: [id])
+  inicio    DateTime
+  fin       DateTime
+  estado    EstadoSuscripcion @default(ACTIVA)
+  createdAt DateTime          @default(now())
+}
+
+model Pago {
+  id         String   @id @default(cuid())
+  miembroId  String
+  miembro    Miembro  @relation(fields: [miembroId], references: [id])
+  monto      Decimal  @db.Decimal(10, 2)
+  metodo     String // "efectivo_usd" | "efectivo_bs" | "pago_movil" | etc.
+  tasaCambio Decimal? @db.Decimal(10, 2) // tasa usada si fue pago en bolívares
+  fechaPago  DateTime @default(now())
+}
+
+model CheckIn {
+  id              String   @id @default(cuid())
+  sucursalId      String // el CheckIn siempre queda atado a la Sucursal física (ADR v1 §4.1)
+  sucursal        Sucursal @relation(fields: [sucursalId], references: [id])
+  miembroId       String
+  miembro         Miembro  @relation(fields: [miembroId], references: [id])
+  fechaHora       DateTime @default(now())
+  estadoAlMomento String // "activo" | "vencido" — snapshot histórico, no cambia si luego el miembro paga
+}
+
+model TasaCambio {
+  id        String   @id @default(cuid())
+  fecha     DateTime @unique // día calendario
+  valor     Decimal  @db.Decimal(12, 4)
+  fuente    String // "BCV" | "BINANCE_P2P" | "MANUAL"
+  createdAt DateTime @default(now())
+}
+
+model TemaOrganizacion {
+  organizacionId  String       @id
+  organizacion    Organizacion @relation(fields: [organizacionId], references: [id])
+  colorPrimario   String
+  colorSecundario String?
+  logoUrl         String?
+  fuenteId        String       @default("inter") // catálogo curado, no texto libre
+  layoutPreset    String       @default("clasico") // "clasico" | "moderno" | "compacto"
+}
+
+model RegistroAuditoria {
+  id            String       @id @default(cuid())
+  entidad       String // "Suscripcion", "Miembro", etc.
+  entidadId     String
+  campo         String // "fin", "estado"
+  valorAnterior String
+  valorNuevo    String
+  motivo        String
+  usuarioId     String
+  usuario       UsuarioAdmin @relation(fields: [usuarioId], references: [id])
+  createdAt     DateTime     @default(now())
+}

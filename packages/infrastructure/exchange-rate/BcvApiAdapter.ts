@@ -20,7 +20,7 @@ export class BcvApiAdapter implements IExchangeRateService {
       throw new Error(`dolarapi.com respondió ${respuesta.status}`);
     }
 
-    const datos: RespuestaDolarApi = await respuesta.json();
+    const datos = (await respuesta.json()) as RespuestaDolarApi;
 
     if (typeof datos.promedio !== "number") {
       throw new Error("dolarapi.com no devolvió un campo 'promedio' numérico.");

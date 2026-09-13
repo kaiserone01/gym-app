@@ -51,7 +51,16 @@ Checklist vivo del proyecto. Se actualiza marcando `- [x]` a medida que se compl
 - [x] `apps/worker` — app nueva del monorepo con el script `actualizar-tasa` (sin daemon, pensado para un cron externo) + `GET /api/tasa-cambio` protegida por sesión
 - [x] Todo verificado extremo a extremo contra la API real y la base de datos real: tasa guardada correctamente, idempotencia confirmada (correr el script 2 veces no duplica la fila), lectura con sesión (200) y sin sesión (401)
 
-### Plan 8 — Panel Admin: pantalla de Miembros (UI real)
+### Plan 8 — App de kiosco física (`apps/kiosk`)
+- [x] `apps/kiosk` — Next.js estático (`output: "export"`), sin ninguna dependencia de `@gym-app/domain`/`infrastructure`/`db` (cero lógica de negocio, tal como exige el ADR)
+- [x] Pantalla `/config` (guarda el `apiKey` de la Sucursal en `localStorage` del dispositivo) y pantalla principal `/` con input siempre enfocado para el teclado numérico físico del kiosco (ADR v1 §2.5 — no es pantalla táctil)
+- [x] Cola de pendientes offline real vía IndexedDB (`lib/colaPendientes.ts`) con reintento automático al volver la red (`lib/reintentarPendientes.ts`)
+- [x] CORS agregado a `POST /api/checkin` para la llamada cross-origin desde el kiosco
+- [x] Service worker (precache del shell, network-first para HTML) + manifest + `Dockerfile` propio (build estático servido con `serve`)
+- [x] Revisión final: fixes de Dockerfile (tag de imagen inválido), `lib/api.ts` (orden de parseo de errores), `turbo.json` (output `out/**` para el build de export), estrategia de caché del service worker
+- [ ] **Pendiente del usuario:** prueba real end-to-end (check-in real contra un miembro del seed, cédula inexistente, simular pérdida de red y confirmar que encola y sincroniza sola)
+
+### Plan 9 — Panel Admin: pantalla de Miembros (UI real)
 - [x] `packages/ui` poblado por primera vez: `Button`, `Input`, `Badge`, `Sidebar` (peerDependencies a next/react, no dependencies)
 - [x] `obtenerUsuarioDeSesionActual()` en `lib/sesion.ts` — helper de sesión para Server Components/Actions (no toca la función existente usada por las rutas API)
 - [x] Layout `(panel)` con sidebar (Miembros/Pagos/Planes, solo Miembros con contenido) + `app/page.tsx` como redirect + `/login` redirige a `/miembros`
@@ -77,15 +86,15 @@ Sin bloqueadores 🔴 pendientes. Lo que sigue es funcionalidad core (🟡) y ex
 ## 🟡 Funcionalidad core pendiente (definida en el ADR, no implementada)
 
 - [x] ~~Integración real de la API BCV~~ — Plan 7, completo y verificado contra la API y la base reales. Pendiente aparte (no bloqueante): agendar el cron externo real (`0 23 * * 1-5` UTC sugerido) y, cuando exista un consumidor real, integrar `ConvertirMontoUSDaVES`/`Sucursal.tasaCambioUSD` en `RegistrarPago`.
-- [ ] **App de kiosco física** (`apps/kiosk`) — hoy `/api/checkin` se prueba con `curl`; no existe ninguna interfaz real para el kiosco (PWA, según el ADR).
+- [x] ~~App de kiosco física~~ — Plan 8, completo (verificación end-to-end del usuario pendiente, no bloquea el resto del roadmap).
 - [ ] **Rotación/regeneración de `apiKey` de una `Sucursal`** — hoy solo se genera al crear la fila, sin manera de rotarla si se filtra.
 - [ ] **Matriz de permisos granular** — hoy solo existe una regla ("crear `UsuarioAdmin` es exclusivo de `DUENO`"). Graduar cuando un segundo caso de uso real lo exija (regla explícita del ADR, no antes).
 
 ## 🟢 Diseño / expansión futura (paquetes ya scaffolded, vacíos)
 
 - [ ] `packages/design-system` — tokens base (spacing, tipografía, sombras)
-- [ ] `packages/theming` — motor de resolución de `TemaOrganizacion` por variables CSS
-- [ ] `packages/ui` — componentes React compartidos entre `apps/web-admin` y el futuro `apps/kiosk`
+- [ ] `packages/theming` — motor de resolución de `TemaOrganizacion` por variables CSS (incluye el fix pendiente de dark mode del panel, ver Plan 9)
+- [x] ~~`packages/ui`~~ — arrancado en el Plan 9 (`Button`/`Input`/`Badge`/`Sidebar`); se sigue poblando a medida que salgan más pantallas.
 - [ ] `packages/config` — presets compartidos de tsconfig/eslint/tailwind
 - [ ] `packages/domain-custom` — casos de uso a medida por cliente (solo cuando exista un cliente real que lo pida)
 

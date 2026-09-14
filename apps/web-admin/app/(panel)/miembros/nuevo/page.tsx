@@ -8,7 +8,7 @@ export default async function PaginaNuevoMiembro() {
   if (!usuario) redirect("/login");
 
   return (
-    <div className="max-w-lg p-8">
+    <div className="max-w-2xl p-8">
       <h1 className="mb-6 text-2xl font-semibold">Nuevo miembro</h1>
       <FormularioMiembro accion={crearMiembroAction} />
     </div>

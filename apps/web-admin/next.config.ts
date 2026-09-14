@@ -9,7 +9,7 @@ const nextConfig: NextConfig = {
   // build propio (solo .ts fuente) — Next.js necesita transpilarlos
   // explícitamente, a diferencia de @gym-app/db (ya es JS compilado por
   // `prisma generate`).
-  transpilePackages: ["@gym-app/domain", "@gym-app/infrastructure", "@gym-app/ui"],
+  transpilePackages: ["@gym-app/domain", "@gym-app/infrastructure", "@gym-app/ui", "@gym-app/theming"],
 };
 
 export default nextConfig;

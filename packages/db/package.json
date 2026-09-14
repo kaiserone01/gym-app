@@ -5,7 +5,8 @@
   "scripts": {
     "generate": "prisma generate",
     "migrate:dev": "prisma migrate dev",
-    "db:seed": "prisma db seed"
+    "db:seed": "prisma db seed",
+    "db:limpiar-miembros": "tsx limpiarMiembros.ts"
   },
   "dependencies": {
     "@prisma/client": "^7.10.0",

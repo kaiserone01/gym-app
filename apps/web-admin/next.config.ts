@@ -10,6 +10,14 @@ const nextConfig: NextConfig = {
   // explícitamente, a diferencia de @gym-app/db (ya es JS compilado por
   // `prisma generate`).
   transpilePackages: ["@gym-app/domain", "@gym-app/infrastructure", "@gym-app/ui", "@gym-app/theming"],
+  experimental: {
+    // El límite por defecto de Server Actions es 1mb — muy poco para una
+    // foto de celular sin comprimir (la de Nuevo Miembro se manda como
+    // FormData a través de una Server Action, ver miembros/actions.ts).
+    serverActions: {
+      bodySizeLimit: "10mb",
+    },
+  },
 };
 
 export default nextConfig;

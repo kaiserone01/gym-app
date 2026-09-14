@@ -1,0 +1,88 @@
+"use client";
+
+import { useActionState, useState } from "react";
+import { Button } from "@gym-app/ui/components/Button";
+import { Input } from "@gym-app/ui/components/Input";
+import type { EstadoFormularioPlan } from "./actions";
+import type { SucursalResumen } from "@gym-app/domain/entities/SucursalResumen";
+
+export interface ValoresFormularioPlan {
+  nombre: string;
+  tipoAcceso: "SEDE_UNICA" | "LISTA_CERRADA" | "TODA_LA_ORGANIZACION";
+  precioUSD: number;
+  sucursalesAsignadas: SucursalResumen[];
+}
+
+export function FormularioPlan({
+  accion,
+  sucursales,
+  valoresIniciales,
+}: {
+  accion: (estado: EstadoFormularioPlan, formData: FormData) => Promise<EstadoFormularioPlan>;
+  sucursales: SucursalResumen[];
+  valoresIniciales?: ValoresFormularioPlan;
+}) {
+  const [estado, enviar, enviando] = useActionState(accion, {});
+  const esEdicion = !!valoresIniciales;
+  const [tipoAcceso, setTipoAcceso] = useState(valoresIniciales?.tipoAcceso ?? "TODA_LA_ORGANIZACION");
+  const idsAsignados = new Set(valoresIniciales?.sucursalesAsignadas.map((s) => s.id) ?? []);
+
+  return (
+    <form action={enviar} className="flex flex-col gap-4">
+      {estado.error && (
+        <p className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">{estado.error}</p>
+      )}
+
+      <Input name="nombre" label="Nombre" required defaultValue={valoresIniciales?.nombre} />
+
+      <label className="flex flex-col gap-1 text-sm text-neutral-700">
+        Tipo de acceso
+        <select
+          name="tipoAcceso"
+          disabled={esEdicion}
+          value={tipoAcceso}
+          onChange={(e) => setTipoAcceso(e.target.value as typeof tipoAcceso)}
+          className="rounded border border-neutral-300 px-3 py-2 disabled:bg-neutral-100 disabled:text-neutral-500"
+        >
+          <option value="TODA_LA_ORGANIZACION">Toda la organización</option>
+          <option value="SEDE_UNICA">Sede única</option>
+          <option value="LISTA_CERRADA">Lista cerrada de sedes</option>
+        </select>
+      </label>
+
+      {tipoAcceso !== "TODA_LA_ORGANIZACION" && (
+        <fieldset className="flex flex-col gap-2 rounded border border-neutral-300 p-3">
+          <legend className="px-1 text-sm text-neutral-700">Sucursales con acceso</legend>
+          {sucursales.length === 0 && (
+            <p className="text-sm text-neutral-500">No hay sucursales creadas todavía.</p>
+          )}
+          {sucursales.map((sucursal) => (
+            <label key={sucursal.id} className="flex items-center gap-2 text-sm text-neutral-700">
+              <input
+                type="checkbox"
+                name="sucursalIds"
+                value={sucursal.id}
+                disabled={esEdicion}
+                defaultChecked={idsAsignados.has(sucursal.id)}
+              />
+              {sucursal.nombre}
+            </label>
+          ))}
+        </fieldset>
+      )}
+
+      <Input
+        name="precioUSD"
+        label="Precio (USD)"
+        type="number"
+        step="0.01"
+        required
+        defaultValue={valoresIniciales?.precioUSD}
+      />
+
+      <Button type="submit" disabled={enviando}>
+        {enviando ? "Guardando..." : "Guardar"}
+      </Button>
+    </form>
+  );
+}

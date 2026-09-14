@@ -29,6 +29,16 @@ function formatearFecha(fechaISO: string): string {
   return `${dia}/${mes}/${anio}`;
 }
 
+// Tasa fija solo para pruebas — cuando conectemos este formulario a
+// /api/tasa-cambio (ya alimentada por apps/worker con la tasa BCV real),
+// esto se reemplaza por ese valor en vivo.
+const TASA_BCV_FIJA = 850;
+const METODOS_EN_BS = ["efectivo_bs", "pago_movil"];
+
+function formatearBs(monto: number): string {
+  return monto.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
 function iniciales(nombre: string): string {
   return nombre
     .split(" ")
@@ -87,7 +97,6 @@ export function FormularioMiembro({
   );
   const [errorPrecioPersonalizado, setErrorPrecioPersonalizado] = useState<string | null>(null);
   const [metodoPago, setMetodoPago] = useState("");
-  const [tasaCambio, setTasaCambio] = useState("");
   const [mostrarTicket, setMostrarTicket] = useState(false);
 
   const esCustom = presetKey === "personalizado";
@@ -104,6 +113,9 @@ export function FormularioMiembro({
   const nombrePlanActual = esCustom ? "Personalizado" : (presetSeleccionado?.nombre ?? "—");
   const nombreEntrenadorActual = entrenadores.find((e) => e.id === entrenadorId)?.nombre ?? null;
   const nombreMetodoPagoActual = METODOS_PAGO.find((m) => m.value === metodoPago)?.label ?? null;
+  const esPagoEnBs = METODOS_EN_BS.includes(metodoPago);
+  const tasaCambioActual = esPagoEnBs ? TASA_BCV_FIJA : "";
+  const montoBsActual = esPagoEnBs ? precioActual * TASA_BCV_FIJA : null;
 
   function manejarClickGuardar() {
     const form = formRef.current;
@@ -139,7 +151,7 @@ export function FormularioMiembro({
         {!esEdicion && (
           <>
             <input type="hidden" name="metodo" value={metodoPago} />
-            <input type="hidden" name="tasaCambio" value={tasaCambio} />
+            <input type="hidden" name="tasaCambio" value={tasaCambioActual} />
           </>
         )}
 
@@ -344,14 +356,18 @@ export function FormularioMiembro({
                   </select>
                 </label>
 
-                <Input
-                  form={idFormulario}
-                  label="Tasa de cambio (si pagó en Bs)"
-                  type="number"
-                  step="0.0001"
-                  value={tasaCambio}
-                  onChange={(e) => setTasaCambio(e.target.value)}
-                />
+                {esPagoEnBs && montoBsActual !== null && (
+                  <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-3 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-neutral-500">Tasa BCV (fija, prueba)</span>
+                      <span className="font-medium text-neutral-900">Bs. {TASA_BCV_FIJA}</span>
+                    </div>
+                    <div className="mt-1 flex justify-between">
+                      <span className="text-neutral-500">Monto en bolívares</span>
+                      <span className="font-semibold text-neutral-900">Bs. {formatearBs(montoBsActual)}</span>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )
@@ -390,6 +406,9 @@ export function FormularioMiembro({
               <span className="text-sm font-medium text-neutral-700">Total</span>
               <span className="text-2xl font-bold text-neutral-900">${precioActual.toFixed(2)}</span>
             </div>
+            {!esEdicion && esPagoEnBs && montoBsActual !== null && (
+              <p className="text-right text-sm text-neutral-500">Bs. {formatearBs(montoBsActual)}</p>
+            )}
 
             <p className="mt-5 text-center text-sm font-medium text-neutral-700">
               ¿Está seguro de la información suministrada?

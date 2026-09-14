@@ -117,7 +117,7 @@ export function FormularioMiembro({
 
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_320px]">
-      <form ref={formRef} action={enviar} className="flex flex-col gap-6" encType="multipart/form-data">
+      <form ref={formRef} action={enviar} className="flex flex-col gap-6">
         {estado.error && (
           <p className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">{estado.error}</p>
         )}

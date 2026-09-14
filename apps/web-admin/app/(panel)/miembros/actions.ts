@@ -1,5 +1,8 @@
 "use server";
 
+import { randomUUID } from "crypto";
+import { mkdir, writeFile } from "fs/promises";
+import path from "path";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
@@ -11,6 +14,23 @@ import type { PlanTipo } from "@gym-app/domain/entities/Miembro";
 
 export interface EstadoFormularioMiembro {
   error?: string;
+}
+
+// Guarda la foto en apps/web-admin/public/uploads/miembros y devuelve la URL
+// pública. Nota: en un deploy Docker "standalone" esta carpeta vive dentro
+// del contenedor — sin un volumen montado ahí, las fotos no sobreviven un
+// rebuild. Pendiente para cuando se arme el deploy real (Fase E).
+async function guardarFoto(archivo: FormDataEntryValue | null): Promise<string | null> {
+  if (!(archivo instanceof File) || archivo.size === 0) return null;
+
+  const extension = archivo.name.split(".").pop()?.toLowerCase() || "jpg";
+  const nombreArchivo = `${randomUUID()}.${extension}`;
+  const carpeta = path.join(process.cwd(), "public", "uploads", "miembros");
+
+  await mkdir(carpeta, { recursive: true });
+  await writeFile(path.join(carpeta, nombreArchivo), Buffer.from(await archivo.arrayBuffer()));
+
+  return `/uploads/miembros/${nombreArchivo}`;
 }
 
 export async function crearMiembroAction(
@@ -29,6 +49,8 @@ export async function crearMiembroAction(
     return { error: "Nombre, cédula, fecha de inscripción y precio del plan son requeridos." };
   }
 
+  const fotoUrl = await guardarFoto(formData.get("foto"));
+
   try {
     await crearMiembro(
       { miembros: new PrismaMemberRepository(prisma) },
@@ -39,8 +61,8 @@ export async function crearMiembroAction(
         fechaInscripcion: new Date(`${fechaInscripcionTexto}T00:00:00`),
         fechaNacimiento: null,
         celular: formData.get("celular")?.toString() || null,
-        fotoUrl: null,
-        entrenadorId: null,
+        fotoUrl,
+        entrenadorId: formData.get("entrenadorId")?.toString() || null,
         planTipo: (formData.get("planTipo")?.toString() as PlanTipo) ?? "SIN_ENTRENADOR",
         precioPlan,
       }
@@ -72,6 +94,8 @@ export async function actualizarMiembroAction(
     return { error: "Nombre, fecha de inscripción y precio del plan son requeridos." };
   }
 
+  const fotoUrl = await guardarFoto(formData.get("foto"));
+
   try {
     await actualizarMiembro(
       { miembros: new PrismaMemberRepository(prisma) },
@@ -82,8 +106,10 @@ export async function actualizarMiembroAction(
           nombre,
           fechaInscripcion: new Date(`${fechaInscripcionTexto}T00:00:00`),
           celular: formData.get("celular")?.toString() || null,
+          entrenadorId: formData.get("entrenadorId")?.toString() || null,
           planTipo: formData.get("planTipo")?.toString() as PlanTipo,
           precioPlan,
+          ...(fotoUrl ? { fotoUrl } : {}),
         },
       }
     );

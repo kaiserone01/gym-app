@@ -4,9 +4,11 @@ import { obtenerUsuarioDeSesionActual } from "@/lib/sesion";
 import { PrismaMemberRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaMemberRepository";
 import { PrismaPagoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaPagoRepository";
 import { PrismaPlanRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaPlanRepository";
+import { PrismaEntrenadorRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaEntrenadorRepository";
 import { obtenerMiembro, MiembroNoEncontradoError } from "@gym-app/domain/use-cases/ObtenerMiembro";
 import { listarPagos } from "@gym-app/domain/use-cases/ListarPagos";
 import { listarPlanes } from "@gym-app/domain/use-cases/ListarPlanes";
+import { listarEntrenadores } from "@gym-app/domain/use-cases/ListarEntrenadores";
 import { FormularioMiembro } from "../FormularioMiembro";
 import { actualizarMiembroAction, darDeBajaAction, reactivarAction } from "../actions";
 import { FormularioPago } from "../../pagos/FormularioPago";
@@ -29,12 +31,13 @@ export default async function PaginaEditarMiembro({ params }: { params: Promise<
 
   if (!miembro) notFound();
 
-  const [pagos, planes] = await Promise.all([
+  const [pagos, planes, entrenadores] = await Promise.all([
     listarPagos(
       { pagos: new PrismaPagoRepository(prisma), miembros: new PrismaMemberRepository(prisma) },
       { organizacionId: usuario.organizacionId, miembroId: id }
     ),
     listarPlanes({ planes: new PrismaPlanRepository(prisma) }, usuario.organizacionId),
+    listarEntrenadores({ entrenadores: new PrismaEntrenadorRepository(prisma) }, usuario.organizacionId),
   ]);
 
   const planesActivos = planes.filter((plan) => plan.activo);
@@ -45,6 +48,7 @@ export default async function PaginaEditarMiembro({ params }: { params: Promise<
 
       <FormularioMiembro
         accion={actualizarMiembroAction.bind(null, id)}
+        entrenadores={entrenadores}
         valoresIniciales={{
           nombre: miembro.nombre,
           cedula: miembro.cedula,
@@ -52,6 +56,8 @@ export default async function PaginaEditarMiembro({ params }: { params: Promise<
           fechaInscripcion: (miembro.fechaInscripcion ?? miembro.createdAt).toISOString().slice(0, 10),
           planTipo: miembro.planTipo,
           precioPlan: miembro.precioPlan,
+          entrenadorId: miembro.entrenadorId,
+          fotoUrl: miembro.fotoUrl,
         }}
       />
 

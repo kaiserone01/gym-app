@@ -46,3 +46,6 @@ next-env.d.ts
 
 **/app/generated/prisma
 **/generated/prisma
+
+# fotos subidas desde el panel admin — contenido de usuario, no del repo
+apps/web-admin/public/uploads/

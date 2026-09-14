@@ -5,6 +5,7 @@ import { Button } from "@gym-app/ui/components/Button";
 import { Input } from "@gym-app/ui/components/Input";
 import type { EstadoFormularioMiembro } from "./actions";
 import { PRESETS_PLAN_MIEMBRO } from "./planesPreset";
+import type { EntrenadorResumen } from "@gym-app/domain/entities/EntrenadorResumen";
 
 export interface ValoresFormularioMiembro {
   nombre: string;
@@ -13,6 +14,8 @@ export interface ValoresFormularioMiembro {
   fechaInscripcion: string; // yyyy-mm-dd
   planTipo: "SIN_ENTRENADOR" | "CON_ENTRENADOR";
   precioPlan: number;
+  entrenadorId: string | null;
+  fotoUrl: string | null;
 }
 
 function hoyISO(): string {
@@ -23,6 +26,15 @@ function formatearFecha(fechaISO: string): string {
   if (!fechaISO) return "—";
   const [anio, mes, dia] = fechaISO.split("-");
   return `${dia}/${mes}/${anio}`;
+}
+
+function iniciales(nombre: string): string {
+  return nombre
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((parte) => parte[0]?.toUpperCase())
+    .join("");
 }
 
 function Fila({ label, valor }: { label: string; valor: string }) {
@@ -36,9 +48,11 @@ function Fila({ label, valor }: { label: string; valor: string }) {
 
 export function FormularioMiembro({
   accion,
+  entrenadores,
   valoresIniciales,
 }: {
   accion: (estado: EstadoFormularioMiembro, formData: FormData) => Promise<EstadoFormularioMiembro>;
+  entrenadores: EntrenadorResumen[];
   valoresIniciales?: ValoresFormularioMiembro;
 }) {
   const [estado, enviar, enviando] = useActionState(accion, {});
@@ -49,6 +63,8 @@ export function FormularioMiembro({
   const [cedula, setCedula] = useState(valoresIniciales?.cedula ?? "");
   const [celular, setCelular] = useState(valoresIniciales?.celular ?? "");
   const [fechaInscripcion, setFechaInscripcion] = useState(valoresIniciales?.fechaInscripcion ?? hoyISO());
+  const [entrenadorId, setEntrenadorId] = useState(valoresIniciales?.entrenadorId ?? "");
+  const [fotoPreview, setFotoPreview] = useState<string | null>(valoresIniciales?.fotoUrl ?? null);
 
   const [presetKey, setPresetKey] = useState<string>(() => {
     if (!valoresIniciales) return "mensual_sin";
@@ -75,8 +91,10 @@ export function FormularioMiembro({
       : "SIN_ENTRENADOR"
     : (presetSeleccionado?.planTipo ?? "SIN_ENTRENADOR");
 
+  const requiereEntrenador = planTipoActual === "CON_ENTRENADOR";
   const precioActual = esCustom ? Number(precioPersonalizado) || 0 : (presetSeleccionado?.precio ?? 0);
   const nombrePlanActual = esCustom ? "Personalizado" : (presetSeleccionado?.nombre ?? "—");
+  const nombreEntrenadorActual = entrenadores.find((e) => e.id === entrenadorId)?.nombre ?? null;
 
   function manejarClickGuardar() {
     const form = formRef.current;
@@ -92,9 +110,14 @@ export function FormularioMiembro({
     setMostrarTicket(true);
   }
 
+  function manejarCambioFoto(archivo: File | undefined) {
+    if (!archivo) return;
+    setFotoPreview(URL.createObjectURL(archivo));
+  }
+
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_320px]">
-      <form ref={formRef} action={enviar} className="flex flex-col gap-6">
+      <form ref={formRef} action={enviar} className="flex flex-col gap-6" encType="multipart/form-data">
         {estado.error && (
           <p className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">{estado.error}</p>
         )}
@@ -108,6 +131,31 @@ export function FormularioMiembro({
           </h2>
 
           <div className="flex flex-col gap-4">
+            <div className="flex items-center gap-4">
+              <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full bg-neutral-100 text-lg font-semibold text-neutral-500">
+                {fotoPreview ? (
+                  // eslint-disable-next-line @next/next/no-img-element -- vista previa de un archivo elegido en el cliente, no un asset del proyecto
+                  <img src={fotoPreview} alt="" className="h-full w-full object-cover" />
+                ) : (
+                  iniciales(nombre || "?")
+                )}
+              </div>
+
+              <label className="flex flex-col gap-1 text-sm text-neutral-700">
+                Foto de perfil
+                <input
+                  type="file"
+                  name="foto"
+                  accept="image/*"
+                  onChange={(e) => manejarCambioFoto(e.target.files?.[0])}
+                  className="text-sm text-neutral-600 file:mr-3 file:rounded file:border-0 file:bg-neutral-100 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-neutral-700 hover:file:bg-neutral-200"
+                />
+                <span className="text-xs text-neutral-400">
+                  Es la foto que va a aparecer en la ficha al ingresar su cédula.
+                </span>
+              </label>
+            </div>
+
             <Input
               name="nombre"
               label="Nombre"
@@ -215,6 +263,29 @@ export function FormularioMiembro({
               </label>
             </div>
           )}
+
+          <label className="mt-4 flex flex-col gap-1 text-sm text-neutral-700">
+            Entrenador asignado
+            <select
+              name="entrenadorId"
+              value={entrenadorId}
+              onChange={(e) => setEntrenadorId(e.target.value)}
+              disabled={!requiereEntrenador}
+              className="rounded border border-neutral-300 px-3 py-2 disabled:bg-neutral-100 disabled:text-neutral-400"
+            >
+              <option value="">Seleccioná un entrenador</option>
+              {entrenadores.map((entrenador) => (
+                <option key={entrenador.id} value={entrenador.id}>
+                  {entrenador.nombre}
+                </option>
+              ))}
+            </select>
+            {!requiereEntrenador && (
+              <span className="text-xs text-neutral-400">
+                Elegí un plan con entrenador para poder asignar uno.
+              </span>
+            )}
+          </label>
         </section>
 
         <Button type="button" onClick={manejarClickGuardar} disabled={enviando}>
@@ -234,6 +305,17 @@ export function FormularioMiembro({
               {esEdicion ? "Resumen de la edición" : "Resumen del nuevo miembro"}
             </p>
 
+            <div className="my-3 flex justify-center">
+              <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full bg-neutral-200 text-lg font-semibold text-neutral-500">
+                {fotoPreview ? (
+                  // eslint-disable-next-line @next/next/no-img-element -- vista previa de un archivo elegido en el cliente, no un asset del proyecto
+                  <img src={fotoPreview} alt="" className="h-full w-full object-cover" />
+                ) : (
+                  iniciales(nombre || "?")
+                )}
+              </div>
+            </div>
+
             <div className="my-3 border-t border-dashed border-neutral-300" />
 
             <dl className="flex flex-col gap-2 text-sm">
@@ -242,7 +324,7 @@ export function FormularioMiembro({
               <Fila label="Celular" valor={celular || "—"} />
               <Fila label="Inscripción" valor={formatearFecha(fechaInscripcion)} />
               <Fila label="Plan" valor={nombrePlanActual} />
-              <Fila label="Entrenador" valor={planTipoActual === "CON_ENTRENADOR" ? "Sí" : "No"} />
+              <Fila label="Entrenador" valor={requiereEntrenador ? (nombreEntrenadorActual ?? "Sin asignar") : "No aplica"} />
             </dl>
 
             <div className="my-3 border-t border-dashed border-neutral-300" />

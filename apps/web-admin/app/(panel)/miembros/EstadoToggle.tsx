@@ -35,13 +35,13 @@ export function EstadoToggle({ id, activo }: { id: string; activo: boolean }) {
       role="switch"
       aria-checked={activoLocal}
       title={activoLocal ? "Activo — clic para dar de baja" : "Inactivo — clic para reactivar"}
-      className={`relative h-6 w-11 shrink-0 rounded-full transition-colors disabled:opacity-50 ${
-        activoLocal ? "bg-green-500" : "bg-neutral-300"
+      className={`inline-flex h-6 w-11 shrink-0 items-center rounded-full border-0 p-0.5 shadow-inner outline-none transition-colors disabled:opacity-50 ${
+        activoLocal ? "bg-green-500" : "bg-red-500"
       }`}
     >
       <span
-        className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
-          activoLocal ? "translate-x-[22px]" : "translate-x-0.5"
+        className={`h-5 w-5 rounded-full bg-white shadow transition-transform ${
+          activoLocal ? "translate-x-5" : "translate-x-0"
         }`}
       />
     </button>

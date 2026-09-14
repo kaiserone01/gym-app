@@ -15,30 +15,62 @@ export function AccessCard({ resultado, hora }: { resultado: ResultadoCheckIn; h
   const colorEstadoInk = activo ? "var(--gx-accent-ink)" : "var(--gx-bad-ink)";
 
   return (
-    <div className="w-full max-w-2xl overflow-hidden rounded-2xl border" style={{ borderColor: "var(--gx-edge)", background: "var(--gx-surface)" }}>
+    <div
+      className="w-full max-w-3xl overflow-hidden rounded-3xl border-2"
+      style={{
+        borderColor: colorEstado,
+        background: "var(--gx-surface)",
+        boxShadow: `0 30px 70px -20px color-mix(in srgb, ${colorEstado} 40%, transparent)`,
+      }}
+    >
       <div
-        className="flex items-center justify-between px-8 py-4 text-2xl"
+        className="flex items-center justify-center gap-3 px-8 py-3"
+        style={{ borderBottom: "1px solid var(--gx-edge)" }}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element -- output: "export" no soporta el optimizador de next/image */}
+        <img src="/branding/logo-adrenalina-gym.jpg" alt="" className="h-8 w-8 rounded-full object-cover" />
+        <span
+          className="text-sm font-bold uppercase"
+          style={{ fontFamily: '"Barlow Condensed", sans-serif', letterSpacing: "0.3em", color: "var(--gx-muted)" }}
+        >
+          Adrenalina Xtreme Gym
+        </span>
+      </div>
+
+      <div
+        className="flex items-center justify-between px-8 py-5 text-3xl"
         style={{ background: colorEstado, color: colorEstadoInk, fontFamily: '"Bebas Neue", sans-serif', letterSpacing: "0.02em" }}
       >
         <span>{activo ? "✓ Acceso permitido" : "✕ Membresía vencida"}</span>
-        <span className="text-sm font-semibold" style={{ fontFamily: '"Barlow", sans-serif' }}>{hora}</span>
+        <span className="text-base font-semibold" style={{ fontFamily: '"Barlow", sans-serif' }}>{hora}</span>
       </div>
 
-      <div className="grid grid-cols-[auto_1fr] items-center gap-8 p-8">
-        <div
-          className="flex h-32 w-32 items-center justify-center overflow-hidden rounded-full text-3xl"
-          style={{ fontFamily: '"Bebas Neue", sans-serif', color: colorEstado, background: "var(--gx-surface-2)", border: `3px solid ${colorEstado}` }}
-        >
-          {resultado.fotoUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element -- output: "export" no soporta el optimizador de next/image
-            <img src={resultado.fotoUrl} alt={resultado.nombre} className="h-full w-full object-cover" />
-          ) : (
-            iniciales(resultado.nombre)
-          )}
+      <div className="grid grid-cols-[auto_1fr] items-center gap-10 p-10">
+        <div className="relative h-40 w-40">
+          <div
+            className="absolute rounded-full opacity-40 blur-md"
+            style={{ inset: -16, background: `radial-gradient(circle, ${colorEstado} 0%, transparent 70%)` }}
+          />
+          <div
+            className="relative flex h-40 w-40 items-center justify-center overflow-hidden rounded-full text-4xl"
+            style={{
+              fontFamily: '"Bebas Neue", sans-serif',
+              color: colorEstado,
+              background: "var(--gx-surface-2)",
+              border: `4px solid ${colorEstado}`,
+            }}
+          >
+            {resultado.fotoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element -- output: "export" no soporta el optimizador de next/image
+              <img src={resultado.fotoUrl} alt={resultado.nombre} className="h-full w-full object-cover" />
+            ) : (
+              iniciales(resultado.nombre)
+            )}
+          </div>
         </div>
 
-        <div className="flex flex-col gap-4">
-          <p className="text-4xl" style={{ fontFamily: '"Bebas Neue", sans-serif', color: "var(--gx-ink)" }}>
+        <div className="flex flex-col gap-5">
+          <p className="text-5xl" style={{ fontFamily: '"Bebas Neue", sans-serif', color: "var(--gx-ink)" }}>
             {resultado.nombre}
           </p>
 
@@ -47,13 +79,13 @@ export function AccessCard({ resultado, hora }: { resultado: ResultadoCheckIn; h
               <span className="text-xs font-bold uppercase" style={{ letterSpacing: "0.1em", color: "var(--gx-muted-dim)" }}>
                 Entrada
               </span>
-              <span className="text-lg font-semibold" style={{ color: "var(--gx-ink)" }}>{hora}</span>
+              <span className="text-xl font-semibold" style={{ color: "var(--gx-ink)" }}>{hora}</span>
             </div>
             <div className="flex flex-col gap-1">
               <span className="text-xs font-bold uppercase" style={{ letterSpacing: "0.1em", color: "var(--gx-muted-dim)" }}>
                 Entrenador
               </span>
-              <span className="text-lg font-semibold" style={{ color: "var(--gx-ink)" }}>{resultado.entrenador ?? "—"}</span>
+              <span className="text-xl font-semibold" style={{ color: "var(--gx-ink)" }}>{resultado.entrenador ?? "—"}</span>
             </div>
           </div>
         </div>

@@ -77,12 +77,11 @@ export default function PaginaCheckIn() {
     }
 
     setCedula("");
-    setTimeout(() => setEstado({ tipo: "esperando" }), 8000);
   }
 
   return (
     <main
-      className="min-h-screen flex flex-col items-center justify-center gap-8 p-8"
+      className="min-h-screen flex flex-col items-center gap-6 p-8 pt-10"
       style={{ background: "var(--gx-ground)", color: "var(--gx-ink)" }}
     >
       {pendientes > 0 && (
@@ -94,26 +93,35 @@ export default function PaginaCheckIn() {
         </div>
       )}
 
-      <h1 className="text-3xl" style={{ fontFamily: '"Bebas Neue", sans-serif', letterSpacing: "0.02em" }}>
-        Ingresa tu cédula
-      </h1>
+      <div className="flex flex-col items-center gap-2">
+        <h1 className="text-xl" style={{ fontFamily: '"Bebas Neue", sans-serif', letterSpacing: "0.02em" }}>
+          Ingresa tu cédula
+        </h1>
 
-      <input
-        ref={inputRef}
-        value={cedula}
-        onChange={(evento) => setCedula(evento.target.value.replace(/\D/g, ""))}
-        onKeyDown={(evento) => {
-          if (evento.key === "Enter") enviar();
-          if (evento.key === "Escape") setCedula("");
-        }}
-        onBlur={() => inputRef.current?.focus()}
-        inputMode="numeric"
-        autoFocus
-        className="w-full max-w-xl text-center text-6xl tracking-widest bg-transparent border-b-4 py-4 outline-none"
-        style={{ borderColor: "var(--gx-accent)", color: "var(--gx-ink)" }}
-      />
+        <input
+          ref={inputRef}
+          value={cedula}
+          onChange={(evento) => {
+            // Escribir la siguiente cédula limpia la ficha del check-in
+            // anterior — reemplaza al viejo auto-ocultar por temporizador.
+            if (estado.tipo !== "esperando" && estado.tipo !== "procesando") {
+              setEstado({ tipo: "esperando" });
+            }
+            setCedula(evento.target.value.replace(/\D/g, ""));
+          }}
+          onKeyDown={(evento) => {
+            if (evento.key === "Enter") enviar();
+            if (evento.key === "Escape") setCedula("");
+          }}
+          onBlur={() => inputRef.current?.focus()}
+          inputMode="numeric"
+          autoFocus
+          className="w-full max-w-sm text-center text-3xl tracking-widest bg-transparent border-b-2 py-2 outline-none"
+          style={{ borderColor: "var(--gx-accent)", color: "var(--gx-ink)" }}
+        />
+      </div>
 
-      <div className="min-h-40 flex w-full items-center justify-center text-center">
+      <div className="flex w-full flex-1 items-center justify-center text-center">
         {estado.tipo === "procesando" && <p className="text-2xl" style={{ color: "var(--gx-muted)" }}>Verificando…</p>}
 
         {estado.tipo === "resultado" && <AccessCard resultado={estado.resultado} hora={estado.hora} />}

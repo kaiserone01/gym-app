@@ -124,9 +124,11 @@ export function FormularioMiembro({
     setFotoPreview(URL.createObjectURL(archivo));
   }
 
+  const idFormulario = "formulario-miembro";
+
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_320px]">
-      <form ref={formRef} action={enviar} className="flex flex-col gap-6">
+      <form ref={formRef} id={idFormulario} action={enviar} className="flex flex-col gap-6">
         {estado.error && (
           <p className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">{estado.error}</p>
         )}
@@ -298,47 +300,6 @@ export function FormularioMiembro({
           </label>
         </section>
 
-        {!esEdicion && (
-          <section className="rounded-xl border border-neutral-200 p-5">
-            <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-neutral-500">
-              Primer pago
-            </h2>
-            <p className="mb-4 text-xs text-neutral-400">
-              Se registra junto con el alta — así el miembro queda activo desde hoy, sin pasar por
-              &quot;Registrar pago&quot; aparte.
-            </p>
-
-            <div className="grid grid-cols-2 gap-4">
-              <label className="flex flex-col gap-1 text-sm text-neutral-700">
-                Método de pago
-                <select
-                  name="metodo"
-                  required
-                  value={metodoPago}
-                  onChange={(e) => setMetodoPago(e.target.value)}
-                  className="rounded border border-neutral-300 px-3 py-2"
-                >
-                  <option value="">Seleccioná un método</option>
-                  {METODOS_PAGO.map((metodo) => (
-                    <option key={metodo.value} value={metodo.value}>
-                      {metodo.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <Input
-                name="tasaCambio"
-                label="Tasa de cambio (si pagó en Bs)"
-                type="number"
-                step="0.0001"
-                value={tasaCambio}
-                onChange={(e) => setTasaCambio(e.target.value)}
-              />
-            </div>
-          </section>
-        )}
-
         <Button type="button" onClick={manejarClickGuardar} disabled={enviando}>
           Guardar
         </Button>
@@ -346,10 +307,48 @@ export function FormularioMiembro({
 
       <aside className="lg:sticky lg:top-8 lg:self-start">
         {!mostrarTicket ? (
-          panelLateral ?? (
-            <div className="flex h-full flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-neutral-300 p-8 text-center text-sm text-neutral-500">
-              <p>Completá el formulario y hacé clic en</p>
-              <p>&quot;Guardar&quot; para ver el resumen acá.</p>
+          esEdicion ? (
+            panelLateral
+          ) : (
+            <div className="rounded-xl border border-neutral-200 p-5">
+              <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-neutral-500">
+                Primer pago
+              </h2>
+              <p className="mb-4 text-xs text-neutral-400">
+                Se registra en el mismo paso que creás al miembro, así queda activo desde hoy sin
+                tener que entrar después a &quot;Registrar pago&quot;.
+              </p>
+
+              <div className="flex flex-col gap-4">
+                <label className="flex flex-col gap-1 text-sm text-neutral-700">
+                  Método de pago
+                  <select
+                    name="metodo"
+                    form={idFormulario}
+                    required
+                    value={metodoPago}
+                    onChange={(e) => setMetodoPago(e.target.value)}
+                    className="rounded border border-neutral-300 px-3 py-2"
+                  >
+                    <option value="">Seleccioná un método</option>
+                    {METODOS_PAGO.map((metodo) => (
+                      <option key={metodo.value} value={metodo.value}>
+                        {metodo.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <Input
+                  name="tasaCambio"
+                  form={idFormulario}
+                  label="Tasa de cambio (si pagó en Bs)"
+                  type="number"
+                  step="0.0001"
+                  value={tasaCambio}
+                  onChange={(e) => setTasaCambio(e.target.value)}
+                />
+              </div>
             </div>
           )
         ) : (

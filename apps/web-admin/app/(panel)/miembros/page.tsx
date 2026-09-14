@@ -5,7 +5,7 @@ import { obtenerUsuarioDeSesionActual } from "@/lib/sesion";
 import { PrismaMemberRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaMemberRepository";
 import { listarMiembros } from "@gym-app/domain/use-cases/ListarMiembros";
 import { Button } from "@gym-app/ui/components/Button";
-import { Badge } from "@gym-app/ui/components/Badge";
+import { EstadoToggle } from "./EstadoToggle";
 
 export default async function PaginaMiembros() {
   const usuario = await obtenerUsuarioDeSesionActual();
@@ -50,9 +50,7 @@ export default async function PaginaMiembros() {
                   : "—"}
               </td>
               <td className="py-2">
-                <Badge tono={miembro.activo ? "verde" : "gris"}>
-                  {miembro.activo ? "Activo" : "Inactivo"}
-                </Badge>
+                <EstadoToggle id={miembro.id} activo={miembro.activo} />
               </td>
               <td className="py-2">
                 <Link href={`/miembros/${miembro.id}`} className="text-sm font-medium text-blue-600 hover:underline">

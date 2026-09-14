@@ -6,11 +6,12 @@ import { obtenerApiKey } from "@/lib/config";
 import { registrarCheckIn, ErrorCheckIn, type ResultadoCheckIn } from "@/lib/api";
 import { encolar, listarPendientes } from "@/lib/colaPendientes";
 import { reintentarPendientes } from "@/lib/reintentarPendientes";
+import { AccessCard } from "@/components/AccessCard";
 
 type Estado =
   | { tipo: "esperando" }
   | { tipo: "procesando" }
-  | { tipo: "resultado"; resultado: ResultadoCheckIn }
+  | { tipo: "resultado"; resultado: ResultadoCheckIn; hora: string }
   | { tipo: "pendiente" }
   | { tipo: "error"; mensaje: string };
 
@@ -63,7 +64,8 @@ export default function PaginaCheckIn() {
 
     try {
       const resultado = await registrarCheckIn(apiKey, cedula);
-      setEstado({ tipo: "resultado", resultado });
+      const hora = new Date().toLocaleTimeString("es-VE", { hour: "numeric", minute: "2-digit" });
+      setEstado({ tipo: "resultado", resultado, hora });
     } catch (error) {
       if (error instanceof ErrorCheckIn) {
         setEstado({ tipo: "error", mensaje: error.message });
@@ -79,14 +81,22 @@ export default function PaginaCheckIn() {
   }
 
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center gap-8 bg-black text-white p-8">
+    <main
+      className="min-h-screen flex flex-col items-center justify-center gap-8 p-8"
+      style={{ background: "var(--gx-ground)", color: "var(--gx-ink)" }}
+    >
       {pendientes > 0 && (
-        <div className="fixed top-4 right-4 rounded bg-amber-600 px-3 py-1 text-sm">
+        <div
+          className="fixed top-4 right-4 rounded px-3 py-1 text-sm"
+          style={{ background: "var(--gx-bad)", color: "var(--gx-bad-ink)" }}
+        >
           {pendientes} pendiente{pendientes === 1 ? "" : "s"} por sincronizar
         </div>
       )}
 
-      <h1 className="text-3xl font-semibold">Ingresa tu cédula</h1>
+      <h1 className="text-3xl" style={{ fontFamily: '"Bebas Neue", sans-serif', letterSpacing: "0.02em" }}>
+        Ingresa tu cédula
+      </h1>
 
       <input
         ref={inputRef}
@@ -99,32 +109,22 @@ export default function PaginaCheckIn() {
         onBlur={() => inputRef.current?.focus()}
         inputMode="numeric"
         autoFocus
-        className="w-full max-w-xl text-center text-6xl tracking-widest bg-transparent border-b-4 border-white py-4 outline-none"
+        className="w-full max-w-xl text-center text-6xl tracking-widest bg-transparent border-b-4 py-4 outline-none"
+        style={{ borderColor: "var(--gx-accent)", color: "var(--gx-ink)" }}
       />
 
-      <div className="min-h-40 flex items-center justify-center text-center">
-        {estado.tipo === "procesando" && <p className="text-2xl">Verificando…</p>}
+      <div className="min-h-40 flex w-full items-center justify-center text-center">
+        {estado.tipo === "procesando" && <p className="text-2xl" style={{ color: "var(--gx-muted)" }}>Verificando…</p>}
 
-        {estado.tipo === "resultado" && (
-          <div className="flex flex-col items-center gap-2">
-            <p className="text-4xl font-bold">{estado.resultado.nombre}</p>
-            <p
-              className={
-                estado.resultado.estado === "activo" ? "text-2xl text-green-400" : "text-2xl text-red-400"
-              }
-            >
-              {estado.resultado.estado === "activo" ? "✅ Acceso permitido" : "⚠️ Membresía vencida"}
-            </p>
-          </div>
-        )}
+        {estado.tipo === "resultado" && <AccessCard resultado={estado.resultado} hora={estado.hora} />}
 
         {estado.tipo === "pendiente" && (
-          <p className="text-2xl text-amber-400">
+          <p className="text-2xl" style={{ color: "var(--gx-bad)" }}>
             Sin conexión — el check-in se guardó y se enviará solo cuando vuelva la red.
           </p>
         )}
 
-        {estado.tipo === "error" && <p className="text-2xl text-red-400">{estado.mensaje}</p>}
+        {estado.tipo === "error" && <p className="text-2xl" style={{ color: "var(--gx-bad)" }}>{estado.mensaje}</p>}
       </div>
     </main>
   );

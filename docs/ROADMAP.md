@@ -69,7 +69,7 @@ Checklist vivo del proyecto. Se actualiza marcando `- [x]` a medida que se compl
 - [x] Páginas `/miembros` (listado), `/miembros/nuevo` (alta), `/miembros/[id]` (edición + baja lógica + reactivación)
 - [x] Verificado sin DB: `tsc --noEmit`, `turbo run build --filter=web-admin` (rutas `/`, `/miembros`, `/miembros/nuevo`, `/miembros/[id]` en el build), `turbo run lint --filter=web-admin`
 - [x] Revisión final de todo el branch: 2 hallazgos Important corregidos (panel ilegible en dark mode — sin fix de theming completo, solo `bg-white`/`text-neutral-900` explícito en el layout; faltaba reactivar un miembro dado de baja desde la UI) — ambos gaps del plan original, no de la implementación
-- [ ] **Pendiente del usuario:** Tarea 10 del plan — probar en el navegador contra la base real (login → redirect a `/miembros`, listar, crear, cédula duplicada inline, editar, dar de baja, reactivar, acceso sin sesión redirige a `/login`)
+- [x] Tarea 10 del plan — probado en producción por el usuario, funcionando correctamente
 - Diferido explícitamente: pantallas de Pagos/Planes (sidebar ya tiene los links, dan 404), asignar Entrenador desde la UI, dashboard general, búsqueda/filtro/paginación, subida real de `fotoUrl`, gestión de `UsuarioAdmin` desde la UI, botón de logout visible, theming/dark mode completo (queda para `packages/theming`)
 
 ---

@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { Button } from "@gym-app/ui/components/Button";
 import { Input } from "@gym-app/ui/components/Input";
 import type { EstadoFormularioPago } from "./actions";
+import { METODOS_PAGO } from "../metodosPago";
 
 export interface MiembroParaSelector {
   id: string;
@@ -14,15 +15,6 @@ export interface PlanParaSelector {
   id: string;
   nombre: string;
 }
-
-const METODOS_PAGO: Array<{ value: string; label: string }> = [
-  { value: "efectivo_usd", label: "Efectivo (USD)" },
-  { value: "efectivo_bs", label: "Efectivo (Bs)" },
-  { value: "transferencia", label: "Transferencia" },
-  { value: "zelle", label: "Zelle" },
-  { value: "binance_usdt", label: "Binance / USDT" },
-  { value: "pago_movil", label: "Pago móvil" },
-];
 
 export function FormularioPago({
   accion,

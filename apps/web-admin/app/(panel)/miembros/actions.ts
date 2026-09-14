@@ -8,12 +8,39 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { obtenerUsuarioDeSesionActual } from "@/lib/sesion";
 import { PrismaMemberRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaMemberRepository";
+import { PrismaPlanRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaPlanRepository";
+import { PrismaPagoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaPagoRepository";
+import { PrismaSuscripcionRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaSuscripcionRepository";
 import { crearMiembro, CedulaDuplicadaError } from "@gym-app/domain/use-cases/CrearMiembro";
 import { actualizarMiembro, MiembroNoEncontradoError } from "@gym-app/domain/use-cases/ActualizarMiembro";
+import { listarPlanes } from "@gym-app/domain/use-cases/ListarPlanes";
+import { crearPlan } from "@gym-app/domain/use-cases/CrearPlan";
+import {
+  registrarPago,
+  MiembroNoEncontradoError as PagoMiembroNoEncontradoError,
+  PlanNoEncontradoError,
+  PlanInactivoError,
+} from "@gym-app/domain/use-cases/RegistrarPago";
 import type { PlanTipo } from "@gym-app/domain/entities/Miembro";
 
 export interface EstadoFormularioMiembro {
   error?: string;
+}
+
+// Los planes fijos del selector de Nuevo Miembro (Semanal, Corporativo,
+// etc., más "Personalizado") no tienen pantalla propia de alta — se crean
+// solos, una única vez por organización, la primera vez que alguien los
+// usa. /planes los lista y edita después como a cualquier otro plan.
+async function obtenerOCrearPlan(organizacionId: string, nombre: string, precioUSD: number): Promise<string> {
+  const planes = await listarPlanes({ planes: new PrismaPlanRepository(prisma) }, organizacionId);
+  const existente = planes.find((plan) => plan.nombre === nombre);
+  if (existente) return existente.id;
+
+  const nuevo = await crearPlan(
+    { planes: new PrismaPlanRepository(prisma) },
+    { organizacionId, nombre, tipoAcceso: "TODA_LA_ORGANIZACION", precioUSD, sucursalIds: [] }
+  );
+  return nuevo.id;
 }
 
 // Guarda la foto en apps/web-admin/public/uploads/miembros y devuelve la URL
@@ -44,15 +71,19 @@ export async function crearMiembroAction(
   const cedula = formData.get("cedula")?.toString().trim();
   const fechaInscripcionTexto = formData.get("fechaInscripcion")?.toString();
   const precioPlan = Number(formData.get("precioPlan"));
+  const planNombre = formData.get("planNombre")?.toString().trim();
+  const metodo = formData.get("metodo")?.toString();
+  const tasaCambioRaw = formData.get("tasaCambio")?.toString();
 
-  if (!nombre || !cedula || !fechaInscripcionTexto || Number.isNaN(precioPlan)) {
-    return { error: "Nombre, cédula, fecha de inscripción y precio del plan son requeridos." };
+  if (!nombre || !cedula || !fechaInscripcionTexto || !planNombre || !metodo || Number.isNaN(precioPlan)) {
+    return { error: "Nombre, cédula, fecha de inscripción, plan y método de pago son requeridos." };
   }
 
   const fotoUrl = await guardarFoto(formData.get("foto"));
 
+  let miembro;
   try {
-    await crearMiembro(
+    miembro = await crearMiembro(
       { miembros: new PrismaMemberRepository(prisma) },
       {
         organizacionId: usuario.organizacionId,
@@ -74,7 +105,43 @@ export async function crearMiembroAction(
     throw error;
   }
 
+  // El miembro ya quedó creado en este punto — un error acá abajo no lo
+  // deshace, así que solo se manejan los errores de dominio esperables;
+  // cualquier otra cosa se deja propagar (el miembro queda creado, sin
+  // pago, y se puede registrar a mano desde su ficha).
+  try {
+    const planId = await obtenerOCrearPlan(usuario.organizacionId, planNombre, precioPlan);
+
+    await registrarPago(
+      {
+        pagos: new PrismaPagoRepository(prisma),
+        suscripciones: new PrismaSuscripcionRepository(prisma),
+        miembros: new PrismaMemberRepository(prisma),
+        planes: new PrismaPlanRepository(prisma),
+      },
+      {
+        organizacionId: usuario.organizacionId,
+        miembroId: miembro.id,
+        planId,
+        monto: precioPlan,
+        metodo,
+        tasaCambio: tasaCambioRaw ? Number(tasaCambioRaw) : null,
+      }
+    );
+  } catch (error) {
+    if (
+      error instanceof PagoMiembroNoEncontradoError ||
+      error instanceof PlanNoEncontradoError ||
+      error instanceof PlanInactivoError
+    ) {
+      return { error: `El miembro se creó, pero no se pudo registrar el pago inicial: ${error.message}` };
+    }
+    throw error;
+  }
+
   revalidatePath("/miembros");
+  revalidatePath("/planes");
+  revalidatePath("/pagos");
   redirect("/miembros");
 }
 

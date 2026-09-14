@@ -5,6 +5,7 @@ import { Button } from "@gym-app/ui/components/Button";
 import { Input } from "@gym-app/ui/components/Input";
 import type { EstadoFormularioMiembro } from "./actions";
 import { PRESETS_PLAN_MIEMBRO } from "./planesPreset";
+import { METODOS_PAGO } from "../metodosPago";
 import type { EntrenadorResumen } from "@gym-app/domain/entities/EntrenadorResumen";
 
 export interface ValoresFormularioMiembro {
@@ -50,10 +51,15 @@ export function FormularioMiembro({
   accion,
   entrenadores,
   valoresIniciales,
+  panelLateral,
 }: {
   accion: (estado: EstadoFormularioMiembro, formData: FormData) => Promise<EstadoFormularioMiembro>;
   entrenadores: EntrenadorResumen[];
   valoresIniciales?: ValoresFormularioMiembro;
+  // Contenido propio de la pantalla de edición (dar de baja, historial de
+  // pagos, registrar pago) — se muestra en el panel derecho cuando no hay
+  // ticket de confirmación abierto, para no tener que scrollear.
+  panelLateral?: React.ReactNode;
 }) {
   const [estado, enviar, enviando] = useActionState(accion, {});
   const esEdicion = !!valoresIniciales;
@@ -80,6 +86,8 @@ export function FormularioMiembro({
     valoresIniciales?.planTipo === "CON_ENTRENADOR"
   );
   const [errorPrecioPersonalizado, setErrorPrecioPersonalizado] = useState<string | null>(null);
+  const [metodoPago, setMetodoPago] = useState("");
+  const [tasaCambio, setTasaCambio] = useState("");
   const [mostrarTicket, setMostrarTicket] = useState(false);
 
   const esCustom = presetKey === "personalizado";
@@ -95,6 +103,7 @@ export function FormularioMiembro({
   const precioActual = esCustom ? Number(precioPersonalizado) || 0 : (presetSeleccionado?.precio ?? 0);
   const nombrePlanActual = esCustom ? "Personalizado" : (presetSeleccionado?.nombre ?? "—");
   const nombreEntrenadorActual = entrenadores.find((e) => e.id === entrenadorId)?.nombre ?? null;
+  const nombreMetodoPagoActual = METODOS_PAGO.find((m) => m.value === metodoPago)?.label ?? null;
 
   function manejarClickGuardar() {
     const form = formRef.current;
@@ -124,6 +133,7 @@ export function FormularioMiembro({
 
         <input type="hidden" name="planTipo" value={planTipoActual} />
         <input type="hidden" name="precioPlan" value={precioActual} />
+        <input type="hidden" name="planNombre" value={nombrePlanActual} />
 
         <section className="rounded-xl border border-neutral-200 p-5">
           <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-neutral-500">
@@ -288,6 +298,47 @@ export function FormularioMiembro({
           </label>
         </section>
 
+        {!esEdicion && (
+          <section className="rounded-xl border border-neutral-200 p-5">
+            <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-neutral-500">
+              Primer pago
+            </h2>
+            <p className="mb-4 text-xs text-neutral-400">
+              Se registra junto con el alta — así el miembro queda activo desde hoy, sin pasar por
+              &quot;Registrar pago&quot; aparte.
+            </p>
+
+            <div className="grid grid-cols-2 gap-4">
+              <label className="flex flex-col gap-1 text-sm text-neutral-700">
+                Método de pago
+                <select
+                  name="metodo"
+                  required
+                  value={metodoPago}
+                  onChange={(e) => setMetodoPago(e.target.value)}
+                  className="rounded border border-neutral-300 px-3 py-2"
+                >
+                  <option value="">Seleccioná un método</option>
+                  {METODOS_PAGO.map((metodo) => (
+                    <option key={metodo.value} value={metodo.value}>
+                      {metodo.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <Input
+                name="tasaCambio"
+                label="Tasa de cambio (si pagó en Bs)"
+                type="number"
+                step="0.0001"
+                value={tasaCambio}
+                onChange={(e) => setTasaCambio(e.target.value)}
+              />
+            </div>
+          </section>
+        )}
+
         <Button type="button" onClick={manejarClickGuardar} disabled={enviando}>
           Guardar
         </Button>
@@ -295,10 +346,12 @@ export function FormularioMiembro({
 
       <aside className="lg:sticky lg:top-8 lg:self-start">
         {!mostrarTicket ? (
-          <div className="flex h-full flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-neutral-300 p-8 text-center text-sm text-neutral-500">
-            <p>Completá el formulario y hacé clic en</p>
-            <p>&quot;Guardar&quot; para ver el resumen acá.</p>
-          </div>
+          panelLateral ?? (
+            <div className="flex h-full flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-neutral-300 p-8 text-center text-sm text-neutral-500">
+              <p>Completá el formulario y hacé clic en</p>
+              <p>&quot;Guardar&quot; para ver el resumen acá.</p>
+            </div>
+          )
         ) : (
           <div className="rounded-xl border-2 border-dashed border-neutral-300 bg-neutral-50 p-5">
             <p className="text-center text-xs font-semibold uppercase tracking-widest text-neutral-500">
@@ -325,6 +378,7 @@ export function FormularioMiembro({
               <Fila label="Inscripción" valor={formatearFecha(fechaInscripcion)} />
               <Fila label="Plan" valor={nombrePlanActual} />
               <Fila label="Entrenador" valor={requiereEntrenador ? (nombreEntrenadorActual ?? "Sin asignar") : "No aplica"} />
+              {!esEdicion && <Fila label="Método de pago" valor={nombreMetodoPagoActual ?? "—"} />}
             </dl>
 
             <div className="my-3 border-t border-dashed border-neutral-300" />

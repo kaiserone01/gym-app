@@ -59,59 +59,66 @@ export default async function PaginaEditarMiembro({ params }: { params: Promise<
           entrenadorId: miembro.entrenadorId,
           fotoUrl: miembro.fotoUrl,
         }}
-      />
+        panelLateral={
+          <div className="flex flex-col gap-6">
+            {miembro.activo ? (
+              <form action={darDeBajaAction.bind(null, id)}>
+                <Button variant="peligro" type="submit" className="w-full">
+                  Dar de baja
+                </Button>
+              </form>
+            ) : (
+              <form action={reactivarAction.bind(null, id)}>
+                <Button variant="secundario" type="submit" className="w-full">
+                  Reactivar
+                </Button>
+              </form>
+            )}
 
-      {miembro.activo ? (
-        <form action={darDeBajaAction.bind(null, id)} className="mt-6">
-          <Button variant="peligro" type="submit">
-            Dar de baja
-          </Button>
-        </form>
-      ) : (
-        <form action={reactivarAction.bind(null, id)} className="mt-6">
-          <Button variant="secundario" type="submit">
-            Reactivar
-          </Button>
-        </form>
-      )}
+            <div className="rounded-xl border border-neutral-200 p-5">
+              <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-neutral-500">Pagos</h2>
 
-      <hr className="my-8 border-neutral-200" />
+              <table className="w-full border-collapse text-left text-sm">
+                <thead>
+                  <tr className="border-b text-xs text-neutral-500">
+                    <th className="py-2">Fecha</th>
+                    <th className="py-2">Monto</th>
+                    <th className="py-2">Método</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pagos.map((pago) => (
+                    <tr key={pago.id} className="border-b">
+                      <td className="py-2">{new Date(pago.fechaPago).toLocaleDateString("es-VE")}</td>
+                      <td className="py-2">${pago.monto.toFixed(2)}</td>
+                      <td className="py-2">{pago.metodo}</td>
+                    </tr>
+                  ))}
 
-      <h2 className="mb-4 text-xl font-semibold">Pagos</h2>
+                  {pagos.length === 0 && (
+                    <tr>
+                      <td colSpan={3} className="py-4 text-center text-neutral-500">
+                        Sin pagos todavía.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
 
-      <table className="mb-6 w-full border-collapse text-left">
-        <thead>
-          <tr className="border-b text-sm text-neutral-500">
-            <th className="py-2">Fecha</th>
-            <th className="py-2">Monto (USD)</th>
-            <th className="py-2">Método</th>
-          </tr>
-        </thead>
-        <tbody>
-          {pagos.map((pago) => (
-            <tr key={pago.id} className="border-b">
-              <td className="py-2">{new Date(pago.fechaPago).toLocaleDateString("es-VE")}</td>
-              <td className="py-2">${pago.monto.toFixed(2)}</td>
-              <td className="py-2">{pago.metodo}</td>
-            </tr>
-          ))}
-
-          {pagos.length === 0 && (
-            <tr>
-              <td colSpan={3} className="py-6 text-center text-neutral-500">
-                Todavía no hay pagos registrados para este miembro.
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
-
-      <h3 className="mb-4 text-lg font-semibold">Registrar pago</h3>
-      <FormularioPago
-        accion={registrarPagoAction}
-        miembros={[]}
-        planes={planesActivos}
-        miembroIdFijo={id}
+            <div className="rounded-xl border border-neutral-200 p-5">
+              <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-neutral-500">
+                Registrar pago
+              </h2>
+              <FormularioPago
+                accion={registrarPagoAction}
+                miembros={[]}
+                planes={planesActivos}
+                miembroIdFijo={id}
+              />
+            </div>
+          </div>
+        }
       />
     </div>
   );

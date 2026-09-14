@@ -1,10 +1,11 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { Button } from "@gym-app/ui/components/Button";
 import { Input } from "@gym-app/ui/components/Input";
 import type { EstadoFormularioPago } from "./actions";
 import { METODOS_PAGO } from "../metodosPago";
+import { TASA_BCV_FIJA, METODOS_EN_BS, formatearBs } from "../tasaBcvFija";
 
 export interface MiembroParaSelector {
   id: string;
@@ -14,6 +15,7 @@ export interface MiembroParaSelector {
 export interface PlanParaSelector {
   id: string;
   nombre: string;
+  precioUSD: number;
 }
 
 export function FormularioPago({
@@ -28,6 +30,19 @@ export function FormularioPago({
   miembroIdFijo?: string;
 }) {
   const [estado, enviar, enviando] = useActionState(accion, {});
+  const [planId, setPlanId] = useState("");
+  const [metodo, setMetodo] = useState("");
+  const [monto, setMonto] = useState("");
+
+  const esPagoEnBs = METODOS_EN_BS.includes(metodo);
+  const montoNumero = Number(monto);
+  const montoBs = esPagoEnBs && !Number.isNaN(montoNumero) ? montoNumero * TASA_BCV_FIJA : null;
+
+  function manejarCambioPlan(id: string) {
+    setPlanId(id);
+    const plan = planes.find((p) => p.id === id);
+    if (plan) setMonto(String(plan.precioUSD));
+  }
 
   return (
     <form action={enviar} className="flex flex-col gap-4">
@@ -56,7 +71,13 @@ export function FormularioPago({
 
       <label className="flex flex-col gap-1 text-sm text-neutral-700">
         Plan
-        <select name="planId" required className="rounded border border-neutral-300 px-3 py-2">
+        <select
+          name="planId"
+          required
+          value={planId}
+          onChange={(e) => manejarCambioPlan(e.target.value)}
+          className="rounded border border-neutral-300 px-3 py-2"
+        >
           <option value="">Seleccioná un plan</option>
           {planes.map((plan) => (
             <option key={plan.id} value={plan.id}>
@@ -68,19 +89,49 @@ export function FormularioPago({
 
       <label className="flex flex-col gap-1 text-sm text-neutral-700">
         Método de pago
-        <select name="metodo" required className="rounded border border-neutral-300 px-3 py-2">
+        <select
+          name="metodo"
+          required
+          value={metodo}
+          onChange={(e) => setMetodo(e.target.value)}
+          className="rounded border border-neutral-300 px-3 py-2"
+        >
           <option value="">Seleccioná un método</option>
-          {METODOS_PAGO.map((metodo) => (
-            <option key={metodo.value} value={metodo.value}>
-              {metodo.label}
+          {METODOS_PAGO.map((metodoPago) => (
+            <option key={metodoPago.value} value={metodoPago.value}>
+              {metodoPago.label}
             </option>
           ))}
         </select>
       </label>
 
-      <Input name="monto" label="Monto (USD)" type="number" step="0.01" required />
+      <Input
+        name="monto"
+        label="Monto (USD)"
+        type="number"
+        step="0.01"
+        required
+        value={monto}
+        onChange={(e) => setMonto(e.target.value)}
+      />
 
-      <Input name="tasaCambio" label="Tasa de cambio (opcional, si el pago fue en Bs)" type="number" step="0.0001" />
+      {esPagoEnBs && (
+        <>
+          <input type="hidden" name="tasaCambio" value={TASA_BCV_FIJA} />
+          <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-3 text-sm">
+            <div className="flex justify-between">
+              <span className="text-neutral-500">Tasa BCV (fija, prueba)</span>
+              <span className="font-medium text-neutral-900">Bs. {TASA_BCV_FIJA}</span>
+            </div>
+            <div className="mt-1 flex justify-between">
+              <span className="text-neutral-500">Monto en bolívares</span>
+              <span className="font-semibold text-neutral-900">
+                {montoBs !== null ? `Bs. ${formatearBs(montoBs)}` : "—"}
+              </span>
+            </div>
+          </div>
+        </>
+      )}
 
       <Button type="submit" disabled={enviando}>
         {enviando ? "Registrando..." : "Registrar pago"}

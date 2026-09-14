@@ -6,6 +6,7 @@ import { Input } from "@gym-app/ui/components/Input";
 import type { EstadoFormularioMiembro } from "./actions";
 import { PRESETS_PLAN_MIEMBRO } from "./planesPreset";
 import { METODOS_PAGO } from "../metodosPago";
+import { TASA_BCV_FIJA, METODOS_EN_BS, formatearBs } from "../tasaBcvFija";
 import type { EntrenadorResumen } from "@gym-app/domain/entities/EntrenadorResumen";
 
 export interface ValoresFormularioMiembro {
@@ -27,16 +28,6 @@ function formatearFecha(fechaISO: string): string {
   if (!fechaISO) return "—";
   const [anio, mes, dia] = fechaISO.split("-");
   return `${dia}/${mes}/${anio}`;
-}
-
-// Tasa fija solo para pruebas — cuando conectemos este formulario a
-// /api/tasa-cambio (ya alimentada por apps/worker con la tasa BCV real),
-// esto se reemplaza por ese valor en vivo.
-const TASA_BCV_FIJA = 850;
-const METODOS_EN_BS = ["efectivo_bs", "pago_movil"];
-
-function formatearBs(monto: number): string {
-  return monto.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function iniciales(nombre: string): string {

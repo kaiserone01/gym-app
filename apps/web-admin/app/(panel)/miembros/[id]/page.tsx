@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { obtenerUsuarioDeSesionActual } from "@/lib/sesion";
@@ -10,10 +11,9 @@ import { listarPagos } from "@gym-app/domain/use-cases/ListarPagos";
 import { listarPlanes } from "@gym-app/domain/use-cases/ListarPlanes";
 import { listarEntrenadores } from "@gym-app/domain/use-cases/ListarEntrenadores";
 import { FormularioMiembro } from "../FormularioMiembro";
-import { actualizarMiembroAction, darDeBajaAction, reactivarAction } from "../actions";
+import { actualizarMiembroAction } from "../actions";
 import { FormularioPago } from "../../pagos/FormularioPago";
 import { registrarPagoAction } from "../../pagos/actions";
-import { Button } from "@gym-app/ui/components/Button";
 
 export default async function PaginaEditarMiembro({ params }: { params: Promise<{ id: string }> }) {
   const usuario = await obtenerUsuarioDeSesionActual();
@@ -61,50 +61,12 @@ export default async function PaginaEditarMiembro({ params }: { params: Promise<
         }}
         panelLateral={
           <div className="flex flex-col gap-6">
-            {miembro.activo ? (
-              <form action={darDeBajaAction.bind(null, id)}>
-                <Button variant="peligro" type="submit" className="w-full">
-                  Dar de baja
-                </Button>
-              </form>
-            ) : (
-              <form action={reactivarAction.bind(null, id)}>
-                <Button variant="secundario" type="submit" className="w-full">
-                  Reactivar
-                </Button>
-              </form>
-            )}
-
-            <div className="rounded-xl border border-neutral-200 p-5">
-              <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-neutral-500">Pagos</h2>
-
-              <table className="w-full border-collapse text-left text-sm">
-                <thead>
-                  <tr className="border-b text-xs text-neutral-500">
-                    <th className="py-2">Fecha</th>
-                    <th className="py-2">Monto</th>
-                    <th className="py-2">Método</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {pagos.map((pago) => (
-                    <tr key={pago.id} className="border-b">
-                      <td className="py-2">{new Date(pago.fechaPago).toLocaleDateString("es-VE")}</td>
-                      <td className="py-2">${pago.monto.toFixed(2)}</td>
-                      <td className="py-2">{pago.metodo}</td>
-                    </tr>
-                  ))}
-
-                  {pagos.length === 0 && (
-                    <tr>
-                      <td colSpan={3} className="py-4 text-center text-neutral-500">
-                        Sin pagos todavía.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+            <Link
+              href={`/miembros/${id}/pagos`}
+              className="block rounded px-4 py-2 text-center text-sm font-medium text-neutral-900 bg-neutral-200 hover:bg-neutral-300"
+            >
+              Ver historial de pagos ({pagos.length})
+            </Link>
 
             <div className="rounded-xl border border-neutral-200 p-5">
               <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-neutral-500">

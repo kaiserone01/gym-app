@@ -58,7 +58,7 @@ Checklist vivo del proyecto. Se actualiza marcando `- [x]` a medida que se compl
 - [x] CORS agregado a `POST /api/checkin` para la llamada cross-origin desde el kiosco
 - [x] Service worker (precache del shell, network-first para HTML) + manifest + `Dockerfile` propio (build estático servido con `serve`)
 - [x] Revisión final: fixes de Dockerfile (tag de imagen inválido), `lib/api.ts` (orden de parseo de errores), `turbo.json` (output `out/**` para el build de export), estrategia de caché del service worker
-- [ ] **Pendiente del usuario:** prueba real end-to-end (check-in real contra un miembro del seed, cédula inexistente, simular pérdida de red y confirmar que encola y sincroniza sola)
+- [x] **Verificado por el usuario:** check-in real contra miembros reales (activo y vencido) probado end-to-end en el kiosco desplegado.
 
 ### Plan 9 — Panel Admin: pantalla de Miembros (UI real)
 - [x] `packages/ui` poblado por primera vez: `Button`, `Input`, `Badge`, `Sidebar` (peerDependencies a next/react, no dependencies)
@@ -80,9 +80,34 @@ Checklist vivo del proyecto. Se actualiza marcando `- [x]` a medida que se compl
 - [x] `/miembros/[id]` (Plan 9) extendida con historial de pagos del miembro + alta de pago inline — verificado línea por línea que no hubo regresión sobre la funcionalidad existente
 - [x] Verificado sin DB: `tsc --noEmit`, `turbo run build --filter=web-admin` (rutas `/planes`, `/planes/nuevo`, `/planes/[id]`, `/pagos`, `/pagos/nuevo` en el build), `turbo run lint --filter=web-admin`
 - [x] Revisión final de todo el branch: 2 hallazgos Important corregidos — (1) `registrarPagoAction` redirigía incondicionalmente a `/miembros/[id]` incluso invocado desde esa misma página, descartando ediciones sin guardar del formulario de datos del miembro (fix: input oculto `origen`, solo redirige si no vino del flujo inline); (2) el selector de miembros en `/pagos/nuevo` no filtraba inactivos, a diferencia del selector de planes (fix: `miembrosActivos`, mismo patrón). Ambos eran gaps de diseño cruzados entre tareas, no errores de transcripción.
-- [ ] **Pendiente del usuario:** Tarea 18 del plan — probar en el navegador contra la base real (crear/editar/dar de baja/reactivar un Plan, listar y registrar Pagos desde `/pagos/nuevo` y desde la ficha de un Miembro, confirmar que el historial se actualiza en ambos lugares)
+- [x] **Verificado por el usuario:** uso real y sostenido de `/pagos`, `/planes` y el registro de pagos desde la ficha de un Miembro a lo largo de varias sesiones de prueba posteriores.
 - **Pendiente de decisión del usuario (no bloqueante):** ¿debería `RegistrarPago` rechazar pagos contra un `Miembro` inactivo? Hoy el dominio no lo valida (fuera del alcance de este plan, documentado como pregunta abierta en la revisión final).
-- Diferido explícitamente: editar/cancelar un `Pago` ya registrado, dashboard/resumen financiero, filtros/búsqueda/paginación en `/pagos`/`/planes`, conversión USD↔VES en el formulario de pago, theming/dark mode completo, rotación de `apiKey` de `Sucursal`.
+- Diferido explícitamente: editar/cancelar un `Pago` ya registrado, dashboard/resumen financiero, filtros/búsqueda/paginación en `/pagos`/`/planes`, theming/dark mode completo (ver Plan 11), rotación de `apiKey` de `Sucursal`.
+- ~~conversión USD↔VES en el formulario de pago~~ — hecho de forma provisional, ver "Ajustes ad-hoc" abajo (tasa fija 850, pendiente conectar `/api/tasa-cambio`).
+
+### Plan 11 — Tema visual "Adrenalina Xtreme" (`packages/theming`)
+- [x] `packages/theming` poblado por primera vez: tokens de color/tipografía (`tokens.ts`) + `ThemeStyleTag` (inyecta variables CSS en `:root`)
+- [x] `LogoBadge` nuevo en `packages/ui` (logo circular + halo, Opción B del mockup aprobado por el usuario tras comparar 4 direcciones de diseño)
+- [x] `/login` de `apps/web-admin` rediseñado con el tema — montado *solo* en esa página (nunca en el layout raíz) para no filtrar el verde/negro a `/miembros`, `/pagos`, `/planes`
+- [x] `apps/kiosk` adopta el tema completo (layout raíz) + `AccessCard` nuevo, estilo carnet, con logo del gym, halo, foto grande y franja de estado (verde=activo/rojo=vencido)
+- [x] Ajustes post-prueba del usuario: input de cédula reubicado (arriba, más chico), sin auto-ocultado por temporizador (el resultado se limpia al empezar a teclear la próxima cédula, no a los N segundos)
+- [x] Verificado sin DB: `tsc --noEmit`, `turbo run build`/`lint` en `web-admin` y `kiosk`
+- [x] **Verificado por el usuario:** login y check-in probados visualmente contra la base real, con miembros activo y vencido
+- Diferido explícitamente: theming dinámico por `Organizacion` (`TemaOrganizacion`, ya modelado en el schema desde el Plan 2 pero sin consumidor), migrar `/login` a los componentes base de `packages/ui` en vez de estilos inline, subida real de logo (hoy es un archivo estático commiteado a mano)
+
+### Ajustes ad-hoc — Nuevo Miembro / Registrar Pago (sin plan escrito, iterados en vivo con el usuario)
+- [x] Selector de 4 planes con precio fijo (Semanal $8 / Corporativo $22 / Mensual sin-con entrenador $25-$30) + opción "Personalizado" con precio libre — reemplaza el precio manual que había antes
+- [x] Campo "Fecha de inscripción" en `Miembro` (columna nueva, migración incluida, nullable — con fallback a `createdAt` para miembros viejos)
+- [x] Subida de foto de perfil (Server Action + `fs`, guardada en `public/uploads/miembros`, **no versionada ni respaldada** — ver nota de deploy más abajo)
+- [x] Selector de Entrenador (puerto/caso de uso/repositorio nuevos, no existían) bloqueado salvo que el plan elegido incluya entrenador
+- [x] Ticket de confirmación ("¿Está seguro de la información suministrada?") en el panel derecho antes de guardar, con resumen completo (foto, plan, entrenador, método de pago)
+- [x] Alta de miembro **crea/reutiliza el `Plan` real** correspondiente al preset elegido (`tipoAcceso: TODA_LA_ORGANIZACION`) y **registra el primer Pago/Suscripción en el mismo paso** — el miembro queda activo desde el día uno, sin pasar por "Registrar pago" aparte
+- [x] `/miembros/[id]` reorganizada: "Dar de baja" se saca de ahí (ya vive en el switch de la lista), el historial de pagos pasa a su propia subpágina (`/miembros/[id]/pagos`) en vez de una tabla que crecía sin límite en el panel
+- [x] Switch verde/rojo en la lista de Miembros (reemplaza el badge de texto), togglea `activo` sin entrar a la ficha, con confirmación solo al desactivar
+- [x] "Registrar Pago" autocompleta el Monto (USD) al elegir un Plan; la tasa/monto en Bs solo aparece si el método de pago es en bolívares
+- [x] Script `npm run db:limpiar-miembros --workspace packages/db` para vaciar Miembro/Pago/CheckIn/Suscripcion sin tocar Plan/Sucursal/UsuarioAdmin (útil para volver a probar desde cero)
+- **Pendiente:** conectar la tasa BCV real (`/api/tasa-cambio`, ya existe desde el Plan 7) en vez de la fija de 850 usada hoy en ambos formularios (`tasaBcvFija.ts` documenta el punto exacto de reemplazo)
+- Diferido explícitamente: que el catálogo de 4 planes+precios sea editable desde el panel sin tocar código (hoy es un array fijo en `planesPreset.ts`), unificar completamente `Miembro.planTipo/precioPlan` (recargo de entrenador) con el `Plan`/`Suscripcion` real
 
 ---
 
@@ -97,16 +122,21 @@ Sin bloqueadores 🔴 pendientes. Lo que sigue es funcionalidad core (🟡) y ex
 
 ## 🟡 Funcionalidad core pendiente (definida en el ADR, no implementada)
 
-- [x] ~~Integración real de la API BCV~~ — Plan 7, completo y verificado contra la API y la base reales. Pendiente aparte (no bloqueante): agendar el cron externo real (`0 23 * * 1-5` UTC sugerido) y, cuando exista un consumidor real, integrar `ConvertirMontoUSDaVES`/`Sucursal.tasaCambioUSD` en `RegistrarPago`.
-- [x] ~~App de kiosco física~~ — Plan 8, completo (verificación end-to-end del usuario pendiente, no bloquea el resto del roadmap).
+- [x] ~~Integración real de la API BCV~~ — Plan 7, completo y verificado contra la API y la base reales. Conectada a `/api/tasa-cambio`, pero **todavía no** a los formularios que la necesitan (Nuevo Miembro/Registrar Pago usan una tasa fija de 850 — ver "Ajustes ad-hoc" arriba). Pendiente aparte (no bloqueante): agendar el cron externo real (`0 23 * * 1-5` UTC sugerido).
+- [x] ~~App de kiosco física~~ — Plan 8, completo y verificado end-to-end por el usuario.
+- [ ] **Conectar la tasa BCV real** a Nuevo Miembro y Registrar Pago (hoy usan 850 fijo) — ver `tasaBcvFija.ts`.
 - [ ] **Rotación/regeneración de `apiKey` de una `Sucursal`** — hoy solo se genera al crear la fila, sin manera de rotarla si se filtra.
 - [ ] **Matriz de permisos granular** — hoy solo existe una regla ("crear `UsuarioAdmin` es exclusivo de `DUENO`"). Graduar cuando un segundo caso de uso real lo exija (regla explícita del ADR, no antes).
+- [ ] **Decisión de producto pendiente:** ¿`RegistrarPago` debería rechazar pagos contra un `Miembro` inactivo?
+- [ ] **Deploy real** (Fase E del roadmap conversacional) — nada de esto se desplegó todavía a Docker/EasyPanel; cuando se haga, la carpeta `apps/web-admin/public/uploads/miembros` (fotos de perfil) va a necesitar un volumen persistente montado, o las fotos se pierden en cada rebuild del contenedor.
+- [ ] **Onboarding** (Fase B del roadmap conversacional) — todavía no arrancó.
+- [ ] Archivo `cookies.txt` suelto en la raíz del repo (quedó de una prueba de otra sesión) — pendiente de que el usuario confirme si se puede borrar.
 
 ## 🟢 Diseño / expansión futura (paquetes ya scaffolded, vacíos)
 
 - [ ] `packages/design-system` — tokens base (spacing, tipografía, sombras)
-- [ ] `packages/theming` — motor de resolución de `TemaOrganizacion` por variables CSS (incluye el fix pendiente de dark mode del panel, ver Plan 9)
-- [x] ~~`packages/ui`~~ — arrancado en el Plan 9 (`Button`/`Input`/`Badge`/`Sidebar`); se sigue poblando a medida que salgan más pantallas.
+- [x] ~~`packages/theming`~~ — poblado en el Plan 11 (tokens + `ThemeStyleTag`), pero solo con un tema fijo ("Adrenalina Xtreme"). Sigue pendiente: motor de resolución dinámica de `TemaOrganizacion` por variables CSS.
+- [x] ~~`packages/ui`~~ — arrancado en el Plan 9 (`Button`/`Input`/`Badge`/`Sidebar`), sumó `LogoBadge` en el Plan 11; se sigue poblando a medida que salgan más pantallas.
 - [ ] `packages/config` — presets compartidos de tsconfig/eslint/tailwind
 - [ ] `packages/domain-custom` — casos de uso a medida por cliente (solo cuando exista un cliente real que lo pida)
 
@@ -114,5 +144,6 @@ Sin bloqueadores 🔴 pendientes. Lo que sigue es funcionalidad core (🟡) y ex
 
 ## Notas de mantenimiento (no son tareas, son recordatorios operativos)
 
-- Después de cualquier cambio a `packages/db/prisma/schema.prisma`, correr `npx prisma generate` en cada máquina — el cliente generado no se versiona.
+- Después de cualquier cambio a `packages/db/prisma/schema.prisma`, correr `npx prisma migrate dev` (o `npx prisma generate` si la migración ya está aplicada) en cada máquina — el cliente generado no se versiona.
 - `packages/db/Dockerfile.migrate` sigue en el repo (temporal, para correr migraciones desde un servidor con red hacia la DB) — se puede borrar cuando se confirme que ya no hace falta.
+- Para vaciar los datos de prueba de Miembro (y Pago/CheckIn/Suscripcion asociados) sin tocar Plan/Sucursal/UsuarioAdmin: `npm run db:limpiar-miembros --workspace packages/db`.

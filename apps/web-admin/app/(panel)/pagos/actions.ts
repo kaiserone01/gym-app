@@ -31,6 +31,7 @@ export async function registrarPagoAction(
   const monto = Number(formData.get("monto"));
   const metodo = formData.get("metodo")?.toString();
   const tasaCambioRaw = formData.get("tasaCambio")?.toString();
+  const origen = formData.get("origen")?.toString();
 
   if (!miembroId || !planId || !metodo || Number.isNaN(monto)) {
     return { error: "Miembro, plan, método y monto son requeridos." };
@@ -66,5 +67,10 @@ export async function registrarPagoAction(
 
   revalidatePath("/pagos");
   revalidatePath(`/miembros/${miembroId}`);
-  redirect(`/miembros/${miembroId}`);
+
+  if (origen !== "miembro") {
+    redirect(`/miembros/${miembroId}`);
+  }
+
+  return {};
 }

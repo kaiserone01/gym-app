@@ -18,11 +18,12 @@ export default async function PaginaNuevoPago() {
   ]);
 
   const planesActivos = planes.filter((plan) => plan.activo);
+  const miembrosActivos = miembros.filter((m) => m.activo);
 
   return (
     <div className="max-w-lg p-8">
       <h1 className="mb-6 text-2xl font-semibold">Registrar pago</h1>
-      <FormularioPago accion={registrarPagoAction} miembros={miembros} planes={planesActivos} />
+      <FormularioPago accion={registrarPagoAction} miembros={miembrosActivos} planes={planesActivos} />
     </div>
   );
 }

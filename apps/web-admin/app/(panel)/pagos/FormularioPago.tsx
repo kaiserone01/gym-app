@@ -44,7 +44,10 @@ export function FormularioPago({
       )}
 
       {miembroIdFijo ? (
-        <input type="hidden" name="miembroId" value={miembroIdFijo} />
+        <>
+          <input type="hidden" name="miembroId" value={miembroIdFijo} />
+          <input type="hidden" name="origen" value="miembro" />
+        </>
       ) : (
         <label className="flex flex-col gap-1 text-sm text-neutral-700">
           Miembro

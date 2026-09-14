@@ -3,11 +3,32 @@
 ## Objetivo
 Migrar `gym-app` de app única a monorepo Turborepo, de schema single-tenant a SaaS multi-tenant, de lógica inline a arquitectura hexagonal, agregar login/sesión y CRUD de `Miembro` al panel admin (API + UI real) — siguiendo el ADR-001 (v1 + v2) y `docs/ROADMAP.md`, con superpowers (`writing-plans` + `executing-plans` + `subagent-driven-development`).
 
-## Estado actual — Planes 1–8 completos al 100%. Planes 1–7 verificados contra la base y la API reales; Plan 8 verificado sin DB (tsc/build/lint), falta la Tarea 10 (prueba en el navegador contra la base real, la corre el usuario). Sin bloqueadores 🔴 pendientes en `docs/ROADMAP.md`.
-- **Plan 1** (Turborepo scaffold), **Plan 2** (schema Organizacion/Sucursal), **Plan 3** (dominio hexagonal), **Plan 4** (login/sesión del panel admin), **Plan 5** (gestión de `Miembro`, API), **Plan 6** (gestión de Pago/Suscripcion/Plan), **Plan 7** (`docs/superpowers/plans/2026-09-13-integracion-bcv.md` — integración API BCV): completos, ver detalle abajo.
-- **Plan 8** (`docs/superpowers/plans/2026-09-13-panel-admin-miembros.md` — Panel Admin, pantalla de Miembros): completo, ejecutado con `superpowers:subagent-driven-development` (un implementer + un reviewer fresco por tarea, Tareas 1–9, más una revisión final de todo el branch). Ver detalle abajo.
+## Estado actual — Planes 1–10 completos al 100%. Planes 1–7 verificados contra la base y la API reales; Plan 8 con verificación end-to-end del usuario pendiente (no bloqueante); Planes 9 y 10 verificados sin DB (tsc/build/lint), falta su prueba en navegador contra la base real (la corre el usuario). Sin bloqueadores 🔴 pendientes en `docs/ROADMAP.md`.
+- **Plan 1** (Turborepo scaffold), **Plan 2** (schema Organizacion/Sucursal), **Plan 3** (dominio hexagonal), **Plan 4** (login/sesión del panel admin), **Plan 5** (gestión de `Miembro`, API), **Plan 6** (gestión de Pago/Suscripcion/Plan), **Plan 7** (integración API BCV), **Plan 8** (app de kiosco `apps/kiosk`): completos, ver `docs/ROADMAP.md` para el detalle (no repetido acá por brevedad, sin cambios desde el handoff anterior salvo la renumeración: el kiosco pasó a ser Plan 8, lo que corría antes como "Plan 8" — panel admin de Miembros — es ahora Plan 9).
+- **Plan 9** (`docs/superpowers/plans/2026-09-13-panel-admin-miembros.md` — Panel Admin, pantalla de Miembros): completo, ejecutado con `superpowers:subagent-driven-development`. Ver detalle abajo.
+- **Plan 10** (`docs/superpowers/plans/2026-09-13-panel-pagos-planes.md` — Panel Admin, pantallas de Pagos y Planes): completo, ejecutado con `superpowers:subagent-driven-development` (16 tareas + revisión final de todo el branch con 2 fixes aplicados). Ver detalle abajo.
 
-## Plan 8 — Panel Admin: pantalla de Miembros (UI real)
+## Plan 10 — Panel Admin: pantallas de Pagos y Planes (UI real)
+- Precedido de una sesión de brainstorming completa (spec en `docs/superpowers/specs/2026-09-13-panel-pagos-planes-design.md`) antes de escribir el plan — decisiones clave: registrar pago desde ambas entradas (`/pagos/nuevo` y ficha de miembro), historial global y por miembro, `tipoAcceso`/sucursales de un Plan solo-lectura en edición, selector de plan solo activos, método de pago con opciones fijas (`efectivo_usd`/`efectivo_bs`/`transferencia`/`zelle`/`binance_usdt`/`pago_movil`, tomadas del comentario del schema de Prisma).
+- **Creados:**
+  - `packages/domain/entities/SucursalResumen.ts` (sin `apiKey`, entidad independiente de `Sucursal`) + `packages/domain/use-cases/ListarSucursales.ts`
+  - `packages/infrastructure/persistence/prisma/PrismaSucursalRepository.ts` — primera implementación de `ISucursalRepository` en el repo (`listarPorOrganizacion` con `select: {id, nombre}` explícito, estructuralmente incapaz de filtrar `apiKey`; `buscarPorApiKey` implementado también aunque sin consumidores — la autenticación real del kiosco sigue usando `IKioskAuthValidator`/`KioskTokenValidator`, puerto distinto, no tocado)
+  - `apps/web-admin/app/(panel)/planes/{actions.ts,FormularioPlan.tsx,obtenerSucursales.ts,page.tsx,nuevo/page.tsx,[id]/page.tsx}` — CRUD completo de `Plan` con checkboxes de sucursales condicionales a `tipoAcceso`
+  - `apps/web-admin/app/(panel)/pagos/{actions.ts,FormularioPago.tsx,page.tsx,nuevo/page.tsx}` — alta y listado global de `Pago`
+- **Modificados:**
+  - `packages/domain/entities/Pago.ts` (+ `miembroNombre?` denormalizado), `packages/domain/ports/IPagoRepository.ts` (+ `listarPorOrganizacion`), `packages/domain/use-cases/ListarPagos.ts` (`miembroId` opcional — sin él lista toda la organización), `packages/infrastructure/persistence/prisma/PrismaPagoRepository.ts` (implementa, con `include` a `Miembro` para el nombre)
+  - `apps/web-admin/app/api/pagos/route.ts` — `GET` extendida para aceptar listar sin `miembroId` (retrocompatible, `?miembroId=` sigue funcionando igual)
+  - `apps/web-admin/app/(panel)/miembros/[id]/page.tsx` (del Plan 9) — extendida con historial de pagos del miembro + alta de pago inline; verificado línea por línea que la funcionalidad existente (formulario de edición, dar de baja/reactivar) no sufrió ninguna regresión
+- **Revisión final de todo el branch (opus):** 2 hallazgos Important, ambos gaps de diseño cruzados entre tareas (no errores de transcripción) — corregidos en un solo commit de fix + re-review acotada, limpia:
+  1. `registrarPagoAction` redirigía incondicionalmente a `/miembros/[id]` incluso cuando se invocaba desde esa misma página (el flujo inline agregado a la ficha del miembro), causando un remount que descartaba ediciones sin guardar en el formulario de datos del miembro → fix: input oculto `origen="miembro"` que suprime el redirect en ese caso (el `revalidatePath` ya alcanzaba para refrescar el historial in-place).
+  2. El selector de miembros en `/pagos/nuevo` no filtraba miembros inactivos, a diferencia del selector de planes (que sí filtraba `activo: true`) → fix: `miembrosActivos`, mismo patrón que `planesActivos`.
+- **5 hallazgos Minor parqueados con ruling** (no bloquean): falta un comentario explicando por qué el `select` de `PrismaSucursalRepository.listarPorOrganizacion` excluye `apiKey`; `FormularioPlan` no explica al usuario por qué `tipoAcceso`/sucursales aparecen deshabilitados en edición; el dominio `RegistrarPago` sigue sin validar `Miembro.activo` (pregunta de producto abierta, ver abajo); `/pagos` y el historial en la ficha de miembro no tienen paginación (ya diferido explícitamente en el plan); doble instanciación de `PrismaMemberRepository` en `miembros/[id]/page.tsx`.
+- **Verificación sin DB (todo verde):** `tsc --noEmit`, `turbo run build --filter=web-admin` (rutas `/planes`, `/planes/nuevo`, `/planes/[id]`, `/pagos`, `/pagos/nuevo` en el build junto con las de Miembros), `turbo run lint --filter=web-admin`.
+- **Pendiente del usuario:** Tarea 18 del plan — probar en el navegador contra la base real (crear/editar/dar de baja/reactivar un Plan, listar y registrar Pagos desde ambas entradas, confirmar que el historial se actualiza en ambos lugares sin perder el formulario de edición del miembro).
+- **Pendiente de decisión del usuario (no bloqueante):** ¿debería `RegistrarPago` rechazar pagos contra un `Miembro` inactivo? Hoy el dominio no lo valida — es una pregunta de producto, no un bug, documentada en la revisión final para decidir en un plan futuro.
+- Todo commiteado a `main` (working directo, sin worktree — mismo criterio que el Plan 9). Commits: `577dd09`, `c1d339b`, `2bd726e`, `b7f157c`, `b166ebd`, `5ded03f`, `fc34b6a`, `e1f456c`, `a070aec`, `ac417a4`, `332c357`, `2402ca4`, `ffd2b4e`, `be9d938`, `02694be`, `9edfef8`, `583819a`.
+
+## Plan 9 — Panel Admin: pantalla de Miembros (UI real)
 - Primera UI real del panel (`apps/web-admin`) — hasta ahora todo se probaba solo con `curl`. Server Components + Server Actions que llaman **directo** a los casos de uso de dominio del Plan 5 (no pasan por `/api/miembros*`, que quedan intactas para consumidores externos).
 - **Creados:**
   - `packages/ui/components/{Button,Input,Badge,Sidebar}.tsx` — primeros componentes reales de `packages/ui` (antes vacío), `peerDependencies` a `next`/`react`.
@@ -102,9 +123,11 @@ Migrar `gym-app` de app única a monorepo Turborepo, de schema single-tenant a S
 - Esta sandbox no tiene acceso TCP crudo a la DB real (`31.220.56.1:5456`) — todas las tareas que tocan la DB (migraciones, seed, curl contra el server corriendo) las corre el usuario en su máquina y pega el resultado acá.
 
 ## Próximos pasos
-`docs/ROADMAP.md` ya refleja el Plan 7 cerrado — **sin bloqueadores 🔴 pendientes**. Queda, sin urgencia:
-1. Agendar el cron externo real para `npm run actualizar-tasa` (Easypanel scheduled job u otro) — sugerido `0 23 * * 1-5` UTC (7pm VET, lunes a viernes). No configurado en ningún plan todavía — es deploy, no código.
-2. Integrar `ConvertirMontoUSDaVES` en algún consumidor real (ej. `RegistrarPago` mostrando el equivalente en VES) cuando haga falta.
-3. **App de kiosco física** (`apps/kiosk`) — hoy `/api/checkin` solo se prueba con `curl`.
-4. Rotación de `apiKey` de `Sucursal`, matriz de permisos más granular — ver `docs/ROADMAP.md` para el detalle.
-5. `packages/db/Dockerfile.migrate` sigue en el repo, inofensivo, se puede borrar cuando se confirme que ya no hace falta.
+`docs/ROADMAP.md` ya refleja los Planes 1–10 cerrados — **sin bloqueadores 🔴 pendientes**. Queda, sin urgencia:
+1. **Usuario:** correr la Tarea 18 del Plan 10 en el navegador contra la base real (ver detalle en la sección del Plan 10 arriba).
+2. **Usuario:** completar la verificación end-to-end pendiente del Plan 8 (kiosco) — check-in real, cédula inexistente, simular pérdida de red.
+3. Decidir si `RegistrarPago` debe rechazar pagos contra un `Miembro` inactivo (pregunta de producto del Plan 10, no bloqueante).
+4. Agendar el cron externo real para `npm run actualizar-tasa` (Easypanel scheduled job u otro) — sugerido `0 23 * * 1-5` UTC (7pm VET, lunes a viernes). No configurado en ningún plan todavía — es deploy, no código.
+5. Integrar `ConvertirMontoUSDaVES` en algún consumidor real (ej. `RegistrarPago` mostrando el equivalente en VES) cuando haga falta.
+6. Rotación de `apiKey` de `Sucursal`, matriz de permisos más granular, botón de logout visible, theming/dark mode completo (`packages/theming`) — ver `docs/ROADMAP.md` para el detalle.
+7. `packages/db/Dockerfile.migrate` sigue en el repo, inofensivo, se puede borrar cuando se confirme que ya no hace falta.

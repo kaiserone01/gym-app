@@ -70,7 +70,19 @@ Checklist vivo del proyecto. Se actualiza marcando `- [x]` a medida que se compl
 - [x] Verificado sin DB: `tsc --noEmit`, `turbo run build --filter=web-admin` (rutas `/`, `/miembros`, `/miembros/nuevo`, `/miembros/[id]` en el build), `turbo run lint --filter=web-admin`
 - [x] Revisión final de todo el branch: 2 hallazgos Important corregidos (panel ilegible en dark mode — sin fix de theming completo, solo `bg-white`/`text-neutral-900` explícito en el layout; faltaba reactivar un miembro dado de baja desde la UI) — ambos gaps del plan original, no de la implementación
 - [x] Tarea 10 del plan — probado en producción por el usuario, funcionando correctamente
-- Diferido explícitamente: pantallas de Pagos/Planes (sidebar ya tiene los links, dan 404), asignar Entrenador desde la UI, dashboard general, búsqueda/filtro/paginación, subida real de `fotoUrl`, gestión de `UsuarioAdmin` desde la UI, botón de logout visible, theming/dark mode completo (queda para `packages/theming`)
+- Diferido explícitamente (Pagos/Planes ya no aplica, ver Plan 10 abajo): asignar Entrenador desde la UI, dashboard general, búsqueda/filtro/paginación, subida real de `fotoUrl`, gestión de `UsuarioAdmin` desde la UI, botón de logout visible, theming/dark mode completo (queda para `packages/theming`)
+
+### Plan 10 — Panel Admin: pantallas de Pagos y Planes (UI real)
+- [x] `SucursalResumen` (entidad nueva, sin `apiKey`) + `ISucursalRepository.listarPorOrganizacion` + caso de uso `ListarSucursales` + `PrismaSucursalRepository` (primera implementación de ese puerto en el repo — `buscarPorApiKey` sigue sin consumidores, la autenticación real del kiosco usa `IKioskAuthValidator`/`KioskTokenValidator`)
+- [x] `Pago.miembroNombre` (denormalizado) + `IPagoRepository.listarPorOrganizacion` + `ListarPagos` extendido (miembroId opcional, sin él lista toda la organización) + `GET /api/pagos` extendida de forma retrocompatible
+- [x] Server Actions `crearPlanAction`/`actualizarPlanAction`/`darDeBajaPlanAction`/`reactivarPlanAction` + `FormularioPlan` (checkboxes de sucursales condicionales a `tipoAcceso`, `tipoAcceso`/sucursales deshabilitados en edición) + páginas `/planes`, `/planes/nuevo`, `/planes/[id]`
+- [x] Server Action `registrarPagoAction` + `FormularioPago` compartido (selector de miembro oculto vía `miembroIdFijo` cuando se invoca desde la ficha de un miembro) + páginas `/pagos` (listado global), `/pagos/nuevo`
+- [x] `/miembros/[id]` (Plan 9) extendida con historial de pagos del miembro + alta de pago inline — verificado línea por línea que no hubo regresión sobre la funcionalidad existente
+- [x] Verificado sin DB: `tsc --noEmit`, `turbo run build --filter=web-admin` (rutas `/planes`, `/planes/nuevo`, `/planes/[id]`, `/pagos`, `/pagos/nuevo` en el build), `turbo run lint --filter=web-admin`
+- [x] Revisión final de todo el branch: 2 hallazgos Important corregidos — (1) `registrarPagoAction` redirigía incondicionalmente a `/miembros/[id]` incluso invocado desde esa misma página, descartando ediciones sin guardar del formulario de datos del miembro (fix: input oculto `origen`, solo redirige si no vino del flujo inline); (2) el selector de miembros en `/pagos/nuevo` no filtraba inactivos, a diferencia del selector de planes (fix: `miembrosActivos`, mismo patrón). Ambos eran gaps de diseño cruzados entre tareas, no errores de transcripción.
+- [ ] **Pendiente del usuario:** Tarea 18 del plan — probar en el navegador contra la base real (crear/editar/dar de baja/reactivar un Plan, listar y registrar Pagos desde `/pagos/nuevo` y desde la ficha de un Miembro, confirmar que el historial se actualiza en ambos lugares)
+- **Pendiente de decisión del usuario (no bloqueante):** ¿debería `RegistrarPago` rechazar pagos contra un `Miembro` inactivo? Hoy el dominio no lo valida (fuera del alcance de este plan, documentado como pregunta abierta en la revisión final).
+- Diferido explícitamente: editar/cancelar un `Pago` ya registrado, dashboard/resumen financiero, filtros/búsqueda/paginación en `/pagos`/`/planes`, conversión USD↔VES en el formulario de pago, theming/dark mode completo, rotación de `apiKey` de `Sucursal`.
 
 ---
 

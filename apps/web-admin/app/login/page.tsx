@@ -2,6 +2,9 @@
 
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import { ThemeStyleTag } from "@gym-app/theming/ThemeStyleTag";
+import { temaAdrenalinaXtreme } from "@gym-app/theming/tokens";
+import { LogoBadge } from "@gym-app/ui/components/LogoBadge";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -33,49 +36,92 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-zinc-50 dark:bg-black">
-      <form
-        onSubmit={manejarSubmit}
-        className="flex w-full max-w-sm flex-col gap-4 rounded-lg border border-black/[.08] bg-white p-8 dark:border-white/[.145] dark:bg-zinc-900"
+    <>
+      <ThemeStyleTag tema={temaAdrenalinaXtreme} />
+      <link rel="preconnect" href="https://fonts.googleapis.com" />
+      <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+      <link
+        href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700&display=swap"
+        rel="stylesheet"
+      />
+
+      <main
+        className="flex min-h-screen items-center justify-center p-6"
+        style={{ background: "var(--gx-ground)", color: "var(--gx-ink)" }}
       >
-        <h1 className="text-xl font-semibold text-black dark:text-zinc-50">Iniciar sesión</h1>
-
-        {error && (
-          <p className="rounded bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">
-            {error}
-          </p>
-        )}
-
-        <label className="flex flex-col gap-1 text-sm text-zinc-700 dark:text-zinc-300">
-          Email
-          <input
-            type="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="rounded border border-black/[.08] px-3 py-2 dark:border-white/[.145] dark:bg-zinc-800 dark:text-zinc-50"
-          />
-        </label>
-
-        <label className="flex flex-col gap-1 text-sm text-zinc-700 dark:text-zinc-300">
-          Contraseña
-          <input
-            type="password"
-            required
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="rounded border border-black/[.08] px-3 py-2 dark:border-white/[.145] dark:bg-zinc-800 dark:text-zinc-50"
-          />
-        </label>
-
-        <button
-          type="submit"
-          disabled={cargando}
-          className="rounded-full bg-foreground px-5 py-2 text-background transition-colors hover:bg-[#383838] disabled:opacity-50 dark:hover:bg-[#ccc]"
+        <div
+          className="grid w-full max-w-3xl overflow-hidden rounded-2xl border md:grid-cols-2"
+          style={{ borderColor: "var(--gx-edge)", boxShadow: "0 40px 80px -40px rgba(0,0,0,0.75)" }}
         >
-          {cargando ? "Ingresando..." : "Ingresar"}
-        </button>
-      </form>
-    </main>
+          <div className="flex flex-col items-center justify-center gap-6 p-10" style={{ background: "var(--gx-ground)" }}>
+            <LogoBadge src="/branding/logo-adrenalina-gym.jpg" alt="Adrenalina Xtreme Gym" />
+            <div className="text-center">
+              <div className="text-3xl" style={{ fontFamily: '"Bebas Neue", sans-serif', letterSpacing: "0.04em" }}>
+                ADRENALINA <span style={{ color: "var(--gx-accent)" }}>XTREME</span>
+              </div>
+              <div
+                className="mt-1 text-xs uppercase"
+                style={{
+                  fontFamily: '"Barlow Condensed", sans-serif',
+                  fontWeight: 700,
+                  letterSpacing: "0.24em",
+                  color: "var(--gx-muted-dim)",
+                }}
+              >
+                Gym · Panel de administración
+              </div>
+            </div>
+          </div>
+
+          <form onSubmit={manejarSubmit} className="flex flex-col gap-4 p-10" style={{ background: "var(--gx-surface)" }}>
+            <h1 className="text-2xl" style={{ fontFamily: '"Bebas Neue", sans-serif', letterSpacing: "0.02em" }}>
+              Iniciar sesión
+            </h1>
+
+            {error && (
+              <p
+                className="rounded px-3 py-2 text-sm"
+                style={{ background: "color-mix(in srgb, var(--gx-bad) 15%, transparent)", color: "var(--gx-bad)" }}
+              >
+                {error}
+              </p>
+            )}
+
+            <label className="flex flex-col gap-1 text-sm" style={{ color: "var(--gx-muted)" }}>
+              Email
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="rounded border px-3 py-2 outline-none"
+                style={{ background: "var(--gx-surface-2)", borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }}
+              />
+            </label>
+
+            <label className="flex flex-col gap-1 text-sm" style={{ color: "var(--gx-muted)" }}>
+              Contraseña
+              <input
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="rounded border px-3 py-2 outline-none"
+                style={{ background: "var(--gx-surface-2)", borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }}
+              />
+            </label>
+
+            <button
+              type="submit"
+              disabled={cargando}
+              className="rounded px-5 py-2 font-semibold transition-opacity disabled:opacity-50"
+              style={{ background: "var(--gx-accent)", color: "var(--gx-accent-ink)" }}
+            >
+              {cargando ? "Ingresando..." : "Ingresar"}
+            </button>
+          </form>
+        </div>
+      </main>
+    </>
   );
 }

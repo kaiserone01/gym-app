@@ -46,4 +46,14 @@ export class PrismaPagoRepository implements IPagoRepository {
 
     return pagos.map(mapear);
   }
+
+  async listarPorOrganizacion(organizacionId: string): Promise<Pago[]> {
+    const pagos = await this.prisma.pago.findMany({
+      where: { miembro: { organizacionId } },
+      include: { miembro: { select: { nombre: true } } },
+      orderBy: { fechaPago: "desc" },
+    });
+
+    return pagos.map((pago) => ({ ...mapear(pago), miembroNombre: pago.miembro.nombre }));
+  }
 }

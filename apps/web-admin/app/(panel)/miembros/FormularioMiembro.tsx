@@ -136,6 +136,12 @@ export function FormularioMiembro({
         <input type="hidden" name="planTipo" value={planTipoActual} />
         <input type="hidden" name="precioPlan" value={precioActual} />
         <input type="hidden" name="planNombre" value={nombrePlanActual} />
+        {!esEdicion && (
+          <>
+            <input type="hidden" name="metodo" value={metodoPago} />
+            <input type="hidden" name="tasaCambio" value={tasaCambio} />
+          </>
+        )}
 
         <section className="rounded-xl border border-neutral-200 p-5">
           <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-neutral-500">
@@ -323,7 +329,6 @@ export function FormularioMiembro({
                 <label className="flex flex-col gap-1 text-sm text-neutral-700">
                   Método de pago
                   <select
-                    name="metodo"
                     form={idFormulario}
                     required
                     value={metodoPago}
@@ -340,7 +345,6 @@ export function FormularioMiembro({
                 </label>
 
                 <Input
-                  name="tasaCambio"
                   form={idFormulario}
                   label="Tasa de cambio (si pagó en Bs)"
                   type="number"

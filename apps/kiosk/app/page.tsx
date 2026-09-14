@@ -77,7 +77,7 @@ export default function PaginaCheckIn() {
     }
 
     setCedula("");
-    setTimeout(() => setEstado({ tipo: "esperando" }), 4000);
+    setTimeout(() => setEstado({ tipo: "esperando" }), 8000);
   }
 
   return (

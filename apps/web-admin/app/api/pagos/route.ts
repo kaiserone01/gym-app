@@ -1,4 +1,5 @@
 // POST /api/pagos            — registra un pago; crea/extiende la Suscripcion ACTIVA del Plan indicado.
+// GET  /api/pagos            — lista todos los pagos de la organización (más reciente primero).
 // GET  /api/pagos?miembroId= — lista el historial de pagos de ese miembro.
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
@@ -25,10 +26,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "No autenticado." }, { status: 401 });
   }
 
-  const miembroId = req.nextUrl.searchParams.get("miembroId");
-  if (!miembroId) {
-    return NextResponse.json({ error: "El parámetro miembroId es requerido." }, { status: 400 });
-  }
+  const miembroId = req.nextUrl.searchParams.get("miembroId") ?? undefined;
 
   try {
     const pagos = await listarPagos(

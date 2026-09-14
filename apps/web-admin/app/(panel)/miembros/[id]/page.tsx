@@ -40,7 +40,7 @@ export default async function PaginaEditarMiembro({ params }: { params: Promise<
   const planesActivos = planes.filter((plan) => plan.activo);
 
   return (
-    <div className="max-w-2xl p-8">
+    <div className="max-w-4xl p-8">
       <h1 className="mb-6 text-2xl font-semibold">Editar miembro</h1>
 
       <FormularioMiembro
@@ -49,6 +49,7 @@ export default async function PaginaEditarMiembro({ params }: { params: Promise<
           nombre: miembro.nombre,
           cedula: miembro.cedula,
           celular: miembro.celular ?? "",
+          fechaInscripcion: (miembro.fechaInscripcion ?? miembro.createdAt).toISOString().slice(0, 10),
           planTipo: miembro.planTipo,
           precioPlan: miembro.precioPlan,
         }}

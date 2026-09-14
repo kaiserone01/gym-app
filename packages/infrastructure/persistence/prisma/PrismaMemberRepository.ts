@@ -7,6 +7,7 @@ type FilaMiembro = {
   organizacionId: string;
   nombre: string;
   cedula: string;
+  fechaInscripcion: Date | null;
   fechaNacimiento: Date | null;
   celular: string | null;
   fotoUrl: string | null;
@@ -26,6 +27,7 @@ function mapear(miembro: FilaMiembro): Miembro {
     organizacionId: miembro.organizacionId,
     nombre: miembro.nombre,
     cedula: miembro.cedula,
+    fechaInscripcion: miembro.fechaInscripcion,
     fechaNacimiento: miembro.fechaNacimiento,
     celular: miembro.celular,
     fotoUrl: miembro.fotoUrl,

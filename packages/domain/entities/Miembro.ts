@@ -5,6 +5,7 @@ export interface Miembro {
   organizacionId: string;
   nombre: string;
   cedula: string;
+  fechaInscripcion: Date | null;
   fechaNacimiento: Date | null;
   celular: string | null;
   fotoUrl: string | null;
@@ -22,6 +23,7 @@ export interface DatosNuevoMiembro {
   organizacionId: string;
   nombre: string;
   cedula: string;
+  fechaInscripcion: Date | null;
   fechaNacimiento: Date | null;
   celular: string | null;
   fotoUrl: string | null;
@@ -32,6 +34,7 @@ export interface DatosNuevoMiembro {
 
 export interface CambiosMiembro {
   nombre?: string;
+  fechaInscripcion?: Date | null;
   fechaNacimiento?: Date | null;
   celular?: string | null;
   fotoUrl?: string | null;

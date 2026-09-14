@@ -87,6 +87,7 @@ model Miembro {
   organizacion     Organizacion @relation(fields: [organizacionId], references: [id])
   nombre           String
   cedula           String // única POR organización (ver @@unique abajo)
+  fechaInscripcion DateTime?
   fechaNacimiento  DateTime?
   celular          String?
   fotoUrl          String?

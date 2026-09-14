@@ -45,6 +45,7 @@ export async function POST(req: NextRequest) {
         organizacionId: usuario.organizacionId,
         nombre: body.nombre,
         cedula: body.cedula,
+        fechaInscripcion: body.fechaInscripcion ? new Date(body.fechaInscripcion) : null,
         fechaNacimiento: body.fechaNacimiento ? new Date(body.fechaNacimiento) : null,
         celular: body.celular ?? null,
         fotoUrl: body.fotoUrl ?? null,

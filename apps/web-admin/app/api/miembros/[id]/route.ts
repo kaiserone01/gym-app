@@ -55,6 +55,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const cambios: CambiosMiembro = {};
   if (body.nombre !== undefined) cambios.nombre = body.nombre;
+  if (body.fechaInscripcion !== undefined) {
+    cambios.fechaInscripcion = body.fechaInscripcion ? new Date(body.fechaInscripcion) : null;
+  }
   if (body.fechaNacimiento !== undefined) {
     cambios.fechaNacimiento = body.fechaNacimiento ? new Date(body.fechaNacimiento) : null;
   }

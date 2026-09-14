@@ -22,10 +22,11 @@ export async function crearMiembroAction(
 
   const nombre = formData.get("nombre")?.toString().trim();
   const cedula = formData.get("cedula")?.toString().trim();
+  const fechaInscripcionTexto = formData.get("fechaInscripcion")?.toString();
   const precioPlan = Number(formData.get("precioPlan"));
 
-  if (!nombre || !cedula || Number.isNaN(precioPlan)) {
-    return { error: "Nombre, cédula y precio del plan son requeridos." };
+  if (!nombre || !cedula || !fechaInscripcionTexto || Number.isNaN(precioPlan)) {
+    return { error: "Nombre, cédula, fecha de inscripción y precio del plan son requeridos." };
   }
 
   try {
@@ -35,6 +36,7 @@ export async function crearMiembroAction(
         organizacionId: usuario.organizacionId,
         nombre,
         cedula,
+        fechaInscripcion: new Date(`${fechaInscripcionTexto}T00:00:00`),
         fechaNacimiento: null,
         celular: formData.get("celular")?.toString() || null,
         fotoUrl: null,
@@ -63,10 +65,11 @@ export async function actualizarMiembroAction(
   if (!usuario) redirect("/login");
 
   const nombre = formData.get("nombre")?.toString().trim();
+  const fechaInscripcionTexto = formData.get("fechaInscripcion")?.toString();
   const precioPlan = Number(formData.get("precioPlan"));
 
-  if (!nombre || Number.isNaN(precioPlan)) {
-    return { error: "Nombre y precio del plan son requeridos." };
+  if (!nombre || !fechaInscripcionTexto || Number.isNaN(precioPlan)) {
+    return { error: "Nombre, fecha de inscripción y precio del plan son requeridos." };
   }
 
   try {
@@ -77,6 +80,7 @@ export async function actualizarMiembroAction(
         id,
         cambios: {
           nombre,
+          fechaInscripcion: new Date(`${fechaInscripcionTexto}T00:00:00`),
           celular: formData.get("celular")?.toString() || null,
           planTipo: formData.get("planTipo")?.toString() as PlanTipo,
           precioPlan,

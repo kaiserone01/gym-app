@@ -6,24 +6,113 @@ import { PrismaMemberRepository } from "@gym-app/infrastructure/persistence/pris
 import { listarMiembros } from "@gym-app/domain/use-cases/ListarMiembros";
 import { Button } from "@gym-app/ui/components/Button";
 import { EstadoToggle } from "./EstadoToggle";
+import { BotonImprimir } from "../BotonImprimir";
 
-export default async function PaginaMiembros() {
+interface Filtros {
+  nombre?: string;
+  inscritoDesde?: string;
+  inscritoHasta?: string;
+  venceDesde?: string;
+  venceHasta?: string;
+}
+
+export default async function PaginaMiembros({ searchParams }: { searchParams: Promise<Filtros> }) {
   const usuario = await obtenerUsuarioDeSesionActual();
   if (!usuario) redirect("/login");
 
-  const miembros = await listarMiembros(
-    { miembros: new PrismaMemberRepository(prisma) },
-    usuario.organizacionId
-  );
+  const filtros = await searchParams;
+
+  const todos = await listarMiembros({ miembros: new PrismaMemberRepository(prisma) }, usuario.organizacionId);
+
+  const miembros = todos.filter((miembro) => {
+    if (
+      filtros.nombre &&
+      !`${miembro.nombre} ${miembro.cedula}`.toLowerCase().includes(filtros.nombre.toLowerCase())
+    ) {
+      return false;
+    }
+
+    const inscripcion = miembro.fechaInscripcion ?? miembro.createdAt;
+    if (filtros.inscritoDesde && inscripcion < new Date(`${filtros.inscritoDesde}T00:00:00`)) return false;
+    if (filtros.inscritoHasta && inscripcion > new Date(`${filtros.inscritoHasta}T23:59:59`)) return false;
+
+    if (filtros.venceDesde) {
+      if (!miembro.fechaVencimiento || miembro.fechaVencimiento < new Date(`${filtros.venceDesde}T00:00:00`)) {
+        return false;
+      }
+    }
+    if (filtros.venceHasta) {
+      if (!miembro.fechaVencimiento || miembro.fechaVencimiento > new Date(`${filtros.venceHasta}T23:59:59`)) {
+        return false;
+      }
+    }
+
+    return true;
+  });
 
   return (
     <div className="p-8">
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex items-center justify-between print:hidden">
         <h1 className="text-2xl font-semibold">Miembros</h1>
-        <Link href="/miembros/nuevo">
-          <Button>Nuevo miembro</Button>
-        </Link>
+        <div className="flex gap-2">
+          <BotonImprimir />
+          <Link href="/miembros/nuevo">
+            <Button>Nuevo miembro</Button>
+          </Link>
+        </div>
       </div>
+
+      <form method="get" className="mb-6 flex flex-wrap items-end gap-4 print:hidden">
+        <label className="flex flex-col gap-1 text-sm text-neutral-700">
+          Nombre o cédula
+          <input
+            type="text"
+            name="nombre"
+            defaultValue={filtros.nombre}
+            className="rounded border border-neutral-300 px-3 py-2"
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-sm text-neutral-700">
+          Inscrito desde
+          <input
+            type="date"
+            name="inscritoDesde"
+            defaultValue={filtros.inscritoDesde}
+            className="rounded border border-neutral-300 px-3 py-2"
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-sm text-neutral-700">
+          Inscrito hasta
+          <input
+            type="date"
+            name="inscritoHasta"
+            defaultValue={filtros.inscritoHasta}
+            className="rounded border border-neutral-300 px-3 py-2"
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-sm text-neutral-700">
+          Vence desde
+          <input
+            type="date"
+            name="venceDesde"
+            defaultValue={filtros.venceDesde}
+            className="rounded border border-neutral-300 px-3 py-2"
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-sm text-neutral-700">
+          Vence hasta
+          <input
+            type="date"
+            name="venceHasta"
+            defaultValue={filtros.venceHasta}
+            className="rounded border border-neutral-300 px-3 py-2"
+          />
+        </label>
+        <Button type="submit">Filtrar</Button>
+        <Link href="/miembros" className="text-sm text-neutral-500 hover:underline">
+          Limpiar
+        </Link>
+      </form>
 
       <table className="w-full border-collapse text-left">
         <thead>
@@ -63,7 +152,7 @@ export default async function PaginaMiembros() {
           {miembros.length === 0 && (
             <tr>
               <td colSpan={6} className="py-8 text-center text-neutral-500">
-                Todavía no hay miembros. Creá el primero.
+                Ningún miembro coincide con los filtros.
               </td>
             </tr>
           )}

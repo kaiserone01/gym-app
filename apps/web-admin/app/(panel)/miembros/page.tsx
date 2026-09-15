@@ -11,8 +11,6 @@ import { BotonImprimir } from "../BotonImprimir";
 interface Filtros {
   nombre?: string;
   inscritoDesde?: string;
-  inscritoHasta?: string;
-  venceDesde?: string;
   venceHasta?: string;
 }
 
@@ -34,13 +32,7 @@ export default async function PaginaMiembros({ searchParams }: { searchParams: P
 
     const inscripcion = miembro.fechaInscripcion ?? miembro.createdAt;
     if (filtros.inscritoDesde && inscripcion < new Date(`${filtros.inscritoDesde}T00:00:00`)) return false;
-    if (filtros.inscritoHasta && inscripcion > new Date(`${filtros.inscritoHasta}T23:59:59`)) return false;
 
-    if (filtros.venceDesde) {
-      if (!miembro.fechaVencimiento || miembro.fechaVencimiento < new Date(`${filtros.venceDesde}T00:00:00`)) {
-        return false;
-      }
-    }
     if (filtros.venceHasta) {
       if (!miembro.fechaVencimiento || miembro.fechaVencimiento > new Date(`${filtros.venceHasta}T23:59:59`)) {
         return false;
@@ -73,7 +65,7 @@ export default async function PaginaMiembros({ searchParams }: { searchParams: P
           />
         </label>
         <label className="flex flex-col gap-1 text-sm text-neutral-700">
-          Inscrito desde
+          Inscritos desde
           <input
             type="date"
             name="inscritoDesde"
@@ -82,25 +74,7 @@ export default async function PaginaMiembros({ searchParams }: { searchParams: P
           />
         </label>
         <label className="flex flex-col gap-1 text-sm text-neutral-700">
-          Inscrito hasta
-          <input
-            type="date"
-            name="inscritoHasta"
-            defaultValue={filtros.inscritoHasta}
-            className="rounded border border-neutral-300 px-3 py-2"
-          />
-        </label>
-        <label className="flex flex-col gap-1 text-sm text-neutral-700">
-          Vence desde
-          <input
-            type="date"
-            name="venceDesde"
-            defaultValue={filtros.venceDesde}
-            className="rounded border border-neutral-300 px-3 py-2"
-          />
-        </label>
-        <label className="flex flex-col gap-1 text-sm text-neutral-700">
-          Vence hasta
+          Vencidos hasta
           <input
             type="date"
             name="venceHasta"

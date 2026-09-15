@@ -109,6 +109,15 @@ Checklist vivo del proyecto. Se actualiza marcando `- [x]` a medida que se compl
 - **Pendiente:** conectar la tasa BCV real (`/api/tasa-cambio`, ya existe desde el Plan 7) en vez de la fija de 850 usada hoy en ambos formularios (`tasaBcvFija.ts` documenta el punto exacto de reemplazo)
 - Diferido explícitamente: que el catálogo de 4 planes+precios sea editable desde el panel sin tocar código (hoy es un array fijo en `planesPreset.ts`), unificar completamente `Miembro.planTipo/precioPlan` (recargo de entrenador) con el `Plan`/`Suscripcion` real
 
+### Plan 12 — Cierre de Caja y Reportes de Miembros
+- [x] `Pago.numeroOperacion` (últimos 4 dígitos del pago móvil, opcional) + `IPagoRepository.listarPorOrganizacionYRango` — usados por "Registrar pago", el "Primer pago" de Nuevo Miembro, y el reporte de caja
+- [x] Modelo `CierreCaja` nuevo (sella el total de un día, no se puede cerrar dos veces) + dominio (`cerrarCaja`, `obtenerReporteCaja`) — "alta" vs "renovación" se calcula en el momento (primer pago histórico del miembro), no es un campo guardado
+- [x] Pantalla `/caja`: reporte con selector de período (día/semana/mes), tabla tipo libro de caja (miembro, tipo, método, N° operación, monto), desglose por método, botón "Cerrar caja de este día", e "Imprimir" (`window.print()` + `print:hidden` de Tailwind, sin PDF del lado del servidor)
+- [x] `/miembros`: filtros por nombre/cédula, rango de fecha de inscripción y rango de vencimiento (vía `searchParams`, sin cambios al repositorio) + botón "Imprimir"
+- [x] Verificado sin DB: `tsc --noEmit`, `turbo run build`/`lint` en `web-admin` (y `kiosk`, sin regresión)
+- [ ] **Pendiente del usuario:** aplicar la migración (`npx prisma migrate dev`) y probar en el navegador — registrar un pago con Pago Móvil, ver `/caja` en día/semana/mes, cerrar un día, confirmar que no se puede cerrar dos veces, probar los filtros de `/miembros`, probar "Imprimir" en ambas pantallas.
+- Diferido explícitamente: cierre de caja por Sucursal (hoy `Pago` no tiene noción de sucursal), restringir quién puede cerrar caja (matriz de permisos), bloquear pagos con fecha dentro de un día ya cerrado, exportar a PDF/Excel real, editar/anular un `CierreCaja` ya creado.
+
 ---
 
 ## 🔴 Bloqueadores antes de exponer nada a un usuario real

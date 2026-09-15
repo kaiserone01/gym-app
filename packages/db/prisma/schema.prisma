@@ -24,6 +24,7 @@ model Organizacion {
   miembros      Miembro[]
   planes        Plan[]
   tema          TemaOrganizacion?
+  cierresCaja   CierreCaja[]
 }
 
 model Sucursal {
@@ -160,8 +161,21 @@ model Pago {
   miembro    Miembro  @relation(fields: [miembroId], references: [id])
   monto      Decimal  @db.Decimal(10, 2)
   metodo     String // "efectivo_usd" | "efectivo_bs" | "pago_movil" | etc.
+  numeroOperacion String? // últimos 4 dígitos del pago móvil — solo cuando metodo = "pago_movil"
   tasaCambio Decimal? @db.Decimal(10, 2) // tasa usada si fue pago en bolívares
   fechaPago  DateTime @default(now())
+}
+
+model CierreCaja {
+  id             String       @id @default(cuid())
+  organizacionId String
+  organizacion   Organizacion @relation(fields: [organizacionId], references: [id])
+  fecha          DateTime // medianoche del día que cubre este cierre
+  totalUSD       Decimal      @db.Decimal(10, 2)
+  desglose       Json // { [metodo: string]: number } — total por método, en USD
+  cerradoEn      DateTime     @default(now())
+
+  @@unique([organizacionId, fecha])
 }
 
 model CheckIn {

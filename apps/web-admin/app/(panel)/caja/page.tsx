@@ -7,6 +7,7 @@ import { obtenerReporteCaja } from "@gym-app/domain/use-cases/ObtenerReporteCaja
 import { Button } from "@gym-app/ui/components/Button";
 import { METODOS_PAGO } from "../metodosPago";
 import { BotonImprimir } from "../BotonImprimir";
+import { TASA_BCV_FIJA, formatearBs } from "../tasaBcvFija";
 import { DetalleColapsable } from "./DetalleColapsable";
 import { cerrarCajaAction } from "./actions";
 
@@ -133,6 +134,7 @@ export default async function PaginaCaja({
               <th className="py-2">Método</th>
               <th className="py-2">N° operación</th>
               <th className="py-2">Monto (USD)</th>
+              <th className="py-2">Monto (Bs)</th>
             </tr>
           </thead>
           <tbody>
@@ -143,12 +145,13 @@ export default async function PaginaCaja({
                 <td className="py-2">{nombreMetodo(fila.metodo)}</td>
                 <td className="py-2">{fila.numeroOperacion ?? "—"}</td>
                 <td className="py-2">${fila.monto.toFixed(2)}</td>
+                <td className="py-2">Bs. {formatearBs(fila.monto * TASA_BCV_FIJA)}</td>
               </tr>
             ))}
 
             {reporte.filas.length === 0 && (
               <tr>
-                <td colSpan={5} className="py-8 text-center text-neutral-500">
+                <td colSpan={6} className="py-8 text-center text-neutral-500">
                   Sin pagos en este período.
                 </td>
               </tr>

@@ -4,7 +4,7 @@ import { useActionState, useState } from "react";
 import { Button } from "@gym-app/ui/components/Button";
 import { Input } from "@gym-app/ui/components/Input";
 import type { EstadoFormularioPago } from "./actions";
-import { METODOS_PAGO } from "../metodosPago";
+import { METODOS_PAGO, METODOS_BANCARIOS } from "../metodosPago";
 import { TASA_BCV_FIJA, METODOS_EN_BS, formatearBs } from "../tasaBcvFija";
 
 export interface MiembroParaSelector {
@@ -133,7 +133,7 @@ export function FormularioPago({
         </>
       )}
 
-      {metodo === "pago_movil" && (
+      {METODOS_BANCARIOS.includes(metodo) && (
         <Input
           name="numeroOperacion"
           label="Número de operación (últimos 4 dígitos)"

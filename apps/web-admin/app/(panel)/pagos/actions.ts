@@ -14,6 +14,7 @@ import {
   PlanNoEncontradoError,
   PlanInactivoError,
 } from "@gym-app/domain/use-cases/RegistrarPago";
+import { METODOS_BANCARIOS } from "../metodosPago";
 
 export interface EstadoFormularioPago {
   error?: string;
@@ -38,8 +39,8 @@ export async function registrarPagoAction(
     return { error: "Miembro, plan, método y monto son requeridos." };
   }
 
-  if (metodo === "pago_movil" && !numeroOperacion) {
-    return { error: "El número de operación es requerido para pagos móviles." };
+  if (METODOS_BANCARIOS.includes(metodo) && !numeroOperacion) {
+    return { error: "El número de operación es requerido para pagos por banco." };
   }
 
   try {

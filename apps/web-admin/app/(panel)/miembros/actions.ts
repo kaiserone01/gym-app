@@ -22,6 +22,7 @@ import {
   PlanInactivoError,
 } from "@gym-app/domain/use-cases/RegistrarPago";
 import type { PlanTipo } from "@gym-app/domain/entities/Miembro";
+import { METODOS_BANCARIOS } from "../metodosPago";
 
 export interface EstadoFormularioMiembro {
   error?: string;
@@ -80,8 +81,8 @@ export async function crearMiembroAction(
     return { error: "Nombre, cédula, fecha de inscripción, plan y método de pago son requeridos." };
   }
 
-  if (metodo === "pago_movil" && !numeroOperacion) {
-    return { error: "El número de operación es requerido para pagos móviles." };
+  if (METODOS_BANCARIOS.includes(metodo) && !numeroOperacion) {
+    return { error: "El número de operación es requerido para pagos por banco." };
   }
 
   const fotoUrl = await guardarFoto(formData.get("foto"));

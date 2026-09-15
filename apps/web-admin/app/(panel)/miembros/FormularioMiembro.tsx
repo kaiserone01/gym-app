@@ -5,7 +5,7 @@ import { Button } from "@gym-app/ui/components/Button";
 import { Input } from "@gym-app/ui/components/Input";
 import type { EstadoFormularioMiembro } from "./actions";
 import { PRESETS_PLAN_MIEMBRO } from "./planesPreset";
-import { METODOS_PAGO } from "../metodosPago";
+import { METODOS_PAGO, METODOS_BANCARIOS } from "../metodosPago";
 import { TASA_BCV_FIJA, METODOS_EN_BS, formatearBs } from "../tasaBcvFija";
 import type { EntrenadorResumen } from "@gym-app/domain/entities/EntrenadorResumen";
 
@@ -150,7 +150,11 @@ export function FormularioMiembro({
           <>
             <input type="hidden" name="metodo" value={metodoPago} />
             <input type="hidden" name="tasaCambio" value={tasaCambioActual} />
-            <input type="hidden" name="numeroOperacion" value={metodoPago === "pago_movil" ? numeroOperacion : ""} />
+            <input
+              type="hidden"
+              name="numeroOperacion"
+              value={METODOS_BANCARIOS.includes(metodoPago) ? numeroOperacion : ""}
+            />
           </>
         )}
 
@@ -355,7 +359,7 @@ export function FormularioMiembro({
                   </select>
                 </label>
 
-                {metodoPago === "pago_movil" && (
+                {METODOS_BANCARIOS.includes(metodoPago) && (
                   <Input
                     form={idFormulario}
                     label="Número de operación (últimos 4 dígitos)"

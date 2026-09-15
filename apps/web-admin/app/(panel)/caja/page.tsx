@@ -7,6 +7,7 @@ import { obtenerReporteCaja } from "@gym-app/domain/use-cases/ObtenerReporteCaja
 import { Button } from "@gym-app/ui/components/Button";
 import { METODOS_PAGO } from "../metodosPago";
 import { BotonImprimir } from "../BotonImprimir";
+import { DetalleColapsable } from "./DetalleColapsable";
 import { cerrarCajaAction } from "./actions";
 
 // OJO: nunca usar fecha.toISOString() acá — convierte a UTC primero, y de
@@ -113,54 +114,61 @@ export default async function PaginaCaja({
         <Button type="submit">Ver</Button>
       </form>
 
-      <p className="mb-4 text-sm text-neutral-500">
-        {formatearFechaISO(desde)} — {formatearFechaISO(hasta)}
-        {cierreDelDia && <span className="ml-2 font-medium text-green-700">✓ Día cerrado</span>}
-      </p>
-
-      <table className="mb-6 w-full border-collapse text-left">
-        <thead>
-          <tr className="border-b text-sm text-neutral-500">
-            <th className="py-2">Fecha</th>
-            <th className="py-2">Miembro</th>
-            <th className="py-2">Método</th>
-            <th className="py-2">N° operación</th>
-            <th className="py-2">Monto (USD)</th>
-          </tr>
-        </thead>
-        <tbody>
-          {reporte.filas.map((fila) => (
-            <tr key={fila.pagoId} className="border-b">
-              <td className="py-2">{new Date(fila.fechaPago).toLocaleDateString("es-VE")}</td>
-              <td className="py-2">{fila.miembroNombre}</td>
-              <td className="py-2">{nombreMetodo(fila.metodo)}</td>
-              <td className="py-2">{fila.numeroOperacion ?? "—"}</td>
-              <td className="py-2">${fila.monto.toFixed(2)}</td>
-            </tr>
-          ))}
-
-          {reporte.filas.length === 0 && (
-            <tr>
-              <td colSpan={5} className="py-8 text-center text-neutral-500">
-                Sin pagos en este período.
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
-
-      <div className="mb-6 flex flex-col gap-1 rounded-xl border border-neutral-200 p-5 text-sm">
-        {Object.entries(reporte.desglosePorMetodo).map(([metodo, monto]) => (
-          <div key={metodo} className="flex justify-between">
-            <span className="text-neutral-500">{nombreMetodo(metodo)}</span>
-            <span className="font-medium text-neutral-900">${monto.toFixed(2)}</span>
-          </div>
-        ))}
-        <div className="mt-2 flex justify-between border-t border-neutral-200 pt-2 text-base">
-          <span className="font-semibold text-neutral-700">Total</span>
-          <span className="font-bold text-neutral-900">${reporte.totalUSD.toFixed(2)}</span>
-        </div>
+      <div className="mb-4 flex items-center gap-3 text-sm text-neutral-500">
+        <span>
+          {formatearFechaISO(desde)} — {formatearFechaISO(hasta)}
+        </span>
+        {cierreDelDia && <span className="font-medium text-green-700">✓ Día cerrado</span>}
+        <span className="ml-auto text-base font-semibold text-neutral-900">
+          Total: ${reporte.totalUSD.toFixed(2)}
+        </span>
       </div>
+
+      <DetalleColapsable abiertoPorDefecto={!cierreDelDia}>
+        <table className="mb-6 w-full border-collapse text-left">
+          <thead>
+            <tr className="border-b text-sm text-neutral-500">
+              <th className="py-2">Fecha</th>
+              <th className="py-2">Miembro</th>
+              <th className="py-2">Método</th>
+              <th className="py-2">N° operación</th>
+              <th className="py-2">Monto (USD)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {reporte.filas.map((fila) => (
+              <tr key={fila.pagoId} className="border-b">
+                <td className="py-2">{new Date(fila.fechaPago).toLocaleDateString("es-VE")}</td>
+                <td className="py-2">{fila.miembroNombre}</td>
+                <td className="py-2">{nombreMetodo(fila.metodo)}</td>
+                <td className="py-2">{fila.numeroOperacion ?? "—"}</td>
+                <td className="py-2">${fila.monto.toFixed(2)}</td>
+              </tr>
+            ))}
+
+            {reporte.filas.length === 0 && (
+              <tr>
+                <td colSpan={5} className="py-8 text-center text-neutral-500">
+                  Sin pagos en este período.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+
+        <div className="mb-6 flex flex-col gap-1 rounded-xl border border-neutral-200 p-5 text-sm">
+          {Object.entries(reporte.desglosePorMetodo).map(([metodo, monto]) => (
+            <div key={metodo} className="flex justify-between">
+              <span className="text-neutral-500">{nombreMetodo(metodo)}</span>
+              <span className="font-medium text-neutral-900">${monto.toFixed(2)}</span>
+            </div>
+          ))}
+          <div className="mt-2 flex justify-between border-t border-neutral-200 pt-2 text-base">
+            <span className="font-semibold text-neutral-700">Total</span>
+            <span className="font-bold text-neutral-900">${reporte.totalUSD.toFixed(2)}</span>
+          </div>
+        </div>
+      </DetalleColapsable>
 
       {periodo === "dia" && !cierreDelDia && (
         <form action={cerrarCajaAction} className="print:hidden">

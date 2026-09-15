@@ -74,9 +74,14 @@ export async function crearMiembroAction(
   const planNombre = formData.get("planNombre")?.toString().trim();
   const metodo = formData.get("metodo")?.toString();
   const tasaCambioRaw = formData.get("tasaCambio")?.toString();
+  const numeroOperacion = formData.get("numeroOperacion")?.toString().trim() || null;
 
   if (!nombre || !cedula || !fechaInscripcionTexto || !planNombre || !metodo || Number.isNaN(precioPlan)) {
     return { error: "Nombre, cédula, fecha de inscripción, plan y método de pago son requeridos." };
+  }
+
+  if (metodo === "pago_movil" && !numeroOperacion) {
+    return { error: "El número de operación es requerido para pagos móviles." };
   }
 
   const fotoUrl = await guardarFoto(formData.get("foto"));
@@ -125,6 +130,7 @@ export async function crearMiembroAction(
         planId,
         monto: precioPlan,
         metodo,
+        numeroOperacion,
         tasaCambio: tasaCambioRaw ? Number(tasaCambioRaw) : null,
       }
     );

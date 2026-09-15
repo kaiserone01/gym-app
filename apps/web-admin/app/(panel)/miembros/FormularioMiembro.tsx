@@ -88,6 +88,7 @@ export function FormularioMiembro({
   );
   const [errorPrecioPersonalizado, setErrorPrecioPersonalizado] = useState<string | null>(null);
   const [metodoPago, setMetodoPago] = useState("");
+  const [numeroOperacion, setNumeroOperacion] = useState("");
   const [mostrarTicket, setMostrarTicket] = useState(false);
 
   const esCustom = presetKey === "personalizado";
@@ -143,6 +144,7 @@ export function FormularioMiembro({
           <>
             <input type="hidden" name="metodo" value={metodoPago} />
             <input type="hidden" name="tasaCambio" value={tasaCambioActual} />
+            <input type="hidden" name="numeroOperacion" value={metodoPago === "pago_movil" ? numeroOperacion : ""} />
           </>
         )}
 
@@ -346,6 +348,18 @@ export function FormularioMiembro({
                     ))}
                   </select>
                 </label>
+
+                {metodoPago === "pago_movil" && (
+                  <Input
+                    form={idFormulario}
+                    label="Número de operación (últimos 4 dígitos)"
+                    required
+                    maxLength={4}
+                    pattern="[0-9]{4}"
+                    value={numeroOperacion}
+                    onChange={(e) => setNumeroOperacion(e.target.value)}
+                  />
+                )}
 
                 {esPagoEnBs && montoBsActual !== null && (
                   <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-3 text-sm">

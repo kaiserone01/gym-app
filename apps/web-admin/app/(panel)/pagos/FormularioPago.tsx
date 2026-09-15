@@ -133,6 +133,16 @@ export function FormularioPago({
         </>
       )}
 
+      {metodo === "pago_movil" && (
+        <Input
+          name="numeroOperacion"
+          label="Número de operación (últimos 4 dígitos)"
+          required
+          maxLength={4}
+          pattern="[0-9]{4}"
+        />
+      )}
+
       <Button type="submit" disabled={enviando}>
         {enviando ? "Registrando..." : "Registrar pago"}
       </Button>

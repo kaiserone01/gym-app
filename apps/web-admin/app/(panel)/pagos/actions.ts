@@ -32,9 +32,14 @@ export async function registrarPagoAction(
   const metodo = formData.get("metodo")?.toString();
   const tasaCambioRaw = formData.get("tasaCambio")?.toString();
   const origen = formData.get("origen")?.toString();
+  const numeroOperacion = formData.get("numeroOperacion")?.toString().trim() || null;
 
   if (!miembroId || !planId || !metodo || Number.isNaN(monto)) {
     return { error: "Miembro, plan, método y monto son requeridos." };
+  }
+
+  if (metodo === "pago_movil" && !numeroOperacion) {
+    return { error: "El número de operación es requerido para pagos móviles." };
   }
 
   try {
@@ -51,6 +56,7 @@ export async function registrarPagoAction(
         planId,
         monto,
         metodo,
+        numeroOperacion,
         tasaCambio: tasaCambioRaw ? Number(tasaCambioRaw) : null,
       }
     );

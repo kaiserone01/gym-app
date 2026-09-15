@@ -8,6 +8,9 @@ export interface FilaReporteCaja {
   metodo: string;
   numeroOperacion: string | null;
   fechaPago: Date;
+  // Precio del plan que el Miembro tiene hoy — usado para agrupar el
+  // reporte por tipo de plan dentro de cada método/banco.
+  miembroPrecioPlan: number;
 }
 
 export interface ReporteCaja {
@@ -38,6 +41,7 @@ export async function obtenerReporteCaja(
       metodo: pago.metodo,
       numeroOperacion: pago.numeroOperacion,
       fechaPago: pago.fechaPago,
+      miembroPrecioPlan: pago.miembroPrecioPlan ?? 0,
     });
   }
 

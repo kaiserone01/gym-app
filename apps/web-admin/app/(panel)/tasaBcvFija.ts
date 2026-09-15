@@ -2,7 +2,16 @@
 // /api/tasa-cambio (ya alimentada por apps/worker con la tasa BCV real),
 // esto se reemplaza por ese valor en vivo.
 export const TASA_BCV_FIJA = 850;
-export const METODOS_EN_BS = ["efectivo_bs", "pago_movil"];
+export const METODOS_EN_BS = [
+  "efectivo_bs",
+  "pago_movil",
+  "transferencia_bdv",
+  "transferencia_mercantil",
+  "punto_banesco",
+  "biopago",
+  "punto_tesoro",
+  "transferencia",
+];
 
 export function formatearBs(monto: number): string {
   return monto.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });

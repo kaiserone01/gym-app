@@ -8,8 +8,10 @@ import { Button } from "@gym-app/ui/components/Button";
 import { METODOS_PAGO } from "../metodosPago";
 import { BotonImprimir } from "../BotonImprimir";
 import { TASA_BCV_FIJA, formatearBs } from "../tasaBcvFija";
+import { PRESETS_PLAN_MIEMBRO } from "../miembros/planesPreset";
 import { DetalleColapsable } from "./DetalleColapsable";
 import { cerrarCajaAction } from "./actions";
+import type { FilaReporteCaja } from "@gym-app/domain/use-cases/ObtenerReporteCaja";
 
 // OJO: nunca usar fecha.toISOString() acá — convierte a UTC primero, y de
 // noche (pasadas las 8pm en Venezuela, UTC-4) eso salta al día siguiente.
@@ -57,6 +59,48 @@ function finDeMes(fecha: Date): Date {
 
 function nombreMetodo(valor: string): string {
   return METODOS_PAGO.find((m) => m.value === valor)?.label ?? valor;
+}
+
+// El plan que pagó cada fila no se guarda en el Pago — se infiere del
+// precio del plan que el Miembro tiene hoy, comparándolo contra el
+// catálogo fijo de presets. No matchea ⇒ el miembro tiene un precio
+// "Personalizado" (o cambió de plan después de este pago).
+function nombrePlan(precioPlan: number): string {
+  return PRESETS_PLAN_MIEMBRO.find((preset) => preset.precio === precioPlan)?.nombre ?? "Personalizado";
+}
+
+interface GrupoPlan {
+  cantidad: number;
+  monto: number;
+}
+
+interface GrupoMetodo {
+  metodo: string;
+  cantidad: number;
+  monto: number;
+  porPlan: Map<string, GrupoPlan>;
+}
+
+function agruparPorMetodoYPlan(filas: FilaReporteCaja[]): GrupoMetodo[] {
+  const grupos = new Map<string, GrupoMetodo>();
+
+  for (const fila of filas) {
+    let grupo = grupos.get(fila.metodo);
+    if (!grupo) {
+      grupo = { metodo: fila.metodo, cantidad: 0, monto: 0, porPlan: new Map() };
+      grupos.set(fila.metodo, grupo);
+    }
+    grupo.cantidad += 1;
+    grupo.monto += fila.monto;
+
+    const plan = nombrePlan(fila.miembroPrecioPlan);
+    const grupoPlan = grupo.porPlan.get(plan) ?? { cantidad: 0, monto: 0 };
+    grupoPlan.cantidad += 1;
+    grupoPlan.monto += fila.monto;
+    grupo.porPlan.set(plan, grupoPlan);
+  }
+
+  return [...grupos.values()].sort((a, b) => b.monto - a.monto);
 }
 
 export default async function PaginaCaja({
@@ -159,13 +203,33 @@ export default async function PaginaCaja({
           </tbody>
         </table>
 
-        <div className="mb-6 flex flex-col gap-1 rounded-xl border border-neutral-200 p-5 text-sm">
-          {Object.entries(reporte.desglosePorMetodo).map(([metodo, monto]) => (
-            <div key={metodo} className="flex justify-between">
-              <span className="text-neutral-500">{nombreMetodo(metodo)}</span>
-              <span className="font-medium text-neutral-900">${monto.toFixed(2)}</span>
+        <div className="mb-6 flex flex-col gap-3 rounded-xl border border-neutral-200 p-5 text-sm">
+          {agruparPorMetodoYPlan(reporte.filas).map((grupo) => (
+            <div key={grupo.metodo}>
+              <div className="flex justify-between">
+                <span className="font-medium text-neutral-900">
+                  {nombreMetodo(grupo.metodo)}{" "}
+                  <span className="font-normal text-neutral-500">
+                    ({grupo.cantidad} {grupo.cantidad === 1 ? "operación" : "operaciones"})
+                  </span>
+                </span>
+                <span className="font-medium text-neutral-900">${grupo.monto.toFixed(2)}</span>
+              </div>
+              <div className="ml-4 mt-1 flex flex-col gap-0.5">
+                {[...grupo.porPlan.entries()].map(([plan, datos]) => (
+                  <div key={plan} className="flex justify-between text-neutral-500">
+                    <span>
+                      {datos.cantidad} {plan}
+                    </span>
+                    <span>${datos.monto.toFixed(2)}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           ))}
+
+          {reporte.filas.length === 0 && <p className="text-neutral-500">Sin pagos en este período.</p>}
+
           <div className="mt-2 flex justify-between border-t border-neutral-200 pt-2 text-base">
             <span className="font-semibold text-neutral-700">Total</span>
             <span className="font-bold text-neutral-900">${reporte.totalUSD.toFixed(2)}</span>

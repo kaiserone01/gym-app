@@ -9,7 +9,6 @@ import { METODOS_PAGO } from "../metodosPago";
 import { BotonImprimir } from "../BotonImprimir";
 import { TASA_BCV_FIJA, formatearBs } from "../tasaBcvFija";
 import { PRESETS_PLAN_MIEMBRO } from "../miembros/planesPreset";
-import { DetalleColapsable } from "./DetalleColapsable";
 import { cerrarCajaAction } from "./actions";
 import type { FilaReporteCaja } from "@gym-app/domain/use-cases/ObtenerReporteCaja";
 
@@ -103,15 +102,17 @@ function agruparPorMetodoYPlan(filas: FilaReporteCaja[]): GrupoMetodo[] {
   return [...grupos.values()].sort((a, b) => b.monto - a.monto);
 }
 
+const FILAS_POR_PAGINA = 50;
+
 export default async function PaginaCaja({
   searchParams,
 }: {
-  searchParams: Promise<{ fecha?: string; periodo?: string }>;
+  searchParams: Promise<{ fecha?: string; periodo?: string; pagina?: string }>;
 }) {
   const usuario = await obtenerUsuarioDeSesionActual();
   if (!usuario) redirect("/login");
 
-  const { fecha: fechaTexto, periodo = "dia" } = await searchParams;
+  const { fecha: fechaTexto, periodo = "dia", pagina: paginaTexto } = await searchParams;
   const fechaBase = fechaTexto ? new Date(`${fechaTexto}T00:00:00`) : new Date();
 
   const { desde, hasta } =
@@ -130,6 +131,14 @@ export default async function PaginaCaja({
     periodo === "dia"
       ? await new PrismaCierreCajaRepository(prisma).buscarPorFecha(usuario.organizacionId, inicioDelDia(fechaBase))
       : null;
+
+  const totalPaginas = Math.max(1, Math.ceil(reporte.filas.length / FILAS_POR_PAGINA));
+  const paginaActual = Math.min(Math.max(1, Number(paginaTexto) || 1), totalPaginas);
+  const filasPagina = reporte.filas.slice(
+    (paginaActual - 1) * FILAS_POR_PAGINA,
+    paginaActual * FILAS_POR_PAGINA
+  );
+  const parametrosBase = `fecha=${formatearFechaISO(fechaBase)}&periodo=${periodo}`;
 
   return (
     <div className="p-8">
@@ -169,73 +178,97 @@ export default async function PaginaCaja({
         </span>
       </div>
 
-      <DetalleColapsable abiertoPorDefecto={!cierreDelDia}>
-        <table className="mb-6 w-full border-collapse text-left">
-          <thead>
-            <tr className="border-b text-sm text-neutral-500">
-              <th className="py-2">Fecha</th>
-              <th className="py-2">Miembro</th>
-              <th className="py-2">Método</th>
-              <th className="py-2">N° operación</th>
-              <th className="py-2">Monto (USD)</th>
-              <th className="py-2">Monto (Bs)</th>
+      <table className="mb-2 w-full border-collapse text-left">
+        <thead>
+          <tr className="border-b text-sm text-neutral-500">
+            <th className="py-2">Fecha</th>
+            <th className="py-2">Miembro</th>
+            <th className="py-2">Método</th>
+            <th className="py-2">N° operación</th>
+            <th className="py-2">Monto (USD)</th>
+            <th className="py-2">Monto (Bs)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {filasPagina.map((fila) => (
+            <tr key={fila.pagoId} className="border-b">
+              <td className="py-2">{new Date(fila.fechaPago).toLocaleDateString("es-VE")}</td>
+              <td className="py-2">{fila.miembroNombre}</td>
+              <td className="py-2">{nombreMetodo(fila.metodo)}</td>
+              <td className="py-2">{fila.numeroOperacion ?? "—"}</td>
+              <td className="py-2">${fila.monto.toFixed(2)}</td>
+              <td className="py-2">Bs. {formatearBs(fila.monto * TASA_BCV_FIJA)}</td>
             </tr>
-          </thead>
-          <tbody>
-            {reporte.filas.map((fila) => (
-              <tr key={fila.pagoId} className="border-b">
-                <td className="py-2">{new Date(fila.fechaPago).toLocaleDateString("es-VE")}</td>
-                <td className="py-2">{fila.miembroNombre}</td>
-                <td className="py-2">{nombreMetodo(fila.metodo)}</td>
-                <td className="py-2">{fila.numeroOperacion ?? "—"}</td>
-                <td className="py-2">${fila.monto.toFixed(2)}</td>
-                <td className="py-2">Bs. {formatearBs(fila.monto * TASA_BCV_FIJA)}</td>
-              </tr>
-            ))}
-
-            {reporte.filas.length === 0 && (
-              <tr>
-                <td colSpan={6} className="py-8 text-center text-neutral-500">
-                  Sin pagos en este período.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-
-        <div className="mb-6 flex flex-col gap-3 rounded-xl border border-neutral-200 p-5 text-sm">
-          {agruparPorMetodoYPlan(reporte.filas).map((grupo) => (
-            <div key={grupo.metodo}>
-              <div className="flex justify-between">
-                <span className="font-medium text-neutral-900">
-                  {nombreMetodo(grupo.metodo)}{" "}
-                  <span className="font-normal text-neutral-500">
-                    ({grupo.cantidad} {grupo.cantidad === 1 ? "operación" : "operaciones"})
-                  </span>
-                </span>
-                <span className="font-medium text-neutral-900">${grupo.monto.toFixed(2)}</span>
-              </div>
-              <div className="ml-4 mt-1 flex flex-col gap-0.5">
-                {[...grupo.porPlan.entries()].map(([plan, datos]) => (
-                  <div key={plan} className="flex justify-between text-neutral-500">
-                    <span>
-                      {datos.cantidad} {plan}
-                    </span>
-                    <span>${datos.monto.toFixed(2)}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
           ))}
 
-          {reporte.filas.length === 0 && <p className="text-neutral-500">Sin pagos en este período.</p>}
+          {reporte.filas.length === 0 && (
+            <tr>
+              <td colSpan={6} className="py-8 text-center text-neutral-500">
+                Sin pagos en este período.
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
 
-          <div className="mt-2 flex justify-between border-t border-neutral-200 pt-2 text-base">
-            <span className="font-semibold text-neutral-700">Total</span>
-            <span className="font-bold text-neutral-900">${reporte.totalUSD.toFixed(2)}</span>
+      {totalPaginas > 1 && (
+        <div className="mb-6 flex items-center justify-between text-sm text-neutral-500 print:hidden">
+          <span>
+            Página {paginaActual} de {totalPaginas} ({reporte.filas.length} pagos)
+          </span>
+          <div className="flex gap-2">
+            {paginaActual > 1 && (
+              <a
+                href={`?${parametrosBase}&pagina=${paginaActual - 1}`}
+                className="rounded border border-neutral-300 px-3 py-1 hover:bg-neutral-50"
+              >
+                Anterior
+              </a>
+            )}
+            {paginaActual < totalPaginas && (
+              <a
+                href={`?${parametrosBase}&pagina=${paginaActual + 1}`}
+                className="rounded border border-neutral-300 px-3 py-1 hover:bg-neutral-50"
+              >
+                Siguiente
+              </a>
+            )}
           </div>
         </div>
-      </DetalleColapsable>
+      )}
+
+      <div className="mb-6 flex flex-col gap-3 rounded-xl border border-neutral-200 p-5 text-sm">
+        {agruparPorMetodoYPlan(reporte.filas).map((grupo) => (
+          <div key={grupo.metodo}>
+            <div className="flex justify-between">
+              <span className="font-medium text-neutral-900">
+                {nombreMetodo(grupo.metodo)}{" "}
+                <span className="font-normal text-neutral-500">
+                  ({grupo.cantidad} {grupo.cantidad === 1 ? "operación" : "operaciones"})
+                </span>
+              </span>
+              <span className="font-medium text-neutral-900">${grupo.monto.toFixed(2)}</span>
+            </div>
+            <div className="ml-4 mt-1 flex flex-col gap-0.5">
+              {[...grupo.porPlan.entries()].map(([plan, datos]) => (
+                <div key={plan} className="flex justify-between text-neutral-500">
+                  <span>
+                    {datos.cantidad} {plan}
+                  </span>
+                  <span>${datos.monto.toFixed(2)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+
+        {reporte.filas.length === 0 && <p className="text-neutral-500">Sin pagos en este período.</p>}
+
+        <div className="mt-2 flex justify-between border-t border-neutral-200 pt-2 text-base">
+          <span className="font-semibold text-neutral-700">Total</span>
+          <span className="font-bold text-neutral-900">${reporte.totalUSD.toFixed(2)}</span>
+        </div>
+      </div>
 
       {periodo === "dia" && !cierreDelDia && (
         <form action={cerrarCajaAction} className="print:hidden">

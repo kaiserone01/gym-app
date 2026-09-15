@@ -12,7 +12,7 @@ export function Sidebar({ items }: { items: ItemNav[] }) {
   const pathname = usePathname();
 
   return (
-    <nav className="w-56 shrink-0 border-r border-neutral-200 bg-neutral-50 p-4">
+    <nav className="w-56 shrink-0 border-r border-neutral-200 bg-neutral-50 p-4 print:hidden">
       <ul className="flex flex-col gap-1">
         {items.map((item) => {
           const activo = pathname.startsWith(item.href);

@@ -16,6 +16,7 @@ export default async function PanelLayout({ children }: { children: React.ReactN
           { href: "/miembros", label: "Miembros" },
           { href: "/pagos", label: "Pagos" },
           { href: "/planes", label: "Planes" },
+          { href: "/caja", label: "Caja" },
         ]}
       />
       <main className="flex-1">{children}</main>

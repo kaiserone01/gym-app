@@ -20,8 +20,14 @@ export interface ValoresFormularioMiembro {
   fotoUrl: string | null;
 }
 
+// OJO: nunca usar fecha.toISOString() acá — convierte a UTC primero, y de
+// noche (pasadas las 8pm en Venezuela, UTC-4) eso salta al día siguiente.
 function hoyISO(): string {
-  return new Date().toISOString().slice(0, 10);
+  const hoy = new Date();
+  const anio = hoy.getFullYear();
+  const mes = String(hoy.getMonth() + 1).padStart(2, "0");
+  const dia = String(hoy.getDate()).padStart(2, "0");
+  return `${anio}-${mes}-${dia}`;
 }
 
 function formatearFecha(fechaISO: string): string {

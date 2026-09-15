@@ -9,8 +9,14 @@ import { METODOS_PAGO } from "../metodosPago";
 import { BotonImprimir } from "../BotonImprimir";
 import { cerrarCajaAction } from "./actions";
 
+// OJO: nunca usar fecha.toISOString() acá — convierte a UTC primero, y de
+// noche (pasadas las 8pm en Venezuela, UTC-4) eso salta al día siguiente.
+// Se arma el string a mano con los componentes locales de la fecha.
 function formatearFechaISO(fecha: Date): string {
-  return fecha.toISOString().slice(0, 10);
+  const anio = fecha.getFullYear();
+  const mes = String(fecha.getMonth() + 1).padStart(2, "0");
+  const dia = String(fecha.getDate()).padStart(2, "0");
+  return `${anio}-${mes}-${dia}`;
 }
 
 function inicioDelDia(fecha: Date): Date {

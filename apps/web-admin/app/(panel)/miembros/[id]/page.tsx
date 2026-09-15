@@ -15,6 +15,15 @@ import { actualizarMiembroAction } from "../actions";
 import { FormularioPago } from "../../pagos/FormularioPago";
 import { registrarPagoAction } from "../../pagos/actions";
 
+// OJO: nunca usar fecha.toISOString() acá — convierte a UTC primero, y de
+// noche (pasadas las 8pm en Venezuela, UTC-4) eso salta al día siguiente.
+function formatearFechaISO(fecha: Date): string {
+  const anio = fecha.getFullYear();
+  const mes = String(fecha.getMonth() + 1).padStart(2, "0");
+  const dia = String(fecha.getDate()).padStart(2, "0");
+  return `${anio}-${mes}-${dia}`;
+}
+
 export default async function PaginaEditarMiembro({ params }: { params: Promise<{ id: string }> }) {
   const usuario = await obtenerUsuarioDeSesionActual();
   if (!usuario) redirect("/login");
@@ -53,7 +62,7 @@ export default async function PaginaEditarMiembro({ params }: { params: Promise<
           nombre: miembro.nombre,
           cedula: miembro.cedula,
           celular: miembro.celular ?? "",
-          fechaInscripcion: (miembro.fechaInscripcion ?? miembro.createdAt).toISOString().slice(0, 10),
+          fechaInscripcion: formatearFechaISO(miembro.fechaInscripcion ?? miembro.createdAt),
           planTipo: miembro.planTipo,
           precioPlan: miembro.precioPlan,
           entrenadorId: miembro.entrenadorId,

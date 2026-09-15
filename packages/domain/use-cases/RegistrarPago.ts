@@ -37,6 +37,7 @@ export interface DatosRegistrarPago {
   planId: string;
   monto: number;
   metodo: string;
+  numeroOperacion: string | null;
   tasaCambio: number | null;
 }
 
@@ -73,6 +74,7 @@ export async function registrarPago(deps: RegistrarPagoDeps, input: DatosRegistr
     miembroId: input.miembroId,
     monto: input.monto,
     metodo: input.metodo,
+    numeroOperacion: input.numeroOperacion,
     tasaCambio: input.tasaCambio,
   });
 }

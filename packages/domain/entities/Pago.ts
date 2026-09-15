@@ -7,6 +7,7 @@ export interface Pago {
   miembroNombre?: string;
   monto: number;
   metodo: string;
+  numeroOperacion: string | null;
   tasaCambio: number | null;
   fechaPago: Date;
 }
@@ -15,5 +16,6 @@ export interface DatosNuevoPago {
   miembroId: string;
   monto: number;
   metodo: string;
+  numeroOperacion: string | null;
   tasaCambio: number | null;
 }

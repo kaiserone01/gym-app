@@ -74,6 +74,7 @@ export async function POST(req: NextRequest) {
         planId: body.planId,
         monto: body.monto,
         metodo: body.metodo,
+        numeroOperacion: body.numeroOperacion ?? null,
         tasaCambio: body.tasaCambio ?? null,
       }
     );

@@ -123,7 +123,6 @@ export default async function PaginaCaja({
           <tr className="border-b text-sm text-neutral-500">
             <th className="py-2">Fecha</th>
             <th className="py-2">Miembro</th>
-            <th className="py-2">Tipo</th>
             <th className="py-2">Método</th>
             <th className="py-2">N° operación</th>
             <th className="py-2">Monto (USD)</th>
@@ -134,7 +133,6 @@ export default async function PaginaCaja({
             <tr key={fila.pagoId} className="border-b">
               <td className="py-2">{new Date(fila.fechaPago).toLocaleDateString("es-VE")}</td>
               <td className="py-2">{fila.miembroNombre}</td>
-              <td className="py-2">{fila.esAlta ? "Alta" : "Renovación"}</td>
               <td className="py-2">{nombreMetodo(fila.metodo)}</td>
               <td className="py-2">{fila.numeroOperacion ?? "—"}</td>
               <td className="py-2">${fila.monto.toFixed(2)}</td>
@@ -143,7 +141,7 @@ export default async function PaginaCaja({
 
           {reporte.filas.length === 0 && (
             <tr>
-              <td colSpan={6} className="py-8 text-center text-neutral-500">
+              <td colSpan={5} className="py-8 text-center text-neutral-500">
                 Sin pagos en este período.
               </td>
             </tr>

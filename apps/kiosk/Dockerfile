@@ -26,6 +26,11 @@ RUN npm ci
 
 COPY turbo.json turbo.json
 COPY apps/kiosk apps/kiosk
+# El kiosco importa código fuente (no solo tipos) de estos dos paquetes —
+# arriba solo se copió su package.json (para que npm ci resuelva el
+# workspace), acá se copia el código real que Turbopack necesita compilar.
+COPY packages/theming packages/theming
+COPY packages/ui packages/ui
 
 # Fija en build time (decisión de esta sesión) — un build por entorno
 # (staging/producción), no por Organización: todas comparten la misma

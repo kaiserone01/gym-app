@@ -2,7 +2,9 @@ import { IPagoRepository } from "../ports/IPagoRepository";
 import { ISuscripcionRepository } from "../ports/ISuscripcionRepository";
 import { IMemberRepository } from "../ports/IMemberRepository";
 import { IPlanRepository } from "../ports/IPlanRepository";
+import { ITurnoRepository } from "../ports/ITurnoRepository";
 import { Pago } from "../entities/Pago";
+import { RolUsuario } from "../entities/UsuarioAdmin";
 
 const DURACION_SUSCRIPCION_DIAS = 30;
 
@@ -24,11 +26,18 @@ export class PlanInactivoError extends Error {
   }
 }
 
+export class RolNoAutorizadoError extends Error {
+  constructor() {
+    super("Tu rol no tiene permiso para registrar pagos.");
+  }
+}
+
 export interface RegistrarPagoDeps {
   pagos: IPagoRepository;
   suscripciones: ISuscripcionRepository;
   miembros: IMemberRepository;
   planes: IPlanRepository;
+  turnos: ITurnoRepository;
 }
 
 export interface DatosRegistrarPago {
@@ -39,9 +48,16 @@ export interface DatosRegistrarPago {
   metodo: string;
   numeroOperacion: string | null;
   tasaCambio: number | null;
+  sucursalId: string;
+  registradoPorId: string;
+  rolUsuario: RolUsuario;
 }
 
 export async function registrarPago(deps: RegistrarPagoDeps, input: DatosRegistrarPago): Promise<Pago> {
+  if (input.rolUsuario === "ENTRENADOR") {
+    throw new RolNoAutorizadoError();
+  }
+
   const miembro = await deps.miembros.buscarPorId(input.organizacionId, input.miembroId);
   if (!miembro) {
     throw new MiembroNoEncontradoError();
@@ -70,8 +86,13 @@ export async function registrarPago(deps: RegistrarPagoDeps, input: DatosRegistr
 
   await deps.miembros.actualizarFechasPago(input.miembroId, ahora, fin);
 
+  const turnoAbierto = await deps.turnos.buscarAbiertoPorSucursal(input.sucursalId);
+
   return deps.pagos.crear({
     miembroId: input.miembroId,
+    sucursalId: input.sucursalId,
+    turnoId: turnoAbierto?.id ?? null,
+    registradoPorId: input.registradoPorId,
     monto: input.monto,
     metodo: input.metodo,
     numeroOperacion: input.numeroOperacion,

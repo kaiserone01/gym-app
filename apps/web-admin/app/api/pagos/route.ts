@@ -8,11 +8,13 @@ import { PrismaPagoRepository } from "@gym-app/infrastructure/persistence/prisma
 import { PrismaSuscripcionRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaSuscripcionRepository";
 import { PrismaMemberRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaMemberRepository";
 import { PrismaPlanRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaPlanRepository";
+import { PrismaTurnoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaTurnoRepository";
 import {
   registrarPago,
   MiembroNoEncontradoError as RegistrarPagoMiembroNoEncontradoError,
   PlanNoEncontradoError as RegistrarPagoPlanNoEncontradoError,
   PlanInactivoError,
+  RolNoAutorizadoError,
 } from "@gym-app/domain/use-cases/RegistrarPago";
 import {
   listarPagos,
@@ -61,12 +63,20 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    if (!usuario.sucursalId) {
+      return NextResponse.json(
+        { error: "El usuario no tiene una sucursal asignada para registrar pagos." },
+        { status: 400 }
+      );
+    }
+
     const pago = await registrarPago(
       {
         pagos: new PrismaPagoRepository(prisma),
         suscripciones: new PrismaSuscripcionRepository(prisma),
         miembros: new PrismaMemberRepository(prisma),
         planes: new PrismaPlanRepository(prisma),
+        turnos: new PrismaTurnoRepository(prisma),
       },
       {
         organizacionId: usuario.organizacionId,
@@ -76,6 +86,9 @@ export async function POST(req: NextRequest) {
         metodo: body.metodo,
         numeroOperacion: body.numeroOperacion ?? null,
         tasaCambio: body.tasaCambio ?? null,
+        sucursalId: usuario.sucursalId,
+        registradoPorId: usuario.id,
+        rolUsuario: usuario.rol,
       }
     );
 
@@ -86,6 +99,9 @@ export async function POST(req: NextRequest) {
     }
     if (error instanceof PlanInactivoError) {
       return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+    if (error instanceof RolNoAutorizadoError) {
+      return NextResponse.json({ error: error.message }, { status: 403 });
     }
     console.error("Error al registrar pago:", error);
     return NextResponse.json({ error: "Error interno al registrar el pago." }, { status: 500 });

@@ -15,11 +15,13 @@ import { crearMiembro, CedulaDuplicadaError } from "@gym-app/domain/use-cases/Cr
 import { actualizarMiembro, MiembroNoEncontradoError } from "@gym-app/domain/use-cases/ActualizarMiembro";
 import { listarPlanes } from "@gym-app/domain/use-cases/ListarPlanes";
 import { crearPlan } from "@gym-app/domain/use-cases/CrearPlan";
+import { PrismaTurnoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaTurnoRepository";
 import {
   registrarPago,
   MiembroNoEncontradoError as PagoMiembroNoEncontradoError,
   PlanNoEncontradoError,
   PlanInactivoError,
+  RolNoAutorizadoError as PagoRolNoAutorizadoError,
 } from "@gym-app/domain/use-cases/RegistrarPago";
 import type { PlanTipo } from "@gym-app/domain/entities/Miembro";
 import { METODOS_BANCARIOS } from "../metodosPago";
@@ -115,6 +117,10 @@ export async function crearMiembroAction(
   // deshace, así que solo se manejan los errores de dominio esperables;
   // cualquier otra cosa se deja propagar (el miembro queda creado, sin
   // pago, y se puede registrar a mano desde su ficha).
+  if (!usuario.sucursalId) {
+    return { error: "El miembro se creó, pero no se pudo registrar el pago inicial: debés tener una sucursal asignada." };
+  }
+
   try {
     const planId = await obtenerOCrearPlan(usuario.organizacionId, planNombre, precioPlan);
 
@@ -124,6 +130,7 @@ export async function crearMiembroAction(
         suscripciones: new PrismaSuscripcionRepository(prisma),
         miembros: new PrismaMemberRepository(prisma),
         planes: new PrismaPlanRepository(prisma),
+        turnos: new PrismaTurnoRepository(prisma),
       },
       {
         organizacionId: usuario.organizacionId,
@@ -133,13 +140,17 @@ export async function crearMiembroAction(
         metodo,
         numeroOperacion,
         tasaCambio: tasaCambioRaw ? Number(tasaCambioRaw) : null,
+        sucursalId: usuario.sucursalId,
+        registradoPorId: usuario.id,
+        rolUsuario: usuario.rol,
       }
     );
   } catch (error) {
     if (
       error instanceof PagoMiembroNoEncontradoError ||
       error instanceof PlanNoEncontradoError ||
-      error instanceof PlanInactivoError
+      error instanceof PlanInactivoError ||
+      error instanceof PagoRolNoAutorizadoError
     ) {
       return { error: `El miembro se creó, pero no se pudo registrar el pago inicial: ${error.message}` };
     }

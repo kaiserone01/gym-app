@@ -42,6 +42,11 @@ export class PrismaUsuarioAdminRepository implements IUsuarioAdminRepository {
     return usuario ? mapear(usuario) : null;
   }
 
+  async buscarPorIdSinOrganizacion(id: string): Promise<UsuarioAdmin | null> {
+    const usuario = await this.prisma.usuarioAdmin.findUnique({ where: { id } });
+    return usuario ? mapear(usuario) : null;
+  }
+
   async buscarCredencialesPorEmail(
     email: string
   ): Promise<{ usuario: UsuarioAdmin; passwordHash: string } | null> {

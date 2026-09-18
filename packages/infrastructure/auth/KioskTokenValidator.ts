@@ -13,6 +13,9 @@ export class KioskTokenValidator implements IKioskAuthValidator {
       id: sucursal.id,
       organizacionId: sucursal.organizacionId,
       nombre: sucursal.nombre,
+      direccion: sucursal.direccion,
+      diasGracia: sucursal.diasGracia,
+      activo: sucursal.activo,
       apiKey: sucursal.apiKey,
     };
   }

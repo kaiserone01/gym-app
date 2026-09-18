@@ -19,5 +19,5 @@ export async function validarSesion(deps: ValidarSesionDeps, token: string): Pro
     return null;
   }
 
-  return deps.usuarios.buscarPorId(sesion.usuarioId);
+  return deps.usuarios.buscarPorIdSinOrganizacion(sesion.usuarioId);
 }

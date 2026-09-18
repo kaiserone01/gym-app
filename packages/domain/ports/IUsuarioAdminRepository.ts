@@ -10,6 +10,7 @@ export interface IUsuarioAdminRepository {
     rol: RolUsuario;
   }): Promise<UsuarioAdmin>;
   buscarPorId(organizacionId: string, id: string): Promise<UsuarioAdmin | null>;
+  buscarPorIdSinOrganizacion(id: string): Promise<UsuarioAdmin | null>;
   buscarCredencialesPorEmail(
     email: string
   ): Promise<{ usuario: UsuarioAdmin; passwordHash: string } | null>;

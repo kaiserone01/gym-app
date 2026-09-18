@@ -5,22 +5,34 @@ import type { Pago, DatosNuevoPago } from "@gym-app/domain/entities/Pago";
 type FilaPago = {
   id: string;
   miembroId: string;
+  sucursalId: string;
+  turnoId: string | null;
+  registradoPorId: string;
   monto: { toNumber(): number };
   metodo: string;
   numeroOperacion: string | null;
   tasaCambio: { toNumber(): number } | null;
   fechaPago: Date;
+  anuladoEn: Date | null;
+  anuladoPorId: string | null;
+  motivoAnulacion: string | null;
 };
 
 function mapear(pago: FilaPago): Pago {
   return {
     id: pago.id,
     miembroId: pago.miembroId,
+    sucursalId: pago.sucursalId,
+    turnoId: pago.turnoId,
+    registradoPorId: pago.registradoPorId,
     monto: pago.monto.toNumber(),
     metodo: pago.metodo,
     numeroOperacion: pago.numeroOperacion,
     tasaCambio: pago.tasaCambio ? pago.tasaCambio.toNumber() : null,
     fechaPago: pago.fechaPago,
+    anuladoEn: pago.anuladoEn,
+    anuladoPorId: pago.anuladoPorId,
+    motivoAnulacion: pago.motivoAnulacion,
   };
 }
 
@@ -31,13 +43,15 @@ export class PrismaPagoRepository implements IPagoRepository {
     const pago = await this.prisma.pago.create({
       data: {
         miembroId: datos.miembroId,
+        sucursalId: datos.sucursalId,
+        turnoId: datos.turnoId,
+        registradoPorId: datos.registradoPorId,
         monto: datos.monto,
         metodo: datos.metodo,
         numeroOperacion: datos.numeroOperacion,
         tasaCambio: datos.tasaCambio,
       },
     });
-
     return mapear(pago);
   }
 
@@ -46,7 +60,6 @@ export class PrismaPagoRepository implements IPagoRepository {
       where: { miembroId },
       orderBy: { fechaPago: "desc" },
     });
-
     return pagos.map(mapear);
   }
 
@@ -56,7 +69,6 @@ export class PrismaPagoRepository implements IPagoRepository {
       include: { miembro: { select: { nombre: true } } },
       orderBy: { fechaPago: "desc" },
     });
-
     return pagos.map((pago) => ({ ...mapear(pago), miembroNombre: pago.miembro.nombre }));
   }
 
@@ -66,11 +78,35 @@ export class PrismaPagoRepository implements IPagoRepository {
       include: { miembro: { select: { nombre: true, precioPlan: true } } },
       orderBy: { fechaPago: "asc" },
     });
-
     return pagos.map((pago) => ({
       ...mapear(pago),
       miembroNombre: pago.miembro.nombre,
       miembroPrecioPlan: pago.miembro.precioPlan.toNumber(),
     }));
+  }
+
+  async listarPorTurno(turnoId: string): Promise<Pago[]> {
+    const pagos = await this.prisma.pago.findMany({
+      where: { turnoId },
+      include: { miembro: { select: { nombre: true } } },
+      orderBy: { fechaPago: "asc" },
+    });
+    return pagos.map((pago) => ({ ...mapear(pago), miembroNombre: pago.miembro.nombre }));
+  }
+
+  async buscarPorId(id: string): Promise<Pago | null> {
+    const pago = await this.prisma.pago.findUnique({
+      where: { id },
+      include: { miembro: { select: { nombre: true } } },
+    });
+    return pago ? { ...mapear(pago), miembroNombre: pago.miembro.nombre } : null;
+  }
+
+  async anular(id: string, anuladoPorId: string, motivo: string, anuladoEn: Date): Promise<Pago> {
+    const pago = await this.prisma.pago.update({
+      where: { id },
+      data: { anuladoEn, anuladoPorId, motivoAnulacion: motivo },
+    });
+    return mapear(pago);
   }
 }

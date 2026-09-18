@@ -36,13 +36,12 @@ export async function registrarPagoAction(
   const tasaCambioRaw = formData.get("tasaCambio")?.toString();
   const origen = formData.get("origen")?.toString();
   const numeroOperacion = formData.get("numeroOperacion")?.toString().trim() || null;
-  const sucursalId = usuario.sucursalId ?? formData.get("sucursalId")?.toString();
 
   if (!miembroId || !planId || !metodo || Number.isNaN(monto)) {
     return { error: "Miembro, plan, método y monto son requeridos." };
   }
-  if (!sucursalId) {
-    return { error: "Debés seleccionar una sucursal para registrar el pago." };
+  if (!usuario.sucursalId) {
+    return { error: "Debés tener una sucursal asignada para registrar pagos." };
   }
 
   if (METODOS_BANCARIOS.includes(metodo) && !numeroOperacion) {
@@ -66,7 +65,7 @@ export async function registrarPagoAction(
         metodo,
         numeroOperacion,
         tasaCambio: tasaCambioRaw ? Number(tasaCambioRaw) : null,
-        sucursalId,
+        sucursalId: usuario.sucursalId,
         registradoPorId: usuario.id,
         rolUsuario: usuario.rol,
       }

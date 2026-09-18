@@ -44,8 +44,8 @@ export class PrismaTurnoRepository implements ITurnoRepository {
     return mapear(turno);
   }
 
-  async buscarPorId(id: string): Promise<Turno | null> {
-    const turno = await this.prisma.turno.findUnique({ where: { id } });
+  async buscarPorId(organizacionId: string, id: string): Promise<Turno | null> {
+    const turno = await this.prisma.turno.findFirst({ where: { id, organizacionId } });
     return turno ? mapear(turno) : null;
   }
 

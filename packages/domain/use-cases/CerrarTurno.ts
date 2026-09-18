@@ -18,6 +18,12 @@ export class TurnoYaCerradoError extends Error {
   }
 }
 
+export class TurnoNoEncontradoError extends Error {
+  constructor() {
+    super("No se encontró el turno.");
+  }
+}
+
 export class NotaRequeridaError extends Error {
   constructor(public readonly metodo: string) {
     super(`Hay una diferencia en "${metodo}" — se requiere una nota explicando el motivo.`);
@@ -31,6 +37,8 @@ export interface LineaArqueoInput {
 }
 
 export interface DatosCerrarTurno {
+  organizacionId: string;
+  sucursalIdUsuario: string | null;
   turnoId: string;
   rolUsuario: RolUsuario;
   lineas: LineaArqueoInput[];
@@ -44,7 +52,10 @@ export async function cerrarTurno(
     throw new RolNoAutorizadoError();
   }
 
-  const resumen = await obtenerResumenTurno(deps, { turnoId: input.turnoId });
+  const resumen = await obtenerResumenTurno(deps, { organizacionId: input.organizacionId, turnoId: input.turnoId });
+  if (input.sucursalIdUsuario && resumen.turno.sucursalId !== input.sucursalIdUsuario) {
+    throw new TurnoNoEncontradoError();
+  }
   if (resumen.turno.estado === "CERRADO") {
     throw new TurnoYaCerradoError();
   }

@@ -8,9 +8,10 @@ import { PrismaTurnoRepository } from "@gym-app/infrastructure/persistence/prism
 import { PrismaEgresoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaEgresoRepository";
 import { PrismaArqueoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaArqueoRepository";
 import { PrismaPagoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaPagoRepository";
-import { abrirTurno, RolNoAutorizadoError as RolNoAutorizadoAbrir, TurnoYaAbiertoError } from "@gym-app/domain/use-cases/AbrirTurno";
-import { registrarEgreso, RolNoAutorizadoError as RolNoAutorizadoEgreso, TurnoCerradoError, MotivoRequeridoError } from "@gym-app/domain/use-cases/RegistrarEgreso";
-import { cerrarTurno, RolNoAutorizadoError as RolNoAutorizadoCerrar, TurnoYaCerradoError, NotaRequeridaError } from "@gym-app/domain/use-cases/CerrarTurno";
+import { PrismaSucursalRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaSucursalRepository";
+import { abrirTurno, RolNoAutorizadoError as RolNoAutorizadoAbrir, TurnoYaAbiertoError, SucursalNoEncontradaError } from "@gym-app/domain/use-cases/AbrirTurno";
+import { registrarEgreso, RolNoAutorizadoError as RolNoAutorizadoEgreso, TurnoCerradoError, TurnoNoEncontradoError as TurnoNoEncontradoEgreso, MotivoRequeridoError } from "@gym-app/domain/use-cases/RegistrarEgreso";
+import { cerrarTurno, RolNoAutorizadoError as RolNoAutorizadoCerrar, TurnoYaCerradoError, TurnoNoEncontradoError as TurnoNoEncontradoCerrar, NotaRequeridaError } from "@gym-app/domain/use-cases/CerrarTurno";
 import { anularPago, RolNoAutorizadoError as RolNoAutorizadoAnular, PagoNoEncontradoError, PagoYaAnuladoError, MotivoRequeridoError as MotivoRequeridoAnular } from "@gym-app/domain/use-cases/AnularPago";
 import { METODOS_PAGO } from "../metodosPago";
 
@@ -38,7 +39,7 @@ export async function abrirTurnoAction(
 
   try {
     await abrirTurno(
-      { turnos: new PrismaTurnoRepository(prisma) },
+      { turnos: new PrismaTurnoRepository(prisma), sucursales: new PrismaSucursalRepository(prisma) },
       {
         organizacionId: usuario.organizacionId,
         sucursalId,
@@ -49,7 +50,11 @@ export async function abrirTurnoAction(
       }
     );
   } catch (error) {
-    if (error instanceof TurnoYaAbiertoError || error instanceof RolNoAutorizadoAbrir) {
+    if (
+      error instanceof TurnoYaAbiertoError ||
+      error instanceof RolNoAutorizadoAbrir ||
+      error instanceof SucursalNoEncontradaError
+    ) {
       return { error: error.message };
     }
     throw error;
@@ -83,11 +88,21 @@ export async function registrarEgresoAction(
   try {
     await registrarEgreso(
       { turnos: new PrismaTurnoRepository(prisma), egresos: new PrismaEgresoRepository(prisma) },
-      { turnoId, rolUsuario: usuario.rol, monto, moneda, metodo, motivo }
+      {
+        organizacionId: usuario.organizacionId,
+        sucursalIdUsuario: usuario.sucursalId,
+        turnoId,
+        rolUsuario: usuario.rol,
+        monto,
+        moneda,
+        metodo,
+        motivo,
+      }
     );
   } catch (error) {
     if (
       error instanceof TurnoCerradoError ||
+      error instanceof TurnoNoEncontradoEgreso ||
       error instanceof MotivoRequeridoError ||
       error instanceof RolNoAutorizadoEgreso
     ) {
@@ -132,11 +147,18 @@ export async function cerrarTurnoAction(
         pagos: new PrismaPagoRepository(prisma),
         egresos: new PrismaEgresoRepository(prisma),
       },
-      { turnoId, rolUsuario: usuario.rol, lineas }
+      {
+        organizacionId: usuario.organizacionId,
+        sucursalIdUsuario: usuario.sucursalId,
+        turnoId,
+        rolUsuario: usuario.rol,
+        lineas,
+      }
     );
   } catch (error) {
     if (
       error instanceof TurnoYaCerradoError ||
+      error instanceof TurnoNoEncontradoCerrar ||
       error instanceof NotaRequeridaError ||
       error instanceof RolNoAutorizadoCerrar
     ) {
@@ -169,7 +191,7 @@ export async function anularPagoAction(
   try {
     await anularPago(
       { pagos: new PrismaPagoRepository(prisma) },
-      { pagoId, anuladoPorId: usuario.id, rolAnulador: usuario.rol, motivo }
+      { organizacionId: usuario.organizacionId, pagoId, anuladoPorId: usuario.id, rolAnulador: usuario.rol, motivo }
     );
   } catch (error) {
     if (

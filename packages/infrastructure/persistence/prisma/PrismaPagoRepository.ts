@@ -94,15 +94,19 @@ export class PrismaPagoRepository implements IPagoRepository {
     return pagos.map((pago) => ({ ...mapear(pago), miembroNombre: pago.miembro.nombre }));
   }
 
-  async buscarPorId(id: string): Promise<Pago | null> {
-    const pago = await this.prisma.pago.findUnique({
-      where: { id },
+  async buscarPorId(organizacionId: string, id: string): Promise<Pago | null> {
+    const pago = await this.prisma.pago.findFirst({
+      where: { id, miembro: { organizacionId } },
       include: { miembro: { select: { nombre: true } } },
     });
     return pago ? { ...mapear(pago), miembroNombre: pago.miembro.nombre } : null;
   }
 
-  async anular(id: string, anuladoPorId: string, motivo: string, anuladoEn: Date): Promise<Pago> {
+  async anular(organizacionId: string, id: string, anuladoPorId: string, motivo: string, anuladoEn: Date): Promise<Pago> {
+    const existente = await this.prisma.pago.findFirst({ where: { id, miembro: { organizacionId } } });
+    if (!existente) {
+      throw new Error("No se encontró el pago.");
+    }
     const pago = await this.prisma.pago.update({
       where: { id },
       data: { anuladoEn, anuladoPorId, motivoAnulacion: motivo },

@@ -40,7 +40,7 @@ export default async function PaginaCaja({
         pagos: new PrismaPagoRepository(prisma),
         egresos: new PrismaEgresoRepository(prisma),
       },
-      { turnoId: turnoAbierto.id }
+      { organizacionId: usuario.organizacionId, turnoId: turnoAbierto.id }
     );
 
     return (
@@ -157,8 +157,22 @@ export default async function PaginaCaja({
         <div key={fila.turno.id} className="rounded-xl border border-neutral-200 p-5 text-sm">
           <div className="mb-2 flex justify-between font-medium text-neutral-900">
             <span>Turno {fila.turno.abiertoEn.toLocaleString("es-VE")}</span>
-            <span>${fila.totalUSD.toFixed(2)}</span>
+            <span>Neto: ${fila.netoUSD.toFixed(2)}</span>
           </div>
+          <div className="mb-2 flex justify-between text-neutral-500">
+            <span>Cobrado: ${fila.totalPagosUSD.toFixed(2)}</span>
+            {fila.totalEgresosUSD > 0 && <span>Egresos (USD): -${fila.totalEgresosUSD.toFixed(2)}</span>}
+          </div>
+          {fila.egresos.length > 0 && (
+            <div className="mb-2 flex flex-col gap-1 border-b border-neutral-100 pb-2">
+              {fila.egresos.map((egreso) => (
+                <div key={egreso.id} className="flex justify-between text-neutral-500">
+                  <span>{egreso.motivo}</span>
+                  <span>-{egreso.monto.toFixed(2)} {egreso.moneda}</span>
+                </div>
+              ))}
+            </div>
+          )}
           {fila.arqueo.map((linea) => (
             <div key={linea.metodo} className="flex justify-between text-neutral-500">
               <span>{nombreMetodo(linea.metodo)}</span>

@@ -27,6 +27,7 @@ export class MotivoRequeridoError extends Error {
 }
 
 export interface DatosAnularPago {
+  organizacionId: string;
   pagoId: string;
   anuladoPorId: string;
   rolAnulador: RolUsuario;
@@ -45,7 +46,7 @@ export async function anularPago(
     throw new MotivoRequeridoError();
   }
 
-  const pago = await deps.pagos.buscarPorId(input.pagoId);
+  const pago = await deps.pagos.buscarPorId(input.organizacionId, input.pagoId);
   if (!pago) {
     throw new PagoNoEncontradoError();
   }
@@ -53,5 +54,5 @@ export async function anularPago(
     throw new PagoYaAnuladoError();
   }
 
-  return deps.pagos.anular(input.pagoId, input.anuladoPorId, input.motivo.trim(), new Date());
+  return deps.pagos.anular(input.organizacionId, input.pagoId, input.anuladoPorId, input.motivo.trim(), new Date());
 }

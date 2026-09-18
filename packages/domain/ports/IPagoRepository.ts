@@ -6,6 +6,6 @@ export interface IPagoRepository {
   listarPorOrganizacion(organizacionId: string): Promise<Pago[]>;
   listarPorOrganizacionYRango(organizacionId: string, desde: Date, hasta: Date): Promise<Pago[]>;
   listarPorTurno(turnoId: string): Promise<Pago[]>;
-  buscarPorId(id: string): Promise<Pago | null>;
-  anular(id: string, anuladoPorId: string, motivo: string, anuladoEn: Date): Promise<Pago>;
+  buscarPorId(organizacionId: string, id: string): Promise<Pago | null>;
+  anular(organizacionId: string, id: string, anuladoPorId: string, motivo: string, anuladoEn: Date): Promise<Pago>;
 }

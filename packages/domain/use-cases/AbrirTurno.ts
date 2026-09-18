@@ -1,4 +1,5 @@
 import { ITurnoRepository } from "../ports/ITurnoRepository";
+import { ISucursalRepository } from "../ports/ISucursalRepository";
 import { Turno } from "../entities/Turno";
 import { RolUsuario } from "../entities/UsuarioAdmin";
 
@@ -14,6 +15,12 @@ export class TurnoYaAbiertoError extends Error {
   }
 }
 
+export class SucursalNoEncontradaError extends Error {
+  constructor() {
+    super("La sucursal indicada no existe en tu organización.");
+  }
+}
+
 export interface DatosAbrirTurno {
   organizacionId: string;
   sucursalId: string;
@@ -24,11 +31,16 @@ export interface DatosAbrirTurno {
 }
 
 export async function abrirTurno(
-  deps: { turnos: ITurnoRepository },
+  deps: { turnos: ITurnoRepository; sucursales: ISucursalRepository },
   input: DatosAbrirTurno
 ): Promise<Turno> {
   if (input.rolUsuario === "ENTRENADOR") {
     throw new RolNoAutorizadoError();
+  }
+
+  const sucursalesDeLaOrganizacion = await deps.sucursales.listarPorOrganizacion(input.organizacionId);
+  if (!sucursalesDeLaOrganizacion.some((s) => s.id === input.sucursalId)) {
+    throw new SucursalNoEncontradaError();
   }
 
   const abierto = await deps.turnos.buscarAbiertoPorSucursal(input.sucursalId);

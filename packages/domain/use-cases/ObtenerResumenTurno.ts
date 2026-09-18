@@ -33,9 +33,9 @@ export interface ResumenTurno {
 
 export async function obtenerResumenTurno(
   deps: { turnos: ITurnoRepository; pagos: IPagoRepository; egresos: IEgresoRepository },
-  input: { turnoId: string }
+  input: { organizacionId: string; turnoId: string }
 ): Promise<ResumenTurno> {
-  const turno = await deps.turnos.buscarPorId(input.turnoId);
+  const turno = await deps.turnos.buscarPorId(input.organizacionId, input.turnoId);
   if (!turno) {
     throw new TurnoNoEncontradoError();
   }

@@ -12,7 +12,9 @@ export interface FilaReporteTurno {
   pagos: Pago[];
   egresos: Egreso[];
   arqueo: ArqueoLinea[];
-  totalUSD: number;
+  totalPagosUSD: number;
+  totalEgresosUSD: number;
+  netoUSD: number;
 }
 
 export interface ReporteCaja {
@@ -37,8 +39,9 @@ export async function obtenerReporteCaja(
         deps.egresos.listarPorTurno(turno.id),
         deps.arqueo.listarPorTurno(turno.id),
       ]);
-      const totalUSD = pagos.filter((p) => !p.anuladoEn).reduce((suma, p) => suma + p.monto, 0);
-      return { turno, pagos, egresos, arqueo, totalUSD };
+      const totalPagosUSD = pagos.filter((p) => !p.anuladoEn).reduce((suma, p) => suma + p.monto, 0);
+      const totalEgresosUSD = egresos.filter((e) => e.moneda === "USD").reduce((suma, e) => suma + e.monto, 0);
+      return { turno, pagos, egresos, arqueo, totalPagosUSD, totalEgresosUSD, netoUSD: totalPagosUSD - totalEgresosUSD };
     })
   );
 

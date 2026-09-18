@@ -15,6 +15,12 @@ export class TurnoCerradoError extends Error {
   }
 }
 
+export class TurnoNoEncontradoError extends Error {
+  constructor() {
+    super("No se encontró el turno.");
+  }
+}
+
 export class MotivoRequeridoError extends Error {
   constructor() {
     super("El motivo del egreso es requerido.");
@@ -22,6 +28,8 @@ export class MotivoRequeridoError extends Error {
 }
 
 export interface DatosRegistrarEgreso {
+  organizacionId: string;
+  sucursalIdUsuario: string | null;
   turnoId: string;
   rolUsuario: RolUsuario;
   monto: number;
@@ -38,8 +46,14 @@ export async function registrarEgreso(
     throw new RolNoAutorizadoError();
   }
 
-  const turno = await deps.turnos.buscarPorId(input.turnoId);
-  if (!turno || turno.estado === "CERRADO") {
+  const turno = await deps.turnos.buscarPorId(input.organizacionId, input.turnoId);
+  if (!turno) {
+    throw new TurnoNoEncontradoError();
+  }
+  if (input.sucursalIdUsuario && turno.sucursalId !== input.sucursalIdUsuario) {
+    throw new TurnoNoEncontradoError();
+  }
+  if (turno.estado === "CERRADO") {
     throw new TurnoCerradoError();
   }
 

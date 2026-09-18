@@ -1,15 +1,18 @@
-import { UsuarioAdmin, RolUsuario } from "../entities/UsuarioAdmin";
+import { UsuarioAdmin, CambiosUsuarioAdmin, RolUsuario } from "../entities/UsuarioAdmin";
 
 export interface IUsuarioAdminRepository {
   crear(datos: {
     organizacionId: string;
     sucursalId: string | null;
+    nombre: string;
     email: string;
     passwordHash: string;
     rol: RolUsuario;
   }): Promise<UsuarioAdmin>;
-  buscarPorId(id: string): Promise<UsuarioAdmin | null>;
+  buscarPorId(organizacionId: string, id: string): Promise<UsuarioAdmin | null>;
   buscarCredencialesPorEmail(
     email: string
   ): Promise<{ usuario: UsuarioAdmin; passwordHash: string } | null>;
+  listarPorOrganizacion(organizacionId: string): Promise<UsuarioAdmin[]>;
+  actualizar(organizacionId: string, id: string, cambios: CambiosUsuarioAdmin): Promise<UsuarioAdmin | null>;
 }

@@ -39,7 +39,7 @@ export class PrismaSucursalRepository implements ISucursalRepository {
   async listarPorOrganizacion(organizacionId: string): Promise<SucursalResumen[]> {
     return this.prisma.sucursal.findMany({
       where: { organizacionId },
-      select: { id: true, nombre: true, activo: true },
+      select: { id: true, nombre: true, direccion: true, diasGracia: true, activo: true },
       orderBy: { nombre: "asc" },
     });
   }

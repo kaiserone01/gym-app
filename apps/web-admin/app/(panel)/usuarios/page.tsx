@@ -7,16 +7,24 @@ import { PrismaPermisoRepository } from "@gym-app/infrastructure/persistence/pri
 import { listarUsuariosAdmin } from "@gym-app/domain/use-cases/ListarUsuariosAdmin";
 import { Button } from "@gym-app/ui/components/Button";
 import { Badge } from "@gym-app/ui/components/Badge";
+import { AvisoError } from "../AvisoError";
 
-export default async function PaginaUsuarios() {
+export default async function PaginaUsuarios({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
   const usuario = await obtenerUsuarioDeSesionActual();
   if (!usuario) redirect("/login");
 
+  const esDueno = usuario.rol === "DUENO";
   const permisos = new PrismaPermisoRepository(prisma);
-  const puedeVer = await permisos.tiene(usuario.id, "USUARIOS", "VER");
+  // Un DUEÑO siempre tiene acceso total (no puede auto-bloquearse por permisos).
+  const puedeVer = esDueno || (await permisos.tiene(usuario.id, "USUARIOS", "VER"));
   if (!puedeVer) redirect("/miembros");
 
-  const puedeCrear = await permisos.tiene(usuario.id, "USUARIOS", "CREAR");
+  const { error: errorMensaje } = await searchParams;
+  const puedeCrear = esDueno || (await permisos.tiene(usuario.id, "USUARIOS", "CREAR"));
   const usuarios = await listarUsuariosAdmin(
     { usuarios: new PrismaUsuarioAdminRepository(prisma) },
     usuario.organizacionId
@@ -31,6 +39,10 @@ export default async function PaginaUsuarios() {
             <Button>Nuevo usuario</Button>
           </Link>
         )}
+      </div>
+
+      <div className="mb-4">
+        <AvisoError mensaje={errorMensaje} />
       </div>
 
       <table className="w-full border-collapse text-left">

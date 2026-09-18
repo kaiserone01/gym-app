@@ -15,9 +15,12 @@ export interface ValoresFormularioSucursal {
 export function FormularioSucursal({
   accion,
   valoresIniciales,
+  puedeGuardar = true,
 }: {
   accion: (estado: EstadoFormularioSucursal, formData: FormData) => Promise<EstadoFormularioSucursal>;
   valoresIniciales?: ValoresFormularioSucursal;
+  /** Sin permiso SUCURSALES/EDITAR el formulario se muestra en solo lectura. */
+  puedeGuardar?: boolean;
 }) {
   const [estado, enviar, enviando] = useActionState(accion, {});
   const [copiado, setCopiado] = useState(false);
@@ -33,14 +36,26 @@ export function FormularioSucursal({
     <form action={enviar} className="flex flex-col gap-4">
       {estado.error && <p className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">{estado.error}</p>}
 
-      <Input name="nombre" label="Nombre" required defaultValue={valoresIniciales?.nombre} />
-      <Input name="direccion" label="Dirección" defaultValue={valoresIniciales?.direccion ?? ""} />
+      <Input
+        name="nombre"
+        label="Nombre"
+        required
+        defaultValue={valoresIniciales?.nombre}
+        readOnly={!puedeGuardar}
+      />
+      <Input
+        name="direccion"
+        label="Dirección"
+        defaultValue={valoresIniciales?.direccion ?? ""}
+        readOnly={!puedeGuardar}
+      />
       <Input
         name="diasGracia"
         label="Días de gracia"
         type="number"
         required
         defaultValue={valoresIniciales?.diasGracia ?? 0}
+        readOnly={!puedeGuardar}
       />
 
       {valoresIniciales?.apiKey && (
@@ -59,9 +74,11 @@ export function FormularioSucursal({
         </div>
       )}
 
-      <Button type="submit" disabled={enviando}>
-        {enviando ? "Guardando..." : "Guardar"}
-      </Button>
+      {puedeGuardar && (
+        <Button type="submit" disabled={enviando}>
+          {enviando ? "Guardando..." : "Guardar"}
+        </Button>
+      )}
     </form>
   );
 }

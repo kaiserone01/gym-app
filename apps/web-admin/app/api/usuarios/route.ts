@@ -9,7 +9,12 @@ import { PrismaPermisoRepository } from "@gym-app/infrastructure/persistence/pri
 import { PrismaUsuarioSucursalRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaUsuarioSucursalRepository";
 import { BcryptPasswordHasher } from "@gym-app/infrastructure/auth/BcryptPasswordHasher";
 import { AuthorizationService } from "@gym-app/domain/services/AuthorizationService";
-import { crearUsuarioAdmin, NoAutorizadoError } from "@gym-app/domain/use-cases/CrearUsuarioAdmin";
+import { PrismaSucursalRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaSucursalRepository";
+import {
+  crearUsuarioAdmin,
+  NoAutorizadoError,
+  SucursalInvalidaError,
+} from "@gym-app/domain/use-cases/CrearUsuarioAdmin";
 import { listarUsuariosAdmin } from "@gym-app/domain/use-cases/ListarUsuariosAdmin";
 
 export async function GET(req: NextRequest) {
@@ -52,6 +57,7 @@ export async function POST(req: NextRequest) {
         autorizacion: new AuthorizationService(new PrismaPermisoRepository(prisma)),
         permisos: new PrismaPermisoRepository(prisma),
         usuarioSucursales: new PrismaUsuarioSucursalRepository(prisma),
+        sucursales: new PrismaSucursalRepository(prisma),
       },
       {
         solicitante: { rol: solicitante.rol },
@@ -72,6 +78,9 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     if (error instanceof NoAutorizadoError) {
       return NextResponse.json({ error: error.message }, { status: 403 });
+    }
+    if (error instanceof SucursalInvalidaError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
     }
     console.error("Error al crear usuario admin:", error);
     return NextResponse.json(

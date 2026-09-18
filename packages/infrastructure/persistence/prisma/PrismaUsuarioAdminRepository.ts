@@ -70,4 +70,8 @@ export class PrismaUsuarioAdminRepository implements IUsuarioAdminRepository {
     const usuario = await this.prisma.usuarioAdmin.update({ where: { id }, data: cambios });
     return mapear(usuario);
   }
+
+  async eliminar(id: string): Promise<void> {
+    await this.prisma.usuarioAdmin.delete({ where: { id } });
+  }
 }

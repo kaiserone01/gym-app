@@ -14,12 +14,29 @@ export class UsuarioNoEncontradoError extends Error {
   }
 }
 
+export class AutoDesactivacionError extends Error {
+  constructor() {
+    super("No podés darte de baja a vos mismo.");
+  }
+}
+
 export async function actualizarUsuarioAdmin(
   deps: { usuarios: IUsuarioAdminRepository },
-  input: { organizacionId: string; rolSolicitante: RolUsuario; id: string; cambios: CambiosUsuarioAdmin }
+  input: {
+    organizacionId: string;
+    rolSolicitante: RolUsuario;
+    usuarioIdSolicitante: string;
+    id: string;
+    cambios: CambiosUsuarioAdmin;
+  }
 ): Promise<UsuarioAdmin> {
   if (input.rolSolicitante !== "DUENO") {
     throw new RolNoAutorizadoError();
+  }
+
+  // Evita el lockout irreversible: nadie puede desactivar su propia cuenta.
+  if (input.cambios.activo === false && input.id === input.usuarioIdSolicitante) {
+    throw new AutoDesactivacionError();
   }
 
   const actualizado = await deps.usuarios.actualizar(input.organizacionId, input.id, input.cambios);

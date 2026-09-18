@@ -16,4 +16,6 @@ export interface IUsuarioAdminRepository {
   ): Promise<{ usuario: UsuarioAdmin; passwordHash: string } | null>;
   listarPorOrganizacion(organizacionId: string): Promise<UsuarioAdmin[]>;
   actualizar(organizacionId: string, id: string, cambios: CambiosUsuarioAdmin): Promise<UsuarioAdmin | null>;
+  /** Borrado físico. Solo para compensar una creación parcialmente fallida. */
+  eliminar(id: string): Promise<void>;
 }

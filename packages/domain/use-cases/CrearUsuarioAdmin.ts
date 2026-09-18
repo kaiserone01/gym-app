@@ -2,6 +2,7 @@ import { IUsuarioAdminRepository } from "../ports/IUsuarioAdminRepository";
 import { IAuthorizationService } from "../ports/IAuthorizationService";
 import { IPermisoRepository } from "../ports/IPermisoRepository";
 import { IUsuarioSucursalRepository } from "../ports/IUsuarioSucursalRepository";
+import { ISucursalRepository } from "../ports/ISucursalRepository";
 import { RolUsuario, UsuarioAdmin } from "../entities/UsuarioAdmin";
 import { Permiso, ModuloPermiso, AccionPermiso } from "../entities/Permiso";
 
@@ -10,6 +11,7 @@ export interface CrearUsuarioAdminDeps {
   autorizacion: IAuthorizationService;
   permisos: IPermisoRepository;
   usuarioSucursales: IUsuarioSucursalRepository;
+  sucursales: ISucursalRepository;
 }
 
 export interface CrearUsuarioAdminInput {
@@ -26,6 +28,12 @@ export interface CrearUsuarioAdminInput {
 export class NoAutorizadoError extends Error {
   constructor(rolSolicitante: RolUsuario, rolACrear: RolUsuario) {
     super(`El rol ${rolSolicitante} no puede crear usuarios con rol ${rolACrear}.`);
+  }
+}
+
+export class SucursalInvalidaError extends Error {
+  constructor() {
+    super("Alguna de las sucursales indicadas no existe en tu organización.");
   }
 }
 
@@ -72,6 +80,17 @@ export async function crearUsuarioAdmin(
     throw new NoAutorizadoError(input.solicitante.rol, input.rol);
   }
 
+  // Aislamiento entre organizaciones: toda sucursal indicada (la por defecto y las
+  // asignadas) debe pertenecer a la organización del solicitante.
+  const idsAValidar = [...input.sucursalIds, ...(input.sucursalId ? [input.sucursalId] : [])];
+  if (idsAValidar.length > 0) {
+    const sucursalesDeLaOrganizacion = await deps.sucursales.listarPorOrganizacion(input.organizacionId);
+    const idsValidos = new Set(sucursalesDeLaOrganizacion.map((s) => s.id));
+    if (idsAValidar.some((id) => !idsValidos.has(id))) {
+      throw new SucursalInvalidaError();
+    }
+  }
+
   const creado = await deps.usuarios.crear({
     organizacionId: input.organizacionId,
     sucursalId: input.sucursalId,
@@ -81,9 +100,16 @@ export async function crearUsuarioAdmin(
     rol: input.rol,
   });
 
-  await deps.permisos.reemplazarTodos(creado.id, PERMISOS_POR_ROL[input.rol]);
-  if (input.sucursalIds.length > 0) {
-    await deps.usuarioSucursales.reemplazarTodas(creado.id, input.sucursalIds);
+  // Sin unit-of-work transversal: si falla la asignación de permisos o sucursales,
+  // compensamos borrando el usuario recién creado para no dejar estado parcial.
+  try {
+    await deps.permisos.reemplazarTodos(creado.id, PERMISOS_POR_ROL[input.rol]);
+    if (input.sucursalIds.length > 0) {
+      await deps.usuarioSucursales.reemplazarTodas(creado.id, input.sucursalIds);
+    }
+  } catch (error) {
+    await deps.usuarios.eliminar(creado.id).catch(() => undefined);
+    throw error;
   }
 
   return creado;

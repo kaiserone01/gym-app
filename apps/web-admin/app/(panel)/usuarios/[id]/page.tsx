@@ -17,16 +17,26 @@ import {
   reactivarUsuarioAction,
 } from "../actions";
 import { Button } from "@gym-app/ui/components/Button";
+import { AvisoError } from "../../AvisoError";
 
-export default async function PaginaEditarUsuario({ params }: { params: Promise<{ id: string }> }) {
+export default async function PaginaEditarUsuario({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ error?: string }>;
+}) {
   const usuarioSesion = await obtenerUsuarioDeSesionActual();
   if (!usuarioSesion) redirect("/login");
 
   const permisos = new PrismaPermisoRepository(prisma);
-  const puedeVer = await permisos.tiene(usuarioSesion.id, "USUARIOS", "VER");
+  // Un DUEÑO siempre tiene acceso total: nunca puede quedar bloqueado por la matriz
+  // de permisos (ni siquiera si se quita a sí mismo USUARIOS/VER).
+  const puedeVer = usuarioSesion.rol === "DUENO" || (await permisos.tiene(usuarioSesion.id, "USUARIOS", "VER"));
   if (!puedeVer) redirect("/usuarios");
 
   const { id } = await params;
+  const { error: errorMensaje } = await searchParams;
 
   let detalle;
   try {
@@ -55,6 +65,8 @@ export default async function PaginaEditarUsuario({ params }: { params: Promise<
   return (
     <div className="flex flex-col gap-8 p-8">
       <h1 className="text-2xl font-semibold">Editar usuario</h1>
+
+      <AvisoError mensaje={errorMensaje} />
 
       <FormularioEditarUsuario
         accion={accionActualizar}

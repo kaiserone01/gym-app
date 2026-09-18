@@ -12,11 +12,13 @@ export default async function PaginaSucursales() {
   const usuario = await obtenerUsuarioDeSesionActual();
   if (!usuario) redirect("/login");
 
+  const esDueno = usuario.rol === "DUENO";
   const permisos = new PrismaPermisoRepository(prisma);
-  const puedeVer = await permisos.tiene(usuario.id, "SUCURSALES", "VER");
+  // Un DUEÑO siempre tiene acceso total (no puede auto-bloquearse por permisos).
+  const puedeVer = esDueno || (await permisos.tiene(usuario.id, "SUCURSALES", "VER"));
   if (!puedeVer) redirect("/miembros");
 
-  const puedeCrear = await permisos.tiene(usuario.id, "SUCURSALES", "CREAR");
+  const puedeCrear = esDueno || (await permisos.tiene(usuario.id, "SUCURSALES", "CREAR"));
   const sucursales = await listarSucursales(
     { sucursales: new PrismaSucursalRepository(prisma) },
     usuario.organizacionId
@@ -47,8 +49,8 @@ export default async function PaginaSucursales() {
           {sucursales.map((sucursal) => (
             <tr key={sucursal.id} className="border-b">
               <td className="py-2">{sucursal.nombre}</td>
-              <td className="py-2">—</td>
-              <td className="py-2">—</td>
+              <td className="py-2">{sucursal.direccion || "—"}</td>
+              <td className="py-2">{sucursal.diasGracia}</td>
               <td className="py-2">
                 <Badge tono={sucursal.activo ? "verde" : "gris"}>
                   {sucursal.activo ? "Activa" : "Inactiva"}

@@ -6,6 +6,7 @@ import bcrypt from "bcryptjs";
 import { PrismaUsuarioAdminRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaUsuarioAdminRepository";
 import { PrismaPermisoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaPermisoRepository";
 import { PrismaUsuarioSucursalRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaUsuarioSucursalRepository";
+import { PrismaSucursalRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaSucursalRepository";
 import { AuthorizationService } from "@gym-app/domain/services/AuthorizationService";
 import { crearUsuarioAdmin, NoAutorizadoError } from "@gym-app/domain/use-cases/CrearUsuarioAdmin";
 
@@ -18,13 +19,14 @@ async function main() {
   const usuarios = new PrismaUsuarioAdminRepository(prisma);
   const permisos = new PrismaPermisoRepository(prisma);
   const usuarioSucursales = new PrismaUsuarioSucursalRepository(prisma);
+  const sucursales = new PrismaSucursalRepository(prisma);
   const autorizacion = new AuthorizationService(permisos);
   const passwordHash = await bcrypt.hash("recepcion1234", 10);
 
   // Caso 1: DUENO crea un RECEPCION — debe funcionar.
   try {
     const creado = await crearUsuarioAdmin(
-      { usuarios, autorizacion, permisos, usuarioSucursales },
+      { usuarios, autorizacion, permisos, usuarioSucursales, sucursales },
       {
         solicitante: { rol: "DUENO" },
         organizacionId: organizacion.id,
@@ -45,7 +47,7 @@ async function main() {
   // Caso 2: GERENTE intenta crear un RECEPCION — debe rechazarse.
   try {
     await crearUsuarioAdmin(
-      { usuarios, autorizacion, permisos, usuarioSucursales },
+      { usuarios, autorizacion, permisos, usuarioSucursales, sucursales },
       {
         solicitante: { rol: "GERENTE" },
         organizacionId: organizacion.id,

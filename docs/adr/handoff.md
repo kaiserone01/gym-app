@@ -1,16 +1,17 @@
 # Handoff — gym-app (Adrenalina Xtreme Gym)
 
-Última actualización: 2026-09-14.
+Última actualización: 2026-09-18.
 
 **El checklist vivo del proyecto es [`docs/ROADMAP.md`](../ROADMAP.md)** — este archivo es solo el punto de entrada para retomar: qué se hizo, qué falta decidir, y cómo levantar el entorno de nuevo. No dupliques información del roadmap acá; si el roadmap y este archivo alguna vez no coinciden, el roadmap manda.
 
 ## Estado en una frase
 
-El panel admin (`apps/web-admin`) y el kiosco físico (`apps/kiosk`) están funcionales y probados contra la base de datos real por el usuario, con el flujo completo de alta de miembro (foto, plan, entrenador, primer pago automático) y el tema visual "Adrenalina Xtreme" aplicado a `/login` y al kiosco. Nada se desplegó todavía a producción (Docker/EasyPanel) — todo el trabajo hasta ahora fue en local.
+El panel admin (`apps/web-admin`) y el kiosco físico (`apps/kiosk`) están funcionales y probados contra la base de datos real por el usuario, con el flujo completo de alta de miembro (foto, plan, entrenador, primer pago automático), pantallas reales de Miembros/Pagos/Planes, y el módulo de Caja rediseñado con un flujo real de **Turnos por cajero/sucursal** (apertura con fondo inicial, egresos, arqueo por método al cierre) que reemplaza el cierre diario global anterior. Nada se desplegó todavía a producción (Docker/EasyPanel) — todo el trabajo hasta ahora fue en local.
 
 ## Qué falta — ver `docs/ROADMAP.md`
 
 Las secciones relevantes ahora mismo:
+- **Plan 13 — Turnos de Caja, Arqueo y Egresos** — recién completado (build y `tsc` verificados); falta la prueba manual en el navegador contra la base real, y dos mini-pendientes de UI (selector de sucursal para un DUEÑO multi-sede, botón de anulación de pago).
 - **🟡 Funcionalidad core pendiente** — incluye la tasa BCV real sin conectar (hoy fija en 850), rotación de `apiKey`, matriz de permisos, y la decisión abierta sobre `RegistrarPago` contra un miembro inactivo.
 - **Plan 11 — Tema visual** — completo, con el theming dinámico por Organización explícitamente diferido.
 - **Ajustes ad-hoc — Nuevo Miembro / Registrar Pago** — toda la iteración reciente (planes preestablecidos, foto, entrenador, ticket de confirmación, pago automático al alta, switch activo/inactivo, historial de pagos en subpágina).

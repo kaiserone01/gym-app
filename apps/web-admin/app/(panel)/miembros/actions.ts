@@ -16,6 +16,8 @@ import { actualizarMiembro, MiembroNoEncontradoError } from "@gym-app/domain/use
 import { listarPlanes } from "@gym-app/domain/use-cases/ListarPlanes";
 import { crearPlan } from "@gym-app/domain/use-cases/CrearPlan";
 import { PrismaTurnoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaTurnoRepository";
+import { PrismaPermisoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaPermisoRepository";
+import { AuthorizationService } from "@gym-app/domain/services/AuthorizationService";
 import {
   registrarPago,
   MiembroNoEncontradoError as PagoMiembroNoEncontradoError,
@@ -131,6 +133,7 @@ export async function crearMiembroAction(
         miembros: new PrismaMemberRepository(prisma),
         planes: new PrismaPlanRepository(prisma),
         turnos: new PrismaTurnoRepository(prisma),
+        autorizacion: new AuthorizationService(new PrismaPermisoRepository(prisma)),
       },
       {
         organizacionId: usuario.organizacionId,

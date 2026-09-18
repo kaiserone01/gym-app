@@ -9,6 +9,8 @@ import { PrismaSuscripcionRepository } from "@gym-app/infrastructure/persistence
 import { PrismaMemberRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaMemberRepository";
 import { PrismaPlanRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaPlanRepository";
 import { PrismaTurnoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaTurnoRepository";
+import { PrismaPermisoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaPermisoRepository";
+import { AuthorizationService } from "@gym-app/domain/services/AuthorizationService";
 import {
   registrarPago,
   MiembroNoEncontradoError as RegistrarPagoMiembroNoEncontradoError,
@@ -77,6 +79,7 @@ export async function POST(req: NextRequest) {
         miembros: new PrismaMemberRepository(prisma),
         planes: new PrismaPlanRepository(prisma),
         turnos: new PrismaTurnoRepository(prisma),
+        autorizacion: new AuthorizationService(new PrismaPermisoRepository(prisma)),
       },
       {
         organizacionId: usuario.organizacionId,

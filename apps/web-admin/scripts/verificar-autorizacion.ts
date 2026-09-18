@@ -4,6 +4,8 @@
 import { prisma } from "../lib/prisma";
 import bcrypt from "bcryptjs";
 import { PrismaUsuarioAdminRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaUsuarioAdminRepository";
+import { PrismaPermisoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaPermisoRepository";
+import { PrismaUsuarioSucursalRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaUsuarioSucursalRepository";
 import { AuthorizationService } from "@gym-app/domain/services/AuthorizationService";
 import { crearUsuarioAdmin, NoAutorizadoError } from "@gym-app/domain/use-cases/CrearUsuarioAdmin";
 
@@ -14,17 +16,21 @@ async function main() {
   }
 
   const usuarios = new PrismaUsuarioAdminRepository(prisma);
-  const autorizacion = new AuthorizationService();
+  const permisos = new PrismaPermisoRepository(prisma);
+  const usuarioSucursales = new PrismaUsuarioSucursalRepository(prisma);
+  const autorizacion = new AuthorizationService(permisos);
   const passwordHash = await bcrypt.hash("recepcion1234", 10);
 
   // Caso 1: DUENO crea un RECEPCION — debe funcionar.
   try {
     const creado = await crearUsuarioAdmin(
-      { usuarios, autorizacion },
+      { usuarios, autorizacion, permisos, usuarioSucursales },
       {
         solicitante: { rol: "DUENO" },
         organizacionId: organizacion.id,
         sucursalId: null,
+        sucursalIds: [],
+        nombre: `Recepción ${Date.now()}`,
         email: `recepcion-${Date.now()}@gymdemo.com`,
         passwordHash,
         rol: "RECEPCION",
@@ -39,11 +45,13 @@ async function main() {
   // Caso 2: GERENTE intenta crear un RECEPCION — debe rechazarse.
   try {
     await crearUsuarioAdmin(
-      { usuarios, autorizacion },
+      { usuarios, autorizacion, permisos, usuarioSucursales },
       {
         solicitante: { rol: "GERENTE" },
         organizacionId: organizacion.id,
         sucursalId: null,
+        sucursalIds: [],
+        nombre: `No debería crearse ${Date.now()}`,
         email: `no-deberia-crearse-${Date.now()}@gymdemo.com`,
         passwordHash,
         rol: "RECEPCION",

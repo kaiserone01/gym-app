@@ -9,6 +9,8 @@ import { PrismaEgresoRepository } from "@gym-app/infrastructure/persistence/pris
 import { PrismaArqueoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaArqueoRepository";
 import { PrismaPagoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaPagoRepository";
 import { PrismaSucursalRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaSucursalRepository";
+import { PrismaPermisoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaPermisoRepository";
+import { AuthorizationService } from "@gym-app/domain/services/AuthorizationService";
 import { abrirTurno, RolNoAutorizadoError as RolNoAutorizadoAbrir, TurnoYaAbiertoError, SucursalNoEncontradaError } from "@gym-app/domain/use-cases/AbrirTurno";
 import { registrarEgreso, RolNoAutorizadoError as RolNoAutorizadoEgreso, TurnoCerradoError, TurnoNoEncontradoError as TurnoNoEncontradoEgreso, MotivoRequeridoError } from "@gym-app/domain/use-cases/RegistrarEgreso";
 import { cerrarTurno, RolNoAutorizadoError as RolNoAutorizadoCerrar, TurnoYaCerradoError, TurnoNoEncontradoError as TurnoNoEncontradoCerrar, NotaRequeridaError } from "@gym-app/domain/use-cases/CerrarTurno";
@@ -39,7 +41,11 @@ export async function abrirTurnoAction(
 
   try {
     await abrirTurno(
-      { turnos: new PrismaTurnoRepository(prisma), sucursales: new PrismaSucursalRepository(prisma) },
+      {
+        turnos: new PrismaTurnoRepository(prisma),
+        sucursales: new PrismaSucursalRepository(prisma),
+        autorizacion: new AuthorizationService(new PrismaPermisoRepository(prisma)),
+      },
       {
         organizacionId: usuario.organizacionId,
         sucursalId,
@@ -87,12 +93,17 @@ export async function registrarEgresoAction(
 
   try {
     await registrarEgreso(
-      { turnos: new PrismaTurnoRepository(prisma), egresos: new PrismaEgresoRepository(prisma) },
+      {
+        turnos: new PrismaTurnoRepository(prisma),
+        egresos: new PrismaEgresoRepository(prisma),
+        autorizacion: new AuthorizationService(new PrismaPermisoRepository(prisma)),
+      },
       {
         organizacionId: usuario.organizacionId,
         sucursalIdUsuario: usuario.sucursalId,
         turnoId,
         rolUsuario: usuario.rol,
+        usuarioIdSolicitante: usuario.id,
         monto,
         moneda,
         metodo,
@@ -146,12 +157,14 @@ export async function cerrarTurnoAction(
         arqueo: new PrismaArqueoRepository(prisma),
         pagos: new PrismaPagoRepository(prisma),
         egresos: new PrismaEgresoRepository(prisma),
+        autorizacion: new AuthorizationService(new PrismaPermisoRepository(prisma)),
       },
       {
         organizacionId: usuario.organizacionId,
         sucursalIdUsuario: usuario.sucursalId,
         turnoId,
         rolUsuario: usuario.rol,
+        usuarioIdSolicitante: usuario.id,
         lineas,
       }
     );
@@ -190,7 +203,10 @@ export async function anularPagoAction(
 
   try {
     await anularPago(
-      { pagos: new PrismaPagoRepository(prisma) },
+      {
+        pagos: new PrismaPagoRepository(prisma),
+        autorizacion: new AuthorizationService(new PrismaPermisoRepository(prisma)),
+      },
       { organizacionId: usuario.organizacionId, pagoId, anuladoPorId: usuario.id, rolAnulador: usuario.rol, motivo }
     );
   } catch (error) {

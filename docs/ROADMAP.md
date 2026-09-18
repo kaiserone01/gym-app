@@ -135,6 +135,17 @@ Checklist vivo del proyecto. Se actualiza marcando `- [x]` a medida que se compl
 - Pendiente explícito del usuario (Task 18 equivalente de este plan): **probar en el navegador contra la base real** — abrir turno, registrar pagos y egresos, cerrar con y sin diferencia (confirmando que la nota se vuelve obligatoria solo cuando corresponde), y confirmar que un segundo intento de abrir turno en la misma sucursal falla correctamente.
 - Sigue abierta la misma pregunta de producto del Plan 12: ¿`RegistrarPago` debería rechazar pagos contra un `Miembro` inactivo?
 
+### Plan 14 — Administración de Organización (Sucursales, Usuarios, Permisos granulares)
+- [x] CRUD de `Sucursal` completo desde la UI: pantallas `/sucursales`, `/sucursales/nuevo`, `/sucursales/[id]` (alta, edición, baja/reactivación), casos de uso `CrearSucursal`/`ActualizarSucursal` sumados a `ListarSucursales` (Plan 10).
+- [x] CRUD de `UsuarioAdmin` completo desde la UI: pantallas `/usuarios`, `/usuarios/nuevo`, `/usuarios/[id]`, con casos de uso `ListarUsuarios`/`ObtenerUsuario`/`ActualizarUsuario`/gestión de sucursales y permisos.
+- [x] Editor de permisos granular por usuario (matriz de checkboxes por módulo/acción) + modelo N:N `UsuarioSucursal` para asignar un usuario a una o varias sucursales (reemplaza la `sucursalId` única implícita).
+- [x] `AuthorizationService` migrado de chequeos por rol (`rol === "DUENO"`) a `tienePermiso(usuario, modulo, accion)` contra la matriz granular — cierra el pendiente "Matriz de permisos granular" que quedaba abierto en 🟡 desde el Plan 3.
+- [x] 5 casos de uso migrados a la nueva firma de `tienePermiso`/`AuthorizationService` (`CrearUsuarioAdmin` y los 4 que ya usaban chequeo de rol) — verificado que ningún consumidor quedó en la firma vieja.
+- [x] Verificado: `cd apps/web-admin && npx tsc --noEmit` limpio (sin errores, ni siquiera los 3 conocidos preexistentes — ver nota abajo), `npx turbo run build --filter=web-admin` exitoso con las 6 rutas nuevas esperadas (`/sucursales`, `/sucursales/nuevo`, `/sucursales/[id]`, `/usuarios`, `/usuarios/nuevo`, `/usuarios/[id]`, bajo el route group `(panel)`).
+- **Gap real, explícitamente fuera de alcance:** `ValidarSesion` no chequea `UsuarioAdmin.activo` hoy — dar de baja un usuario no bloquea su sesión/login existente. La spec de este plan definió "gestión de usuarios" como CRUD + permisos, sin tocar el flujo de login/sesión, así que esto no se corrigió acá. Queda documentado como pendiente explícito (ver 🟡 abajo).
+- Nota informativa: hay 3 errores de TypeScript preexistentes conocidos fuera del alcance de este plan y de los anteriores 9 (no bloquearon el build de `web-admin` en esta verificación): `app/layout.tsx(20,50)` (Cannot find name 'LayoutProps', anterior a este plan), `packages/domain/use-cases/ValidarSesion.ts(22,24)` (Expected 2 arguments got 1) y `packages/infrastructure/auth/KioskTokenValidator.ts(12,5)` (`Sucursal` sin `direccion`/`diasGracia`/`activo`) — estos dos últimos originados por cambios de entidad del Plan 3/Tarea 2 de este plan, pero nunca en la lista de archivos de ninguna tarea agendada para corregirlos.
+- Pendiente explícito del usuario: **prueba manual end-to-end en el navegador** con un DUEÑO real (crear/editar/dar de baja sucursal, crear RECEPCION con permisos por defecto, editar permisos y confirmar el bloqueo real, crear GERENTE multi-sucursal, confirmar el redirect de `/usuarios` sin `USUARIOS.VER`, y confirmar el gap de `activo` en login) — no se pudo ejecutar en esta verificación por no tener acceso a navegador ni a un usuario logueado real.
+
 ---
 
 ## 🔴 Bloqueadores antes de exponer nada a un usuario real
@@ -152,7 +163,8 @@ Sin bloqueadores 🔴 pendientes. Lo que sigue es funcionalidad core (🟡) y ex
 - [x] ~~App de kiosco física~~ — Plan 8, completo y verificado end-to-end por el usuario.
 - [ ] **Conectar la tasa BCV real** a Nuevo Miembro y Registrar Pago (hoy usan 850 fijo) — ver `tasaBcvFija.ts`.
 - [ ] **Rotación/regeneración de `apiKey` de una `Sucursal`** — hoy solo se genera al crear la fila, sin manera de rotarla si se filtra.
-- [ ] **Matriz de permisos granular** — hoy solo existe una regla ("crear `UsuarioAdmin` es exclusivo de `DUENO`"). Graduar cuando un segundo caso de uso real lo exija (regla explícita del ADR, no antes).
+- [x] ~~Matriz de permisos granular~~ — Plan 14, completo: `AuthorizationService.tienePermiso` + editor de permisos por usuario en `/usuarios/[id]`.
+- [ ] **`ValidarSesion` no chequea `UsuarioAdmin.activo`** — dar de baja un usuario (Plan 14) no bloquea su sesión/login existente todavía. Detectado en el Plan 14, explícitamente fuera de su alcance (la spec no mencionaba login/sesión).
 - [ ] **Decisión de producto pendiente:** ¿`RegistrarPago` debería rechazar pagos contra un `Miembro` inactivo?
 - [ ] **Deploy real** (Fase E del roadmap conversacional) — nada de esto se desplegó todavía a Docker/EasyPanel; cuando se haga, la carpeta `apps/web-admin/public/uploads/miembros` (fotos de perfil) va a necesitar un volumen persistente montado, o las fotos se pierden en cada rebuild del contenedor.
 - [ ] **Onboarding** (Fase B del roadmap conversacional) — todavía no arrancó.

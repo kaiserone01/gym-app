@@ -35,15 +35,17 @@ model Sucursal {
   direccion      String?
   diasGracia     Int          @default(0) // días después del vencimiento antes de marcar "vencido"
   tasaCambioUSD  Decimal?     @db.Decimal(10, 2) // fallback manual si la API BCV falla (ver ADR v1 §7)
+  activo         Boolean      @default(true)
   createdAt      DateTime     @default(now())
   apiKey         String       @unique @default(uuid()) // el kiosco se autentica con esto (header X-Kiosk-Api-Key), nunca manda sucursalId directo (ADR v1 §4.2)
 
-  usuariosAdmin UsuarioAdmin[]
-  entrenadores  Entrenador[]
-  checkIns      CheckIn[]
-  planesAcceso  PlanSucursalAcceso[]
-  pagos  Pago[]
-  turnos Turno[]
+  usuariosAdmin     UsuarioAdmin[]
+  entrenadores      Entrenador[]
+  checkIns          CheckIn[]
+  planesAcceso      PlanSucursalAcceso[]
+  pagos             Pago[]
+  turnos            Turno[]
+  usuariosConAcceso UsuarioSucursal[]
 }
 
 enum RolUsuario {
@@ -57,18 +59,57 @@ model UsuarioAdmin {
   id             String       @id @default(cuid())
   organizacionId String
   organizacion   Organizacion @relation(fields: [organizacionId], references: [id])
-  sucursalId     String? // null = acceso a toda la organización (dueño/gerente general)
+  sucursalId     String? // sucursal por defecto para operar (preselección) — NO es la fuente de acceso, ver UsuarioSucursal
   sucursal       Sucursal?    @relation(fields: [sucursalId], references: [id])
+  nombre         String       @default("")
   rol            RolUsuario
   email          String       @unique
   passwordHash   String
+  activo         Boolean      @default(true)
   createdAt      DateTime     @default(now())
 
   registrosAuditoria RegistroAuditoria[]
   sesiones           Sesion[]
-  turnos          Turno[]
-  pagosRegistrados Pago[] @relation("PagosRegistrados")
-  pagosAnulados    Pago[] @relation("PagosAnulados")
+  turnos             Turno[]
+  pagosRegistrados   Pago[] @relation("PagosRegistrados")
+  pagosAnulados      Pago[] @relation("PagosAnulados")
+  permisos           PermisoUsuario[]
+  sucursales         UsuarioSucursal[]
+}
+
+enum ModuloPermiso {
+  MIEMBROS
+  PAGOS
+  PLANES
+  CAJA
+  USUARIOS
+  SUCURSALES
+}
+
+enum AccionPermiso {
+  VER
+  CREAR
+  EDITAR
+  ELIMINAR
+}
+
+model PermisoUsuario {
+  id        String        @id @default(cuid())
+  usuarioId String
+  usuario   UsuarioAdmin  @relation(fields: [usuarioId], references: [id])
+  modulo    ModuloPermiso
+  accion    AccionPermiso
+
+  @@unique([usuarioId, modulo, accion])
+}
+
+model UsuarioSucursal {
+  usuarioId  String
+  sucursalId String
+  usuario    UsuarioAdmin @relation(fields: [usuarioId], references: [id])
+  sucursal   Sucursal     @relation(fields: [sucursalId], references: [id])
+
+  @@id([usuarioId, sucursalId])
 }
 
 model Entrenador {

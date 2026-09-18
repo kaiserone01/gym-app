@@ -1,118 +1,96 @@
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { obtenerUsuarioDeSesionActual } from "@/lib/sesion";
+import { PrismaTurnoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaTurnoRepository";
 import { PrismaPagoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaPagoRepository";
-import { PrismaCierreCajaRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaCierreCajaRepository";
+import { PrismaEgresoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaEgresoRepository";
+import { PrismaArqueoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaArqueoRepository";
+import { obtenerResumenTurno } from "@gym-app/domain/use-cases/ObtenerResumenTurno";
 import { obtenerReporteCaja } from "@gym-app/domain/use-cases/ObtenerReporteCaja";
 import { Button } from "@gym-app/ui/components/Button";
 import { METODOS_PAGO } from "../metodosPago";
 import { BotonImprimir } from "../BotonImprimir";
-import { TASA_BCV_FIJA, formatearBs } from "../tasaBcvFija";
-import { PRESETS_PLAN_MIEMBRO } from "../miembros/planesPreset";
-import { cerrarCajaAction } from "./actions";
-import type { FilaReporteCaja } from "@gym-app/domain/use-cases/ObtenerReporteCaja";
-
-// OJO: nunca usar fecha.toISOString() acá — convierte a UTC primero, y de
-// noche (pasadas las 8pm en Venezuela, UTC-4) eso salta al día siguiente.
-// Se arma el string a mano con los componentes locales de la fecha.
-function formatearFechaISO(fecha: Date): string {
-  const anio = fecha.getFullYear();
-  const mes = String(fecha.getMonth() + 1).padStart(2, "0");
-  const dia = String(fecha.getDate()).padStart(2, "0");
-  return `${anio}-${mes}-${dia}`;
-}
-
-function inicioDelDia(fecha: Date): Date {
-  const d = new Date(fecha);
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
-
-function finDelDia(fecha: Date): Date {
-  const d = new Date(fecha);
-  d.setHours(23, 59, 59, 999);
-  return d;
-}
-
-function inicioDeSemana(fecha: Date): Date {
-  const d = inicioDelDia(fecha);
-  const dia = d.getDay(); // 0 = domingo
-  const diff = dia === 0 ? 6 : dia - 1; // semana empieza lunes
-  d.setDate(d.getDate() - diff);
-  return d;
-}
-
-function finDeSemana(fecha: Date): Date {
-  const d = inicioDeSemana(fecha);
-  d.setDate(d.getDate() + 6);
-  return finDelDia(d);
-}
-
-function inicioDeMes(fecha: Date): Date {
-  return new Date(fecha.getFullYear(), fecha.getMonth(), 1);
-}
-
-function finDeMes(fecha: Date): Date {
-  return finDelDia(new Date(fecha.getFullYear(), fecha.getMonth() + 1, 0));
-}
+import { formatearBs } from "../tasaBcvFija";
+import { inicioDelDia, finDelDia, inicioDeSemana, finDeSemana, inicioDeMes, finDeMes, formatearFechaISO } from "../fechas";
+import { FormularioAbrirTurno } from "./FormularioAbrirTurno";
+import { FormularioEgreso } from "./FormularioEgreso";
+import { FormularioArqueo } from "./FormularioArqueo";
+import { abrirTurnoAction, registrarEgresoAction, cerrarTurnoAction } from "./actions";
 
 function nombreMetodo(valor: string): string {
   return METODOS_PAGO.find((m) => m.value === valor)?.label ?? valor;
 }
 
-// El plan que pagó cada fila no se guarda en el Pago — se infiere del
-// precio del plan que el Miembro tiene hoy, comparándolo contra el
-// catálogo fijo de presets. No matchea ⇒ el miembro tiene un precio
-// "Personalizado" (o cambió de plan después de este pago).
-function nombrePlan(precioPlan: number): string {
-  return PRESETS_PLAN_MIEMBRO.find((preset) => preset.precio === precioPlan)?.nombre ?? "Personalizado";
-}
-
-interface GrupoPlan {
-  cantidad: number;
-  monto: number;
-}
-
-interface GrupoMetodo {
-  metodo: string;
-  cantidad: number;
-  monto: number;
-  porPlan: Map<string, GrupoPlan>;
-}
-
-function agruparPorMetodoYPlan(filas: FilaReporteCaja[]): GrupoMetodo[] {
-  const grupos = new Map<string, GrupoMetodo>();
-
-  for (const fila of filas) {
-    let grupo = grupos.get(fila.metodo);
-    if (!grupo) {
-      grupo = { metodo: fila.metodo, cantidad: 0, monto: 0, porPlan: new Map() };
-      grupos.set(fila.metodo, grupo);
-    }
-    grupo.cantidad += 1;
-    grupo.monto += fila.monto;
-
-    const plan = nombrePlan(fila.miembroPrecioPlan);
-    const grupoPlan = grupo.porPlan.get(plan) ?? { cantidad: 0, monto: 0 };
-    grupoPlan.cantidad += 1;
-    grupoPlan.monto += fila.monto;
-    grupo.porPlan.set(plan, grupoPlan);
-  }
-
-  return [...grupos.values()].sort((a, b) => b.monto - a.monto);
-}
-
-const FILAS_POR_PAGINA = 50;
-
 export default async function PaginaCaja({
   searchParams,
 }: {
-  searchParams: Promise<{ fecha?: string; periodo?: string; pagina?: string }>;
+  searchParams: Promise<{ fecha?: string; periodo?: string }>;
 }) {
   const usuario = await obtenerUsuarioDeSesionActual();
   if (!usuario) redirect("/login");
 
-  const { fecha: fechaTexto, periodo = "dia", pagina: paginaTexto } = await searchParams;
+  const sucursalId = usuario.sucursalId;
+  const turnoRepo = new PrismaTurnoRepository(prisma);
+  const turnoAbierto = sucursalId ? await turnoRepo.buscarAbiertoPorSucursal(sucursalId) : null;
+
+  if (turnoAbierto) {
+    const resumen = await obtenerResumenTurno(
+      {
+        turnos: turnoRepo,
+        pagos: new PrismaPagoRepository(prisma),
+        egresos: new PrismaEgresoRepository(prisma),
+      },
+      { turnoId: turnoAbierto.id }
+    );
+
+    return (
+      <div className="flex flex-col gap-6 p-8">
+        <h1 className="text-2xl font-semibold">Turno activo</h1>
+        <div className="rounded-xl border border-neutral-200 p-5 text-sm">
+          <div className="flex justify-between">
+            <span className="text-neutral-500">Abierto desde</span>
+            <span className="font-medium text-neutral-900">
+              {resumen.turno.abiertoEn.toLocaleString("es-VE")}
+            </span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-neutral-500">Fondo inicial</span>
+            <span className="font-medium text-neutral-900">
+              ${resumen.turno.fondoInicialUSD.toFixed(2)} / Bs. {formatearBs(resumen.turno.fondoInicialBs)}
+            </span>
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-neutral-200 p-5 text-sm">
+          <h2 className="mb-3 font-semibold text-neutral-900">Resumen por método</h2>
+          {resumen.lineas.map((linea) => (
+            <div key={linea.metodo} className="flex justify-between border-b border-neutral-100 py-2">
+              <span>{nombreMetodo(linea.metodo)}</span>
+              <span className="font-medium text-neutral-900">{linea.montoEsperado.toFixed(2)} esperado</span>
+            </div>
+          ))}
+        </div>
+
+        <FormularioEgreso accion={registrarEgresoAction} turnoId={resumen.turno.id} />
+
+        {resumen.egresos.length > 0 && (
+          <div className="rounded-xl border border-neutral-200 p-5 text-sm">
+            <h2 className="mb-3 font-semibold text-neutral-900">Egresos del turno</h2>
+            {resumen.egresos.map((egreso) => (
+              <div key={egreso.id} className="flex justify-between border-b border-neutral-100 py-2">
+                <span>{egreso.motivo}</span>
+                <span>{egreso.monto.toFixed(2)} {egreso.moneda}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <FormularioArqueo accion={cerrarTurnoAction} turnoId={resumen.turno.id} lineas={resumen.lineas} />
+      </div>
+    );
+  }
+
+  const { fecha: fechaTexto, periodo = "dia" } = await searchParams;
   const fechaBase = fechaTexto ? new Date(`${fechaTexto}T00:00:00`) : new Date();
 
   const { desde, hasta } =
@@ -123,31 +101,29 @@ export default async function PaginaCaja({
         : { desde: inicioDelDia(fechaBase), hasta: finDelDia(fechaBase) };
 
   const reporte = await obtenerReporteCaja(
-    { pagos: new PrismaPagoRepository(prisma) },
+    {
+      turnos: turnoRepo,
+      pagos: new PrismaPagoRepository(prisma),
+      egresos: new PrismaEgresoRepository(prisma),
+      arqueo: new PrismaArqueoRepository(prisma),
+    },
     { organizacionId: usuario.organizacionId, desde, hasta }
   );
 
-  const cierreDelDia =
-    periodo === "dia"
-      ? await new PrismaCierreCajaRepository(prisma).buscarPorFecha(usuario.organizacionId, inicioDelDia(fechaBase))
-      : null;
-
-  const totalPaginas = Math.max(1, Math.ceil(reporte.filas.length / FILAS_POR_PAGINA));
-  const paginaActual = Math.min(Math.max(1, Number(paginaTexto) || 1), totalPaginas);
-  const filasPagina = reporte.filas.slice(
-    (paginaActual - 1) * FILAS_POR_PAGINA,
-    paginaActual * FILAS_POR_PAGINA
-  );
-  const parametrosBase = `fecha=${formatearFechaISO(fechaBase)}&periodo=${periodo}`;
-
   return (
-    <div className="p-8">
-      <div className="mb-6 flex items-center justify-between print:hidden">
+    <div className="flex flex-col gap-6 p-8">
+      <div className="flex items-center justify-between print:hidden">
         <h1 className="text-2xl font-semibold">Cierre de Caja</h1>
         <BotonImprimir />
       </div>
 
-      <form method="get" className="mb-6 flex flex-wrap items-end gap-4 print:hidden">
+      <FormularioAbrirTurno
+        accion={abrirTurnoAction}
+        requiereSucursal={!sucursalId}
+        sucursales={[]}
+      />
+
+      <form method="get" className="flex flex-wrap items-end gap-4 print:hidden">
         <label className="flex flex-col gap-1 text-sm text-neutral-700">
           Fecha
           <input
@@ -168,113 +144,46 @@ export default async function PaginaCaja({
         <Button type="submit">Ver</Button>
       </form>
 
-      <div className="mb-4 flex items-center gap-3 text-sm text-neutral-500">
+      <div className="flex items-center gap-3 text-sm text-neutral-500">
         <span>
           {formatearFechaISO(desde)} — {formatearFechaISO(hasta)}
         </span>
-        {cierreDelDia && <span className="font-medium text-green-700">✓ Día cerrado</span>}
         <span className="ml-auto text-base font-semibold text-neutral-900">
           Total: ${reporte.totalUSD.toFixed(2)}
         </span>
       </div>
 
-      <table className="mb-2 w-full border-collapse text-left">
-        <thead>
-          <tr className="border-b text-sm text-neutral-500">
-            <th className="py-2">Fecha</th>
-            <th className="py-2">Miembro</th>
-            <th className="py-2">Método</th>
-            <th className="py-2">N° operación</th>
-            <th className="py-2">Monto (USD)</th>
-            <th className="py-2">Monto (Bs)</th>
-          </tr>
-        </thead>
-        <tbody>
-          {filasPagina.map((fila) => (
-            <tr key={fila.pagoId} className="border-b">
-              <td className="py-2">{new Date(fila.fechaPago).toLocaleDateString("es-VE")}</td>
-              <td className="py-2">{fila.miembroNombre}</td>
-              <td className="py-2">{nombreMetodo(fila.metodo)}</td>
-              <td className="py-2">{fila.numeroOperacion ?? "—"}</td>
-              <td className="py-2">${fila.monto.toFixed(2)}</td>
-              <td className="py-2">Bs. {formatearBs(fila.monto * TASA_BCV_FIJA)}</td>
-            </tr>
-          ))}
-
-          {reporte.filas.length === 0 && (
-            <tr>
-              <td colSpan={6} className="py-8 text-center text-neutral-500">
-                Sin pagos en este período.
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
-
-      {totalPaginas > 1 && (
-        <div className="mb-6 flex items-center justify-between text-sm text-neutral-500 print:hidden">
-          <span>
-            Página {paginaActual} de {totalPaginas} ({reporte.filas.length} pagos)
-          </span>
-          <div className="flex gap-2">
-            {paginaActual > 1 && (
-              <a
-                href={`?${parametrosBase}&pagina=${paginaActual - 1}`}
-                className="rounded border border-neutral-300 px-3 py-1 hover:bg-neutral-50"
-              >
-                Anterior
-              </a>
-            )}
-            {paginaActual < totalPaginas && (
-              <a
-                href={`?${parametrosBase}&pagina=${paginaActual + 1}`}
-                className="rounded border border-neutral-300 px-3 py-1 hover:bg-neutral-50"
-              >
-                Siguiente
-              </a>
-            )}
+      {reporte.turnos.map((fila) => (
+        <div key={fila.turno.id} className="rounded-xl border border-neutral-200 p-5 text-sm">
+          <div className="mb-2 flex justify-between font-medium text-neutral-900">
+            <span>Turno {fila.turno.abiertoEn.toLocaleString("es-VE")}</span>
+            <span>${fila.totalUSD.toFixed(2)}</span>
           </div>
+          {fila.arqueo.map((linea) => (
+            <div key={linea.metodo} className="flex justify-between text-neutral-500">
+              <span>{nombreMetodo(linea.metodo)}</span>
+              <span>
+                {linea.montoContado.toFixed(2)} contado ({linea.diferencia === 0 ? "sin diferencia" : `dif. ${linea.diferencia.toFixed(2)}`})
+              </span>
+            </div>
+          ))}
+        </div>
+      ))}
+
+      {reporte.ajustesFueraDeTurno.length > 0 && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-5 text-sm">
+          <h2 className="mb-3 font-semibold text-amber-900">Ajustes fuera de turno</h2>
+          {reporte.ajustesFueraDeTurno.map((pago) => (
+            <div key={pago.id} className="flex justify-between border-b border-amber-100 py-2">
+              <span>{pago.miembroNombre ?? pago.miembroId} — {nombreMetodo(pago.metodo)}</span>
+              <span>${pago.monto.toFixed(2)}</span>
+            </div>
+          ))}
         </div>
       )}
 
-      <div className="mb-6 flex flex-col gap-3 rounded-xl border border-neutral-200 p-5 text-sm">
-        {agruparPorMetodoYPlan(reporte.filas).map((grupo) => (
-          <div key={grupo.metodo}>
-            <div className="flex justify-between">
-              <span className="font-medium text-neutral-900">
-                {nombreMetodo(grupo.metodo)}{" "}
-                <span className="font-normal text-neutral-500">
-                  ({grupo.cantidad} {grupo.cantidad === 1 ? "operación" : "operaciones"})
-                </span>
-              </span>
-              <span className="font-medium text-neutral-900">${grupo.monto.toFixed(2)}</span>
-            </div>
-            <div className="ml-4 mt-1 flex flex-col gap-0.5">
-              {[...grupo.porPlan.entries()].map(([plan, datos]) => (
-                <div key={plan} className="flex justify-between text-neutral-500">
-                  <span>
-                    {datos.cantidad} {plan}
-                  </span>
-                  <span>${datos.monto.toFixed(2)}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
-
-        {reporte.filas.length === 0 && <p className="text-neutral-500">Sin pagos en este período.</p>}
-
-        <div className="mt-2 flex justify-between border-t border-neutral-200 pt-2 text-base">
-          <span className="font-semibold text-neutral-700">Total</span>
-          <span className="font-bold text-neutral-900">${reporte.totalUSD.toFixed(2)}</span>
-        </div>
-      </div>
-
-      {periodo === "dia" && !cierreDelDia && (
-        <form action={cerrarCajaAction} className="print:hidden">
-          <input type="hidden" name="fecha" value={formatearFechaISO(fechaBase)} />
-          <Button type="submit">Cerrar caja de este día</Button>
-        </form>
+      {reporte.turnos.length === 0 && reporte.ajustesFueraDeTurno.length === 0 && (
+        <p className="text-neutral-500">Sin turnos en este período.</p>
       )}
     </div>
   );

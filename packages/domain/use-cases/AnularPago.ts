@@ -1,6 +1,7 @@
 import { IPagoRepository } from "../ports/IPagoRepository";
 import { Pago } from "../entities/Pago";
 import { RolUsuario } from "../entities/UsuarioAdmin";
+import { IAuthorizationService } from "../ports/IAuthorizationService";
 
 export class RolNoAutorizadoError extends Error {
   constructor() {
@@ -35,10 +36,10 @@ export interface DatosAnularPago {
 }
 
 export async function anularPago(
-  deps: { pagos: IPagoRepository },
+  deps: { pagos: IPagoRepository; autorizacion: IAuthorizationService },
   input: DatosAnularPago
 ): Promise<Pago> {
-  if (input.rolAnulador !== "DUENO" && input.rolAnulador !== "GERENTE") {
+  if (!(await deps.autorizacion.tienePermiso(input.anuladoPorId, "PAGOS", "ELIMINAR"))) {
     throw new RolNoAutorizadoError();
   }
 

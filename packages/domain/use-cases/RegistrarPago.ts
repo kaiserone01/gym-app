@@ -5,6 +5,7 @@ import { IPlanRepository } from "../ports/IPlanRepository";
 import { ITurnoRepository } from "../ports/ITurnoRepository";
 import { Pago } from "../entities/Pago";
 import { RolUsuario } from "../entities/UsuarioAdmin";
+import { IAuthorizationService } from "../ports/IAuthorizationService";
 
 const DURACION_SUSCRIPCION_DIAS = 30;
 
@@ -38,6 +39,7 @@ export interface RegistrarPagoDeps {
   miembros: IMemberRepository;
   planes: IPlanRepository;
   turnos: ITurnoRepository;
+  autorizacion: IAuthorizationService;
 }
 
 export interface DatosRegistrarPago {
@@ -54,7 +56,7 @@ export interface DatosRegistrarPago {
 }
 
 export async function registrarPago(deps: RegistrarPagoDeps, input: DatosRegistrarPago): Promise<Pago> {
-  if (input.rolUsuario === "ENTRENADOR") {
+  if (!(await deps.autorizacion.tienePermiso(input.registradoPorId, "PAGOS", "CREAR"))) {
     throw new RolNoAutorizadoError();
   }
 

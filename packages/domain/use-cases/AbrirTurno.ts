@@ -2,6 +2,7 @@ import { ITurnoRepository } from "../ports/ITurnoRepository";
 import { ISucursalRepository } from "../ports/ISucursalRepository";
 import { Turno } from "../entities/Turno";
 import { RolUsuario } from "../entities/UsuarioAdmin";
+import { IAuthorizationService } from "../ports/IAuthorizationService";
 
 export class RolNoAutorizadoError extends Error {
   constructor() {
@@ -31,10 +32,10 @@ export interface DatosAbrirTurno {
 }
 
 export async function abrirTurno(
-  deps: { turnos: ITurnoRepository; sucursales: ISucursalRepository },
+  deps: { turnos: ITurnoRepository; sucursales: ISucursalRepository; autorizacion: IAuthorizationService },
   input: DatosAbrirTurno
 ): Promise<Turno> {
-  if (input.rolUsuario === "ENTRENADOR") {
+  if (!(await deps.autorizacion.tienePermiso(input.usuarioId, "CAJA", "CREAR"))) {
     throw new RolNoAutorizadoError();
   }
 

@@ -5,6 +5,7 @@ import { IEgresoRepository } from "../ports/IEgresoRepository";
 import { ArqueoLinea } from "../entities/ArqueoLinea";
 import { RolUsuario } from "../entities/UsuarioAdmin";
 import { obtenerResumenTurno } from "./ObtenerResumenTurno";
+import { IAuthorizationService } from "../ports/IAuthorizationService";
 
 export class RolNoAutorizadoError extends Error {
   constructor() {
@@ -39,16 +40,23 @@ export interface LineaArqueoInput {
 export interface DatosCerrarTurno {
   organizacionId: string;
   sucursalIdUsuario: string | null;
+  usuarioIdSolicitante: string;
   turnoId: string;
   rolUsuario: RolUsuario;
   lineas: LineaArqueoInput[];
 }
 
 export async function cerrarTurno(
-  deps: { turnos: ITurnoRepository; arqueo: IArqueoRepository; pagos: IPagoRepository; egresos: IEgresoRepository },
+  deps: {
+    turnos: ITurnoRepository;
+    arqueo: IArqueoRepository;
+    pagos: IPagoRepository;
+    egresos: IEgresoRepository;
+    autorizacion: IAuthorizationService;
+  },
   input: DatosCerrarTurno
 ): Promise<ArqueoLinea[]> {
-  if (input.rolUsuario === "ENTRENADOR") {
+  if (!(await deps.autorizacion.tienePermiso(input.usuarioIdSolicitante, "CAJA", "EDITAR"))) {
     throw new RolNoAutorizadoError();
   }
 

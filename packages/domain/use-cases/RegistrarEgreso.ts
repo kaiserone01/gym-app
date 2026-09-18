@@ -2,6 +2,7 @@ import { ITurnoRepository } from "../ports/ITurnoRepository";
 import { IEgresoRepository } from "../ports/IEgresoRepository";
 import { Egreso, MonedaEgreso } from "../entities/Egreso";
 import { RolUsuario } from "../entities/UsuarioAdmin";
+import { IAuthorizationService } from "../ports/IAuthorizationService";
 
 export class RolNoAutorizadoError extends Error {
   constructor() {
@@ -30,6 +31,7 @@ export class MotivoRequeridoError extends Error {
 export interface DatosRegistrarEgreso {
   organizacionId: string;
   sucursalIdUsuario: string | null;
+  usuarioIdSolicitante: string;
   turnoId: string;
   rolUsuario: RolUsuario;
   monto: number;
@@ -39,10 +41,10 @@ export interface DatosRegistrarEgreso {
 }
 
 export async function registrarEgreso(
-  deps: { turnos: ITurnoRepository; egresos: IEgresoRepository },
+  deps: { turnos: ITurnoRepository; egresos: IEgresoRepository; autorizacion: IAuthorizationService },
   input: DatosRegistrarEgreso
 ): Promise<Egreso> {
-  if (input.rolUsuario === "ENTRENADOR") {
+  if (!(await deps.autorizacion.tienePermiso(input.usuarioIdSolicitante, "CAJA", "CREAR"))) {
     throw new RolNoAutorizadoError();
   }
 

@@ -24,7 +24,7 @@ model Organizacion {
   miembros      Miembro[]
   planes        Plan[]
   tema          TemaOrganizacion?
-  cierresCaja   CierreCaja[]
+  turnos        Turno[]
 }
 
 model Sucursal {
@@ -42,6 +42,8 @@ model Sucursal {
   entrenadores  Entrenador[]
   checkIns      CheckIn[]
   planesAcceso  PlanSucursalAcceso[]
+  pagos  Pago[]
+  turnos Turno[]
 }
 
 enum RolUsuario {
@@ -64,6 +66,9 @@ model UsuarioAdmin {
 
   registrosAuditoria RegistroAuditoria[]
   sesiones           Sesion[]
+  turnos          Turno[]
+  pagosRegistrados Pago[] @relation("PagosRegistrados")
+  pagosAnulados    Pago[] @relation("PagosAnulados")
 }
 
 model Entrenador {
@@ -156,26 +161,83 @@ model Suscripcion {
 }
 
 model Pago {
-  id         String   @id @default(cuid())
-  miembroId  String
-  miembro    Miembro  @relation(fields: [miembroId], references: [id])
-  monto      Decimal  @db.Decimal(10, 2)
-  metodo     String // "efectivo_usd" | "efectivo_bs" | "pago_movil" | etc.
-  numeroOperacion String? // últimos 4 dígitos del pago móvil — solo cuando metodo = "pago_movil"
-  tasaCambio Decimal? @db.Decimal(10, 2) // tasa usada si fue pago en bolívares
-  fechaPago  DateTime @default(now())
+  id              String   @id @default(cuid())
+  miembroId       String
+  miembro         Miembro  @relation(fields: [miembroId], references: [id])
+  sucursalId      String
+  sucursal        Sucursal @relation(fields: [sucursalId], references: [id])
+  turnoId         String?
+  turno           Turno?   @relation(fields: [turnoId], references: [id])
+  registradoPorId String
+  registradoPor   UsuarioAdmin @relation("PagosRegistrados", fields: [registradoPorId], references: [id])
+
+  monto           Decimal  @db.Decimal(10, 2)
+  metodo          String
+  numeroOperacion String?
+  tasaCambio      Decimal? @db.Decimal(10, 2)
+  fechaPago       DateTime @default(now())
+
+  anuladoEn       DateTime?
+  anuladoPorId    String?
+  anuladoPor      UsuarioAdmin? @relation("PagosAnulados", fields: [anuladoPorId], references: [id])
+  motivoAnulacion String?
 }
 
-model CierreCaja {
+enum EstadoTurno {
+  ABIERTO
+  CERRADO
+}
+
+model Turno {
   id             String       @id @default(cuid())
   organizacionId String
   organizacion   Organizacion @relation(fields: [organizacionId], references: [id])
-  fecha          DateTime // medianoche del día que cubre este cierre
-  totalUSD       Decimal      @db.Decimal(10, 2)
-  desglose       Json // { [metodo: string]: number } — total por método, en USD
-  cerradoEn      DateTime     @default(now())
+  sucursalId     String
+  sucursal       Sucursal     @relation(fields: [sucursalId], references: [id])
+  usuarioId      String
+  usuario        UsuarioAdmin @relation(fields: [usuarioId], references: [id])
 
-  @@unique([organizacionId, fecha])
+  fondoInicialUSD Decimal @db.Decimal(10, 2)
+  fondoInicialBs  Decimal @db.Decimal(14, 2)
+
+  abiertoEn DateTime    @default(now())
+  cerradoEn DateTime?
+  estado    EstadoTurno @default(ABIERTO)
+
+  pagos   Pago[]
+  egresos Egreso[]
+  arqueo  ArqueoLinea[]
+
+  @@index([sucursalId, estado])
+}
+
+enum MonedaEgreso {
+  USD
+  BS
+}
+
+model Egreso {
+  id           String       @id @default(cuid())
+  turnoId      String
+  turno        Turno        @relation(fields: [turnoId], references: [id])
+  monto        Decimal      @db.Decimal(14, 2)
+  moneda       MonedaEgreso
+  metodo       String
+  motivo       String
+  registradoEn DateTime     @default(now())
+}
+
+model ArqueoLinea {
+  id            String  @id @default(cuid())
+  turnoId       String
+  turno         Turno   @relation(fields: [turnoId], references: [id])
+  metodo        String
+  montoEsperado Decimal @db.Decimal(14, 2)
+  montoContado  Decimal @db.Decimal(14, 2)
+  diferencia    Decimal @db.Decimal(14, 2)
+  nota          String?
+
+  @@unique([turnoId, metodo])
 }
 
 model CheckIn {

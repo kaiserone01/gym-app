@@ -23,11 +23,14 @@ export function FormularioPago({
   miembros,
   planes,
   miembroIdFijo,
+  origen,
 }: {
   accion: (estado: EstadoFormularioPago, formData: FormData) => Promise<EstadoFormularioPago>;
   miembros: MiembroParaSelector[];
   planes: PlanParaSelector[];
   miembroIdFijo?: string;
+  /** Marca el origen del formulario para que la Server Action decida si redirige o no al terminar. */
+  origen?: string;
 }) {
   const [estado, enviar, enviando] = useActionState(accion, {});
   const [planId, setPlanId] = useState("");
@@ -50,11 +53,10 @@ export function FormularioPago({
         <p className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">{estado.error}</p>
       )}
 
+      {origen && <input type="hidden" name="origen" value={origen} />}
+
       {miembroIdFijo ? (
-        <>
-          <input type="hidden" name="miembroId" value={miembroIdFijo} />
-          <input type="hidden" name="origen" value="miembro" />
-        </>
+        <input type="hidden" name="miembroId" value={miembroIdFijo} />
       ) : (
         <label className="flex flex-col gap-1 text-sm text-neutral-700">
           Miembro

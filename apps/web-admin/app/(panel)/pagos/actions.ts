@@ -88,8 +88,9 @@ export async function registrarPagoAction(
   revalidatePath("/pagos");
   revalidatePath(`/miembros/${miembroId}`);
   revalidatePath(`/miembros/${miembroId}/pagos`);
+  revalidatePath("/caja");
 
-  if (origen !== "miembro") {
+  if (origen !== "miembro" && origen !== "caja") {
     redirect(`/miembros/${miembroId}`);
   }
 

@@ -99,5 +99,6 @@ export async function registrarPago(deps: RegistrarPagoDeps, input: DatosRegistr
     metodo: input.metodo,
     numeroOperacion: input.numeroOperacion,
     tasaCambio: input.tasaCambio,
+    montoBs: input.tasaCambio !== null ? input.monto * input.tasaCambio : null,
   });
 }

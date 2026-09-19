@@ -5,8 +5,12 @@ import { PrismaTurnoRepository } from "@gym-app/infrastructure/persistence/prism
 import { PrismaPagoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaPagoRepository";
 import { PrismaEgresoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaEgresoRepository";
 import { PrismaArqueoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaArqueoRepository";
+import { PrismaMemberRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaMemberRepository";
+import { PrismaPlanRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaPlanRepository";
 import { obtenerResumenTurno } from "@gym-app/domain/use-cases/ObtenerResumenTurno";
 import { obtenerReporteCaja } from "@gym-app/domain/use-cases/ObtenerReporteCaja";
+import { listarMiembros } from "@gym-app/domain/use-cases/ListarMiembros";
+import { listarPlanes } from "@gym-app/domain/use-cases/ListarPlanes";
 import { Button } from "@gym-app/ui/components/Button";
 import { METODOS_PAGO } from "../metodosPago";
 import { BotonImprimir } from "../BotonImprimir";
@@ -15,7 +19,9 @@ import { inicioDelDia, finDelDia, inicioDeSemana, finDeSemana, inicioDeMes, finD
 import { FormularioAbrirTurno } from "./FormularioAbrirTurno";
 import { FormularioEgreso } from "./FormularioEgreso";
 import { FormularioArqueo } from "./FormularioArqueo";
+import { FormularioPago } from "../pagos/FormularioPago";
 import { abrirTurnoAction, registrarEgresoAction, cerrarTurnoAction } from "./actions";
+import { registrarPagoAction } from "../pagos/actions";
 
 function nombreMetodo(valor: string): string {
   return METODOS_PAGO.find((m) => m.value === valor)?.label ?? valor;
@@ -34,14 +40,21 @@ export default async function PaginaCaja({
   const turnoAbierto = sucursalId ? await turnoRepo.buscarAbiertoPorSucursal(sucursalId) : null;
 
   if (turnoAbierto) {
-    const resumen = await obtenerResumenTurno(
-      {
-        turnos: turnoRepo,
-        pagos: new PrismaPagoRepository(prisma),
-        egresos: new PrismaEgresoRepository(prisma),
-      },
-      { organizacionId: usuario.organizacionId, turnoId: turnoAbierto.id }
-    );
+    const [resumen, miembros, planes] = await Promise.all([
+      obtenerResumenTurno(
+        {
+          turnos: turnoRepo,
+          pagos: new PrismaPagoRepository(prisma),
+          egresos: new PrismaEgresoRepository(prisma),
+        },
+        { organizacionId: usuario.organizacionId, turnoId: turnoAbierto.id }
+      ),
+      listarMiembros({ miembros: new PrismaMemberRepository(prisma) }, usuario.organizacionId),
+      listarPlanes({ planes: new PrismaPlanRepository(prisma) }, usuario.organizacionId),
+    ]);
+
+    const miembrosActivos = miembros.filter((m) => m.activo);
+    const planesActivos = planes.filter((p) => p.activo);
 
     return (
       <div className="flex flex-col gap-6 p-8">
@@ -70,6 +83,46 @@ export default async function PaginaCaja({
             </div>
           ))}
         </div>
+
+        <div className="rounded-xl border border-neutral-200 p-5 text-sm">
+          <h2 className="mb-3 font-semibold text-neutral-900">Registrar pago</h2>
+          <FormularioPago
+            accion={registrarPagoAction}
+            miembros={miembrosActivos}
+            planes={planesActivos}
+            origen="caja"
+          />
+        </div>
+
+        {resumen.pagos.length > 0 && (
+          <div className="rounded-xl border border-neutral-200 p-5 text-sm">
+            <h2 className="mb-3 font-semibold text-neutral-900">Pagos del turno</h2>
+            <table className="w-full border-collapse text-left">
+              <thead>
+                <tr className="border-b text-xs text-neutral-500">
+                  <th className="py-2">Miembro</th>
+                  <th className="py-2">Método</th>
+                  <th className="py-2">Monto USD</th>
+                  <th className="py-2">Tasa</th>
+                  <th className="py-2">Monto Bs</th>
+                </tr>
+              </thead>
+              <tbody>
+                {resumen.pagos
+                  .filter((pago) => !pago.anuladoEn)
+                  .map((pago) => (
+                    <tr key={pago.id} className="border-b border-neutral-100">
+                      <td className="py-2">{pago.miembroNombre ?? pago.miembroId}</td>
+                      <td className="py-2">{nombreMetodo(pago.metodo)}</td>
+                      <td className="py-2">${pago.monto.toFixed(2)}</td>
+                      <td className="py-2">{pago.tasaCambio !== null ? pago.tasaCambio.toFixed(2) : "—"}</td>
+                      <td className="py-2">{pago.montoBs !== null ? `Bs. ${formatearBs(pago.montoBs)}` : "—"}</td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </div>
+        )}
 
         <FormularioEgreso accion={registrarEgresoAction} turnoId={resumen.turno.id} />
 
@@ -163,6 +216,35 @@ export default async function PaginaCaja({
             <span>Cobrado: ${fila.totalPagosUSD.toFixed(2)}</span>
             {fila.totalEgresosUSD > 0 && <span>Egresos (USD): -${fila.totalEgresosUSD.toFixed(2)}</span>}
           </div>
+          {fila.pagos.filter((p) => !p.anuladoEn).length > 0 && (
+            <div className="mb-2 flex flex-col gap-1 border-b border-neutral-100 pb-2">
+              <table className="w-full border-collapse text-left text-xs">
+                <thead>
+                  <tr className="text-neutral-500">
+                    <th className="py-1">Miembro</th>
+                    <th className="py-1">Método</th>
+                    <th className="py-1">USD</th>
+                    <th className="py-1">Tasa</th>
+                    <th className="py-1">Bs</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {fila.pagos
+                    .filter((p) => !p.anuladoEn)
+                    .map((pago) => (
+                      <tr key={pago.id}>
+                        <td className="py-1">{pago.miembroNombre ?? pago.miembroId}</td>
+                        <td className="py-1">{nombreMetodo(pago.metodo)}</td>
+                        <td className="py-1">${pago.monto.toFixed(2)}</td>
+                        <td className="py-1">{pago.tasaCambio !== null ? pago.tasaCambio.toFixed(2) : "—"}</td>
+                        <td className="py-1">{pago.montoBs !== null ? `Bs. ${formatearBs(pago.montoBs)}` : "—"}</td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
           {fila.egresos.length > 0 && (
             <div className="mb-2 flex flex-col gap-1 border-b border-neutral-100 pb-2">
               {fila.egresos.map((egreso) => (
@@ -190,7 +272,11 @@ export default async function PaginaCaja({
           {reporte.ajustesFueraDeTurno.map((pago) => (
             <div key={pago.id} className="flex justify-between border-b border-amber-100 py-2">
               <span>{pago.miembroNombre ?? pago.miembroId} — {nombreMetodo(pago.metodo)}</span>
-              <span>${pago.monto.toFixed(2)}</span>
+              <span className="flex gap-3">
+                <span>${pago.monto.toFixed(2)}</span>
+                <span>{pago.tasaCambio !== null ? `Tasa ${pago.tasaCambio.toFixed(2)}` : "—"}</span>
+                <span>{pago.montoBs !== null ? `Bs. ${formatearBs(pago.montoBs)}` : "—"}</span>
+              </span>
             </div>
           ))}
         </div>

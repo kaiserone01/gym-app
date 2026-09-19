@@ -86,6 +86,7 @@ export default async function PaginaEditarMiembro({ params }: { params: Promise<
                 miembros={[]}
                 planes={planesActivos}
                 miembroIdFijo={id}
+                origen="miembro"
               />
             </div>
           </div>

@@ -10,6 +10,7 @@ export interface Pago {
   metodo: string;
   numeroOperacion: string | null;
   tasaCambio: number | null;
+  montoBs: number | null;
   fechaPago: Date;
   anuladoEn: Date | null;
   anuladoPorId: string | null;
@@ -25,4 +26,5 @@ export interface DatosNuevoPago {
   metodo: string;
   numeroOperacion: string | null;
   tasaCambio: number | null;
+  montoBs: number | null;
 }

@@ -216,6 +216,7 @@ model Pago {
   metodo          String
   numeroOperacion String?
   tasaCambio      Decimal? @db.Decimal(10, 2)
+  montoBs         Decimal? @db.Decimal(12, 2)
   fechaPago       DateTime @default(now())
 
   anuladoEn       DateTime?

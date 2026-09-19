@@ -18,4 +18,6 @@ export interface IUsuarioAdminRepository {
   actualizar(organizacionId: string, id: string, cambios: CambiosUsuarioAdmin): Promise<UsuarioAdmin | null>;
   /** Borrado físico. Solo para compensar una creación parcialmente fallida. */
   eliminar(id: string): Promise<void>;
+  buscarPasswordHashPorId(id: string): Promise<string | null>;
+  actualizarPassword(id: string, passwordHash: string): Promise<void>;
 }

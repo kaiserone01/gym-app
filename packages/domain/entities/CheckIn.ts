@@ -7,3 +7,9 @@ export interface CheckIn {
   fechaHora: Date;
   estadoAlMomento: EstadoCheckIn;
 }
+
+export interface EstadisticaCheckInPorSucursal {
+  sucursalId: string;
+  nombreSucursal: string;
+  cantidad: number;
+}

@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { obtenerUsuarioDeSesionActual } from "@/lib/sesion";
 import { Sidebar } from "@gym-app/ui/components/Sidebar";
+import { BarraUsuario } from "./BarraUsuario";
 
 export default async function PanelLayout({ children }: { children: React.ReactNode }) {
   const usuario = await obtenerUsuarioDeSesionActual();
@@ -19,7 +20,9 @@ export default async function PanelLayout({ children }: { children: React.ReactN
           { href: "/caja", label: "Caja" },
           { href: "/usuarios", label: "Usuarios" },
           { href: "/sucursales", label: "Sucursales" },
+          { href: "/estadisticas", label: "Estadísticas" },
         ]}
+        pie={<BarraUsuario nombre={usuario.nombre} email={usuario.email} />}
       />
       <main className="flex-1">{children}</main>
     </div>

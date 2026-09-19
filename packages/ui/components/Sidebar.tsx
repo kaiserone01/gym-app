@@ -8,11 +8,11 @@ export interface ItemNav {
   label: string;
 }
 
-export function Sidebar({ items }: { items: ItemNav[] }) {
+export function Sidebar({ items, pie }: { items: ItemNav[]; pie?: React.ReactNode }) {
   const pathname = usePathname();
 
   return (
-    <nav className="w-56 shrink-0 border-r border-neutral-200 bg-neutral-50 p-4 print:hidden">
+    <nav className="flex h-screen w-56 shrink-0 flex-col justify-between border-r border-neutral-200 bg-neutral-50 p-4 print:hidden">
       <ul className="flex flex-col gap-1">
         {items.map((item) => {
           const activo = pathname.startsWith(item.href);
@@ -30,6 +30,7 @@ export function Sidebar({ items }: { items: ItemNav[] }) {
           );
         })}
       </ul>
+      {pie && <div className="border-t border-neutral-200 pt-4">{pie}</div>}
     </nav>
   );
 }

@@ -74,4 +74,16 @@ export class PrismaUsuarioAdminRepository implements IUsuarioAdminRepository {
   async eliminar(id: string): Promise<void> {
     await this.prisma.usuarioAdmin.delete({ where: { id } });
   }
+
+  async buscarPasswordHashPorId(id: string): Promise<string | null> {
+    const usuario = await this.prisma.usuarioAdmin.findUnique({
+      where: { id },
+      select: { passwordHash: true },
+    });
+    return usuario?.passwordHash ?? null;
+  }
+
+  async actualizarPassword(id: string, passwordHash: string): Promise<void> {
+    await this.prisma.usuarioAdmin.update({ where: { id }, data: { passwordHash } });
+  }
 }

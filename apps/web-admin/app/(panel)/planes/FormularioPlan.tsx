@@ -3,6 +3,7 @@
 import { useActionState, useEffect, useState } from "react";
 import { Button } from "@gym-app/ui/components/Button";
 import { Input } from "@gym-app/ui/components/Input";
+import { CurrencyInput } from "@gym-app/ui/components/CurrencyInput";
 import { useFeedback } from "@gym-app/ui/components/FeedbackOverlay";
 import type { EstadoFormularioPlan } from "./actions";
 import type { FrecuenciaPago } from "@gym-app/domain/entities/Plan";
@@ -108,13 +109,12 @@ export function FormularioPlan({
           </div>
         )}
 
-        <Input
+        <CurrencyInput
           name="precioUSD"
-          label="Precio (USD)"
-          type="number"
-          step="0.01"
+          label="Precio"
+          moneda="USD"
           required
-          defaultValue={valoresIniciales?.precioUSD}
+          defaultValue={valoresIniciales?.precioUSD !== undefined ? String(valoresIniciales.precioUSD) : ""}
         />
 
         <Button type="submit" disabled={enviando}>

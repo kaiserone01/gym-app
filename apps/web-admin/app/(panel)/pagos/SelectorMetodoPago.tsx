@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Button } from "@gym-app/ui/components/Button";
 import { Input } from "@gym-app/ui/components/Input";
+import { CurrencyInput } from "@gym-app/ui/components/CurrencyInput";
 import type { MetodoPago, TipoMetodoPago } from "@gym-app/domain/entities/MetodoPago";
 import { TIPOS_QUE_PUEDEN_SER_EN_BS } from "@gym-app/domain/entities/MetodoPago";
 import type { SucursalResumen } from "@gym-app/domain/entities/SucursalResumen";
@@ -410,14 +411,13 @@ function ModalIngresoManualTasa({ onCerrar, onGuardado }: { onCerrar: () => void
 
         {!confirmando ? (
           <>
-            <Input
+            <CurrencyInput
+              name="tasaManual"
               label="Tasa BCV (Bs. por USD)"
-              type="number"
-              step="0.01"
-              min="0"
+              moneda="Bs"
               className="mt-4"
               value={valor}
-              onChange={(e) => setValor(e.target.value)}
+              onChange={(nuevoValor) => setValor(nuevoValor)}
             />
             <div className="mt-4 flex gap-3">
               <Button type="button" variant="secundario" className="flex-1" onClick={onCerrar}>

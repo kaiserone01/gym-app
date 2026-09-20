@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect } from "react";
 import { Button } from "@gym-app/ui/components/Button";
-import { Input } from "@gym-app/ui/components/Input";
+import { CurrencyInput } from "@gym-app/ui/components/CurrencyInput";
 import { Card } from "@gym-app/ui/components/Card";
 import { useFeedback } from "@gym-app/ui/components/FeedbackOverlay";
 import type { EstadoAbrirTurno } from "./actions";
@@ -64,19 +64,17 @@ export function FormularioAbrirTurno({
           </label>
         )}
 
-        <Input
+        <CurrencyInput
           name="fondoInicialEfectivoUSD"
-          label="Fondo inicial en efectivo (USD)"
-          type="number"
-          step="0.01"
+          label="Fondo inicial en efectivo"
+          moneda="USD"
           required
           defaultValue="0"
         />
-        <Input
+        <CurrencyInput
           name="fondoInicialEfectivoBs"
-          label="Fondo inicial en efectivo (Bs)"
-          type="number"
-          step="0.01"
+          label="Fondo inicial en efectivo"
+          moneda="Bs"
           required
           defaultValue="0"
         />

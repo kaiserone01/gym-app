@@ -4,6 +4,7 @@ import { useActionState, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Button } from "@gym-app/ui/components/Button";
 import { Input } from "@gym-app/ui/components/Input";
+import { CurrencyInput } from "@gym-app/ui/components/CurrencyInput";
 import { Card } from "@gym-app/ui/components/Card";
 import { Badge } from "@gym-app/ui/components/Badge";
 import { useFeedback } from "@gym-app/ui/components/FeedbackOverlay";
@@ -649,14 +650,13 @@ export function FormularioMiembro({
 
           {editandoPlan && (
           <div className="mt-4 flex flex-col gap-3 rounded-lg border p-4" style={{ borderColor: "var(--gx-edge)" }}>
-            <Input
-              label="Precio (USD)"
-              type="number"
-              step="0.01"
-              min="0"
+            <CurrencyInput
+              name="precioPlanEditado"
+              label="Precio"
+              moneda="USD"
               value={precio}
-              onChange={(e) => {
-                setPrecio(e.target.value);
+              onChange={(valor) => {
+                setPrecio(valor);
                 setErrorPrecio(null);
               }}
             />

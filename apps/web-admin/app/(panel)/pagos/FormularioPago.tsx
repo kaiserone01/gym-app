@@ -3,11 +3,14 @@
 import { useActionState, useEffect, useState } from "react";
 import { Button } from "@gym-app/ui/components/Button";
 import { Input } from "@gym-app/ui/components/Input";
+import { CurrencyInput } from "@gym-app/ui/components/CurrencyInput";
 import { useFeedback } from "@gym-app/ui/components/FeedbackOverlay";
 import type { EstadoFormularioPago } from "./actions";
+import type { Miembro } from "@gym-app/domain/entities/Miembro";
 import type { MetodoPago } from "@gym-app/domain/entities/MetodoPago";
 import type { SucursalResumen } from "@gym-app/domain/entities/SucursalResumen";
 import { SelectorMetodoPago } from "./SelectorMetodoPago";
+import { SelectorMiembroModal, type MiembroConPlan } from "../caja/SelectorMiembroModal";
 
 export interface MiembroParaSelector {
   id: string;
@@ -39,6 +42,7 @@ export function FormularioPago({
   miembroIdFijo,
   planFijo,
   origen,
+  miembrosConPlan,
 }: {
   accion: (estado: EstadoFormularioPago, formData: FormData) => Promise<EstadoFormularioPago>;
   miembros: MiembroParaSelector[];
@@ -55,6 +59,13 @@ export function FormularioPago({
   planFijo?: PlanFijo;
   /** Marca el origen del formulario para que la Server Action decida si redirige o no al terminar. */
   origen?: string;
+  // Cuando se pasa (uso en Caja): reemplaza el <select miembroId> por un
+  // botón "Seleccionar miembro" que abre un modal de búsqueda (nombre o
+  // cédula, ≥3 caracteres) — igual criterio que /miembros. Al elegir un
+  // miembro, el plan y el monto se fijan automáticamente según su plan
+  // vigente (no se elige plan ni se tipea monto acá; el cambio de plan es
+  // exclusivo de /miembros, ver diseño acordado).
+  miembrosConPlan?: Miembro[];
 }) {
   const [estado, enviar, enviando] = useActionState(accion, {});
   const { mostrarExito, mostrarError } = useFeedback();
@@ -71,6 +82,8 @@ export function FormularioPago({
 
   const [planId, setPlanId] = useState("");
   const [monto, setMonto] = useState("");
+  const [modalAbierto, setModalAbierto] = useState(false);
+  const [miembroElegido, setMiembroElegido] = useState<MiembroConPlan | null>(null);
   const [seleccionMetodo, setSeleccionMetodo] = useState<{
     metodoPagoId: string | null;
     metodo: string;
@@ -79,8 +92,23 @@ export function FormularioPago({
     sucursalId: string | null;
   }>({ metodoPagoId: null, metodo: "", tasaCambio: null, numeroOperacion: "", sucursalId: sucursalIdDefault ?? null });
 
-  const montoNumero = planFijo ? planFijo.precioUSD : Number(monto) || 0;
-  const planEsMultisede = planFijo ? planFijo.multisede : (planes.find((p) => p.id === planId)?.multisede ?? false);
+  // El planFijo efectivo: el que llega por prop (ficha del miembro), o —
+  // en Caja — el del plan vigente del miembro elegido en el modal.
+  const planFijoEfectivo: PlanFijo | undefined =
+    planFijo ??
+    (miembroElegido?.plan
+      ? {
+          id: miembroElegido.plan.id,
+          nombre: miembroElegido.plan.nombre,
+          precioUSD: miembroElegido.plan.precioUSD,
+          multisede: miembroElegido.plan.multisede,
+        }
+      : undefined);
+
+  const montoNumero = planFijoEfectivo ? planFijoEfectivo.precioUSD : Number(monto) || 0;
+  const planEsMultisede = planFijoEfectivo
+    ? planFijoEfectivo.multisede
+    : (planes.find((p) => p.id === planId)?.multisede ?? false);
 
   function manejarCambioPlan(id: string) {
     setPlanId(id);
@@ -103,6 +131,35 @@ export function FormularioPago({
 
       {miembroIdFijo ? (
         <input type="hidden" name="miembroId" value={miembroIdFijo} />
+      ) : miembrosConPlan ? (
+        <div className="flex flex-col gap-1.5 text-sm">
+          <span style={{ color: "var(--gx-muted)" }}>Miembro</span>
+          {miembroElegido ? (
+            <button
+              type="button"
+              onClick={() => setModalAbierto(true)}
+              className="flex items-center justify-between rounded-lg border-2 p-3 text-left transition-colors duration-150"
+              style={{ borderColor: "var(--gx-accent)" }}
+            >
+              <span>
+                <span className="block font-medium" style={{ color: "var(--gx-ink)" }}>
+                  {miembroElegido.nombre}
+                </span>
+                <span className="block text-xs" style={{ color: "var(--gx-muted)" }}>
+                  {miembroElegido.cedula}
+                </span>
+              </span>
+              <span className="text-xs font-medium" style={{ color: "var(--gx-accent)" }}>
+                Cambiar
+              </span>
+            </button>
+          ) : (
+            <Button type="button" variant="secundario" onClick={() => setModalAbierto(true)}>
+              Seleccionar miembro
+            </Button>
+          )}
+          <input type="hidden" name="miembroId" value={miembroElegido?.id ?? ""} />
+        </div>
       ) : (
         <label className="flex flex-col gap-1.5 text-sm" style={{ color: "var(--gx-muted)" }}>
           Miembro
@@ -122,23 +179,41 @@ export function FormularioPago({
         </label>
       )}
 
-      {planFijo ? (
+      {modalAbierto && miembrosConPlan && (
+        <SelectorMiembroModal
+          miembros={miembrosConPlan}
+          planes={planes}
+          onSeleccionar={(miembro) => {
+            setMiembroElegido(miembro);
+            setModalAbierto(false);
+          }}
+          onCerrar={() => setModalAbierto(false)}
+        />
+      )}
+
+      {planFijoEfectivo ? (
         <div className="rounded-lg border p-3 text-sm" style={{ borderColor: "var(--gx-edge)", background: "var(--gx-surface-2)" }}>
           <div className="flex justify-between">
             <span style={{ color: "var(--gx-muted)" }}>Plan</span>
             <span className="font-medium" style={{ color: "var(--gx-ink)" }}>
-              {planFijo.nombre}
+              {planFijoEfectivo.nombre}
             </span>
           </div>
           <div className="mt-1 flex justify-between">
             <span style={{ color: "var(--gx-muted)" }}>Monto</span>
             <span className="font-semibold" style={{ color: "var(--gx-ink)" }}>
-              ${planFijo.precioUSD.toFixed(2)}
+              ${planFijoEfectivo.precioUSD.toFixed(2)}
             </span>
           </div>
-          <input type="hidden" name="planId" value={planFijo.id} />
-          <input type="hidden" name="monto" value={planFijo.precioUSD} />
+          <input type="hidden" name="planId" value={planFijoEfectivo.id} />
+          <input type="hidden" name="monto" value={planFijoEfectivo.precioUSD} />
         </div>
+      ) : miembrosConPlan ? (
+        !miembroElegido && (
+          <p className="text-xs" style={{ color: "var(--gx-muted)" }}>
+            Elegí un miembro para ver su plan y monto a cobrar.
+          </p>
+        )
       ) : (
         <>
           <label className="flex flex-col gap-1.5 text-sm" style={{ color: "var(--gx-muted)" }}>
@@ -160,14 +235,13 @@ export function FormularioPago({
             </select>
           </label>
 
-          <Input
+          <CurrencyInput
             name="monto"
-            label="Monto (USD)"
-            type="number"
-            step="0.01"
+            label="Monto"
+            moneda="USD"
             required
             value={monto}
-            onChange={(e) => setMonto(e.target.value)}
+            onChange={(valor) => setMonto(valor)}
           />
         </>
       )}

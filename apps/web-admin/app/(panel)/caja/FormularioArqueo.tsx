@@ -3,6 +3,7 @@
 import { useActionState, useEffect, useState } from "react";
 import { Button } from "@gym-app/ui/components/Button";
 import { Input } from "@gym-app/ui/components/Input";
+import { CurrencyInput } from "@gym-app/ui/components/CurrencyInput";
 import { Card } from "@gym-app/ui/components/Card";
 import { useFeedback } from "@gym-app/ui/components/FeedbackOverlay";
 import type { EstadoCerrarTurno } from "./actions";
@@ -41,6 +42,14 @@ export function FormularioArqueo({
     return METODOS_PAGO.find((m) => m.value === valor)?.label ?? valor;
   }
 
+  // La línea del resumen solo trae el string del método, no la moneda —
+  // se infiere del sufijo "(Bs)" que usa construirNombreMetodo() para
+  // EFECTIVO en bolívares (ver metodosPagoUI.ts). El resto de métodos de
+  // este gimnasio son en USD.
+  function monedaDeLinea(valor: string): "USD" | "Bs" {
+    return valor.endsWith("(Bs)") ? "Bs" : "USD";
+  }
+
   return (
     <Card>
       <form action={enviar} className="flex flex-col gap-4">
@@ -59,34 +68,35 @@ export function FormularioArqueo({
 
         <input type="hidden" name="turnoId" value={turnoId} />
 
-        {lineas.map((linea) => {
-          const contado = contados[linea.metodo];
-          const contadoNumero = Number(contado);
-          const hayDiferencia = contado !== undefined && contado !== "" && contadoNumero !== linea.montoEsperado;
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          {lineas.map((linea) => {
+            const contado = contados[linea.metodo];
+            const contadoNumero = Number(contado);
+            const hayDiferencia = contado !== undefined && contado !== "" && contadoNumero !== linea.montoEsperado;
 
-          return (
-            <div key={linea.metodo} className="flex flex-col gap-2 border-b pb-4" style={{ borderColor: "var(--gx-edge)" }}>
-              <div className="flex items-center justify-between text-sm">
-                <span className="font-medium" style={{ color: "var(--gx-ink)" }}>
-                  {nombreMetodo(linea.metodo)}
-                </span>
-                <span style={{ color: "var(--gx-muted)" }}>Esperado: {linea.montoEsperado.toFixed(2)}</span>
+            return (
+              <div key={linea.metodo} className="flex flex-col gap-2 border-b pb-4" style={{ borderColor: "var(--gx-edge)" }}>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="font-medium" style={{ color: "var(--gx-ink)" }}>
+                    {nombreMetodo(linea.metodo)}
+                  </span>
+                  <span style={{ color: "var(--gx-muted)" }}>Esperado: {linea.montoEsperado.toFixed(2)}</span>
+                </div>
+                <CurrencyInput
+                  name={`montoContado_${linea.metodo}`}
+                  label="Monto contado"
+                  moneda={monedaDeLinea(linea.metodo)}
+                  required
+                  value={contado ?? ""}
+                  onChange={(valor) => setContados((prev) => ({ ...prev, [linea.metodo]: valor }))}
+                />
+                {hayDiferencia && (
+                  <Input name={`nota_${linea.metodo}`} label="Nota (diferencia detectada, obligatoria)" required />
+                )}
               </div>
-              <Input
-                name={`montoContado_${linea.metodo}`}
-                label="Monto contado"
-                type="number"
-                step="0.01"
-                required
-                value={contado ?? ""}
-                onChange={(e) => setContados((prev) => ({ ...prev, [linea.metodo]: e.target.value }))}
-              />
-              {hayDiferencia && (
-                <Input name={`nota_${linea.metodo}`} label="Nota (diferencia detectada, obligatoria)" required />
-              )}
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
 
         <Button variant="peligro" type="submit" disabled={enviando}>
           {enviando ? "Cerrando..." : "Cerrar turno"}

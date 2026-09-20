@@ -3,6 +3,7 @@
 import { useActionState, useEffect, useState } from "react";
 import { Button } from "@gym-app/ui/components/Button";
 import { Input } from "@gym-app/ui/components/Input";
+import { CurrencyInput } from "@gym-app/ui/components/CurrencyInput";
 import { Card } from "@gym-app/ui/components/Card";
 import { useFeedback } from "@gym-app/ui/components/FeedbackOverlay";
 import type { EstadoRegistrarEgreso } from "./actions";
@@ -76,7 +77,7 @@ export function FormularioEgreso({
           </select>
         </label>
 
-        <Input name="monto" label={`Monto (${moneda})`} type="number" step="0.01" required />
+        <CurrencyInput name="monto" label="Monto" moneda={moneda === "USD" ? "USD" : "Bs"} required />
         <Input name="motivo" label="Motivo" required />
 
         <Button variant="secundario" type="submit" disabled={enviando}>

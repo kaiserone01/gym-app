@@ -82,123 +82,135 @@ export default async function PaginaCaja() {
     return (
       <div className="flex flex-col gap-6 p-6 pb-24 lg:p-8 lg:pb-8">
         <PageHeader>Turno activo</PageHeader>
-        <Card className="text-sm">
-          <div className="flex justify-between">
-            <span style={{ color: "var(--gx-muted)" }}>Abierto desde</span>
-            <span className="font-medium" style={{ color: "var(--gx-ink)" }}>
-              {resumen.turno.abiertoEn.toLocaleString("es-VE")}
-            </span>
-          </div>
-          <div className="flex justify-between">
-            <span style={{ color: "var(--gx-muted)" }}>Fondo inicial en efectivo</span>
-            <span className="font-medium" style={{ color: "var(--gx-ink)" }}>
-              ${resumen.turno.fondoInicialEfectivoUSD.toFixed(2)} / Bs.{" "}
-              {formatearBs(resumen.turno.fondoInicialEfectivoBs)}
-            </span>
-          </div>
-        </Card>
 
-        <Card className="text-sm">
-          <h2 className="mb-3 font-semibold" style={{ color: "var(--gx-ink)" }}>
-            Resumen por método
-          </h2>
-          {resumen.lineas.map((linea) => (
-            <div
-              key={linea.metodo}
-              className="flex justify-between border-b py-2"
-              style={{ borderColor: "var(--gx-edge)" }}
-            >
-              <span style={{ color: "var(--gx-muted)" }}>{nombreMetodo(linea.metodo)}</span>
+        {/* Bento grid en desktop: Registrar pago (la acción más frecuente)
+            ocupa 2/3 del ancho; turno + resumen por método comparten la
+            columna lateral. Pagos/egresos del turno y arqueo van a todo el
+            ancho debajo. En mobile todo se apila en una sola columna. */}
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3 lg:auto-rows-min">
+          <Card className="text-sm lg:col-span-2 lg:row-span-2">
+            <h2 className="mb-3 font-semibold" style={{ color: "var(--gx-ink)" }}>
+              Registrar pago
+            </h2>
+            <FormularioPago
+              accion={registrarPagoAction}
+              miembros={miembrosActivos}
+              miembrosConPlan={miembrosActivos}
+              planes={planesActivos}
+              metodosPago={metodosPago}
+              sucursalesVisibles={sucursalDelTurno}
+              sucursalesOrganizacion={sucursalDelTurno}
+              sucursalIdDefault={sucursalId}
+              origen="caja"
+            />
+          </Card>
+
+          <Card className="text-sm">
+            <div className="flex justify-between">
+              <span style={{ color: "var(--gx-muted)" }}>Abierto desde</span>
               <span className="font-medium" style={{ color: "var(--gx-ink)" }}>
-                {linea.montoEsperado.toFixed(2)} esperado
+                {resumen.turno.abiertoEn.toLocaleString("es-VE")}
               </span>
             </div>
-          ))}
-        </Card>
-
-        <Card className="text-sm">
-          <h2 className="mb-3 font-semibold" style={{ color: "var(--gx-ink)" }}>
-            Registrar pago
-          </h2>
-          <FormularioPago
-            accion={registrarPagoAction}
-            miembros={miembrosActivos}
-            planes={planesActivos}
-            metodosPago={metodosPago}
-            sucursalesVisibles={sucursalDelTurno}
-            sucursalesOrganizacion={sucursalDelTurno}
-            sucursalIdDefault={sucursalId}
-            origen="caja"
-          />
-        </Card>
-
-        {resumen.pagos.length > 0 && (
-          <Card className="text-sm">
-            <h2 className="mb-3 font-semibold" style={{ color: "var(--gx-ink)" }}>
-              Pagos del turno
-            </h2>
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[480px] border-collapse text-left">
-                <thead>
-                  <tr className="border-b text-xs" style={{ borderColor: "var(--gx-edge)", color: "var(--gx-muted)" }}>
-                    <th className="py-2">Miembro</th>
-                    <th className="py-2">Método</th>
-                    <th className="py-2">Monto USD</th>
-                    <th className="py-2">Tasa</th>
-                    <th className="py-2">Monto Bs</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {resumen.pagos
-                    .filter((pago) => !pago.anuladoEn)
-                    .map((pago) => (
-                      <tr key={pago.id} className="border-b" style={{ borderColor: "var(--gx-edge)" }}>
-                        <td className="py-2" style={{ color: "var(--gx-ink)" }}>
-                          {pago.miembroNombre ?? pago.miembroId}
-                        </td>
-                        <td className="py-2" style={{ color: "var(--gx-ink)" }}>
-                          {nombreMetodo(pago.metodo)}
-                        </td>
-                        <td className="py-2" style={{ color: "var(--gx-ink)" }}>
-                          ${pago.monto.toFixed(2)}
-                        </td>
-                        <td className="py-2" style={{ color: "var(--gx-ink)" }}>
-                          {pago.tasaCambio !== null ? pago.tasaCambio.toFixed(2) : "—"}
-                        </td>
-                        <td className="py-2" style={{ color: "var(--gx-ink)" }}>
-                          {pago.montoBs !== null ? `Bs. ${formatearBs(pago.montoBs)}` : "—"}
-                        </td>
-                      </tr>
-                    ))}
-                </tbody>
-              </table>
+            <div className="mt-1 flex justify-between">
+              <span style={{ color: "var(--gx-muted)" }}>Fondo inicial en efectivo</span>
+              <span className="font-medium" style={{ color: "var(--gx-ink)" }}>
+                ${resumen.turno.fondoInicialEfectivoUSD.toFixed(2)} / Bs.{" "}
+                {formatearBs(resumen.turno.fondoInicialEfectivoBs)}
+              </span>
             </div>
           </Card>
-        )}
 
-        <FormularioEgreso accion={registrarEgresoAction} turnoId={resumen.turno.id} />
-
-        {resumen.egresos.length > 0 && (
           <Card className="text-sm">
             <h2 className="mb-3 font-semibold" style={{ color: "var(--gx-ink)" }}>
-              Egresos del turno
+              Resumen por método
             </h2>
-            {resumen.egresos.map((egreso) => (
+            {resumen.lineas.map((linea) => (
               <div
-                key={egreso.id}
+                key={linea.metodo}
                 className="flex justify-between border-b py-2"
                 style={{ borderColor: "var(--gx-edge)" }}
               >
-                <span style={{ color: "var(--gx-muted)" }}>{egreso.motivo}</span>
-                <span style={{ color: "var(--gx-ink)" }}>
-                  {egreso.monto.toFixed(2)} {egreso.moneda}
+                <span style={{ color: "var(--gx-muted)" }}>{nombreMetodo(linea.metodo)}</span>
+                <span className="font-medium" style={{ color: "var(--gx-ink)" }}>
+                  {linea.montoEsperado.toFixed(2)} esperado
                 </span>
               </div>
             ))}
           </Card>
-        )}
 
-        <FormularioArqueo accion={cerrarTurnoAction} turnoId={resumen.turno.id} lineas={resumen.lineas} />
+          <div className="lg:col-span-2">
+            <FormularioEgreso accion={registrarEgresoAction} turnoId={resumen.turno.id} />
+          </div>
+
+          {resumen.pagos.length > 0 && (
+            <Card className="text-sm lg:col-span-3">
+              <h2 className="mb-3 font-semibold" style={{ color: "var(--gx-ink)" }}>
+                Pagos del turno
+              </h2>
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[480px] border-collapse text-left">
+                  <thead>
+                    <tr className="border-b text-xs" style={{ borderColor: "var(--gx-edge)", color: "var(--gx-muted)" }}>
+                      <th className="py-2">Miembro</th>
+                      <th className="py-2">Método</th>
+                      <th className="py-2">Monto USD</th>
+                      <th className="py-2">Tasa</th>
+                      <th className="py-2">Monto Bs</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {resumen.pagos
+                      .filter((pago) => !pago.anuladoEn)
+                      .map((pago) => (
+                        <tr key={pago.id} className="border-b" style={{ borderColor: "var(--gx-edge)" }}>
+                          <td className="py-2" style={{ color: "var(--gx-ink)" }}>
+                            {pago.miembroNombre ?? pago.miembroId}
+                          </td>
+                          <td className="py-2" style={{ color: "var(--gx-ink)" }}>
+                            {nombreMetodo(pago.metodo)}
+                          </td>
+                          <td className="py-2" style={{ color: "var(--gx-ink)" }}>
+                            ${pago.monto.toFixed(2)}
+                          </td>
+                          <td className="py-2" style={{ color: "var(--gx-ink)" }}>
+                            {pago.tasaCambio !== null ? pago.tasaCambio.toFixed(2) : "—"}
+                          </td>
+                          <td className="py-2" style={{ color: "var(--gx-ink)" }}>
+                            {pago.montoBs !== null ? `Bs. ${formatearBs(pago.montoBs)}` : "—"}
+                          </td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+          )}
+
+          {resumen.egresos.length > 0 && (
+            <Card className="text-sm lg:col-span-3">
+              <h2 className="mb-3 font-semibold" style={{ color: "var(--gx-ink)" }}>
+                Egresos del turno
+              </h2>
+              {resumen.egresos.map((egreso) => (
+                <div
+                  key={egreso.id}
+                  className="flex justify-between border-b py-2"
+                  style={{ borderColor: "var(--gx-edge)" }}
+                >
+                  <span style={{ color: "var(--gx-muted)" }}>{egreso.motivo}</span>
+                  <span style={{ color: "var(--gx-ink)" }}>
+                    {egreso.monto.toFixed(2)} {egreso.moneda}
+                  </span>
+                </div>
+              ))}
+            </Card>
+          )}
+
+          <div className="lg:col-span-3">
+            <FormularioArqueo accion={cerrarTurnoAction} turnoId={resumen.turno.id} lineas={resumen.lineas} />
+          </div>
+        </div>
       </div>
     );
   }

@@ -60,6 +60,14 @@ export default async function PaginaEditarMiembro({ params }: { params: Promise<
 
   const planesActivos = planes.filter((plan) => plan.activo);
 
+  // Últimos 5 ciclos con datos de rango — listarPagos ya devuelve los
+  // pagos ordenados por fechaPago desc (ver PrismaPagoRepository), así
+  // que basta filtrar y tomar los primeros 5.
+  const ultimosCiclos = pagos
+    .filter((pago) => pago.fechaInicioCiclo !== null && pago.fechaFinCiclo !== null)
+    .slice(0, 5)
+    .map((pago) => ({ id: pago.id, fechaInicioCiclo: pago.fechaInicioCiclo, fechaFinCiclo: pago.fechaFinCiclo }));
+
   return (
     <div className="max-w-4xl p-6 lg:p-8">
       <div className="mb-6">
@@ -74,6 +82,8 @@ export default async function PaginaEditarMiembro({ params }: { params: Promise<
         sucursalesOrganizacion={sucursalesOrganizacion}
         sucursalIdDefault={usuario.sucursalId}
         metodosPago={metodosPago}
+        miembroId={id}
+        ultimosCiclos={ultimosCiclos}
         valoresIniciales={{
           nombre: miembro.nombre,
           cedula: miembro.cedula,

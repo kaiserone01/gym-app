@@ -1,9 +1,11 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { Button } from "@gym-app/ui/components/Button";
 import { Input } from "@gym-app/ui/components/Input";
 import { Card } from "@gym-app/ui/components/Card";
+import { Badge } from "@gym-app/ui/components/Badge";
 import type { EstadoFormularioMiembro } from "./actions";
 import { SelectorMetodoPago } from "../pagos/SelectorMetodoPago";
 import { formatearBs } from "../tasaBcvFija";
@@ -49,6 +51,10 @@ function formatearFecha(fechaISO: string): string {
   return `${dia}/${mes}/${anio}`;
 }
 
+function formatearFechaCorta(fecha: Date): string {
+  return new Date(fecha).toLocaleDateString("es-VE", { day: "2-digit", month: "2-digit", year: "numeric" });
+}
+
 function iniciales(nombre: string): string {
   return nombre
     .split(" ")
@@ -77,6 +83,8 @@ export function FormularioMiembro({
   sucursalIdDefault,
   planes,
   metodosPago,
+  miembroId,
+  ultimosCiclos,
   valoresIniciales,
   panelLateral,
 }: {
@@ -92,6 +100,13 @@ export function FormularioMiembro({
   sucursalIdDefault: string | null;
   planes: Plan[];
   metodosPago: MetodoPago[];
+  // null solo en modo creación (no hay ficha de ciclos que enlazar
+  // todavía). En modo edición siempre es el id real del miembro.
+  miembroId: string | null;
+  // Últimos 3-5 pagos del miembro que tienen datos de ciclo (pagos
+  // previos a esta funcionalidad no tienen fechaInicioCiclo/
+  // fechaFinCiclo y no aparecen aquí) — solo se usa en modo edición.
+  ultimosCiclos: { id: string; fechaInicioCiclo: Date | null; fechaFinCiclo: Date | null }[];
   valoresIniciales?: ValoresFormularioMiembro;
   // Contenido propio de la pantalla de edición (dar de baja, historial de
   // pagos, registrar pago) — se muestra en el panel derecho cuando no hay
@@ -178,6 +193,10 @@ export function FormularioMiembro({
   const nombrePlanActual = esPersonalizado ? "Personalizado" : (planSeleccionado?.nombre ?? "—");
   const nombreEntrenadorActual = entrenadores.find((e) => e.id === entrenadorId)?.nombre ?? null;
   const nombreMetodoPagoActual = seleccionMetodo.metodo || null;
+  // El ciclo más reciente (por fechaFinCiclo) entre los que tienen datos
+  // de ciclo — su fechaInicioCiclo es la "última fecha de renovación".
+  const cicloMasReciente = ultimosCiclos.find((c) => c.fechaInicioCiclo && c.fechaFinCiclo) ?? null;
+  const ultimaFechaRenovacion = cicloMasReciente?.fechaInicioCiclo ?? null;
 
   // Si se cambia de sede y el entrenador seleccionado no está entre los
   // elegibles de la nueva sede, se limpia la selección en vez de dejar un
@@ -430,6 +449,12 @@ export function FormularioMiembro({
                   Entrenador: {nombreEntrenadorActual ?? "Sin asignar"}
                 </p>
               )}
+              <div className="mt-2 flex justify-between text-xs" style={{ color: "var(--gx-muted)" }}>
+                <span>Última fecha de renovación</span>
+                <span className="font-medium" style={{ color: "var(--gx-ink)" }}>
+                  {ultimaFechaRenovacion ? formatearFechaCorta(ultimaFechaRenovacion) : "—"}
+                </span>
+              </div>
             </div>
           )}
 
@@ -649,6 +674,39 @@ export function FormularioMiembro({
             </Button>
           )}
         </Card>
+
+        {esEdicion && ultimosCiclos.length > 0 && (
+          <Card>
+            <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--gx-muted)" }}>
+              Ciclos
+            </h2>
+            <div className="flex flex-col gap-2">
+              {ultimosCiclos.map((ciclo, indice) => (
+                <div
+                  key={ciclo.id}
+                  className="flex items-center justify-between rounded-lg border p-3 text-sm"
+                  style={{ borderColor: "var(--gx-edge)" }}
+                >
+                  <span style={{ color: "var(--gx-ink)" }}>
+                    {ciclo.fechaInicioCiclo && ciclo.fechaFinCiclo
+                      ? `${formatearFechaCorta(ciclo.fechaInicioCiclo)} → ${formatearFechaCorta(ciclo.fechaFinCiclo)}`
+                      : "—"}
+                  </span>
+                  <Badge tono={indice === 0 ? "verde" : "gris"}>{indice === 0 ? "VIGENTE" : "VENCIDO"}</Badge>
+                </div>
+              ))}
+            </div>
+            {miembroId && (
+              <Link
+                href={`/miembros/${miembroId}/pagos`}
+                className="mt-3 inline-block text-sm font-medium hover:underline"
+                style={{ color: "var(--gx-accent)" }}
+              >
+                Ver todos los ciclos
+              </Link>
+            )}
+          </Card>
+        )}
 
         <Button type="button" onClick={manejarClickGuardar} disabled={enviando}>
           Guardar

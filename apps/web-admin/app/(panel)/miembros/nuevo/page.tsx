@@ -38,6 +38,8 @@ export default async function PaginaNuevoMiembro() {
         sucursalesOrganizacion={sucursalesOrganizacion}
         sucursalIdDefault={usuario.sucursalId}
         metodosPago={metodosPago}
+        miembroId={null}
+        ultimosCiclos={[]}
       />
     </div>
   );

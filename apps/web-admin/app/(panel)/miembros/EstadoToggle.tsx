@@ -7,7 +7,12 @@ export function EstadoToggle({ id, activo }: { id: string; activo: boolean }) {
   const [activoLocal, setActivoLocal] = useState(activo);
   const [pendiente, iniciarTransicion] = useTransition();
 
-  function alternar() {
+  function alternar(evento: React.MouseEvent) {
+    // El switch puede vivir dentro de una card/fila que es un <Link> a la
+    // ficha del miembro — sin esto, el clic también dispara la navegación.
+    evento.preventDefault();
+    evento.stopPropagation();
+
     if (activoLocal) {
       const confirmado = window.confirm(
         "¿Dar de baja a este miembro? Va a perder el acceso al gym hasta que lo reactives."

@@ -18,7 +18,6 @@ import {
   PlanInactivoError,
   RolNoAutorizadoError,
 } from "@gym-app/domain/use-cases/RegistrarPago";
-import { METODOS_BANCARIOS } from "../metodosPago";
 
 export interface EstadoFormularioPago {
   error?: string;
@@ -35,19 +34,16 @@ export async function registrarPagoAction(
   const planId = formData.get("planId")?.toString();
   const monto = Number(formData.get("monto"));
   const metodo = formData.get("metodo")?.toString();
+  const metodoPagoId = formData.get("metodoPagoId")?.toString() || null;
   const tasaCambioRaw = formData.get("tasaCambio")?.toString();
   const origen = formData.get("origen")?.toString();
   const numeroOperacion = formData.get("numeroOperacion")?.toString().trim() || null;
 
-  if (!miembroId || !planId || !metodo || Number.isNaN(monto)) {
+  if (!miembroId || !planId || !metodo || !metodoPagoId || Number.isNaN(monto)) {
     return { error: "Miembro, plan, método y monto son requeridos." };
   }
   if (!usuario.sucursalId) {
     return { error: "Debés tener una sucursal asignada para registrar pagos." };
-  }
-
-  if (METODOS_BANCARIOS.includes(metodo) && !numeroOperacion) {
-    return { error: "El número de operación es requerido para pagos por banco." };
   }
 
   try {
@@ -66,6 +62,7 @@ export async function registrarPagoAction(
         planId,
         monto,
         metodo,
+        metodoPagoId,
         numeroOperacion,
         tasaCambio: tasaCambioRaw ? Number(tasaCambioRaw) : null,
         sucursalId: usuario.sucursalId,

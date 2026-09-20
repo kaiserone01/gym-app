@@ -15,8 +15,17 @@ import { Button } from "@gym-app/ui/components/Button";
 import { Input } from "@gym-app/ui/components/Input";
 import { Card } from "@gym-app/ui/components/Card";
 import { PageHeader } from "@gym-app/ui/components/PageHeader";
-import { METODOS_PAGO } from "../metodosPago";
+import { PrismaMetodoPagoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaMetodoPagoRepository";
+import { listarMetodosPagoActivos } from "@gym-app/domain/use-cases/ListarMetodosPago";
 import { BotonImprimir } from "../BotonImprimir";
+
+// El método ahora se guarda como snapshot legible ("Pago Móvil - Banesco")
+// directo en Pago.metodo, ya no como código a traducir contra un catálogo
+// estático — se mantiene esta función identidad para no tocar cada
+// llamado existente.
+function nombreMetodo(valor: string): string {
+  return valor;
+}
 import { formatearBs } from "../tasaBcvFija";
 import { inicioDelDia, finDelDia, inicioDeSemana, finDeSemana, inicioDeMes, finDeMes, formatearFechaISO } from "../fechas";
 import { FormularioAbrirTurno } from "./FormularioAbrirTurno";
@@ -25,10 +34,6 @@ import { FormularioArqueo } from "./FormularioArqueo";
 import { FormularioPago } from "../pagos/FormularioPago";
 import { abrirTurnoAction, registrarEgresoAction, cerrarTurnoAction } from "./actions";
 import { registrarPagoAction } from "../pagos/actions";
-
-function nombreMetodo(valor: string): string {
-  return METODOS_PAGO.find((m) => m.value === valor)?.label ?? valor;
-}
 
 export default async function PaginaCaja({
   searchParams,
@@ -43,7 +48,7 @@ export default async function PaginaCaja({
   const turnoAbierto = sucursalId ? await turnoRepo.buscarAbiertoPorSucursal(sucursalId) : null;
 
   if (turnoAbierto) {
-    const [resumen, miembros, planes] = await Promise.all([
+    const [resumen, miembros, planes, metodosPago] = await Promise.all([
       obtenerResumenTurno(
         {
           turnos: turnoRepo,
@@ -54,6 +59,7 @@ export default async function PaginaCaja({
       ),
       listarMiembros({ miembros: new PrismaMemberRepository(prisma) }, usuario.organizacionId),
       listarPlanes({ planes: new PrismaPlanRepository(prisma) }, usuario.organizacionId),
+      listarMetodosPagoActivos({ metodosPago: new PrismaMetodoPagoRepository(prisma) }, usuario.organizacionId),
     ]);
 
     const miembrosActivos = miembros.filter((m) => m.activo);
@@ -103,6 +109,7 @@ export default async function PaginaCaja({
             accion={registrarPagoAction}
             miembros={miembrosActivos}
             planes={planesActivos}
+            metodosPago={metodosPago}
             origen="caja"
           />
         </Card>

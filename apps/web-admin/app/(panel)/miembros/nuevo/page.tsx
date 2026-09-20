@@ -2,7 +2,9 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { obtenerUsuarioDeSesionActual } from "@/lib/sesion";
 import { PrismaPlanRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaPlanRepository";
+import { PrismaMetodoPagoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaMetodoPagoRepository";
 import { listarPlanes } from "@gym-app/domain/use-cases/ListarPlanes";
+import { listarMetodosPagoActivos } from "@gym-app/domain/use-cases/ListarMetodosPago";
 import { obtenerSucursalesVisiblesParaMiembro } from "../obtenerSucursalesVisibles";
 import { obtenerEntrenadoresPorSucursal } from "../obtenerEntrenadoresPorSucursal";
 import { FormularioMiembro } from "../FormularioMiembro";
@@ -13,9 +15,10 @@ export default async function PaginaNuevoMiembro() {
   const usuario = await obtenerUsuarioDeSesionActual();
   if (!usuario) redirect("/login");
 
-  const [planes, sucursales] = await Promise.all([
+  const [planes, sucursales, metodosPago] = await Promise.all([
     listarPlanes({ planes: new PrismaPlanRepository(prisma) }, usuario.organizacionId),
     obtenerSucursalesVisiblesParaMiembro(usuario),
+    listarMetodosPagoActivos({ metodosPago: new PrismaMetodoPagoRepository(prisma) }, usuario.organizacionId),
   ]);
   const entrenadoresPorSucursal = await obtenerEntrenadoresPorSucursal(usuario.organizacionId, sucursales);
 
@@ -29,6 +32,7 @@ export default async function PaginaNuevoMiembro() {
         entrenadoresPorSucursal={entrenadoresPorSucursal}
         planes={planes}
         sucursales={sucursales}
+        metodosPago={metodosPago}
       />
     </div>
   );

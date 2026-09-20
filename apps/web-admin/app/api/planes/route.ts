@@ -44,6 +44,7 @@ export async function POST(req: NextRequest) {
         frecuencia: body.frecuencia,
         incluyeEntrenador: body.incluyeEntrenador ?? false,
         precioUSD: body.precioUSD,
+        multisede: body.multisede ?? false,
       }
     );
 

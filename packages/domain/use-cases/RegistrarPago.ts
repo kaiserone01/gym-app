@@ -47,6 +47,7 @@ export interface DatosRegistrarPago {
   planId: string;
   monto: number;
   metodo: string;
+  metodoPagoId: string | null;
   numeroOperacion: string | null;
   tasaCambio: number | null;
   sucursalId: string;
@@ -97,6 +98,7 @@ export async function registrarPago(deps: RegistrarPagoDeps, input: DatosRegistr
     registradoPorId: input.registradoPorId,
     monto: input.monto,
     metodo: input.metodo,
+    metodoPagoId: input.metodoPagoId,
     numeroOperacion: input.numeroOperacion,
     tasaCambio: input.tasaCambio,
     montoBs: input.tasaCambio !== null ? input.monto * input.tasaCambio : null,

@@ -9,6 +9,7 @@ type FilaPlan = {
   frecuencia: Plan["frecuencia"];
   incluyeEntrenador: boolean;
   precioUSD: { toNumber(): number };
+  multisede: boolean;
   activo: boolean;
 };
 
@@ -20,6 +21,7 @@ function mapear(plan: FilaPlan): Plan {
     frecuencia: plan.frecuencia,
     incluyeEntrenador: plan.incluyeEntrenador,
     precioUSD: plan.precioUSD.toNumber(),
+    multisede: plan.multisede,
     activo: plan.activo,
   };
 }
@@ -52,6 +54,7 @@ export class PrismaPlanRepository implements IPlanRepository {
         frecuencia: datos.frecuencia,
         incluyeEntrenador: datos.incluyeEntrenador,
         precioUSD: datos.precioUSD,
+        multisede: datos.multisede,
       },
     });
 

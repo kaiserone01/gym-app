@@ -23,6 +23,7 @@ model Organizacion {
   usuariosAdmin UsuarioAdmin[]
   miembros      Miembro[]
   planes        Plan[]
+  metodosPago   MetodoPago[]
   tema          TemaOrganizacion?
   turnos        Turno[]
 }
@@ -118,8 +119,8 @@ model Miembro {
   id               String       @id @default(cuid())
   organizacionId   String // el Miembro cuelga de la Organización, no de una Sucursal (ADR v1 §4.1)
   organizacion     Organizacion @relation(fields: [organizacionId], references: [id])
-  sucursalId       String // sede asignada al miembro — determina en qué sucursal puede hacer check-in (ver RegistrarCheckIn)
-  sucursal         Sucursal     @relation(fields: [sucursalId], references: [id])
+  sucursalId       String? // sede asignada al miembro; null = "Ambas" (todas las sedes, solo si plan.multisede) — determina en qué sucursal puede hacer check-in (ver RegistrarCheckIn)
+  sucursal         Sucursal?    @relation(fields: [sucursalId], references: [id])
   nombre           String
   cedula           String // única POR organización (ver @@unique abajo)
   fechaInscripcion DateTime?
@@ -157,6 +158,7 @@ model Plan {
   frecuencia        FrecuenciaPago
   incluyeEntrenador Boolean        @default(false)
   precioUSD         Decimal        @db.Decimal(10, 2)
+  multisede         Boolean        @default(false) // si es true, el Miembro con este plan puede asignarse a "Ambas" sedes (sucursalId = null)
   activo            Boolean        @default(true)
 
   suscripciones Suscripcion[]
@@ -194,7 +196,9 @@ model Pago {
   registradoPor   UsuarioAdmin @relation("PagosRegistrados", fields: [registradoPorId], references: [id])
 
   monto           Decimal  @db.Decimal(10, 2)
-  metodo          String
+  metodo          String // snapshot legible al momento del pago (ej. "Pago Móvil - Banesco"), no cambia si el MetodoPago se edita/borra luego
+  metodoPagoId    String?
+  metodoPago      MetodoPago? @relation(fields: [metodoPagoId], references: [id])
   numeroOperacion String?
   tasaCambio      Decimal? @db.Decimal(10, 2)
   montoBs         Decimal? @db.Decimal(12, 2)
@@ -279,6 +283,41 @@ model TasaCambio {
   valor     Decimal  @db.Decimal(12, 4)
   fuente    String // "BCV" | "BINANCE_P2P" | "MANUAL"
   createdAt DateTime @default(now())
+}
+
+enum TipoMetodoPago {
+  EFECTIVO
+  PAGO_MOVIL
+  TRANSFERENCIA
+  PUNTO_VENTA
+  BIOPAGO
+  CRIPTO
+}
+
+model MetodoPago {
+  id             String         @id @default(cuid())
+  organizacionId String
+  organizacion   Organizacion   @relation(fields: [organizacionId], references: [id])
+  tipo           TipoMetodoPago
+  nombreBanco    String? // "Banesco", "Banco de Venezuela", "USDT"... null para Efectivo
+  logoUrl        String?
+  moneda         String // "USD" | "BS" — usado sobre todo por EFECTIVO, y para saber si aplica tasa BCV
+  activo         Boolean        @default(true)
+  orden          Int            @default(0)
+
+  // coordenadas — todas opcionales, se usan según el tipo
+  codigoBanco     String? // prefijo pago móvil, ej "0134"
+  telefono        String?
+  rif             String?
+  numeroCuenta    String? // transferencia
+  beneficiario    String? // transferencia
+  qrUrl           String? // pago móvil / cripto
+  walletDireccion String? // cripto
+  walletUsuario   String? // cripto (usuario/ID de Binance u otro exchange)
+
+  createdAt DateTime @default(now())
+
+  pagos Pago[]
 }
 
 model TemaOrganizacion {

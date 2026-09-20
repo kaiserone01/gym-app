@@ -12,11 +12,14 @@ export interface ValidarAccesoDeps {
 export async function validarAccesoSucursal(
   deps: ValidarAccesoDeps,
   miembroId: string,
-  sucursalIdDelMiembro: string,
+  sucursalIdDelMiembro: string | null,
   sucursalIdDelCheckIn: string,
   ahora: Date = new Date()
 ): Promise<EstadoCheckIn> {
-  if (sucursalIdDelMiembro !== sucursalIdDelCheckIn) {
+  // sucursalIdDelMiembro === null significa "Ambas" (miembro con Plan
+  // multisede) — pasa la validación de sede sin importar en qué sucursal
+  // de la organización haga check-in.
+  if (sucursalIdDelMiembro !== null && sucursalIdDelMiembro !== sucursalIdDelCheckIn) {
     return "sucursal_incorrecta";
   }
 

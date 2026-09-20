@@ -33,6 +33,7 @@ export default async function PaginaEditarPlan({ params }: { params: Promise<{ i
           frecuencia: plan.frecuencia,
           incluyeEntrenador: plan.incluyeEntrenador,
           precioUSD: plan.precioUSD,
+          multisede: plan.multisede,
         }}
         cambioFrecuencia={{
           accion: actualizarFrecuenciaPlanAction.bind(null, id),

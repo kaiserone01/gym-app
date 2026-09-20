@@ -16,6 +16,7 @@ export interface Plan {
   frecuencia: FrecuenciaPago;
   incluyeEntrenador: boolean;
   precioUSD: number;
+  multisede: boolean;
   activo: boolean;
 }
 
@@ -25,10 +26,12 @@ export interface DatosNuevoPlan {
   frecuencia: FrecuenciaPago;
   incluyeEntrenador: boolean;
   precioUSD: number;
+  multisede: boolean;
 }
 
 export interface CambiosPlan {
   nombre?: string;
   precioUSD?: number;
+  multisede?: boolean;
   activo?: boolean;
 }

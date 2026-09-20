@@ -5,7 +5,7 @@ import type { Miembro, DatosNuevoMiembro, CambiosMiembro } from "@gym-app/domain
 type FilaMiembro = {
   id: string;
   organizacionId: string;
-  sucursalId: string;
+  sucursalId: string | null;
   nombre: string;
   cedula: string;
   fechaInscripcion: Date | null;

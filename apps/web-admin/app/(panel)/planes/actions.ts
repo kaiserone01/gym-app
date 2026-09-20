@@ -30,6 +30,7 @@ export async function crearPlanAction(
   const nombre = formData.get("nombre")?.toString().trim();
   const frecuencia = formData.get("frecuencia")?.toString() as FrecuenciaPago | undefined;
   const incluyeEntrenador = formData.get("incluyeEntrenador")?.toString() === "on";
+  const multisede = formData.get("multisede")?.toString() === "on";
   const precioUSD = Number(formData.get("precioUSD"));
 
   if (!nombre || !frecuencia || Number.isNaN(precioUSD)) {
@@ -44,6 +45,7 @@ export async function crearPlanAction(
       frecuencia,
       incluyeEntrenador,
       precioUSD,
+      multisede,
     }
   );
 
@@ -61,6 +63,7 @@ export async function actualizarPlanAction(
 
   const nombre = formData.get("nombre")?.toString().trim();
   const precioUSD = Number(formData.get("precioUSD"));
+  const multisede = formData.get("multisede")?.toString() === "on";
 
   if (!nombre || Number.isNaN(precioUSD)) {
     return { error: "Nombre y precio son requeridos." };
@@ -69,7 +72,7 @@ export async function actualizarPlanAction(
   try {
     await actualizarPlan(
       { planes: new PrismaPlanRepository(prisma) },
-      { organizacionId: usuario.organizacionId, id, cambios: { nombre, precioUSD } }
+      { organizacionId: usuario.organizacionId, id, cambios: { nombre, precioUSD, multisede } }
     );
   } catch (error) {
     if (error instanceof PlanNoEncontradoError) {

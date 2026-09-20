@@ -1,7 +1,7 @@
 export interface Miembro {
   id: string;
   organizacionId: string;
-  sucursalId: string;
+  sucursalId: string | null; // null = "Ambas" (todas las sedes de la organización), solo si plan.multisede
   nombre: string;
   cedula: string;
   fechaInscripcion: Date | null;
@@ -20,7 +20,7 @@ export interface Miembro {
 
 export interface DatosNuevoMiembro {
   organizacionId: string;
-  sucursalId: string;
+  sucursalId: string | null;
   nombre: string;
   cedula: string;
   fechaInscripcion: Date | null;
@@ -34,7 +34,7 @@ export interface DatosNuevoMiembro {
 
 export interface CambiosMiembro {
   nombre?: string;
-  sucursalId?: string;
+  sucursalId?: string | null;
   fechaInscripcion?: Date | null;
   fechaNacimiento?: Date | null;
   celular?: string | null;

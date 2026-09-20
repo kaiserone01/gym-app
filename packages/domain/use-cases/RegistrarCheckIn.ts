@@ -48,13 +48,18 @@ export async function registrarCheckIn(
     throw new MiembroNoEncontradoError();
   }
 
-  const sucursalAsignada = await deps.sucursales.buscarPorId(input.organizacionId, miembro.sucursalId);
+  const sucursalAsignada = miembro.sucursalId
+    ? await deps.sucursales.buscarPorId(input.organizacionId, miembro.sucursalId)
+    : null;
 
   const base = {
     nombre: miembro.nombre,
     fotoUrl: miembro.fotoUrl,
     entrenadorNombre: miembro.entrenadorNombre,
-    sucursalAsignadaNombre: sucursalAsignada?.nombre ?? "",
+    // Sin sucursalId (miembro "Ambas") no hay una sede única que informar
+    // en un eventual mensaje de acceso denegado — de hecho nunca se
+    // deniega por sede a este miembro, ver validarAccesoSucursal.
+    sucursalAsignadaNombre: miembro.sucursalId ? sucursalAsignada?.nombre ?? "" : "Ambas",
     sucursalAsignadaDireccion: sucursalAsignada?.direccion ?? null,
   };
 

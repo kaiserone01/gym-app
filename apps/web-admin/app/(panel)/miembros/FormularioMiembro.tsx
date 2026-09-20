@@ -5,18 +5,19 @@ import { Button } from "@gym-app/ui/components/Button";
 import { Input } from "@gym-app/ui/components/Input";
 import { Card } from "@gym-app/ui/components/Card";
 import type { EstadoFormularioMiembro } from "./actions";
-import { METODOS_PAGO, METODOS_BANCARIOS } from "../metodosPago";
-import { TASA_BCV_FIJA, METODOS_EN_BS, formatearBs } from "../tasaBcvFija";
+import { SelectorMetodoPago } from "../pagos/SelectorMetodoPago";
+import { formatearBs } from "../tasaBcvFija";
 import type { EntrenadorResumen } from "@gym-app/domain/entities/EntrenadorResumen";
 import type { SucursalResumen } from "@gym-app/domain/entities/SucursalResumen";
 import type { Plan, FrecuenciaPago } from "@gym-app/domain/entities/Plan";
+import type { MetodoPago } from "@gym-app/domain/entities/MetodoPago";
 
 export interface ValoresFormularioMiembro {
   nombre: string;
   cedula: string;
   celular: string;
   fechaInscripcion: string; // yyyy-mm-dd
-  sucursalId: string;
+  sucursalId: string | null; // null = "Ambas"
   planId: string | null;
   precioPlan: number;
   entrenadorId: string | null;
@@ -24,6 +25,7 @@ export interface ValoresFormularioMiembro {
 }
 
 const ID_PERSONALIZADO = "__personalizado__";
+const ID_AMBAS_SEDES = "__ambas__";
 
 const ETIQUETA_FRECUENCIA: Record<FrecuenciaPago, string> = {
   SEMANAL: "Semanal",
@@ -72,6 +74,7 @@ export function FormularioMiembro({
   entrenadoresPorSucursal,
   sucursales,
   planes,
+  metodosPago,
   valoresIniciales,
   panelLateral,
 }: {
@@ -82,6 +85,7 @@ export function FormularioMiembro({
   entrenadoresPorSucursal: Record<string, EntrenadorResumen[]>;
   sucursales: SucursalResumen[];
   planes: Plan[];
+  metodosPago: MetodoPago[];
   valoresIniciales?: ValoresFormularioMiembro;
   // Contenido propio de la pantalla de edición (dar de baja, historial de
   // pagos, registrar pago) — se muestra en el panel derecho cuando no hay
@@ -96,7 +100,9 @@ export function FormularioMiembro({
   const [cedula, setCedula] = useState(valoresIniciales?.cedula ?? "");
   const [celular, setCelular] = useState(valoresIniciales?.celular ?? "");
   const [fechaInscripcion, setFechaInscripcion] = useState(valoresIniciales?.fechaInscripcion ?? hoyISO());
-  const [sucursalId, setSucursalId] = useState(valoresIniciales?.sucursalId ?? sucursales[0]?.id ?? "");
+  const [sucursalId, setSucursalId] = useState(
+    valoresIniciales ? (valoresIniciales.sucursalId ?? ID_AMBAS_SEDES) : sucursales[0]?.id ?? ""
+  );
   const [entrenadorId, setEntrenadorId] = useState(valoresIniciales?.entrenadorId ?? "");
   const [fotoPreview, setFotoPreview] = useState<string | null>(valoresIniciales?.fotoUrl ?? null);
 
@@ -105,7 +111,7 @@ export function FormularioMiembro({
   // fuera del alcance del usuario que edita), se agregan igual a la lista
   // para no perder el dato al mostrar el formulario.
   const sucursalesConActual =
-    valoresIniciales && !sucursales.some((s) => s.id === valoresIniciales.sucursalId)
+    valoresIniciales && valoresIniciales.sucursalId && !sucursales.some((s) => s.id === valoresIniciales.sucursalId)
       ? [...sucursales, { id: valoresIniciales.sucursalId, nombre: "(sede actual)", direccion: null, diasGracia: 0, activo: true }]
       : sucursales;
 
@@ -117,7 +123,12 @@ export function FormularioMiembro({
   // el entrenador ya asignado no está en esa lista (p. ej. se cambió de
   // sede, o el entrenador dejó de tener esa sucursal asignada), se agrega
   // igual para no perder el dato al mostrar el formulario de edición.
-  const entrenadoresDeLaSede = entrenadoresPorSucursal[sucursalId] ?? [];
+  const entrenadoresDeLaSede =
+    sucursalId === ID_AMBAS_SEDES
+      ? Object.values(entrenadoresPorSucursal)
+          .flat()
+          .filter((e, i, lista) => lista.findIndex((otro) => otro.id === e.id) === i)
+      : entrenadoresPorSucursal[sucursalId] ?? [];
   const entrenadores =
     valoresIniciales?.entrenadorId && !entrenadoresDeLaSede.some((e) => e.id === valoresIniciales.entrenadorId)
       ? [...entrenadoresDeLaSede, { id: valoresIniciales.entrenadorId, nombre: "(entrenador actual)" }]
@@ -131,9 +142,19 @@ export function FormularioMiembro({
   const [frecuenciaPersonalizada, setFrecuenciaPersonalizada] = useState<FrecuenciaPago>("MENSUAL");
   const [entrenadorPersonalizado, setEntrenadorPersonalizado] = useState(false);
   const [errorPrecio, setErrorPrecio] = useState<string | null>(null);
-  const [metodoPago, setMetodoPago] = useState("");
-  const [numeroOperacion, setNumeroOperacion] = useState("");
+  const [seleccionMetodo, setSeleccionMetodo] = useState<{
+    metodoPagoId: string | null;
+    metodo: string;
+    tasaCambio: number | null;
+    numeroOperacion: string;
+  }>({ metodoPagoId: null, metodo: "", tasaCambio: null, numeroOperacion: "" });
   const [mostrarTicket, setMostrarTicket] = useState(false);
+  // En edición, el plan asignado se ve de solo lectura hasta que se
+  // confirma explícitamente que se quiere cambiar (ver diseño acordado:
+  // evita cambios de plan por error, ya que dispara el prorrateo).
+  const [editandoPlan, setEditandoPlan] = useState(!esEdicion);
+  const [confirmandoCambioPlan, setConfirmandoCambioPlan] = useState(false);
+  const planIdOriginal = valoresIniciales?.planId ?? null;
 
   const esPersonalizado = planId === ID_PERSONALIZADO;
   const planSeleccionado = planesActivos.find((p) => p.id === planId);
@@ -142,7 +163,7 @@ export function FormularioMiembro({
   const precioActual = Number(precio) || 0;
   const nombrePlanActual = esPersonalizado ? "Personalizado" : (planSeleccionado?.nombre ?? "—");
   const nombreEntrenadorActual = entrenadores.find((e) => e.id === entrenadorId)?.nombre ?? null;
-  const nombreMetodoPagoActual = METODOS_PAGO.find((m) => m.value === metodoPago)?.label ?? null;
+  const nombreMetodoPagoActual = seleccionMetodo.metodo || null;
 
   // Si se cambia de sede y el entrenador seleccionado no está entre los
   // elegibles de la nueva sede, se limpia la selección en vez de dejar un
@@ -153,17 +174,27 @@ export function FormularioMiembro({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- solo debe re-evaluar cuando cambia la sede, no en cada render de `entrenadores`
   }, [sucursalId]);
-  const esPagoEnBs = METODOS_EN_BS.includes(metodoPago);
-  const tasaCambioActual = esPagoEnBs ? TASA_BCV_FIJA : "";
-  const montoBsActual = esPagoEnBs ? precioActual * TASA_BCV_FIJA : null;
+  const montoBsActual = seleccionMetodo.tasaCambio !== null ? precioActual * seleccionMetodo.tasaCambio : null;
 
   function manejarCambioPlan(nuevoId: string) {
     setPlanId(nuevoId);
+    let permiteMultisede = false;
     if (nuevoId !== ID_PERSONALIZADO) {
       const plan = planesActivos.find((p) => p.id === nuevoId);
-      if (plan) setPrecio(String(plan.precioUSD));
+      if (plan) {
+        setPrecio(String(plan.precioUSD));
+        permiteMultisede = plan.multisede;
+      }
+    }
+    // Si el nuevo plan no permite multisede y había quedado "Ambas"
+    // seleccionado, se cae a la primera sede visible en vez de dejar un
+    // valor que ya no es válido para este plan.
+    if (!permiteMultisede && sucursalId === ID_AMBAS_SEDES) {
+      setSucursalId(sucursales[0]?.id ?? "");
     }
   }
+
+  const planPermiteMultisede = esPersonalizado ? false : (planesActivos.find((p) => p.id === planId)?.multisede ?? false);
 
   function manejarClickGuardar() {
     const form = formRef.current;
@@ -210,13 +241,10 @@ export function FormularioMiembro({
         <input type="hidden" name="planNombre" value={nombrePlanActual} />
         {!esEdicion && (
           <>
-            <input type="hidden" name="metodo" value={metodoPago} />
-            <input type="hidden" name="tasaCambio" value={tasaCambioActual} />
-            <input
-              type="hidden"
-              name="numeroOperacion"
-              value={METODOS_BANCARIOS.includes(metodoPago) ? numeroOperacion : ""}
-            />
+            <input type="hidden" name="metodo" value={seleccionMetodo.metodo} />
+            <input type="hidden" name="metodoPagoId" value={seleccionMetodo.metodoPagoId ?? ""} />
+            <input type="hidden" name="tasaCambio" value={seleccionMetodo.tasaCambio ?? ""} />
+            <input type="hidden" name="numeroOperacion" value={seleccionMetodo.numeroOperacion} />
           </>
         )}
 
@@ -305,19 +333,93 @@ export function FormularioMiembro({
                     {sucursal.nombre}
                   </option>
                 ))}
+                {planPermiteMultisede && <option value={ID_AMBAS_SEDES}>Ambas</option>}
               </select>
               <span className="text-xs" style={{ color: "var(--gx-muted-dim)" }}>
-                Determina en qué sucursal puede hacer check-in.
+                {sucursalId === ID_AMBAS_SEDES
+                  ? "Puede hacer check-in en cualquier sucursal de la organización."
+                  : "Determina en qué sucursal puede hacer check-in."}
               </span>
             </label>
           </div>
         </Card>
 
         <Card>
-          <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--gx-muted)" }}>
-            Plan de membresía
-          </h2>
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--gx-muted)" }}>
+              Plan de membresía
+            </h2>
+            {esEdicion && !editandoPlan && (
+              <Button type="button" variant="secundario" onClick={() => setConfirmandoCambioPlan(true)}>
+                Cambiar plan
+              </Button>
+            )}
+          </div>
 
+          {esEdicion && !editandoPlan && (
+            <div className="rounded-lg border p-4" style={{ borderColor: "var(--gx-edge)" }}>
+              <div className="flex items-baseline justify-between">
+                <span className="text-sm font-medium" style={{ color: "var(--gx-muted)" }}>
+                  {nombrePlanActual}
+                </span>
+                <span className="text-2xl font-semibold" style={{ color: "var(--gx-ink)" }}>
+                  ${precioActual}
+                  {planSeleccionado && (
+                    <span className="text-sm font-normal" style={{ color: "var(--gx-muted)" }}>
+                      /{ETIQUETA_FRECUENCIA[planSeleccionado.frecuencia].toLowerCase()}
+                    </span>
+                  )}
+                </span>
+              </div>
+              {requiereEntrenador && (
+                <p className="mt-1 text-xs font-medium" style={{ color: "var(--gx-accent)" }}>
+                  Entrenador: {nombreEntrenadorActual ?? "Sin asignar"}
+                </p>
+              )}
+            </div>
+          )}
+
+          {confirmandoCambioPlan && !editandoPlan && (
+            <div
+              className="fixed inset-0 z-50 flex items-center justify-center p-4"
+              style={{ background: "color-mix(in srgb, black 60%, transparent)" }}
+            >
+              <div
+                className="w-full max-w-sm rounded-2xl border-2 p-6"
+                style={{ borderColor: "var(--gx-accent)", background: "var(--gx-surface)" }}
+              >
+                <h3 className="text-lg font-bold" style={{ color: "var(--gx-ink)" }}>
+                  ¿Cambiar el plan?
+                </h3>
+                <p className="mt-2 text-sm" style={{ color: "var(--gx-muted)" }}>
+                  Se va a cambiar el plan de membresía. Si el miembro tiene una suscripción activa, su fecha de
+                  vencimiento se recalcula (prorrateo) a la nueva frecuencia. ¿Estás seguro?
+                </p>
+                <div className="mt-4 flex gap-3">
+                  <Button
+                    type="button"
+                    variant="secundario"
+                    className="flex-1"
+                    onClick={() => setConfirmandoCambioPlan(false)}
+                  >
+                    Abortar
+                  </Button>
+                  <Button
+                    type="button"
+                    className="flex-1"
+                    onClick={() => {
+                      setConfirmandoCambioPlan(false);
+                      setEditandoPlan(true);
+                    }}
+                  >
+                    Sí, cambiar plan
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {editandoPlan && (
           <div className="grid grid-cols-2 gap-3">
             {planesActivos.map((plan) => {
               const seleccionado = !esPersonalizado && planId === plan.id;
@@ -378,8 +480,9 @@ export function FormularioMiembro({
               </span>
             </button>
           </div>
+          )}
 
-          {esPersonalizado && (
+          {editandoPlan && esPersonalizado && (
             <div className="mt-4 flex flex-col gap-3 rounded-lg border p-4" style={{ borderColor: "var(--gx-edge)" }}>
               <label className="flex flex-col gap-1.5 text-sm" style={{ color: "var(--gx-muted)" }}>
                 Frecuencia de pago
@@ -407,6 +510,7 @@ export function FormularioMiembro({
             </div>
           )}
 
+          {editandoPlan && (
           <div className="mt-4 flex flex-col gap-3 rounded-lg border p-4" style={{ borderColor: "var(--gx-edge)" }}>
             <Input
               label="Precio (USD)"
@@ -425,6 +529,7 @@ export function FormularioMiembro({
               </p>
             )}
           </div>
+          )}
 
           <label className="mt-4 flex flex-col gap-1.5 text-sm" style={{ color: "var(--gx-muted)" }}>
             Entrenador asignado
@@ -432,7 +537,7 @@ export function FormularioMiembro({
               name="entrenadorId"
               value={entrenadorId}
               onChange={(e) => setEntrenadorId(e.target.value)}
-              disabled={!requiereEntrenador}
+              disabled={!requiereEntrenador || (esEdicion && !editandoPlan)}
               className="min-h-11 rounded-lg border px-3 outline-none focus:border-[var(--gx-accent)] disabled:opacity-50"
               style={{ background: "var(--gx-surface-2)", borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }}
             >
@@ -449,6 +554,22 @@ export function FormularioMiembro({
               </span>
             )}
           </label>
+
+          {esEdicion && editandoPlan && (
+            <Button
+              type="button"
+              variant="secundario"
+              className="mt-4"
+              onClick={() => {
+                // Revierte al plan original del miembro sin tocar el resto
+                // del formulario (nombre, sede, etc. ya editados se conservan).
+                if (planIdOriginal) manejarCambioPlan(planIdOriginal);
+                setEditandoPlan(false);
+              }}
+            >
+              Cancelar cambio de plan
+            </Button>
+          )}
         </Card>
 
         <Button type="button" onClick={manejarClickGuardar} disabled={enviando}>
@@ -470,58 +591,12 @@ export function FormularioMiembro({
                 tener que entrar después a &quot;Registrar pago&quot;.
               </p>
 
-              <div className="flex flex-col gap-4">
-                <label className="flex flex-col gap-1.5 text-sm" style={{ color: "var(--gx-muted)" }}>
-                  Método de pago
-                  <select
-                    form={idFormulario}
-                    required
-                    value={metodoPago}
-                    onChange={(e) => setMetodoPago(e.target.value)}
-                    className="min-h-11 rounded-lg border px-3 outline-none focus:border-[var(--gx-accent)]"
-                    style={{ background: "var(--gx-surface-2)", borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }}
-                  >
-                    <option value="">Seleccioná un método</option>
-                    {METODOS_PAGO.map((metodo) => (
-                      <option key={metodo.value} value={metodo.value}>
-                        {metodo.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                {METODOS_BANCARIOS.includes(metodoPago) && (
-                  <Input
-                    form={idFormulario}
-                    label="Número de operación (últimos 4 dígitos)"
-                    required
-                    maxLength={4}
-                    pattern="[0-9]{4}"
-                    value={numeroOperacion}
-                    onChange={(e) => setNumeroOperacion(e.target.value)}
-                  />
-                )}
-
-                {esPagoEnBs && montoBsActual !== null && (
-                  <div
-                    className="rounded-lg border p-3 text-sm"
-                    style={{ borderColor: "var(--gx-edge)", background: "var(--gx-surface-2)" }}
-                  >
-                    <div className="flex justify-between">
-                      <span style={{ color: "var(--gx-muted)" }}>Tasa BCV (fija, prueba)</span>
-                      <span className="font-medium" style={{ color: "var(--gx-ink)" }}>
-                        Bs. {TASA_BCV_FIJA}
-                      </span>
-                    </div>
-                    <div className="mt-1 flex justify-between">
-                      <span style={{ color: "var(--gx-muted)" }}>Monto en bolívares</span>
-                      <span className="font-semibold" style={{ color: "var(--gx-ink)" }}>
-                        Bs. {formatearBs(montoBsActual)}
-                      </span>
-                    </div>
-                  </div>
-                )}
-              </div>
+              <SelectorMetodoPago
+                metodos={metodosPago}
+                monto={precioActual}
+                onCambio={setSeleccionMetodo}
+                idFormulario={idFormulario}
+              />
             </Card>
           )
         ) : (
@@ -557,7 +632,10 @@ export function FormularioMiembro({
               <Fila label="Cédula" valor={cedula || "—"} />
               <Fila label="Celular" valor={celular || "—"} />
               <Fila label="Inscripción" valor={formatearFecha(fechaInscripcion)} />
-              <Fila label="Sede" valor={sucursales.find((s) => s.id === sucursalId)?.nombre ?? "—"} />
+              <Fila
+                label="Sede"
+                valor={sucursalId === ID_AMBAS_SEDES ? "Ambas" : sucursales.find((s) => s.id === sucursalId)?.nombre ?? "—"}
+              />
               <Fila label="Plan" valor={nombrePlanActual} />
               <Fila label="Entrenador" valor={requiereEntrenador ? (nombreEntrenadorActual ?? "Sin asignar") : "No aplica"} />
               {!esEdicion && <Fila label="Método de pago" valor={nombreMetodoPagoActual ?? "—"} />}
@@ -573,7 +651,7 @@ export function FormularioMiembro({
                 ${precioActual.toFixed(2)}
               </span>
             </div>
-            {!esEdicion && esPagoEnBs && montoBsActual !== null && (
+            {!esEdicion && montoBsActual !== null && (
               <p className="text-right text-sm" style={{ color: "var(--gx-muted)" }}>
                 Bs. {formatearBs(montoBsActual)}
               </p>

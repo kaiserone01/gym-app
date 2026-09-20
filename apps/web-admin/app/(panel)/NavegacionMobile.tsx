@@ -11,7 +11,15 @@ import {
 import { BottomTabBar, type ItemTab } from "@gym-app/ui/components/BottomTabBar";
 import { MasSheet } from "./MasSheet";
 
-export function NavegacionMobile({ nombre, email }: { nombre: string; email: string }) {
+export function NavegacionMobile({
+  nombre,
+  email,
+  rol,
+}: {
+  nombre: string;
+  email: string;
+  rol: string;
+}) {
   const [masAbierto, setMasAbierto] = useState(false);
 
   const items: ItemTab[] = [
@@ -56,7 +64,7 @@ export function NavegacionMobile({ nombre, email }: { nombre: string; email: str
   return (
     <>
       <BottomTabBar items={items} />
-      <MasSheet abierto={masAbierto} onCerrar={() => setMasAbierto(false)} nombre={nombre} email={email} />
+      <MasSheet abierto={masAbierto} onCerrar={() => setMasAbierto(false)} nombre={nombre} email={email} rol={rol} />
     </>
   );
 }

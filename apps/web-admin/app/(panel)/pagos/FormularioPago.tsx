@@ -4,8 +4,8 @@ import { useActionState, useState } from "react";
 import { Button } from "@gym-app/ui/components/Button";
 import { Input } from "@gym-app/ui/components/Input";
 import type { EstadoFormularioPago } from "./actions";
-import { METODOS_PAGO, METODOS_BANCARIOS } from "../metodosPago";
-import { TASA_BCV_FIJA, METODOS_EN_BS, formatearBs } from "../tasaBcvFija";
+import type { MetodoPago } from "@gym-app/domain/entities/MetodoPago";
+import { SelectorMetodoPago } from "./SelectorMetodoPago";
 
 export interface MiembroParaSelector {
   id: string;
@@ -22,24 +22,29 @@ export function FormularioPago({
   accion,
   miembros,
   planes,
+  metodosPago,
   miembroIdFijo,
   origen,
 }: {
   accion: (estado: EstadoFormularioPago, formData: FormData) => Promise<EstadoFormularioPago>;
   miembros: MiembroParaSelector[];
   planes: PlanParaSelector[];
+  metodosPago: MetodoPago[];
   miembroIdFijo?: string;
   /** Marca el origen del formulario para que la Server Action decida si redirige o no al terminar. */
   origen?: string;
 }) {
   const [estado, enviar, enviando] = useActionState(accion, {});
   const [planId, setPlanId] = useState("");
-  const [metodo, setMetodo] = useState("");
   const [monto, setMonto] = useState("");
+  const [seleccionMetodo, setSeleccionMetodo] = useState<{
+    metodoPagoId: string | null;
+    metodo: string;
+    tasaCambio: number | null;
+    numeroOperacion: string;
+  }>({ metodoPagoId: null, metodo: "", tasaCambio: null, numeroOperacion: "" });
 
-  const esPagoEnBs = METODOS_EN_BS.includes(metodo);
-  const montoNumero = Number(monto);
-  const montoBs = esPagoEnBs && !Number.isNaN(montoNumero) ? montoNumero * TASA_BCV_FIJA : null;
+  const montoNumero = Number(monto) || 0;
 
   function manejarCambioPlan(id: string) {
     setPlanId(id);
@@ -100,25 +105,6 @@ export function FormularioPago({
         </select>
       </label>
 
-      <label className="flex flex-col gap-1.5 text-sm" style={{ color: "var(--gx-muted)" }}>
-        Método de pago
-        <select
-          name="metodo"
-          required
-          value={metodo}
-          onChange={(e) => setMetodo(e.target.value)}
-          className="min-h-11 rounded-lg border px-3 outline-none focus:border-[var(--gx-accent)]"
-          style={{ background: "var(--gx-surface-2)", borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }}
-        >
-          <option value="">Seleccioná un método</option>
-          {METODOS_PAGO.map((metodoPago) => (
-            <option key={metodoPago.value} value={metodoPago.value}>
-              {metodoPago.label}
-            </option>
-          ))}
-        </select>
-      </label>
-
       <Input
         name="monto"
         label="Monto (USD)"
@@ -129,37 +115,14 @@ export function FormularioPago({
         onChange={(e) => setMonto(e.target.value)}
       />
 
-      {esPagoEnBs && (
-        <>
-          <input type="hidden" name="tasaCambio" value={TASA_BCV_FIJA} />
-          <div className="rounded-lg border p-3 text-sm" style={{ borderColor: "var(--gx-edge)", background: "var(--gx-surface-2)" }}>
-            <div className="flex justify-between">
-              <span style={{ color: "var(--gx-muted)" }}>Tasa BCV (fija, prueba)</span>
-              <span className="font-medium" style={{ color: "var(--gx-ink)" }}>
-                Bs. {TASA_BCV_FIJA}
-              </span>
-            </div>
-            <div className="mt-1 flex justify-between">
-              <span style={{ color: "var(--gx-muted)" }}>Monto en bolívares</span>
-              <span className="font-semibold" style={{ color: "var(--gx-ink)" }}>
-                {montoBs !== null ? `Bs. ${formatearBs(montoBs)}` : "—"}
-              </span>
-            </div>
-          </div>
-        </>
-      )}
+      <input type="hidden" name="metodo" value={seleccionMetodo.metodo} />
+      <input type="hidden" name="metodoPagoId" value={seleccionMetodo.metodoPagoId ?? ""} />
+      <input type="hidden" name="tasaCambio" value={seleccionMetodo.tasaCambio ?? ""} />
+      <input type="hidden" name="numeroOperacion" value={seleccionMetodo.numeroOperacion} />
 
-      {METODOS_BANCARIOS.includes(metodo) && (
-        <Input
-          name="numeroOperacion"
-          label="Número de operación (últimos 4 dígitos)"
-          required
-          maxLength={4}
-          pattern="[0-9]{4}"
-        />
-      )}
+      <SelectorMetodoPago metodos={metodosPago} monto={montoNumero} onCambio={setSeleccionMetodo} />
 
-      <Button type="submit" disabled={enviando}>
+      <Button type="submit" disabled={enviando || !seleccionMetodo.metodoPagoId}>
         {enviando ? "Registrando..." : "Registrar pago"}
       </Button>
     </form>

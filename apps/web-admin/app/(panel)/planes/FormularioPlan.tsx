@@ -11,6 +11,7 @@ export interface ValoresFormularioPlan {
   frecuencia: FrecuenciaPago;
   incluyeEntrenador: boolean;
   precioUSD: number;
+  multisede: boolean;
 }
 
 const ETIQUETA_FRECUENCIA: Record<FrecuenciaPago, string> = {
@@ -74,6 +75,16 @@ export function FormularioPlan({
             </label>
           </>
         )}
+
+        <label className="flex min-h-11 items-center gap-2 text-sm" style={{ color: "var(--gx-muted)" }}>
+          <input
+            type="checkbox"
+            name="multisede"
+            defaultChecked={valoresIniciales?.multisede}
+            className="h-5 w-5 accent-[var(--gx-accent)]"
+          />
+          Multisede (permite asignar &quot;Ambas&quot; sedes a un miembro con este plan)
+        </label>
 
         {esEdicion && (
           <div className="rounded-lg border p-3 text-sm" style={{ borderColor: "var(--gx-edge)" }}>

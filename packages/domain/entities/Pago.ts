@@ -8,6 +8,7 @@ export interface Pago {
   registradoPorId: string;
   monto: number;
   metodo: string;
+  metodoPagoId: string | null;
   numeroOperacion: string | null;
   tasaCambio: number | null;
   montoBs: number | null;
@@ -24,6 +25,7 @@ export interface DatosNuevoPago {
   registradoPorId: string;
   monto: number;
   metodo: string;
+  metodoPagoId: string | null;
   numeroOperacion: string | null;
   tasaCambio: number | null;
   montoBs: number | null;

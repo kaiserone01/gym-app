@@ -15,16 +15,20 @@ export function MasSheet({
   onCerrar,
   nombre,
   email,
+  rol,
 }: {
   abierto: boolean;
   onCerrar: () => void;
   nombre: string;
   email: string;
+  rol: string;
 }) {
+  const enlaces = rol === "SOCIO" ? [...ENLACES, { href: "/configuraciones", label: "Configuraciones" }] : ENLACES;
+
   return (
     <Sheet abierto={abierto} onCerrar={onCerrar} titulo="Más">
       <ul className="flex flex-col gap-1">
-        {ENLACES.map((enlace) => (
+        {enlaces.map((enlace) => (
           <li key={enlace.href}>
             <Link
               href={enlace.href}

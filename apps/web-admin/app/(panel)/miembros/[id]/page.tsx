@@ -5,9 +5,11 @@ import { obtenerUsuarioDeSesionActual } from "@/lib/sesion";
 import { PrismaMemberRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaMemberRepository";
 import { PrismaPagoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaPagoRepository";
 import { PrismaPlanRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaPlanRepository";
+import { PrismaMetodoPagoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaMetodoPagoRepository";
 import { obtenerMiembro, MiembroNoEncontradoError } from "@gym-app/domain/use-cases/ObtenerMiembro";
 import { listarPagos } from "@gym-app/domain/use-cases/ListarPagos";
 import { listarPlanes } from "@gym-app/domain/use-cases/ListarPlanes";
+import { listarMetodosPagoActivos } from "@gym-app/domain/use-cases/ListarMetodosPago";
 import { obtenerSucursalesVisiblesParaMiembro } from "../obtenerSucursalesVisibles";
 import { obtenerEntrenadoresPorSucursal } from "../obtenerEntrenadoresPorSucursal";
 import { FormularioMiembro } from "../FormularioMiembro";
@@ -42,13 +44,14 @@ export default async function PaginaEditarMiembro({ params }: { params: Promise<
 
   if (!miembro) notFound();
 
-  const [pagos, planes, sucursales] = await Promise.all([
+  const [pagos, planes, sucursales, metodosPago] = await Promise.all([
     listarPagos(
       { pagos: new PrismaPagoRepository(prisma), miembros: new PrismaMemberRepository(prisma) },
       { organizacionId: usuario.organizacionId, miembroId: id }
     ),
     listarPlanes({ planes: new PrismaPlanRepository(prisma) }, usuario.organizacionId),
     obtenerSucursalesVisiblesParaMiembro(usuario),
+    listarMetodosPagoActivos({ metodosPago: new PrismaMetodoPagoRepository(prisma) }, usuario.organizacionId),
   ]);
   const entrenadoresPorSucursal = await obtenerEntrenadoresPorSucursal(usuario.organizacionId, sucursales);
 
@@ -65,6 +68,7 @@ export default async function PaginaEditarMiembro({ params }: { params: Promise<
         entrenadoresPorSucursal={entrenadoresPorSucursal}
         planes={planes}
         sucursales={sucursales}
+        metodosPago={metodosPago}
         valoresIniciales={{
           nombre: miembro.nombre,
           cedula: miembro.cedula,
@@ -94,6 +98,7 @@ export default async function PaginaEditarMiembro({ params }: { params: Promise<
                 accion={registrarPagoAction}
                 miembros={[]}
                 planes={planesActivos}
+                metodosPago={metodosPago}
                 miembroIdFijo={id}
                 origen="miembro"
               />

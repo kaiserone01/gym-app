@@ -29,7 +29,6 @@ import {
   RolNoAutorizadoError as PagoRolNoAutorizadoError,
 } from "@gym-app/domain/use-cases/RegistrarPago";
 import type { FrecuenciaPago } from "@gym-app/domain/entities/Plan";
-import { METODOS_BANCARIOS } from "../metodosPago";
 
 export interface EstadoFormularioMiembro {
   error?: string;
@@ -53,9 +52,18 @@ async function obtenerOCrearPlanPersonalizado(
 
   const nuevo = await crearPlan(
     { planes: new PrismaPlanRepository(prisma) },
-    { organizacionId, nombre: "Personalizado", frecuencia, incluyeEntrenador, precioUSD }
+    { organizacionId, nombre: "Personalizado", frecuencia, incluyeEntrenador, precioUSD, multisede: false }
   );
   return nuevo.id;
+}
+
+const ID_AMBAS_SEDES = "__ambas__";
+
+// "Ambas" en el selector de sede se traduce a null (sin restricción de
+// sucursal) — ver diseño acordado del checkbox Plan.multisede.
+function resolverSucursalId(valor: string | undefined): string | null {
+  if (!valor || valor === ID_AMBAS_SEDES) return null;
+  return valor;
 }
 
 // Resuelve el planId a partir de los campos del formulario: o bien un Plan
@@ -115,15 +123,12 @@ export async function crearMiembroAction(
   const sucursalId = formData.get("sucursalId")?.toString();
   const precioPlan = Number(formData.get("precioPlan"));
   const metodo = formData.get("metodo")?.toString();
+  const metodoPagoId = formData.get("metodoPagoId")?.toString() || null;
   const tasaCambioRaw = formData.get("tasaCambio")?.toString();
   const numeroOperacion = formData.get("numeroOperacion")?.toString().trim() || null;
 
-  if (!nombre || !cedula || !fechaInscripcionTexto || !sucursalId || !metodo || Number.isNaN(precioPlan)) {
+  if (!nombre || !cedula || !fechaInscripcionTexto || !sucursalId || !metodo || !metodoPagoId || Number.isNaN(precioPlan)) {
     return { error: "Nombre, cédula, fecha de inscripción, sede y método de pago son requeridos." };
-  }
-
-  if (METODOS_BANCARIOS.includes(metodo) && !numeroOperacion) {
-    return { error: "El número de operación es requerido para pagos por banco." };
   }
 
   const planId = await resolverPlanId(usuario.organizacionId, formData, precioPlan);
@@ -139,7 +144,7 @@ export async function crearMiembroAction(
       { miembros: new PrismaMemberRepository(prisma) },
       {
         organizacionId: usuario.organizacionId,
-        sucursalId,
+        sucursalId: resolverSucursalId(sucursalId),
         nombre,
         cedula,
         fechaInscripcion: new Date(`${fechaInscripcionTexto}T00:00:00`),
@@ -182,6 +187,7 @@ export async function crearMiembroAction(
         planId,
         monto: precioPlan,
         metodo,
+        metodoPagoId,
         numeroOperacion,
         tasaCambio: tasaCambioRaw ? Number(tasaCambioRaw) : null,
         sucursalId: usuario.sucursalId,
@@ -239,7 +245,7 @@ export async function actualizarMiembroAction(
         id,
         cambios: {
           nombre,
-          sucursalId,
+          sucursalId: resolverSucursalId(sucursalId),
           fechaInscripcion: new Date(`${fechaInscripcionTexto}T00:00:00`),
           celular: formData.get("celular")?.toString() || null,
           entrenadorId: formData.get("entrenadorId")?.toString() || null,

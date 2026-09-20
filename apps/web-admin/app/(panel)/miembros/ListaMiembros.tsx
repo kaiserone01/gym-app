@@ -108,7 +108,7 @@ export function ListaMiembros({
       miembros.map((miembro) => ({
         ...miembro,
         plan: miembro.planId ? planesPorId.get(miembro.planId) : undefined,
-        sucursalNombre: sucursalesPorId.get(miembro.sucursalId) ?? "—",
+        sucursalNombre: miembro.sucursalId === null ? "Ambas" : sucursalesPorId.get(miembro.sucursalId) ?? "—",
       })),
     [miembros, planesPorId, sucursalesPorId]
   );
@@ -222,7 +222,7 @@ function VistaCards({ miembros }: { miembros: FilaMiembro[] }) {
 
               <dl className="flex flex-col gap-1.5 text-sm">
                 <div className="flex justify-between gap-3">
-                  <dt style={{ color: "var(--gx-muted)" }}>Fecha de corte</dt>
+                  <dt style={{ color: "var(--gx-muted)" }}>Fecha de Vencimiento</dt>
                   <dd style={{ color: "var(--gx-ink)" }}>
                     {miembro.fechaVencimiento ? formatearFecha(miembro.fechaVencimiento) : "Sin pagos registrados"}
                   </dd>
@@ -268,7 +268,7 @@ function VistaLista({ miembros }: { miembros: FilaMiembro[] }) {
               <th className="py-2">Cédula</th>
               <th className="py-2">Plan</th>
               <th className="py-2">Sede</th>
-              <th className="py-2">Vence</th>
+              <th className="py-2">Fecha de Vencimiento</th>
               <th className="py-2">Próximo cobro</th>
               <th className="py-2">Estado</th>
               <th className="py-2"></th>

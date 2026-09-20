@@ -73,20 +73,28 @@ export class PrismaTurnoRepository implements ITurnoRepository {
   }
 
   async listarFechasConTurno(organizacionId: string): Promise<Date[]> {
-    // DATE_TRUNC('day', ...) agrupa por día en la zona horaria del
-    // servidor de PostgreSQL — coherente con TZ=America/Caracas fijado a
-    // nivel de proceso Node (ver Task 1 del plan; la columna abiertoEn se
-    // guarda en UTC en la base, pero acá truncamos según la sesión de
-    // Postgres, que toma su propio timezone — por defecto UTC en la
-    // mayoría de los hostings gestionados). Para evitar depender del
-    // timezone de la sesión de Postgres, se convierte explícitamente a
-    // 'America/Caracas' antes de truncar.
-    const filas = await this.prisma.$queryRaw<{ dia: Date }[]>`
-      SELECT DISTINCT DATE_TRUNC('day', "abiertoEn" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Caracas') AS dia
+    // "abiertoEn AT TIME ZONE 'UTC' AT TIME ZONE 'America/Caracas'"
+    // convierte la columna (guardada en UTC) al horario de pared de
+    // Venezuela y la devuelve como un timestamp SIN zona — Postgres no le
+    // agrega ninguna, pero el driver de Node la etiqueta como UTC al
+    // mapearla a Date (le agrega "Z"), lo cual correría el día una vez
+    // más al convertir de vuelta a local en el cliente (ver bug
+    // encontrado en la verificación manual de este plan). Por eso NO se
+    // usa DATE_TRUNC ni se devuelve el Date de Postgres directo: se pide
+    // el día/mes/año ya como enteros (EXTRACT) y se reconstruye el Date
+    // acá mismo con el constructor local (new Date(año, mes, día)) — ese
+    // constructor asume la zona del proceso, que es America/Caracas
+    // (TZ=America/Caracas, ver Task 1), la misma que usará el navegador
+    // del cliente al comparar contra esta lista.
+    const filas = await this.prisma.$queryRaw<{ anio: number; mes: number; dia: number }[]>`
+      SELECT DISTINCT
+        EXTRACT(YEAR FROM ("abiertoEn" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Caracas'))::int AS anio,
+        EXTRACT(MONTH FROM ("abiertoEn" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Caracas'))::int AS mes,
+        EXTRACT(DAY FROM ("abiertoEn" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Caracas'))::int AS dia
       FROM "Turno"
       WHERE "organizacionId" = ${organizacionId}
-      ORDER BY dia ASC
+      ORDER BY anio ASC, mes ASC, dia ASC
     `;
-    return filas.map((fila) => fila.dia);
+    return filas.map((fila) => new Date(fila.anio, fila.mes - 1, fila.dia));
   }
 }

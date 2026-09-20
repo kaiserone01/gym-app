@@ -19,6 +19,20 @@ function nombreMetodo(valor: string): string {
   return valor;
 }
 
+// OJO: nunca usar fecha.toISOString() para pasar diasConActividad al
+// cliente — convierte a UTC primero, así que una fecha "sin hora" (medianoche
+// local) puede terminar representando el día anterior en la zona del
+// navegador (bug real encontrado en la verificación manual de este plan).
+// Se pasa como YYYY-MM-DD (sin componente de zona) y FiltroFechasHistorico
+// la reconstruye agregándole T00:00:00, igual que se hace un poco más abajo
+// con desdeTexto/hastaTexto.
+function formatearFechaISO(fecha: Date): string {
+  const anio = fecha.getFullYear();
+  const mes = String(fecha.getMonth() + 1).padStart(2, "0");
+  const dia = String(fecha.getDate()).padStart(2, "0");
+  return `${anio}-${mes}-${dia}`;
+}
+
 export default async function PaginaHistoricoPagos({
   searchParams,
 }: {
@@ -54,7 +68,7 @@ export default async function PaginaHistoricoPagos({
       <FiltroFechasHistorico
         desde={desde}
         hasta={hasta}
-        diasConActividadISO={diasConActividad.map((d) => d.toISOString())}
+        diasConActividadISO={diasConActividad.map((d) => formatearFechaISO(d))}
       />
 
       <div className="flex items-center gap-3 text-sm" style={{ color: "var(--gx-muted)" }}>

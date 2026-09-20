@@ -19,15 +19,19 @@ export function FiltroFechasHistorico({
 }: {
   desde: Date;
   hasta: Date;
-  // Se pasan como strings ISO (serializable de Server a Client Component)
-  // y se reconstruyen a Date acá.
+  // Cada string es YYYY-MM-DD (sin componente de zona) — nunca un ISO
+  // completo con hora/Z. Ver el comentario de formatearFechaISO en
+  // pagos/page.tsx: un Date "sin hora" serializado con .toISOString() (que
+  // sí lleva Z) puede reconstruirse como el día anterior en el navegador,
+  // que corre en la misma zona (America/Caracas) pero interpreta el
+  // sufijo Z como UTC.
   diasConActividadISO: string[];
 }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  const diasConActividad = diasConActividadISO.map((iso) => new Date(iso));
+  const diasConActividad = diasConActividadISO.map((fechaISO) => new Date(`${fechaISO}T00:00:00`));
 
   function manejarCambio(nuevoDesde: Date, nuevoHasta: Date) {
     const params = new URLSearchParams(searchParams);

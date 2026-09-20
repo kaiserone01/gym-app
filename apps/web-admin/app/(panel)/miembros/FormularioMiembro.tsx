@@ -194,9 +194,16 @@ export function FormularioMiembro({
   const nombreEntrenadorActual = entrenadores.find((e) => e.id === entrenadorId)?.nombre ?? null;
   const nombreMetodoPagoActual = seleccionMetodo.metodo || null;
   // El ciclo más reciente (por fechaFinCiclo) entre los que tienen datos
-  // de ciclo — su fechaInicioCiclo es la "última fecha de renovación".
+  // de ciclo — su fechaInicioCiclo es la "última fecha de renovación", y
+  // su fechaFinCiclo es la fecha de vencimiento vigente (próximo cobro).
   const cicloMasReciente = ultimosCiclos.find((c) => c.fechaInicioCiclo && c.fechaFinCiclo) ?? null;
   const ultimaFechaRenovacion = cicloMasReciente?.fechaInicioCiclo ?? null;
+  // Días hasta el próximo cobro — negativo si ya venció. Se redondea con
+  // ceil sobre el delta en horas para no perder un día por horas sueltas
+  // (p. ej. faltan 23h50m -> "falta 1 día", no "0 días").
+  const diasHastaProximoCobro = cicloMasReciente?.fechaFinCiclo
+    ? Math.ceil((new Date(cicloMasReciente.fechaFinCiclo).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+    : null;
 
   // Si se cambia de sede y el entrenador seleccionado no está entre los
   // elegibles de la nueva sede, se limpia la selección en vez de dejar un
@@ -352,6 +359,50 @@ export function FormularioMiembro({
             />
           </div>
         </Card>
+
+        {esEdicion && ultimosCiclos.length > 0 && (
+          <Card>
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--gx-muted)" }}>
+                Ciclos
+              </h2>
+              {diasHastaProximoCobro !== null && (
+                <Badge tono={diasHastaProximoCobro < 0 ? "rojo" : diasHastaProximoCobro <= 3 ? "ambar" : "verde"}>
+                  {diasHastaProximoCobro < 0
+                    ? `Vencido hace ${Math.abs(diasHastaProximoCobro)} día${Math.abs(diasHastaProximoCobro) === 1 ? "" : "s"}`
+                    : diasHastaProximoCobro === 0
+                      ? "Vence hoy"
+                      : `${diasHastaProximoCobro} día${diasHastaProximoCobro === 1 ? "" : "s"} para el próximo cobro`}
+                </Badge>
+              )}
+            </div>
+            <div className="flex flex-col gap-2">
+              {ultimosCiclos.map((ciclo, indice) => (
+                <div
+                  key={ciclo.id}
+                  className="flex items-center justify-between rounded-lg border p-3 text-sm"
+                  style={{ borderColor: "var(--gx-edge)" }}
+                >
+                  <span style={{ color: "var(--gx-ink)" }}>
+                    {ciclo.fechaInicioCiclo && ciclo.fechaFinCiclo
+                      ? `${formatearFechaCorta(ciclo.fechaInicioCiclo)} → ${formatearFechaCorta(ciclo.fechaFinCiclo)}`
+                      : "—"}
+                  </span>
+                  <Badge tono={indice === 0 ? "verde" : "gris"}>{indice === 0 ? "VIGENTE" : "VENCIDO"}</Badge>
+                </div>
+              ))}
+            </div>
+            {miembroId && (
+              <Link
+                href={`/miembros/${miembroId}/pagos`}
+                className="mt-3 inline-block text-sm font-medium hover:underline"
+                style={{ color: "var(--gx-accent)" }}
+              >
+                Ver todos los ciclos
+              </Link>
+            )}
+          </Card>
+        )}
 
         <Card>
           <div className="mb-4 flex items-center justify-between">
@@ -674,39 +725,6 @@ export function FormularioMiembro({
             </Button>
           )}
         </Card>
-
-        {esEdicion && ultimosCiclos.length > 0 && (
-          <Card>
-            <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--gx-muted)" }}>
-              Ciclos
-            </h2>
-            <div className="flex flex-col gap-2">
-              {ultimosCiclos.map((ciclo, indice) => (
-                <div
-                  key={ciclo.id}
-                  className="flex items-center justify-between rounded-lg border p-3 text-sm"
-                  style={{ borderColor: "var(--gx-edge)" }}
-                >
-                  <span style={{ color: "var(--gx-ink)" }}>
-                    {ciclo.fechaInicioCiclo && ciclo.fechaFinCiclo
-                      ? `${formatearFechaCorta(ciclo.fechaInicioCiclo)} → ${formatearFechaCorta(ciclo.fechaFinCiclo)}`
-                      : "—"}
-                  </span>
-                  <Badge tono={indice === 0 ? "verde" : "gris"}>{indice === 0 ? "VIGENTE" : "VENCIDO"}</Badge>
-                </div>
-              ))}
-            </div>
-            {miembroId && (
-              <Link
-                href={`/miembros/${miembroId}/pagos`}
-                className="mt-3 inline-block text-sm font-medium hover:underline"
-                style={{ color: "var(--gx-accent)" }}
-              >
-                Ver todos los ciclos
-              </Link>
-            )}
-          </Card>
-        )}
 
         <Button type="button" onClick={manejarClickGuardar} disabled={enviando}>
           Guardar

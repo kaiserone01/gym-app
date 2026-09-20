@@ -11,6 +11,7 @@ import { PrismaPlanRepository } from "@gym-app/infrastructure/persistence/prisma
 import { PrismaTurnoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaTurnoRepository";
 import { PrismaPermisoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaPermisoRepository";
 import { AuthorizationService } from "@gym-app/domain/services/AuthorizationService";
+import { conMensajeOk } from "../redirectConMensaje";
 import {
   registrarPago,
   MiembroNoEncontradoError,
@@ -21,6 +22,10 @@ import {
 
 export interface EstadoFormularioPago {
   error?: string;
+  // Solo se completa cuando la acción NO redirige (origen "miembro" o
+  // "caja", ver más abajo) — el formulario sigue montado en la misma
+  // página, así que el éxito viaja por acá en vez de por ?ok= en la URL.
+  ok?: string;
 }
 
 export async function registrarPagoAction(
@@ -92,8 +97,8 @@ export async function registrarPagoAction(
   revalidatePath("/caja");
 
   if (origen !== "miembro" && origen !== "caja") {
-    redirect(`/miembros/${miembroId}`);
+    redirect(conMensajeOk(`/miembros/${miembroId}`, "Pago registrado."));
   }
 
-  return {};
+  return { ok: "Pago registrado." };
 }

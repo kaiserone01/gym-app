@@ -1,9 +1,10 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { Button } from "@gym-app/ui/components/Button";
 import { Input } from "@gym-app/ui/components/Input";
 import { Card } from "@gym-app/ui/components/Card";
+import { useFeedback } from "@gym-app/ui/components/FeedbackOverlay";
 import type { EstadoCerrarTurno } from "./actions";
 import { METODOS_PAGO } from "../metodosPago";
 
@@ -22,6 +23,18 @@ export function FormularioArqueo({
   lineas: LineaEsperada[];
 }) {
   const [estado, enviar, enviando] = useActionState(accion, {});
+  const { mostrarExito, mostrarError } = useFeedback();
+
+  useEffect(() => {
+    if (estado.error) mostrarError(estado.error);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- solo debe reaccionar a un nuevo estado.error, no a mostrarError
+  }, [estado.error]);
+
+  useEffect(() => {
+    if (estado.ok) mostrarExito(estado.ok);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- solo debe reaccionar a un nuevo estado.ok, no a mostrarExito
+  }, [estado.ok]);
+
   const [contados, setContados] = useState<Record<string, string>>({});
 
   function nombreMetodo(valor: string): string {

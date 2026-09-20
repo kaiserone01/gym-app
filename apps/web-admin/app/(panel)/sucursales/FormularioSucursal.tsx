@@ -1,8 +1,9 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { Button } from "@gym-app/ui/components/Button";
 import { Input } from "@gym-app/ui/components/Input";
+import { useFeedback } from "@gym-app/ui/components/FeedbackOverlay";
 import type { EstadoFormularioSucursal } from "./actions";
 
 export interface ValoresFormularioSucursal {
@@ -23,6 +24,13 @@ export function FormularioSucursal({
   puedeGuardar?: boolean;
 }) {
   const [estado, enviar, enviando] = useActionState(accion, {});
+  const { mostrarError } = useFeedback();
+
+  useEffect(() => {
+    if (estado.error) mostrarError(estado.error);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- solo debe reaccionar a un nuevo estado.error, no a mostrarError
+  }, [estado.error]);
+
   const [copiado, setCopiado] = useState(false);
 
   async function copiarApiKey() {

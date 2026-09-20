@@ -1,11 +1,13 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useFeedback } from "@gym-app/ui/components/FeedbackOverlay";
 import { darDeBajaAction, reactivarAction } from "./actions";
 
 export function EstadoToggle({ id, activo }: { id: string; activo: boolean }) {
   const [activoLocal, setActivoLocal] = useState(activo);
   const [pendiente, iniciarTransicion] = useTransition();
+  const { mostrarExito, mostrarError } = useFeedback();
 
   function alternar(evento: React.MouseEvent) {
     // El switch puede vivir dentro de una card/fila que es un <Link> a la
@@ -24,10 +26,17 @@ export function EstadoToggle({ id, activo }: { id: string; activo: boolean }) {
     setActivoLocal(siguiente);
 
     iniciarTransicion(async () => {
-      if (siguiente) {
-        await reactivarAction(id);
-      } else {
-        await darDeBajaAction(id);
+      try {
+        if (siguiente) {
+          await reactivarAction(id);
+          mostrarExito("Miembro reactivado.");
+        } else {
+          await darDeBajaAction(id);
+          mostrarExito("Miembro dado de baja.");
+        }
+      } catch {
+        setActivoLocal(!siguiente);
+        mostrarError("No se pudo actualizar el estado del miembro.");
       }
     });
   }

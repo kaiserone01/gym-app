@@ -13,6 +13,7 @@ import {
   RolNoAutorizadoError as RolNoAutorizadoActualizar,
   SucursalNoEncontradaError,
 } from "@gym-app/domain/use-cases/ActualizarSucursal";
+import { conMensajeOk } from "../redirectConMensaje";
 
 export interface EstadoFormularioSucursal {
   error?: string;
@@ -56,7 +57,7 @@ export async function crearSucursalAction(
   }
 
   revalidatePath("/sucursales");
-  redirect("/sucursales");
+  redirect(conMensajeOk("/sucursales", "Sucursal creada."));
 }
 
 export async function actualizarSucursalAction(
@@ -90,7 +91,7 @@ export async function actualizarSucursalAction(
   }
 
   revalidatePath("/sucursales");
-  redirect("/sucursales");
+  redirect(conMensajeOk("/sucursales", "Cambios guardados."));
 }
 
 export async function darDeBajaSucursalAction(id: string): Promise<void> {
@@ -105,6 +106,7 @@ export async function darDeBajaSucursalAction(id: string): Promise<void> {
   });
 
   revalidatePath("/sucursales");
+  redirect(conMensajeOk(`/sucursales/${id}`, "Sucursal dada de baja."));
 }
 
 export async function reactivarSucursalAction(id: string): Promise<void> {
@@ -119,4 +121,5 @@ export async function reactivarSucursalAction(id: string): Promise<void> {
   });
 
   revalidatePath("/sucursales");
+  redirect(conMensajeOk(`/sucursales/${id}`, "Sucursal reactivada."));
 }

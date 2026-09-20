@@ -15,6 +15,7 @@ import {
   ConfirmacionInvalidaError,
 } from "@gym-app/domain/use-cases/ActualizarFrecuenciaPlan";
 import type { FrecuenciaPago } from "@gym-app/domain/entities/Plan";
+import { conMensajeOk } from "../redirectConMensaje";
 
 export interface EstadoFormularioPlan {
   error?: string;
@@ -50,7 +51,7 @@ export async function crearPlanAction(
   );
 
   revalidatePath("/planes");
-  redirect("/planes");
+  redirect(conMensajeOk("/planes", "Plan creado."));
 }
 
 export async function actualizarPlanAction(
@@ -82,7 +83,7 @@ export async function actualizarPlanAction(
   }
 
   revalidatePath("/planes");
-  redirect("/planes");
+  redirect(conMensajeOk("/planes", "Cambios guardados."));
 }
 
 export async function actualizarFrecuenciaPlanAction(
@@ -127,7 +128,7 @@ export async function actualizarFrecuenciaPlanAction(
   }
 
   revalidatePath("/planes");
-  redirect(`/planes/${id}`);
+  redirect(conMensajeOk(`/planes/${id}`, "Frecuencia del plan actualizada."));
 }
 
 export async function darDeBajaPlanAction(id: string): Promise<void> {
@@ -140,6 +141,7 @@ export async function darDeBajaPlanAction(id: string): Promise<void> {
   );
 
   revalidatePath("/planes");
+  redirect(conMensajeOk(`/planes/${id}`, "Plan dado de baja."));
 }
 
 export async function reactivarPlanAction(id: string): Promise<void> {
@@ -152,4 +154,5 @@ export async function reactivarPlanAction(id: string): Promise<void> {
   );
 
   revalidatePath("/planes");
+  redirect(conMensajeOk(`/planes/${id}`, "Plan reactivado."));
 }

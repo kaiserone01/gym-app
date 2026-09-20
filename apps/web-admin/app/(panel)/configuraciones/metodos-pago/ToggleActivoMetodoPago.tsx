@@ -1,18 +1,26 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useFeedback } from "@gym-app/ui/components/FeedbackOverlay";
 import { alternarActivoMetodoPagoAction } from "../actions";
 
 export function ToggleActivoMetodoPago({ id, activo }: { id: string; activo: boolean }) {
   const [activoLocal, setActivoLocal] = useState(activo);
   const [pendiente, iniciarTransicion] = useTransition();
+  const { mostrarExito, mostrarError } = useFeedback();
 
   function alternar() {
     const siguiente = !activoLocal;
     setActivoLocal(siguiente);
 
     iniciarTransicion(async () => {
-      await alternarActivoMetodoPagoAction(id, siguiente);
+      try {
+        await alternarActivoMetodoPagoAction(id, siguiente);
+        mostrarExito(siguiente ? "Método de pago activado." : "Método de pago desactivado.");
+      } catch {
+        setActivoLocal(!siguiente);
+        mostrarError("No se pudo actualizar el método de pago.");
+      }
     });
   }
 

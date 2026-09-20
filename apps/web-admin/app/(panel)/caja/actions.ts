@@ -19,6 +19,7 @@ import { METODOS_PAGO } from "../metodosPago";
 
 export interface EstadoAbrirTurno {
   error?: string;
+  ok?: string;
 }
 
 export async function abrirTurnoAction(
@@ -67,11 +68,12 @@ export async function abrirTurnoAction(
   }
 
   revalidatePath("/caja");
-  return {};
+  return { ok: "Turno abierto." };
 }
 
 export interface EstadoRegistrarEgreso {
   error?: string;
+  ok?: string;
 }
 
 export async function registrarEgresoAction(
@@ -123,11 +125,12 @@ export async function registrarEgresoAction(
   }
 
   revalidatePath("/caja");
-  return {};
+  return { ok: "Egreso registrado." };
 }
 
 export interface EstadoCerrarTurno {
   error?: string;
+  ok?: string;
 }
 
 export async function cerrarTurnoAction(
@@ -181,11 +184,12 @@ export async function cerrarTurnoAction(
   }
 
   revalidatePath("/caja");
-  return {};
+  return { ok: "Turno cerrado." };
 }
 
 export interface EstadoAnularPago {
   error?: string;
+  ok?: string;
 }
 
 export async function anularPagoAction(
@@ -222,5 +226,5 @@ export async function anularPagoAction(
   }
 
   revalidatePath("/caja");
-  return {};
+  return { ok: "Pago anulado." };
 }

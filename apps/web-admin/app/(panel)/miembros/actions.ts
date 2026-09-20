@@ -29,6 +29,7 @@ import {
   RolNoAutorizadoError as PagoRolNoAutorizadoError,
 } from "@gym-app/domain/use-cases/RegistrarPago";
 import type { FrecuenciaPago } from "@gym-app/domain/entities/Plan";
+import { conMensajeOk } from "../redirectConMensaje";
 
 export interface EstadoFormularioMiembro {
   error?: string;
@@ -215,7 +216,7 @@ export async function crearMiembroAction(
   revalidatePath("/miembros");
   revalidatePath("/planes");
   revalidatePath("/pagos");
-  redirect("/miembros");
+  redirect(conMensajeOk("/miembros", "Miembro creado y pago inicial registrado."));
 }
 
 export async function actualizarMiembroAction(
@@ -268,7 +269,7 @@ export async function actualizarMiembroAction(
   }
 
   revalidatePath("/miembros");
-  redirect("/miembros");
+  redirect(conMensajeOk(`/miembros/${id}`, "Cambios guardados."));
 }
 
 export async function darDeBajaAction(id: string): Promise<void> {

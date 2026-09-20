@@ -1,8 +1,9 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { Button } from "@gym-app/ui/components/Button";
 import { Input } from "@gym-app/ui/components/Input";
+import { useFeedback } from "@gym-app/ui/components/FeedbackOverlay";
 import type { EstadoFormularioPlan } from "./actions";
 import type { FrecuenciaPago } from "@gym-app/domain/entities/Plan";
 
@@ -37,6 +38,12 @@ export function FormularioPlan({
 }) {
   const [estado, enviar, enviando] = useActionState(accion, {});
   const esEdicion = !!valoresIniciales;
+  const { mostrarError } = useFeedback();
+
+  useEffect(() => {
+    if (estado.error) mostrarError(estado.error);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- solo debe reaccionar a un nuevo estado.error, no a mostrarError
+  }, [estado.error]);
 
   return (
     <>
@@ -142,6 +149,13 @@ function CambiarFrecuenciaSection({
   accion: (estado: EstadoFormularioPlan, formData: FormData) => Promise<EstadoFormularioPlan>;
 }) {
   const [estado, enviar, enviando] = useActionState(accion, {});
+  const { mostrarError } = useFeedback();
+
+  useEffect(() => {
+    if (estado.error) mostrarError(estado.error);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- solo debe reaccionar a un nuevo estado.error, no a mostrarError
+  }, [estado.error]);
+
   const [abierto, setAbierto] = useState(false);
   const [frecuencia, setFrecuencia] = useState<FrecuenciaPago>(frecuenciaActual);
   const [incluyeEntrenador, setIncluyeEntrenador] = useState(incluyeEntrenadorActual);

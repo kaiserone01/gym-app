@@ -6,6 +6,7 @@ import { Button } from "@gym-app/ui/components/Button";
 import { Input } from "@gym-app/ui/components/Input";
 import { Card } from "@gym-app/ui/components/Card";
 import { Badge } from "@gym-app/ui/components/Badge";
+import { useFeedback } from "@gym-app/ui/components/FeedbackOverlay";
 import type { EstadoFormularioMiembro } from "./actions";
 import { SelectorMetodoPago } from "../pagos/SelectorMetodoPago";
 import { formatearBs } from "../tasaBcvFija";
@@ -116,6 +117,12 @@ export function FormularioMiembro({
   const [estado, enviar, enviando] = useActionState(accion, {});
   const esEdicion = !!valoresIniciales;
   const formRef = useRef<HTMLFormElement>(null);
+  const { mostrarError } = useFeedback();
+
+  useEffect(() => {
+    if (estado.error) mostrarError(estado.error);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- solo debe reaccionar a un nuevo estado.error, no a mostrarError
+  }, [estado.error]);
 
   const [nombre, setNombre] = useState(valoresIniciales?.nombre ?? "");
   const [cedula, setCedula] = useState(valoresIniciales?.cedula ?? "");

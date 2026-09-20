@@ -36,9 +36,13 @@ import {
 } from "@gym-app/domain/use-cases/ActualizarPermisosUsuario";
 import type { ModuloPermiso, AccionPermiso } from "@gym-app/domain/entities/Permiso";
 import type { RolUsuario } from "@gym-app/domain/entities/UsuarioAdmin";
+import { conMensajeOk } from "../redirectConMensaje";
 
 export interface EstadoFormularioUsuario {
   error?: string;
+  // Solo se completa cuando la acción NO redirige (actualizarUsuarioAction
+  // se queda en la misma página) — ver mismo patrón en pagos/actions.ts.
+  ok?: string;
 }
 
 const MODULOS: ModuloPermiso[] = ["MIEMBROS", "PAGOS", "PLANES", "CAJA", "USUARIOS", "SUCURSALES"];
@@ -55,6 +59,10 @@ const SOLO_SOCIO = "Solo el socio puede administrar usuarios.";
  */
 function redirigirConError(ruta: string, mensaje: string): never {
   redirect(`${ruta}?error=${encodeURIComponent(mensaje)}`);
+}
+
+function redirigirConOk(ruta: string, mensaje: string): never {
+  redirect(conMensajeOk(ruta, mensaje));
 }
 
 function storageR2(): R2StorageService {
@@ -143,7 +151,7 @@ export async function crearUsuarioAction(
   }
 
   revalidatePath("/usuarios");
-  redirect("/usuarios");
+  redirect(conMensajeOk("/usuarios", "Usuario creado."));
 }
 
 export async function actualizarUsuarioAction(
@@ -182,7 +190,7 @@ export async function actualizarUsuarioAction(
   }
 
   revalidatePath(`/usuarios/${id}`);
-  return {};
+  return { ok: "Cambios guardados." };
 }
 
 export async function actualizarSucursalesUsuarioAction(id: string, formData: FormData): Promise<void> {
@@ -214,6 +222,7 @@ export async function actualizarSucursalesUsuarioAction(id: string, formData: Fo
   }
 
   revalidatePath(`/usuarios/${id}`);
+  redirigirConOk(`/usuarios/${id}`, "Sucursales actualizadas.");
 }
 
 export async function actualizarPermisosUsuarioAction(id: string, formData: FormData): Promise<void> {
@@ -242,6 +251,7 @@ export async function actualizarPermisosUsuarioAction(id: string, formData: Form
   }
 
   revalidatePath(`/usuarios/${id}`);
+  redirigirConOk(`/usuarios/${id}`, "Permisos actualizados.");
 }
 
 async function cambiarEstadoUsuario(id: string, activo: boolean): Promise<void> {
@@ -277,8 +287,10 @@ async function cambiarEstadoUsuario(id: string, activo: boolean): Promise<void> 
 
 export async function darDeBajaUsuarioAction(id: string): Promise<void> {
   await cambiarEstadoUsuario(id, false);
+  redirigirConOk("/usuarios", "Usuario dado de baja.");
 }
 
 export async function reactivarUsuarioAction(id: string): Promise<void> {
   await cambiarEstadoUsuario(id, true);
+  redirigirConOk("/usuarios", "Usuario reactivado.");
 }

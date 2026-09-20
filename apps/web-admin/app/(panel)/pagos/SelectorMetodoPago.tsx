@@ -9,6 +9,7 @@ import type { SucursalResumen } from "@gym-app/domain/entities/SucursalResumen";
 import { ETIQUETA_TIPO_METODO_PAGO } from "../configuraciones/metodosPagoUI";
 import { formatearBs } from "../tasaBcvFija";
 import { registrarTasaManualAction } from "../configuraciones/actions";
+import { useFeedback } from "@gym-app/ui/components/FeedbackOverlay";
 
 // Íconos SVG inline por tipo — sin depender de PNGs ni emojis (ver diseño
 // acordado). EFECTIVO comparte un único ícono de billete para USD/Bs,
@@ -376,6 +377,7 @@ function ModalIngresoManualTasa({ onCerrar, onGuardado }: { onCerrar: () => void
 
   const valorNumero = Number(valor);
   const esValido = valor.trim() !== "" && !Number.isNaN(valorNumero) && valorNumero > 0;
+  const { mostrarExito, mostrarError } = useFeedback();
 
   async function confirmar() {
     setEnviando(true);
@@ -386,8 +388,10 @@ function ModalIngresoManualTasa({ onCerrar, onGuardado }: { onCerrar: () => void
     setEnviando(false);
     if (resultado.error) {
       setError(resultado.error);
+      mostrarError(resultado.error);
       return;
     }
+    if (resultado.ok) mostrarExito(resultado.ok);
     onGuardado(valorNumero);
   }
 

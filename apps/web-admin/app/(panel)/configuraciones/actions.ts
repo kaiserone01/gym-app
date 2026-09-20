@@ -12,6 +12,7 @@ import { crearMetodoPago } from "@gym-app/domain/use-cases/CrearMetodoPago";
 import { actualizarMetodoPago, MetodoPagoNoEncontradoError } from "@gym-app/domain/use-cases/ActualizarMetodoPago";
 import { registrarTasaManual } from "@gym-app/domain/use-cases/RegistrarTasaManual";
 import type { TipoMetodoPago, MonedaMetodoPago } from "@gym-app/domain/entities/MetodoPago";
+import { conMensajeOk } from "../redirectConMensaje";
 
 export interface EstadoFormularioMetodoPago {
   error?: string;
@@ -102,7 +103,7 @@ export async function crearMetodoPagoAction(
   );
 
   revalidatePath("/configuraciones/metodos-pago");
-  redirect("/configuraciones/metodos-pago");
+  redirect(conMensajeOk("/configuraciones/metodos-pago", "Método de pago creado."));
 }
 
 export async function actualizarMetodoPagoAction(
@@ -149,7 +150,7 @@ export async function actualizarMetodoPagoAction(
   }
 
   revalidatePath("/configuraciones/metodos-pago");
-  redirect("/configuraciones/metodos-pago");
+  redirect(conMensajeOk("/configuraciones/metodos-pago", "Cambios guardados."));
 }
 
 export async function alternarActivoMetodoPagoAction(id: string, activo: boolean): Promise<void> {
@@ -167,6 +168,7 @@ export async function alternarActivoMetodoPagoAction(id: string, activo: boolean
 
 export interface EstadoTasaManual {
   error?: string;
+  ok?: string;
 }
 
 // Ingreso manual de la tasa BCV cuando la API de tasa falla — con doble
@@ -191,5 +193,5 @@ export async function registrarTasaManualAction(
 
   revalidatePath("/pagos/nuevo");
   revalidatePath("/miembros");
-  return {};
+  return { ok: "Tasa registrada." };
 }

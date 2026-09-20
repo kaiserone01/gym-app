@@ -1,8 +1,9 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { Button } from "@gym-app/ui/components/Button";
 import { Input } from "@gym-app/ui/components/Input";
+import { useFeedback } from "@gym-app/ui/components/FeedbackOverlay";
 import type { EstadoFormularioMetodoPago } from "../actions";
 import type { TipoMetodoPago, MonedaMetodoPago } from "@gym-app/domain/entities/MetodoPago";
 import { ETIQUETA_TIPO_METODO_PAGO, TIPOS_MULTI_INSTANCIA } from "../metodosPagoUI";
@@ -33,6 +34,12 @@ export function FormularioMetodoPago({
 }) {
   const [estado, enviar, enviando] = useActionState(accion, {});
   const esEdicion = !!valoresIniciales;
+  const { mostrarError } = useFeedback();
+
+  useEffect(() => {
+    if (estado.error) mostrarError(estado.error);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- solo debe reaccionar a un nuevo estado.error, no a mostrarError
+  }, [estado.error]);
 
   const [tipo, setTipo] = useState<TipoMetodoPago>(valoresIniciales?.tipo ?? "PAGO_MOVIL");
   const [moneda, setMoneda] = useState<MonedaMetodoPago>(valoresIniciales?.moneda ?? "BS");

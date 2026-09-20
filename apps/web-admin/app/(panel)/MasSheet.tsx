@@ -4,12 +4,6 @@ import Link from "next/link";
 import { Sheet } from "@gym-app/ui/components/Sheet";
 import { BarraUsuario } from "./BarraUsuario";
 
-const ENLACES = [
-  { href: "/usuarios", label: "Usuarios" },
-  { href: "/sucursales", label: "Sucursales" },
-  { href: "/planes", label: "Planes" },
-];
-
 export function MasSheet({
   abierto,
   onCerrar,
@@ -23,7 +17,10 @@ export function MasSheet({
   email: string;
   rol: string;
 }) {
-  const enlaces = rol === "SOCIO" ? [...ENLACES, { href: "/configuraciones", label: "Configuraciones" }] : ENLACES;
+  // Usuarios, Sucursales y Planes se administran desde las tabs de
+  // Configuraciones (ver diseño acordado) — solo SOCIO llega a ellos, igual
+  // que en el sidebar de escritorio.
+  const enlaces = rol === "SOCIO" ? [{ href: "/configuraciones", label: "Configuraciones" }] : [];
 
   return (
     <Sheet abierto={abierto} onCerrar={onCerrar} titulo="Más">

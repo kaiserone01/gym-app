@@ -13,7 +13,11 @@ export function Sidebar({ items, pie }: { items: ItemNav[]; pie?: React.ReactNod
 
   return (
     <nav
-      className="flex h-screen w-56 shrink-0 flex-col justify-between border-r p-4 print:hidden"
+      // sticky (no fixed) para que quede clavado al hacer scroll de una
+      // página larga, sin sacarlo del flujo del flex row del layout del
+      // panel — antes usaba h-screen dentro de un contenedor sin scroll
+      // propio, así que el sidebar se desplazaba junto con el contenido.
+      className="sticky top-0 flex h-dvh w-56 shrink-0 flex-col justify-between overflow-y-auto border-r p-4 print:hidden"
       style={{ background: "var(--gx-surface)", borderColor: "var(--gx-edge)" }}
     >
       <ul className="flex flex-col gap-1">

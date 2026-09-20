@@ -25,11 +25,11 @@ export default async function PanelLayout({ children }: { children: React.ReactN
             items={[
               { href: "/miembros", label: "Miembros" },
               { href: "/pagos", label: "Pagos" },
-              { href: "/planes", label: "Planes" },
               { href: "/caja", label: "Caja" },
-              { href: "/usuarios", label: "Usuarios" },
-              { href: "/sucursales", label: "Sucursales" },
               { href: "/estadisticas", label: "Estadísticas" },
+              // Planes, Sucursales y Usuarios se administran desde las tabs
+              // de Configuraciones (ver diseño acordado) — solo SOCIO llega
+              // a ellas desde ahí.
               ...(usuario.rol === "SOCIO" ? [{ href: "/configuraciones", label: "Configuraciones" }] : []),
             ]}
             pie={<BarraUsuario nombre={usuario.nombre} email={usuario.email} fotoUrl={usuario.fotoUrl} />}

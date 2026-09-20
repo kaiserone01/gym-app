@@ -7,9 +7,14 @@ import { Card } from "@gym-app/ui/components/Card";
 import { useFeedback } from "@gym-app/ui/components/FeedbackOverlay";
 import type { EstadoRegistrarEgreso } from "./actions";
 
+// Los "value" deben coincidir exactamente con el snapshot que
+// construirNombreMetodo() genera para MetodoPago.tipo === "EFECTIVO" (ver
+// configuraciones/metodosPagoUI.ts) — es el mismo formato que usan los
+// Pagos en efectivo, así un retiro de caja resta de la misma línea del
+// arqueo donde se suman esos pagos (ver ObtenerResumenTurno).
 const METODOS_EGRESO = [
-  { value: "efectivo_usd", label: "Efectivo (USD)", moneda: "USD" as const },
-  { value: "efectivo_bs", label: "Efectivo (Bs)", moneda: "BS" as const },
+  { value: "Efectivo (USD)", label: "Efectivo (USD)", moneda: "USD" as const },
+  { value: "Efectivo (Bs)", label: "Efectivo (Bs)", moneda: "BS" as const },
 ];
 
 export function FormularioEgreso({

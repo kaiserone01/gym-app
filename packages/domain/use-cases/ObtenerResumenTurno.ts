@@ -6,10 +6,14 @@ import { Pago } from "../entities/Pago";
 import { Egreso } from "../entities/Egreso";
 
 // Métodos de efectivo físico — únicos que arrancan con el fondo inicial del
-// turno. Duplicado deliberado de METODOS_EN_BS/efectivo_usd en
-// apps/web-admin/app/(panel)/metodosPago.ts: domain no puede importar de
-// apps (regla de la arquitectura hexagonal de este repo).
-export const METODOS_EFECTIVO = ["efectivo_usd", "efectivo_bs"];
+// turno. Deben coincidir exactamente con el snapshot que construye
+// construirNombreMetodo() en apps/web-admin/app/(panel)/configuraciones/
+// metodosPagoUI.ts para MetodoPago.tipo === "EFECTIVO" — domain no puede
+// importar de apps (regla de la arquitectura hexagonal de este repo), así
+// que se duplican los strings literales acá.
+export const METODO_EFECTIVO_USD = "Efectivo (USD)";
+export const METODO_EFECTIVO_BS = "Efectivo (Bs)";
+export const METODOS_EFECTIVO = [METODO_EFECTIVO_USD, METODO_EFECTIVO_BS];
 
 export class TurnoNoEncontradoError extends Error {
   constructor() {
@@ -60,9 +64,9 @@ export async function obtenerResumenTurno(
       .reduce((suma, e) => suma + e.monto, 0);
 
     const fondoInicial =
-      metodo === "efectivo_usd"
+      metodo === METODO_EFECTIVO_USD
         ? turno.fondoInicialEfectivoUSD
-        : metodo === "efectivo_bs"
+        : metodo === METODO_EFECTIVO_BS
           ? turno.fondoInicialEfectivoBs
           : 0;
 

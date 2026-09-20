@@ -6,7 +6,7 @@ import { Input } from "@gym-app/ui/components/Input";
 import type { MetodoPago, TipoMetodoPago } from "@gym-app/domain/entities/MetodoPago";
 import { TIPOS_QUE_PUEDEN_SER_EN_BS } from "@gym-app/domain/entities/MetodoPago";
 import type { SucursalResumen } from "@gym-app/domain/entities/SucursalResumen";
-import { ETIQUETA_TIPO_METODO_PAGO } from "../configuraciones/metodosPagoUI";
+import { ETIQUETA_TIPO_METODO_PAGO, construirNombreMetodo } from "../configuraciones/metodosPagoUI";
 import { formatearBs } from "../tasaBcvFija";
 import { registrarTasaManualAction } from "../configuraciones/actions";
 import { useFeedback } from "@gym-app/ui/components/FeedbackOverlay";
@@ -171,7 +171,7 @@ export function SelectorMetodoPago({
     const tasaCambio = esEnBs ? tasa : null;
     onCambio({
       metodoPagoId: metodo?.id ?? null,
-      metodo: metodo ? `${ETIQUETA_TIPO_METODO_PAGO[metodo.tipo]}${metodo.nombreBanco ? ` - ${metodo.nombreBanco}` : ""}` : "",
+      metodo: metodo ? construirNombreMetodo(metodo) : "",
       tasaCambio,
       numeroOperacion,
       sucursalId,

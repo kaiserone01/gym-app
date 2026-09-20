@@ -15,6 +15,8 @@ type FilaPago = {
   tasaCambio: { toNumber(): number } | null;
   montoBs: { toNumber(): number } | null;
   fechaPago: Date;
+  fechaInicioCiclo: Date | null;
+  fechaFinCiclo: Date | null;
   anuladoEn: Date | null;
   anuladoPorId: string | null;
   motivoAnulacion: string | null;
@@ -34,6 +36,8 @@ function mapear(pago: FilaPago): Pago {
     tasaCambio: pago.tasaCambio ? pago.tasaCambio.toNumber() : null,
     montoBs: pago.montoBs ? pago.montoBs.toNumber() : null,
     fechaPago: pago.fechaPago,
+    fechaInicioCiclo: pago.fechaInicioCiclo,
+    fechaFinCiclo: pago.fechaFinCiclo,
     anuladoEn: pago.anuladoEn,
     anuladoPorId: pago.anuladoPorId,
     motivoAnulacion: pago.motivoAnulacion,
@@ -56,6 +60,8 @@ export class PrismaPagoRepository implements IPagoRepository {
         numeroOperacion: datos.numeroOperacion,
         tasaCambio: datos.tasaCambio,
         montoBs: datos.montoBs,
+        fechaInicioCiclo: datos.fechaInicioCiclo,
+        fechaFinCiclo: datos.fechaFinCiclo,
       },
     });
     return mapear(pago);
@@ -64,18 +70,23 @@ export class PrismaPagoRepository implements IPagoRepository {
   async listarPorMiembro(miembroId: string): Promise<Pago[]> {
     const pagos = await this.prisma.pago.findMany({
       where: { miembroId },
+      include: { registradoPor: { select: { nombre: true } } },
       orderBy: { fechaPago: "desc" },
     });
-    return pagos.map(mapear);
+    return pagos.map((pago) => ({ ...mapear(pago), registradoPorNombre: pago.registradoPor.nombre }));
   }
 
   async listarPorOrganizacion(organizacionId: string): Promise<Pago[]> {
     const pagos = await this.prisma.pago.findMany({
       where: { miembro: { organizacionId } },
-      include: { miembro: { select: { nombre: true } } },
+      include: { miembro: { select: { nombre: true } }, registradoPor: { select: { nombre: true } } },
       orderBy: { fechaPago: "desc" },
     });
-    return pagos.map((pago) => ({ ...mapear(pago), miembroNombre: pago.miembro.nombre }));
+    return pagos.map((pago) => ({
+      ...mapear(pago),
+      miembroNombre: pago.miembro.nombre,
+      registradoPorNombre: pago.registradoPor.nombre,
+    }));
   }
 
   async listarPorOrganizacionYRango(organizacionId: string, desde: Date, hasta: Date): Promise<Pago[]> {

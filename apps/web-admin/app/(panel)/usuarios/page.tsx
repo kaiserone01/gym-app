@@ -19,14 +19,14 @@ export default async function PaginaUsuarios({
   const usuario = await obtenerUsuarioDeSesionActual();
   if (!usuario) redirect("/login");
 
-  const esDueno = usuario.rol === "DUENO";
+  const esSocio = usuario.rol === "SOCIO";
   const permisos = new PrismaPermisoRepository(prisma);
-  // Un DUEÑO siempre tiene acceso total (no puede auto-bloquearse por permisos).
-  const puedeVer = esDueno || (await permisos.tiene(usuario.id, "USUARIOS", "VER"));
+  // Un SOCIO siempre tiene acceso total (no puede auto-bloquearse por permisos).
+  const puedeVer = esSocio || (await permisos.tiene(usuario.id, "USUARIOS", "VER"));
   if (!puedeVer) redirect("/miembros");
 
   const { error: errorMensaje } = await searchParams;
-  const puedeCrear = esDueno || (await permisos.tiene(usuario.id, "USUARIOS", "CREAR"));
+  const puedeCrear = esSocio || (await permisos.tiene(usuario.id, "USUARIOS", "CREAR"));
   const usuarios = await listarUsuariosAdmin(
     { usuarios: new PrismaUsuarioAdminRepository(prisma) },
     usuario.organizacionId

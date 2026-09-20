@@ -19,11 +19,11 @@ export default async function PaginaEditarSucursal({
   const usuario = await obtenerUsuarioDeSesionActual();
   if (!usuario) redirect("/login");
 
-  const esDueno = usuario.rol === "DUENO";
+  const esSocio = usuario.rol === "SOCIO";
   const permisos = new PrismaPermisoRepository(prisma);
-  // Un DUEÑO siempre tiene acceso total.
-  const puedeEditar = esDueno || (await permisos.tiene(usuario.id, "SUCURSALES", "EDITAR"));
-  const puedeEliminar = esDueno || (await permisos.tiene(usuario.id, "SUCURSALES", "ELIMINAR"));
+  // Un SOCIO siempre tiene acceso total.
+  const puedeEditar = esSocio || (await permisos.tiene(usuario.id, "SUCURSALES", "EDITAR"));
+  const puedeEliminar = esSocio || (await permisos.tiene(usuario.id, "SUCURSALES", "ELIMINAR"));
   // La página hospeda la edición (EDITAR) y el alta/baja (ELIMINAR): cualquiera de
   // los dos permisos da acceso, y cada bloque se muestra según el permiso concreto.
   if (!puedeEditar && !puedeEliminar) redirect("/sucursales");

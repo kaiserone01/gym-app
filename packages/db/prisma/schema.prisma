@@ -49,7 +49,7 @@ model Sucursal {
 }
 
 enum RolUsuario {
-  DUENO // acceso total a la Organización, todas las sucursales
+  SOCIO // acceso total a la Organización, todas las sucursales
   GERENTE // administra 1+ sucursales asignadas
   RECEPCION // solo check-in, cobros y consulta de estado de miembros
   ENTRENADOR // acceso de solo lectura a su cartera de miembros asignados

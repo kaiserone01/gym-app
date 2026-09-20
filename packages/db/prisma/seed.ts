@@ -37,14 +37,14 @@ async function main() {
   });
   console.log("✅ TemaOrganizacion creado");
 
-  // 2. Usuario admin (dueño)
+  // 2. Usuario admin (socio)
   const passwordHash = await bcrypt.hash("admin1234", 10);
   const admin = await prisma.usuarioAdmin.create({
     data: {
       organizacionId: organizacion.id,
       email: "admin@gymdemo.com",
       passwordHash,
-      rol: "DUENO",
+      rol: "SOCIO",
     },
   });
   console.log("✅ Admin creado:", admin.email, "(password: admin1234)");

@@ -7,7 +7,7 @@ export class AuthorizationService implements IAuthorizationService {
   constructor(private readonly permisos: IPermisoRepository) {}
 
   puedeCrearUsuarioConRol(rolSolicitante: RolUsuario, _rolACrear: RolUsuario): boolean {
-    return rolSolicitante === "DUENO";
+    return rolSolicitante === "SOCIO";
   }
 
   async tienePermiso(usuarioId: string, modulo: ModuloPermiso, accion: AccionPermiso): Promise<boolean> {

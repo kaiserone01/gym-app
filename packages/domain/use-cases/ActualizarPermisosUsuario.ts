@@ -5,7 +5,7 @@ import { Permiso } from "../entities/Permiso";
 
 export class RolNoAutorizadoError extends Error {
   constructor() {
-    super("Solo el dueño puede administrar permisos.");
+    super("Solo el socio puede administrar permisos.");
   }
 }
 
@@ -19,7 +19,7 @@ export async function actualizarPermisosUsuario(
   deps: { usuarios: IUsuarioAdminRepository; permisos: IPermisoRepository },
   input: { organizacionId: string; rolSolicitante: RolUsuario; usuarioId: string; permisos: Permiso[] }
 ): Promise<void> {
-  if (input.rolSolicitante !== "DUENO") {
+  if (input.rolSolicitante !== "SOCIO") {
     throw new RolNoAutorizadoError();
   }
 

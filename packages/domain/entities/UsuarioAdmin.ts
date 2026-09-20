@@ -1,4 +1,4 @@
-export type RolUsuario = "DUENO" | "GERENTE" | "RECEPCION" | "ENTRENADOR";
+export type RolUsuario = "SOCIO" | "GERENTE" | "RECEPCION" | "ENTRENADOR";
 
 export interface UsuarioAdmin {
   id: string;

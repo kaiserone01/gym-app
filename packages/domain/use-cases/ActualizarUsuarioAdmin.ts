@@ -4,7 +4,7 @@ import { UsuarioAdmin, CambiosUsuarioAdmin, RolUsuario } from "../entities/Usuar
 
 export class RolNoAutorizadoError extends Error {
   constructor() {
-    super("Solo el dueño puede administrar usuarios.");
+    super("Solo el socio puede administrar usuarios.");
   }
 }
 
@@ -30,7 +30,7 @@ export async function actualizarUsuarioAdmin(
     cambios: CambiosUsuarioAdmin;
   }
 ): Promise<UsuarioAdmin> {
-  if (input.rolSolicitante !== "DUENO") {
+  if (input.rolSolicitante !== "SOCIO") {
     throw new RolNoAutorizadoError();
   }
 

@@ -5,7 +5,7 @@ import { RolUsuario } from "../entities/UsuarioAdmin";
 
 export class RolNoAutorizadoError extends Error {
   constructor() {
-    super("Solo el dueño puede administrar usuarios.");
+    super("Solo el socio puede administrar usuarios.");
   }
 }
 
@@ -29,7 +29,7 @@ export async function asignarSucursalesAUsuario(
   },
   input: { organizacionId: string; rolSolicitante: RolUsuario; usuarioId: string; sucursalIds: string[] }
 ): Promise<void> {
-  if (input.rolSolicitante !== "DUENO") {
+  if (input.rolSolicitante !== "SOCIO") {
     throw new RolNoAutorizadoError();
   }
 

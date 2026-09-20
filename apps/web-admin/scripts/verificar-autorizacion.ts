@@ -23,12 +23,12 @@ async function main() {
   const autorizacion = new AuthorizationService(permisos);
   const passwordHash = await bcrypt.hash("recepcion1234", 10);
 
-  // Caso 1: DUENO crea un RECEPCION — debe funcionar.
+  // Caso 1: SOCIO crea un RECEPCION — debe funcionar.
   try {
     const creado = await crearUsuarioAdmin(
       { usuarios, autorizacion, permisos, usuarioSucursales, sucursales },
       {
-        solicitante: { rol: "DUENO" },
+        solicitante: { rol: "SOCIO" },
         organizacionId: organizacion.id,
         sucursalId: null,
         sucursalIds: [],
@@ -38,9 +38,9 @@ async function main() {
         rol: "RECEPCION",
       }
     );
-    console.log("✅ DUENO creó un usuario RECEPCION:", creado.email);
+    console.log("✅ SOCIO creó un usuario RECEPCION:", creado.email);
   } catch (e) {
-    console.error("❌ Falló el caso 1 (DUENO → RECEPCION), debía funcionar:", e);
+    console.error("❌ Falló el caso 1 (SOCIO → RECEPCION), debía funcionar:", e);
     process.exitCode = 1;
   }
 

@@ -9,7 +9,7 @@ const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
 const prisma = new PrismaClient({ adapter });
 
 const PERMISOS_POR_ROL: Record<string, Array<{ modulo: string; accion: string }>> = {
-  DUENO: [
+  SOCIO: [
     ...["MIEMBROS", "PAGOS", "PLANES", "CAJA", "USUARIOS", "SUCURSALES"].flatMap((modulo) =>
       ["VER", "CREAR", "EDITAR", "ELIMINAR"].map((accion) => ({ modulo, accion }))
     ),

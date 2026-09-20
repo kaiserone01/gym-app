@@ -39,7 +39,7 @@ export function FormularioUsuario({
           style={{ background: "var(--gx-surface-2)", borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }}
         >
           <option value="">Seleccioná un rol</option>
-          <option value="DUENO">Dueño</option>
+          <option value="SOCIO">Socio</option>
           <option value="GERENTE">Gerente</option>
           <option value="RECEPCION">Recepción</option>
           <option value="ENTRENADOR">Entrenador</option>

@@ -44,7 +44,7 @@ const ACCIONES: AccionPermiso[] = ["VER", "CREAR", "EDITAR", "ELIMINAR"];
 // (packages/db no puede importar de packages/domain sin invertir la dirección de dependencia).
 // Si la matriz cambia, actualizar ambos lugares.
 const PERMISOS_POR_ROL: Record<RolUsuario, Permiso[]> = {
-  DUENO: MODULOS.flatMap((modulo) => ACCIONES.map((accion) => ({ modulo, accion }))),
+  SOCIO: MODULOS.flatMap((modulo) => ACCIONES.map((accion) => ({ modulo, accion }))),
   GERENTE: [
     ...(["MIEMBROS", "PAGOS", "CAJA"] as ModuloPermiso[]).flatMap((modulo) =>
       ACCIONES.map((accion) => ({ modulo, accion }))

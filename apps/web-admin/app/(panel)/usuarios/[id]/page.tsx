@@ -31,9 +31,9 @@ export default async function PaginaEditarUsuario({
   if (!usuarioSesion) redirect("/login");
 
   const permisos = new PrismaPermisoRepository(prisma);
-  // Un DUEÑO siempre tiene acceso total: nunca puede quedar bloqueado por la matriz
+  // Un SOCIO siempre tiene acceso total: nunca puede quedar bloqueado por la matriz
   // de permisos (ni siquiera si se quita a sí mismo USUARIOS/VER).
-  const puedeVer = usuarioSesion.rol === "DUENO" || (await permisos.tiene(usuarioSesion.id, "USUARIOS", "VER"));
+  const puedeVer = usuarioSesion.rol === "SOCIO" || (await permisos.tiene(usuarioSesion.id, "USUARIOS", "VER"));
   if (!puedeVer) redirect("/usuarios");
 
   const { id } = await params;

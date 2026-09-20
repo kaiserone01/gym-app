@@ -11,8 +11,8 @@ export default async function PaginaNuevaSucursal() {
   if (!usuario) redirect("/login");
 
   const permisos = new PrismaPermisoRepository(prisma);
-  // Un DUEÑO siempre tiene acceso total.
-  const puedeCrear = usuario.rol === "DUENO" || (await permisos.tiene(usuario.id, "SUCURSALES", "CREAR"));
+  // Un SOCIO siempre tiene acceso total.
+  const puedeCrear = usuario.rol === "SOCIO" || (await permisos.tiene(usuario.id, "SUCURSALES", "CREAR"));
   if (!puedeCrear) redirect("/sucursales");
 
   return (

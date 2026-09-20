@@ -14,13 +14,13 @@ export default async function PaginaSucursales() {
   const usuario = await obtenerUsuarioDeSesionActual();
   if (!usuario) redirect("/login");
 
-  const esDueno = usuario.rol === "DUENO";
+  const esSocio = usuario.rol === "SOCIO";
   const permisos = new PrismaPermisoRepository(prisma);
-  // Un DUEÑO siempre tiene acceso total (no puede auto-bloquearse por permisos).
-  const puedeVer = esDueno || (await permisos.tiene(usuario.id, "SUCURSALES", "VER"));
+  // Un SOCIO siempre tiene acceso total (no puede auto-bloquearse por permisos).
+  const puedeVer = esSocio || (await permisos.tiene(usuario.id, "SUCURSALES", "VER"));
   if (!puedeVer) redirect("/miembros");
 
-  const puedeCrear = esDueno || (await permisos.tiene(usuario.id, "SUCURSALES", "CREAR"));
+  const puedeCrear = esSocio || (await permisos.tiene(usuario.id, "SUCURSALES", "CREAR"));
   const sucursales = await listarSucursales(
     { sucursales: new PrismaSucursalRepository(prisma) },
     usuario.organizacionId

@@ -5,7 +5,7 @@ import { IAuthorizationService } from "../ports/IAuthorizationService";
 
 export class RolNoAutorizadoError extends Error {
   constructor() {
-    super("Solo el dueño o un gerente pueden anular un pago.");
+    super("Solo el socio o un gerente pueden anular un pago.");
   }
 }
 

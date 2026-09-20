@@ -20,9 +20,9 @@ export default async function PaginaEstadisticas({
   const usuario = await obtenerUsuarioDeSesionActual();
   if (!usuario) redirect("/login");
 
-  const esDueno = usuario.rol === "DUENO";
+  const esSocio = usuario.rol === "SOCIO";
   const permisos = new PrismaPermisoRepository(prisma);
-  const puedeVer = esDueno || (await permisos.tiene(usuario.id, "SUCURSALES", "VER"));
+  const puedeVer = esSocio || (await permisos.tiene(usuario.id, "SUCURSALES", "VER"));
   if (!puedeVer) redirect("/miembros");
 
   const { desde: desdeParam, hasta: hastaParam } = await searchParams;

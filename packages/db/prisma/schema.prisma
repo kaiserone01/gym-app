@@ -203,6 +203,8 @@ model Pago {
   tasaCambio      Decimal? @db.Decimal(10, 2)
   montoBs         Decimal? @db.Decimal(12, 2)
   fechaPago       DateTime @default(now())
+  fechaInicioCiclo DateTime? // inicio real del ciclo que este pago activó/extendió — null en pagos previos a esta migración
+  fechaFinCiclo    DateTime? // fin real de ese ciclo (mismo valor que pasa a ser Suscripcion.fin/Miembro.fechaVencimiento tras este pago)
 
   anuladoEn       DateTime?
   anuladoPorId    String?

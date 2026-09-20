@@ -46,6 +46,8 @@ RUN npx turbo run build --filter=kiosk
 FROM node:${NODE_VERSION} AS runner
 WORKDIR /app
 
+ENV TZ=America/Caracas
+
 RUN npm install -g serve@14
 
 COPY --from=builder /repo/apps/kiosk/out ./out

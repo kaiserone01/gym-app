@@ -73,6 +73,8 @@ export function FormularioMiembro({
   accion,
   entrenadoresPorSucursal,
   sucursales,
+  sucursalesOrganizacion,
+  sucursalIdDefault,
   planes,
   metodosPago,
   valoresIniciales,
@@ -84,6 +86,10 @@ export function FormularioMiembro({
   // se filtra en el cliente sin ida y vuelta al servidor.
   entrenadoresPorSucursal: Record<string, EntrenadorResumen[]>;
   sucursales: SucursalResumen[];
+  // Ver SelectorMetodoPago — determinan el selector "Sede del pago" del
+  // primer pago.
+  sucursalesOrganizacion: SucursalResumen[];
+  sucursalIdDefault: string | null;
   planes: Plan[];
   metodosPago: MetodoPago[];
   valoresIniciales?: ValoresFormularioMiembro;
@@ -147,7 +153,8 @@ export function FormularioMiembro({
     metodo: string;
     tasaCambio: number | null;
     numeroOperacion: string;
-  }>({ metodoPagoId: null, metodo: "", tasaCambio: null, numeroOperacion: "" });
+    sucursalId: string | null;
+  }>({ metodoPagoId: null, metodo: "", tasaCambio: null, numeroOperacion: "", sucursalId: sucursalIdDefault ?? null });
   const [mostrarTicket, setMostrarTicket] = useState(false);
   // En edición, el plan asignado se ve de solo lectura hasta que se
   // confirma explícitamente que se quiere cambiar (ver diseño acordado:
@@ -252,6 +259,7 @@ export function FormularioMiembro({
             <input type="hidden" name="metodoPagoId" value={seleccionMetodo.metodoPagoId ?? ""} />
             <input type="hidden" name="tasaCambio" value={seleccionMetodo.tasaCambio ?? ""} />
             <input type="hidden" name="numeroOperacion" value={seleccionMetodo.numeroOperacion} />
+            <input type="hidden" name="sucursalIdPago" value={seleccionMetodo.sucursalId ?? ""} />
           </>
         )}
 
@@ -666,6 +674,10 @@ export function FormularioMiembro({
                 monto={precioActual}
                 onCambio={setSeleccionMetodo}
                 idFormulario={idFormulario}
+                sucursalesVisibles={sucursales}
+                sucursalesOrganizacion={sucursalesOrganizacion}
+                sucursalIdDefault={sucursalIdDefault}
+                planEsMultisede={planPermiteMultisede}
               />
             </Card>
           )

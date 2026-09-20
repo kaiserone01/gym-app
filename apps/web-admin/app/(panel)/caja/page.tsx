@@ -16,7 +16,9 @@ import { Input } from "@gym-app/ui/components/Input";
 import { Card } from "@gym-app/ui/components/Card";
 import { PageHeader } from "@gym-app/ui/components/PageHeader";
 import { PrismaMetodoPagoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaMetodoPagoRepository";
+import { PrismaSucursalRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaSucursalRepository";
 import { listarMetodosPagoActivos } from "@gym-app/domain/use-cases/ListarMetodosPago";
+import { listarSucursales } from "@gym-app/domain/use-cases/ListarSucursales";
 import { BotonImprimir } from "../BotonImprimir";
 
 // El método ahora se guarda como snapshot legible ("Pago Móvil - Banesco")
@@ -48,7 +50,7 @@ export default async function PaginaCaja({
   const turnoAbierto = sucursalId ? await turnoRepo.buscarAbiertoPorSucursal(sucursalId) : null;
 
   if (turnoAbierto) {
-    const [resumen, miembros, planes, metodosPago] = await Promise.all([
+    const [resumen, miembros, planes, metodosPago, todasLasSucursales] = await Promise.all([
       obtenerResumenTurno(
         {
           turnos: turnoRepo,
@@ -60,10 +62,16 @@ export default async function PaginaCaja({
       listarMiembros({ miembros: new PrismaMemberRepository(prisma) }, usuario.organizacionId),
       listarPlanes({ planes: new PrismaPlanRepository(prisma) }, usuario.organizacionId),
       listarMetodosPagoActivos({ metodosPago: new PrismaMetodoPagoRepository(prisma) }, usuario.organizacionId),
+      listarSucursales({ sucursales: new PrismaSucursalRepository(prisma) }, usuario.organizacionId),
     ]);
 
     const miembrosActivos = miembros.filter((m) => m.activo);
     const planesActivos = planes.filter((p) => p.activo);
+    // El pago en Caja siempre queda en la sede del turno abierto — no
+    // tiene sentido ofrecer otra sede en medio de un arqueo (ver diseño
+    // acordado). Se le pasa una sola opción para que SelectorMetodoPago
+    // no muestre el selector.
+    const sucursalDelTurno = todasLasSucursales.filter((s) => s.id === sucursalId);
 
     return (
       <div className="flex flex-col gap-6 p-6 pb-24 lg:p-8 lg:pb-8">
@@ -110,6 +118,9 @@ export default async function PaginaCaja({
             miembros={miembrosActivos}
             planes={planesActivos}
             metodosPago={metodosPago}
+            sucursalesVisibles={sucursalDelTurno}
+            sucursalesOrganizacion={sucursalDelTurno}
+            sucursalIdDefault={sucursalId}
             origen="caja"
           />
         </Card>

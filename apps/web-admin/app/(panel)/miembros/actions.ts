@@ -126,6 +126,9 @@ export async function crearMiembroAction(
   const metodoPagoId = formData.get("metodoPagoId")?.toString() || null;
   const tasaCambioRaw = formData.get("tasaCambio")?.toString();
   const numeroOperacion = formData.get("numeroOperacion")?.toString().trim() || null;
+  // Sede elegida en el selector "Sede del pago" (ver SelectorMetodoPago);
+  // si no vino, se cae a la sede default del operador.
+  const sucursalIdPago = formData.get("sucursalIdPago")?.toString() || usuario.sucursalId;
 
   if (!nombre || !cedula || !fechaInscripcionTexto || !sucursalId || !metodo || !metodoPagoId || Number.isNaN(precioPlan)) {
     return { error: "Nombre, cédula, fecha de inscripción, sede y método de pago son requeridos." };
@@ -167,8 +170,10 @@ export async function crearMiembroAction(
   // deshace, así que solo se manejan los errores de dominio esperables;
   // cualquier otra cosa se deja propagar (el miembro queda creado, sin
   // pago, y se puede registrar a mano desde su ficha).
-  if (!usuario.sucursalId) {
-    return { error: "El miembro se creó, pero no se pudo registrar el pago inicial: debés tener una sucursal asignada." };
+  if (!sucursalIdPago) {
+    return {
+      error: "El miembro se creó, pero no se pudo registrar el pago inicial: no se pudo determinar en qué sucursal se registra el pago.",
+    };
   }
 
   try {
@@ -190,7 +195,7 @@ export async function crearMiembroAction(
         metodoPagoId,
         numeroOperacion,
         tasaCambio: tasaCambioRaw ? Number(tasaCambioRaw) : null,
-        sucursalId: usuario.sucursalId,
+        sucursalId: sucursalIdPago,
         registradoPorId: usuario.id,
         rolUsuario: usuario.rol,
       }

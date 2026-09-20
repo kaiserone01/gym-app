@@ -1,4 +1,4 @@
-export type EstadoCheckIn = "activo" | "vencido" | "sucursal_incorrecta";
+export type EstadoCheckIn = "activo" | "en_gracia" | "vencido" | "sucursal_incorrecta";
 
 export interface CheckIn {
   id: string;

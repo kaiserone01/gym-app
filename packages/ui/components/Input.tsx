@@ -7,11 +7,12 @@ export function Input({
   ...props
 }: InputHTMLAttributes<HTMLInputElement> & { label: string }) {
   return (
-    <label className="flex flex-col gap-1 text-sm text-neutral-700">
+    <label className="flex flex-col gap-1.5 text-sm" style={{ color: "var(--gx-muted)" }}>
       {label}
       <input
         name={name}
-        className={`rounded border border-neutral-300 px-3 py-2 outline-none focus:border-blue-500 ${className}`}
+        className={`min-h-11 rounded-lg border px-3 outline-none transition-colors duration-150 focus:border-[var(--gx-accent)] disabled:opacity-50 ${className}`}
+        style={{ background: "var(--gx-surface-2)", borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }}
         {...props}
       />
     </label>

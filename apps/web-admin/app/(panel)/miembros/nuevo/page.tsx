@@ -5,6 +5,7 @@ import { PrismaEntrenadorRepository } from "@gym-app/infrastructure/persistence/
 import { listarEntrenadores } from "@gym-app/domain/use-cases/ListarEntrenadores";
 import { FormularioMiembro } from "../FormularioMiembro";
 import { crearMiembroAction } from "../actions";
+import { PageHeader } from "@gym-app/ui/components/PageHeader";
 
 export default async function PaginaNuevoMiembro() {
   const usuario = await obtenerUsuarioDeSesionActual();
@@ -16,8 +17,10 @@ export default async function PaginaNuevoMiembro() {
   );
 
   return (
-    <div className="max-w-4xl p-8">
-      <h1 className="mb-6 text-2xl font-semibold">Nuevo miembro</h1>
+    <div className="max-w-4xl p-6 lg:p-8">
+      <div className="mb-6">
+        <PageHeader>Nuevo miembro</PageHeader>
+      </div>
       <FormularioMiembro accion={crearMiembroAction} entrenadores={entrenadores} />
     </div>
   );

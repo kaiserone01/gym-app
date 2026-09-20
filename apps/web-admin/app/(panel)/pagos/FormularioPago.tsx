@@ -50,7 +50,12 @@ export function FormularioPago({
   return (
     <form action={enviar} className="flex flex-col gap-4">
       {estado.error && (
-        <p className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">{estado.error}</p>
+        <p
+          className="rounded-lg px-3 py-2 text-sm"
+          style={{ background: "color-mix(in srgb, var(--gx-bad) 15%, transparent)", color: "var(--gx-bad)" }}
+        >
+          {estado.error}
+        </p>
       )}
 
       {origen && <input type="hidden" name="origen" value={origen} />}
@@ -58,9 +63,14 @@ export function FormularioPago({
       {miembroIdFijo ? (
         <input type="hidden" name="miembroId" value={miembroIdFijo} />
       ) : (
-        <label className="flex flex-col gap-1 text-sm text-neutral-700">
+        <label className="flex flex-col gap-1.5 text-sm" style={{ color: "var(--gx-muted)" }}>
           Miembro
-          <select name="miembroId" required className="rounded border border-neutral-300 px-3 py-2">
+          <select
+            name="miembroId"
+            required
+            className="min-h-11 rounded-lg border px-3 outline-none focus:border-[var(--gx-accent)]"
+            style={{ background: "var(--gx-surface-2)", borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }}
+          >
             <option value="">Seleccioná un miembro</option>
             {miembros.map((miembro) => (
               <option key={miembro.id} value={miembro.id}>
@@ -71,14 +81,15 @@ export function FormularioPago({
         </label>
       )}
 
-      <label className="flex flex-col gap-1 text-sm text-neutral-700">
+      <label className="flex flex-col gap-1.5 text-sm" style={{ color: "var(--gx-muted)" }}>
         Plan
         <select
           name="planId"
           required
           value={planId}
           onChange={(e) => manejarCambioPlan(e.target.value)}
-          className="rounded border border-neutral-300 px-3 py-2"
+          className="min-h-11 rounded-lg border px-3 outline-none focus:border-[var(--gx-accent)]"
+          style={{ background: "var(--gx-surface-2)", borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }}
         >
           <option value="">Seleccioná un plan</option>
           {planes.map((plan) => (
@@ -89,14 +100,15 @@ export function FormularioPago({
         </select>
       </label>
 
-      <label className="flex flex-col gap-1 text-sm text-neutral-700">
+      <label className="flex flex-col gap-1.5 text-sm" style={{ color: "var(--gx-muted)" }}>
         Método de pago
         <select
           name="metodo"
           required
           value={metodo}
           onChange={(e) => setMetodo(e.target.value)}
-          className="rounded border border-neutral-300 px-3 py-2"
+          className="min-h-11 rounded-lg border px-3 outline-none focus:border-[var(--gx-accent)]"
+          style={{ background: "var(--gx-surface-2)", borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }}
         >
           <option value="">Seleccioná un método</option>
           {METODOS_PAGO.map((metodoPago) => (
@@ -120,14 +132,16 @@ export function FormularioPago({
       {esPagoEnBs && (
         <>
           <input type="hidden" name="tasaCambio" value={TASA_BCV_FIJA} />
-          <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-3 text-sm">
+          <div className="rounded-lg border p-3 text-sm" style={{ borderColor: "var(--gx-edge)", background: "var(--gx-surface-2)" }}>
             <div className="flex justify-between">
-              <span className="text-neutral-500">Tasa BCV (fija, prueba)</span>
-              <span className="font-medium text-neutral-900">Bs. {TASA_BCV_FIJA}</span>
+              <span style={{ color: "var(--gx-muted)" }}>Tasa BCV (fija, prueba)</span>
+              <span className="font-medium" style={{ color: "var(--gx-ink)" }}>
+                Bs. {TASA_BCV_FIJA}
+              </span>
             </div>
             <div className="mt-1 flex justify-between">
-              <span className="text-neutral-500">Monto en bolívares</span>
-              <span className="font-semibold text-neutral-900">
+              <span style={{ color: "var(--gx-muted)" }}>Monto en bolívares</span>
+              <span className="font-semibold" style={{ color: "var(--gx-ink)" }}>
                 {montoBs !== null ? `Bs. ${formatearBs(montoBs)}` : "—"}
               </span>
             </div>

@@ -6,6 +6,7 @@ import { PrismaSucursalRepository } from "@gym-app/infrastructure/persistence/pr
 import { listarSucursales } from "@gym-app/domain/use-cases/ListarSucursales";
 import { FormularioUsuario } from "../FormularioUsuario";
 import { crearUsuarioAction } from "../actions";
+import { PageHeader } from "@gym-app/ui/components/PageHeader";
 
 export default async function PaginaNuevoUsuario() {
   const usuario = await obtenerUsuarioDeSesionActual();
@@ -22,8 +23,10 @@ export default async function PaginaNuevoUsuario() {
   );
 
   return (
-    <div className="p-8">
-      <h1 className="mb-6 text-2xl font-semibold">Nuevo usuario</h1>
+    <div className="p-6 lg:p-8">
+      <div className="mb-6">
+        <PageHeader>Nuevo usuario</PageHeader>
+      </div>
       <FormularioUsuario accion={crearUsuarioAction} sucursales={sucursales} />
     </div>
   );

@@ -17,6 +17,7 @@ import {
   reactivarUsuarioAction,
 } from "../actions";
 import { Button } from "@gym-app/ui/components/Button";
+import { PageHeader } from "@gym-app/ui/components/PageHeader";
 import { AvisoError } from "../../AvisoError";
 
 export default async function PaginaEditarUsuario({
@@ -63,8 +64,8 @@ export default async function PaginaEditarUsuario({
   const accionPermisos = actualizarPermisosUsuarioAction.bind(null, id);
 
   return (
-    <div className="flex flex-col gap-8 p-8">
-      <h1 className="text-2xl font-semibold">Editar usuario</h1>
+    <div className="flex flex-col gap-8 p-6 lg:p-8">
+      <PageHeader>Editar usuario</PageHeader>
 
       <AvisoError mensaje={errorMensaje} />
 
@@ -76,14 +77,21 @@ export default async function PaginaEditarUsuario({
       />
 
       <form action={accionSucursales} className="flex flex-col gap-2">
-        <h2 className="text-lg font-semibold text-neutral-900">Sucursales asignadas</h2>
+        <h2 className="text-lg font-semibold" style={{ color: "var(--gx-ink)" }}>
+          Sucursales asignadas
+        </h2>
         {sucursales.map((sucursal) => (
-          <label key={sucursal.id} className="flex items-center gap-2 text-sm text-neutral-700">
+          <label
+            key={sucursal.id}
+            className="flex min-h-11 items-center gap-2 text-sm"
+            style={{ color: "var(--gx-muted)" }}
+          >
             <input
               type="checkbox"
               name="sucursalIds"
               value={sucursal.id}
               defaultChecked={detalle.sucursalIds.includes(sucursal.id)}
+              className="h-5 w-5 accent-[var(--gx-accent)]"
             />
             {sucursal.nombre}
           </label>
@@ -92,12 +100,16 @@ export default async function PaginaEditarUsuario({
       </form>
 
       <div>
-        <h2 className="mb-3 text-lg font-semibold text-neutral-900">Permisos</h2>
+        <h2 className="mb-3 text-lg font-semibold" style={{ color: "var(--gx-ink)" }}>
+          Permisos
+        </h2>
         <FormularioPermisos accion={accionPermisos} permisosActuales={detalle.permisos} />
       </div>
 
       <form action={detalle.usuario.activo ? darDeBajaUsuarioAction.bind(null, id) : reactivarUsuarioAction.bind(null, id)}>
-        <Button type="submit">{detalle.usuario.activo ? "Dar de baja" : "Reactivar"}</Button>
+        <Button variant={detalle.usuario.activo ? "peligro" : "primario"} type="submit">
+          {detalle.usuario.activo ? "Dar de baja" : "Reactivar"}
+        </Button>
       </form>
     </div>
   );

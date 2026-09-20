@@ -3,6 +3,7 @@
 import { useActionState, useRef, useState } from "react";
 import { Button } from "@gym-app/ui/components/Button";
 import { Input } from "@gym-app/ui/components/Input";
+import { Card } from "@gym-app/ui/components/Card";
 import type { EstadoFormularioMiembro } from "./actions";
 import { PRESETS_PLAN_MIEMBRO } from "./planesPreset";
 import { METODOS_PAGO, METODOS_BANCARIOS } from "../metodosPago";
@@ -48,8 +49,10 @@ function iniciales(nombre: string): string {
 function Fila({ label, valor }: { label: string; valor: string }) {
   return (
     <div className="flex justify-between gap-3">
-      <dt className="text-neutral-500">{label}</dt>
-      <dd className="text-right font-medium text-neutral-900">{valor}</dd>
+      <dt style={{ color: "var(--gx-muted)" }}>{label}</dt>
+      <dd className="text-right font-medium" style={{ color: "var(--gx-ink)" }}>
+        {valor}
+      </dd>
     </div>
   );
 }
@@ -140,7 +143,12 @@ export function FormularioMiembro({
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_320px]">
       <form ref={formRef} id={idFormulario} action={enviar} className="flex flex-col gap-6">
         {estado.error && (
-          <p className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">{estado.error}</p>
+          <p
+            className="rounded-lg px-3 py-2 text-sm"
+            style={{ background: "color-mix(in srgb, var(--gx-bad) 15%, transparent)", color: "var(--gx-bad)" }}
+          >
+            {estado.error}
+          </p>
         )}
 
         <input type="hidden" name="planTipo" value={planTipoActual} />
@@ -158,14 +166,17 @@ export function FormularioMiembro({
           </>
         )}
 
-        <section className="rounded-xl border border-neutral-200 p-5">
-          <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-neutral-500">
+        <Card>
+          <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--gx-muted)" }}>
             Datos personales
           </h2>
 
           <div className="flex flex-col gap-4">
             <div className="flex items-center gap-4">
-              <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full bg-neutral-100 text-lg font-semibold text-neutral-500">
+              <div
+                className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full text-lg font-semibold"
+                style={{ background: "var(--gx-surface-2)", color: "var(--gx-muted)" }}
+              >
                 {fotoPreview ? (
                   // eslint-disable-next-line @next/next/no-img-element -- vista previa de un archivo elegido en el cliente, no un asset del proyecto
                   <img src={fotoPreview} alt="" className="h-full w-full object-cover" />
@@ -174,16 +185,17 @@ export function FormularioMiembro({
                 )}
               </div>
 
-              <label className="flex flex-col gap-1 text-sm text-neutral-700">
+              <label className="flex flex-col gap-1 text-sm" style={{ color: "var(--gx-muted)" }}>
                 Foto de perfil
                 <input
                   type="file"
                   name="foto"
                   accept="image/*"
                   onChange={(e) => manejarCambioFoto(e.target.files?.[0])}
-                  className="text-sm text-neutral-600 file:mr-3 file:rounded file:border-0 file:bg-neutral-100 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-neutral-700 hover:file:bg-neutral-200"
+                  className="text-sm file:mr-3 file:min-h-9 file:rounded-lg file:border-0 file:px-3 file:py-1.5 file:text-sm file:font-medium"
+                  style={{ color: "var(--gx-muted)" }}
                 />
-                <span className="text-xs text-neutral-400">
+                <span className="text-xs" style={{ color: "var(--gx-muted-dim)" }}>
                   Es la foto que va a aparecer en la ficha al ingresar su cédula.
                 </span>
               </label>
@@ -223,10 +235,10 @@ export function FormularioMiembro({
               onChange={(e) => setFechaInscripcion(e.target.value)}
             />
           </div>
-        </section>
+        </Card>
 
-        <section className="rounded-xl border border-neutral-200 p-5">
-          <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-neutral-500">
+        <Card>
+          <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--gx-muted)" }}>
             Plan de membresía
           </h2>
 
@@ -238,19 +250,29 @@ export function FormularioMiembro({
                   key={preset.key}
                   type="button"
                   onClick={() => setPresetKey(preset.key)}
-                  className={`flex flex-col items-start gap-1 rounded-lg border-2 p-4 text-left transition-colors ${
+                  className="flex flex-col items-start gap-1 rounded-lg border-2 p-4 text-left transition-colors duration-150 active:scale-[0.98]"
+                  style={
                     seleccionado
-                      ? "border-blue-600 bg-blue-50"
-                      : "border-neutral-200 hover:border-neutral-300"
-                  }`}
+                      ? {
+                          borderColor: "var(--gx-accent)",
+                          background: "color-mix(in srgb, var(--gx-accent) 12%, transparent)",
+                        }
+                      : { borderColor: "var(--gx-edge)" }
+                  }
                 >
-                  <span className="text-sm font-medium text-neutral-700">{preset.nombre}</span>
-                  <span className="text-2xl font-semibold text-neutral-900">
+                  <span className="text-sm font-medium" style={{ color: "var(--gx-muted)" }}>
+                    {preset.nombre}
+                  </span>
+                  <span className="text-2xl font-semibold" style={{ color: "var(--gx-ink)" }}>
                     ${preset.precio}
-                    <span className="text-sm font-normal text-neutral-500">/mes</span>
+                    <span className="text-sm font-normal" style={{ color: "var(--gx-muted)" }}>
+                      /mes
+                    </span>
                   </span>
                   {preset.planTipo === "CON_ENTRENADOR" && (
-                    <span className="text-xs font-medium text-blue-600">Incluye entrenador</span>
+                    <span className="text-xs font-medium" style={{ color: "var(--gx-accent)" }}>
+                      Incluye entrenador
+                    </span>
                   )}
                 </button>
               );
@@ -259,18 +281,30 @@ export function FormularioMiembro({
             <button
               type="button"
               onClick={() => setPresetKey("personalizado")}
-              className={`flex flex-col items-start gap-1 rounded-lg border-2 p-4 text-left transition-colors ${
-                esCustom ? "border-blue-600 bg-blue-50" : "border-neutral-200 hover:border-neutral-300"
-              }`}
+              className="flex flex-col items-start gap-1 rounded-lg border-2 p-4 text-left transition-colors duration-150 active:scale-[0.98]"
+              style={
+                esCustom
+                  ? {
+                      borderColor: "var(--gx-accent)",
+                      background: "color-mix(in srgb, var(--gx-accent) 12%, transparent)",
+                    }
+                  : { borderColor: "var(--gx-edge)" }
+              }
             >
-              <span className="text-sm font-medium text-neutral-700">Personalizado</span>
-              <span className="text-lg font-semibold text-neutral-900">Definir precio</span>
-              <span className="text-xs text-neutral-500">Para casos especiales</span>
+              <span className="text-sm font-medium" style={{ color: "var(--gx-muted)" }}>
+                Personalizado
+              </span>
+              <span className="text-lg font-semibold" style={{ color: "var(--gx-ink)" }}>
+                Definir precio
+              </span>
+              <span className="text-xs" style={{ color: "var(--gx-muted)" }}>
+                Para casos especiales
+              </span>
             </button>
           </div>
 
           {esCustom && (
-            <div className="mt-4 flex flex-col gap-3 rounded-lg border border-neutral-200 p-4">
+            <div className="mt-4 flex flex-col gap-3 rounded-lg border p-4" style={{ borderColor: "var(--gx-edge)" }}>
               <Input
                 label="Precio personalizado (USD)"
                 type="number"
@@ -283,28 +317,32 @@ export function FormularioMiembro({
                 }}
               />
               {errorPrecioPersonalizado && (
-                <p className="text-sm text-red-700">{errorPrecioPersonalizado}</p>
+                <p className="text-sm" style={{ color: "var(--gx-bad)" }}>
+                  {errorPrecioPersonalizado}
+                </p>
               )}
 
-              <label className="flex items-center gap-2 text-sm text-neutral-700">
+              <label className="flex min-h-11 items-center gap-2 text-sm" style={{ color: "var(--gx-muted)" }}>
                 <input
                   type="checkbox"
                   checked={entrenadorPersonalizado}
                   onChange={(e) => setEntrenadorPersonalizado(e.target.checked)}
+                  className="h-5 w-5 accent-[var(--gx-accent)]"
                 />
                 Incluye entrenador personal
               </label>
             </div>
           )}
 
-          <label className="mt-4 flex flex-col gap-1 text-sm text-neutral-700">
+          <label className="mt-4 flex flex-col gap-1.5 text-sm" style={{ color: "var(--gx-muted)" }}>
             Entrenador asignado
             <select
               name="entrenadorId"
               value={entrenadorId}
               onChange={(e) => setEntrenadorId(e.target.value)}
               disabled={!requiereEntrenador}
-              className="rounded border border-neutral-300 px-3 py-2 disabled:bg-neutral-100 disabled:text-neutral-400"
+              className="min-h-11 rounded-lg border px-3 outline-none focus:border-[var(--gx-accent)] disabled:opacity-50"
+              style={{ background: "var(--gx-surface-2)", borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }}
             >
               <option value="">Seleccioná un entrenador</option>
               {entrenadores.map((entrenador) => (
@@ -314,12 +352,12 @@ export function FormularioMiembro({
               ))}
             </select>
             {!requiereEntrenador && (
-              <span className="text-xs text-neutral-400">
+              <span className="text-xs" style={{ color: "var(--gx-muted)" }}>
                 Elegí un plan con entrenador para poder asignar uno.
               </span>
             )}
           </label>
-        </section>
+        </Card>
 
         <Button type="button" onClick={manejarClickGuardar} disabled={enviando}>
           Guardar
@@ -331,24 +369,25 @@ export function FormularioMiembro({
           esEdicion ? (
             panelLateral
           ) : (
-            <div className="rounded-xl border border-neutral-200 p-5">
-              <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-neutral-500">
+            <Card>
+              <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--gx-muted)" }}>
                 Primer pago
               </h2>
-              <p className="mb-4 text-xs text-neutral-400">
+              <p className="mb-4 text-xs" style={{ color: "var(--gx-muted)" }}>
                 Se registra en el mismo paso que creás al miembro, así queda activo desde hoy sin
                 tener que entrar después a &quot;Registrar pago&quot;.
               </p>
 
               <div className="flex flex-col gap-4">
-                <label className="flex flex-col gap-1 text-sm text-neutral-700">
+                <label className="flex flex-col gap-1.5 text-sm" style={{ color: "var(--gx-muted)" }}>
                   Método de pago
                   <select
                     form={idFormulario}
                     required
                     value={metodoPago}
                     onChange={(e) => setMetodoPago(e.target.value)}
-                    className="rounded border border-neutral-300 px-3 py-2"
+                    className="min-h-11 rounded-lg border px-3 outline-none focus:border-[var(--gx-accent)]"
+                    style={{ background: "var(--gx-surface-2)", borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }}
                   >
                     <option value="">Seleccioná un método</option>
                     {METODOS_PAGO.map((metodo) => (
@@ -372,28 +411,44 @@ export function FormularioMiembro({
                 )}
 
                 {esPagoEnBs && montoBsActual !== null && (
-                  <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-3 text-sm">
+                  <div
+                    className="rounded-lg border p-3 text-sm"
+                    style={{ borderColor: "var(--gx-edge)", background: "var(--gx-surface-2)" }}
+                  >
                     <div className="flex justify-between">
-                      <span className="text-neutral-500">Tasa BCV (fija, prueba)</span>
-                      <span className="font-medium text-neutral-900">Bs. {TASA_BCV_FIJA}</span>
+                      <span style={{ color: "var(--gx-muted)" }}>Tasa BCV (fija, prueba)</span>
+                      <span className="font-medium" style={{ color: "var(--gx-ink)" }}>
+                        Bs. {TASA_BCV_FIJA}
+                      </span>
                     </div>
                     <div className="mt-1 flex justify-between">
-                      <span className="text-neutral-500">Monto en bolívares</span>
-                      <span className="font-semibold text-neutral-900">Bs. {formatearBs(montoBsActual)}</span>
+                      <span style={{ color: "var(--gx-muted)" }}>Monto en bolívares</span>
+                      <span className="font-semibold" style={{ color: "var(--gx-ink)" }}>
+                        Bs. {formatearBs(montoBsActual)}
+                      </span>
                     </div>
                   </div>
                 )}
               </div>
-            </div>
+            </Card>
           )
         ) : (
-          <div className="rounded-xl border-2 border-dashed border-neutral-300 bg-neutral-50 p-5">
-            <p className="text-center text-xs font-semibold uppercase tracking-widest text-neutral-500">
+          <div
+            className="rounded-2xl border-2 border-dashed p-5"
+            style={{ borderColor: "var(--gx-edge)", background: "var(--gx-surface)" }}
+          >
+            <p
+              className="text-center text-xs font-semibold uppercase tracking-widest"
+              style={{ color: "var(--gx-muted)" }}
+            >
               {esEdicion ? "Resumen de la edición" : "Resumen del nuevo miembro"}
             </p>
 
             <div className="my-3 flex justify-center">
-              <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full bg-neutral-200 text-lg font-semibold text-neutral-500">
+              <div
+                className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full text-lg font-semibold"
+                style={{ background: "var(--gx-surface-2)", color: "var(--gx-muted)" }}
+              >
                 {fotoPreview ? (
                   // eslint-disable-next-line @next/next/no-img-element -- vista previa de un archivo elegido en el cliente, no un asset del proyecto
                   <img src={fotoPreview} alt="" className="h-full w-full object-cover" />
@@ -403,7 +458,7 @@ export function FormularioMiembro({
               </div>
             </div>
 
-            <div className="my-3 border-t border-dashed border-neutral-300" />
+            <div className="my-3 border-t border-dashed" style={{ borderColor: "var(--gx-edge)" }} />
 
             <dl className="flex flex-col gap-2 text-sm">
               <Fila label="Nombre" valor={nombre || "—"} />
@@ -415,17 +470,23 @@ export function FormularioMiembro({
               {!esEdicion && <Fila label="Método de pago" valor={nombreMetodoPagoActual ?? "—"} />}
             </dl>
 
-            <div className="my-3 border-t border-dashed border-neutral-300" />
+            <div className="my-3 border-t border-dashed" style={{ borderColor: "var(--gx-edge)" }} />
 
             <div className="flex items-baseline justify-between">
-              <span className="text-sm font-medium text-neutral-700">Total</span>
-              <span className="text-2xl font-bold text-neutral-900">${precioActual.toFixed(2)}</span>
+              <span className="text-sm font-medium" style={{ color: "var(--gx-muted)" }}>
+                Total
+              </span>
+              <span className="text-2xl font-bold" style={{ color: "var(--gx-ink)" }}>
+                ${precioActual.toFixed(2)}
+              </span>
             </div>
             {!esEdicion && esPagoEnBs && montoBsActual !== null && (
-              <p className="text-right text-sm text-neutral-500">Bs. {formatearBs(montoBsActual)}</p>
+              <p className="text-right text-sm" style={{ color: "var(--gx-muted)" }}>
+                Bs. {formatearBs(montoBsActual)}
+              </p>
             )}
 
-            <p className="mt-5 text-center text-sm font-medium text-neutral-700">
+            <p className="mt-5 text-center text-sm font-medium" style={{ color: "var(--gx-muted)" }}>
               ¿Está seguro de la información suministrada?
             </p>
 

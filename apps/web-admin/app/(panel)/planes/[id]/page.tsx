@@ -6,6 +6,7 @@ import { obtenerSucursalesDeLaOrganizacion } from "../obtenerSucursales";
 import { FormularioPlan } from "../FormularioPlan";
 import { actualizarPlanAction, darDeBajaPlanAction, reactivarPlanAction } from "../actions";
 import { Button } from "@gym-app/ui/components/Button";
+import { PageHeader } from "@gym-app/ui/components/PageHeader";
 
 export default async function PaginaEditarPlan({ params }: { params: Promise<{ id: string }> }) {
   const usuario = await obtenerUsuarioDeSesionActual();
@@ -25,8 +26,10 @@ export default async function PaginaEditarPlan({ params }: { params: Promise<{ i
   const sucursalesAsignadas = sucursales.filter((s) => idsAsignados.has(s.id));
 
   return (
-    <div className="max-w-lg p-8">
-      <h1 className="mb-6 text-2xl font-semibold">Editar plan</h1>
+    <div className="max-w-lg p-6 lg:p-8">
+      <div className="mb-6">
+        <PageHeader>Editar plan</PageHeader>
+      </div>
 
       <FormularioPlan
         accion={actualizarPlanAction.bind(null, id)}

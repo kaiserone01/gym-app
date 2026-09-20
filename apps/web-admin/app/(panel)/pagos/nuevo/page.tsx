@@ -7,6 +7,7 @@ import { listarMiembros } from "@gym-app/domain/use-cases/ListarMiembros";
 import { listarPlanes } from "@gym-app/domain/use-cases/ListarPlanes";
 import { FormularioPago } from "../FormularioPago";
 import { registrarPagoAction } from "../actions";
+import { PageHeader } from "@gym-app/ui/components/PageHeader";
 
 export default async function PaginaNuevoPago() {
   const usuario = await obtenerUsuarioDeSesionActual();
@@ -21,8 +22,10 @@ export default async function PaginaNuevoPago() {
   const miembrosActivos = miembros.filter((m) => m.activo);
 
   return (
-    <div className="max-w-lg p-8">
-      <h1 className="mb-6 text-2xl font-semibold">Registrar pago</h1>
+    <div className="max-w-lg p-6 lg:p-8">
+      <div className="mb-6">
+        <PageHeader>Registrar pago</PageHeader>
+      </div>
       <FormularioPago accion={registrarPagoAction} miembros={miembrosActivos} planes={planesActivos} />
     </div>
   );

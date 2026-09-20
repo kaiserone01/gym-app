@@ -31,34 +31,39 @@ export function FormularioPermisos({
 
   return (
     <form action={accion} className="flex flex-col gap-4">
-      <table className="w-full border-collapse text-left text-sm">
-        <thead>
-          <tr className="border-b text-neutral-500">
-            <th className="py-2">Módulo</th>
-            {ACCIONES.map((a) => (
-              <th key={a.valor} className="py-2 text-center">
-                {a.etiqueta}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {MODULOS.map((m) => (
-            <tr key={m.valor} className="border-b">
-              <td className="py-2">{m.etiqueta}</td>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[420px] border-collapse text-left text-sm">
+          <thead>
+            <tr className="border-b" style={{ borderColor: "var(--gx-edge)", color: "var(--gx-muted)" }}>
+              <th className="py-2">Módulo</th>
               {ACCIONES.map((a) => (
-                <td key={a.valor} className="py-2 text-center">
-                  <input
-                    type="checkbox"
-                    name={`permiso_${m.valor}_${a.valor}`}
-                    defaultChecked={tiene(m.valor, a.valor)}
-                  />
-                </td>
+                <th key={a.valor} className="py-2 text-center">
+                  {a.etiqueta}
+                </th>
               ))}
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {MODULOS.map((m) => (
+              <tr key={m.valor} className="border-b" style={{ borderColor: "var(--gx-edge)" }}>
+                <td className="py-2" style={{ color: "var(--gx-ink)" }}>
+                  {m.etiqueta}
+                </td>
+                {ACCIONES.map((a) => (
+                  <td key={a.valor} className="py-2 text-center">
+                    <input
+                      type="checkbox"
+                      name={`permiso_${m.valor}_${a.valor}`}
+                      defaultChecked={tiene(m.valor, a.valor)}
+                      className="h-5 w-5 accent-[var(--gx-accent)]"
+                    />
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
       <Button type="submit">Guardar permisos</Button>
     </form>

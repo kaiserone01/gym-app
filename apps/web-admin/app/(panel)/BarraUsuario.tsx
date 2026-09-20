@@ -18,10 +18,18 @@ export function BarraUsuario({ nombre, email }: { nombre: string; email: string 
   return (
     <div className="flex flex-col gap-2 text-sm">
       <div>
-        <p className="truncate font-medium text-neutral-800">{nombre}</p>
-        <p className="truncate text-xs text-neutral-500">{email}</p>
+        <p className="truncate font-medium" style={{ color: "var(--gx-ink)" }}>
+          {nombre}
+        </p>
+        <p className="truncate text-xs" style={{ color: "var(--gx-muted)" }}>
+          {email}
+        </p>
       </div>
-      <a href="/cambiar-password" className="text-xs font-medium text-blue-600 hover:underline">
+      <a
+        href="/cambiar-password"
+        className="text-xs font-medium hover:underline"
+        style={{ color: "var(--gx-accent)" }}
+      >
         Cambiar contraseña
       </a>
       <Button variant="secundario" onClick={cerrarSesion} disabled={cargando}>

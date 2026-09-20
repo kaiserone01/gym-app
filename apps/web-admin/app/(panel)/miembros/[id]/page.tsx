@@ -14,6 +14,8 @@ import { FormularioMiembro } from "../FormularioMiembro";
 import { actualizarMiembroAction } from "../actions";
 import { FormularioPago } from "../../pagos/FormularioPago";
 import { registrarPagoAction } from "../../pagos/actions";
+import { Card } from "@gym-app/ui/components/Card";
+import { PageHeader } from "@gym-app/ui/components/PageHeader";
 
 // OJO: nunca usar fecha.toISOString() acá — convierte a UTC primero, y de
 // noche (pasadas las 8pm en Venezuela, UTC-4) eso salta al día siguiente.
@@ -52,8 +54,10 @@ export default async function PaginaEditarMiembro({ params }: { params: Promise<
   const planesActivos = planes.filter((plan) => plan.activo);
 
   return (
-    <div className="max-w-4xl p-8">
-      <h1 className="mb-6 text-2xl font-semibold">Editar miembro</h1>
+    <div className="max-w-4xl p-6 lg:p-8">
+      <div className="mb-6">
+        <PageHeader>Editar miembro</PageHeader>
+      </div>
 
       <FormularioMiembro
         accion={actualizarMiembroAction.bind(null, id)}
@@ -72,13 +76,14 @@ export default async function PaginaEditarMiembro({ params }: { params: Promise<
           <div className="flex flex-col gap-6">
             <Link
               href={`/miembros/${id}/pagos`}
-              className="block rounded px-4 py-2 text-center text-sm font-medium text-neutral-900 bg-neutral-200 hover:bg-neutral-300"
+              className="block min-h-11 content-center rounded-lg px-4 text-center text-sm font-medium transition-colors duration-150 active:scale-95"
+              style={{ background: "var(--gx-surface-2)", color: "var(--gx-ink)" }}
             >
               Ver historial de pagos ({pagos.length})
             </Link>
 
-            <div className="rounded-xl border border-neutral-200 p-5">
-              <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-neutral-500">
+            <Card>
+              <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--gx-muted)" }}>
                 Registrar pago
               </h2>
               <FormularioPago
@@ -88,7 +93,7 @@ export default async function PaginaEditarMiembro({ params }: { params: Promise<
                 miembroIdFijo={id}
                 origen="miembro"
               />
-            </div>
+            </Card>
           </div>
         }
       />

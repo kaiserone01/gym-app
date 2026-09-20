@@ -8,7 +8,9 @@ export default async function PaginaCambiarPassword() {
 
   return (
     <div className="p-8">
-      <h1 className="mb-6 text-2xl font-semibold">Cambiar contraseña</h1>
+      <h1 className="mb-6 text-2xl font-semibold" style={{ color: "var(--gx-ink)" }}>
+        Cambiar contraseña
+      </h1>
       <FormularioCambiarPassword />
     </div>
   );

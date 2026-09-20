@@ -4,6 +4,15 @@ export function AvisoError({ mensaje }: { mensaje?: string }) {
   if (!mensaje) return null;
 
   return (
-    <p className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{mensaje}</p>
+    <p
+      className="rounded-lg border px-3 py-2 text-sm"
+      style={{
+        borderColor: "color-mix(in srgb, var(--gx-bad) 40%, transparent)",
+        background: "color-mix(in srgb, var(--gx-bad) 15%, transparent)",
+        color: "var(--gx-bad)",
+      }}
+    >
+      {mensaje}
+    </p>
   );
 }

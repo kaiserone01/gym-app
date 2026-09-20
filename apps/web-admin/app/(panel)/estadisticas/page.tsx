@@ -6,6 +6,7 @@ import { PrismaCheckInRepository } from "@gym-app/infrastructure/persistence/pri
 import { obtenerEstadisticasCheckIn } from "@gym-app/domain/use-cases/ObtenerEstadisticasCheckIn";
 import { Button } from "@gym-app/ui/components/Button";
 import { Input } from "@gym-app/ui/components/Input";
+import { Card } from "@gym-app/ui/components/Card";
 
 function formatoFecha(fecha: Date): string {
   return fecha.toISOString().slice(0, 10);
@@ -39,39 +40,68 @@ export default async function PaginaEstadisticas({
   );
 
   return (
-    <div className="p-8">
-      <h1 className="mb-6 text-2xl font-semibold">Estadísticas de check-in</h1>
+    <div className="p-6 lg:p-8">
+      <h1 className="mb-6 text-2xl font-semibold" style={{ color: "var(--gx-ink)" }}>
+        Estadísticas de check-in
+      </h1>
 
-      <form method="get" className="mb-6 flex items-end gap-4">
+      <form method="get" className="mb-6 flex flex-wrap items-end gap-4">
         <Input name="desde" label="Desde" type="date" defaultValue={formatoFecha(desde)} />
         <Input name="hasta" label="Hasta" type="date" defaultValue={formatoFecha(hasta)} />
         <Button type="submit">Filtrar</Button>
       </form>
 
-      <table className="w-full border-collapse text-left">
-        <thead>
-          <tr className="border-b text-sm text-neutral-500">
-            <th className="py-2">Sucursal</th>
-            <th className="py-2">Check-ins</th>
-          </tr>
-        </thead>
-        <tbody>
-          {estadisticas.map((estadistica) => (
-            <tr key={estadistica.sucursalId} className="border-b">
-              <td className="py-2">{estadistica.nombreSucursal}</td>
-              <td className="py-2">{estadistica.cantidad}</td>
-            </tr>
-          ))}
+      <div className="hidden lg:block">
+        <Card>
+          <table className="w-full border-collapse text-left">
+            <thead>
+              <tr className="border-b text-sm" style={{ borderColor: "var(--gx-edge)", color: "var(--gx-muted)" }}>
+                <th className="py-2">Sucursal</th>
+                <th className="py-2">Check-ins</th>
+              </tr>
+            </thead>
+            <tbody>
+              {estadisticas.map((estadistica) => (
+                <tr key={estadistica.sucursalId} className="border-b" style={{ borderColor: "var(--gx-edge)" }}>
+                  <td className="py-2" style={{ color: "var(--gx-ink)" }}>
+                    {estadistica.nombreSucursal}
+                  </td>
+                  <td className="py-2" style={{ color: "var(--gx-ink)" }}>
+                    {estadistica.cantidad}
+                  </td>
+                </tr>
+              ))}
 
-          {estadisticas.length === 0 && (
-            <tr>
-              <td colSpan={2} className="py-8 text-center text-neutral-500">
-                Todavía no hay sucursales.
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+              {estadisticas.length === 0 && (
+                <tr>
+                  <td colSpan={2} className="py-8 text-center" style={{ color: "var(--gx-muted)" }}>
+                    Todavía no hay sucursales.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </Card>
+      </div>
+
+      <div className="flex flex-col gap-3 lg:hidden">
+        {estadisticas.map((estadistica) => (
+          <Card key={estadistica.sucursalId} className="flex items-center justify-between">
+            <span style={{ color: "var(--gx-ink)" }}>{estadistica.nombreSucursal}</span>
+            <span className="text-lg font-semibold" style={{ color: "var(--gx-accent)" }}>
+              {estadistica.cantidad}
+            </span>
+          </Card>
+        ))}
+
+        {estadisticas.length === 0 && (
+          <Card>
+            <p className="text-center" style={{ color: "var(--gx-muted)" }}>
+              Todavía no hay sucursales.
+            </p>
+          </Card>
+        )}
+      </div>
     </div>
   );
 }

@@ -2,8 +2,6 @@
 
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { ThemeStyleTag } from "@gym-app/theming/ThemeStyleTag";
-import { temaAdrenalinaXtreme } from "@gym-app/theming/tokens";
 import { LogoBadge } from "@gym-app/ui/components/LogoBadge";
 
 export default function LoginPage() {
@@ -37,14 +35,6 @@ export default function LoginPage() {
 
   return (
     <>
-      <ThemeStyleTag tema={temaAdrenalinaXtreme} />
-      <link rel="preconnect" href="https://fonts.googleapis.com" />
-      <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-      <link
-        href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700&display=swap"
-        rel="stylesheet"
-      />
-
       <main
         className="flex min-h-screen items-center justify-center p-6"
         style={{ background: "var(--gx-ground)", color: "var(--gx-ink)" }}

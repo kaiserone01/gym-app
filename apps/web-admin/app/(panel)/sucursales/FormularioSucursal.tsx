@@ -34,7 +34,14 @@ export function FormularioSucursal({
 
   return (
     <form action={enviar} className="flex flex-col gap-4">
-      {estado.error && <p className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">{estado.error}</p>}
+      {estado.error && (
+        <p
+          className="rounded-lg px-3 py-2 text-sm"
+          style={{ background: "color-mix(in srgb, var(--gx-bad) 15%, transparent)", color: "var(--gx-bad)" }}
+        >
+          {estado.error}
+        </p>
+      )}
 
       <Input
         name="nombre"
@@ -59,15 +66,16 @@ export function FormularioSucursal({
       />
 
       {valoresIniciales?.apiKey && (
-        <div className="flex flex-col gap-1 text-sm text-neutral-700">
+        <div className="flex flex-col gap-1 text-sm" style={{ color: "var(--gx-muted)" }}>
           API Key del kiosco
           <div className="flex gap-2">
             <input
               readOnly
               value={valoresIniciales.apiKey}
-              className="flex-1 rounded border border-neutral-300 bg-neutral-50 px-3 py-2 text-neutral-500"
+              className="min-h-11 flex-1 rounded-lg border px-3"
+              style={{ background: "var(--gx-surface-2)", borderColor: "var(--gx-edge)", color: "var(--gx-muted)" }}
             />
-            <Button type="button" onClick={copiarApiKey}>
+            <Button type="button" variant="secundario" onClick={copiarApiKey}>
               {copiado ? "Copiado" : "Copiar"}
             </Button>
           </div>

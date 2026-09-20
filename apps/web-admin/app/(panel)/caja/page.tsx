@@ -12,6 +12,9 @@ import { obtenerReporteCaja } from "@gym-app/domain/use-cases/ObtenerReporteCaja
 import { listarMiembros } from "@gym-app/domain/use-cases/ListarMiembros";
 import { listarPlanes } from "@gym-app/domain/use-cases/ListarPlanes";
 import { Button } from "@gym-app/ui/components/Button";
+import { Input } from "@gym-app/ui/components/Input";
+import { Card } from "@gym-app/ui/components/Card";
+import { PageHeader } from "@gym-app/ui/components/PageHeader";
 import { METODOS_PAGO } from "../metodosPago";
 import { BotonImprimir } from "../BotonImprimir";
 import { formatearBs } from "../tasaBcvFija";
@@ -57,85 +60,117 @@ export default async function PaginaCaja({
     const planesActivos = planes.filter((p) => p.activo);
 
     return (
-      <div className="flex flex-col gap-6 p-8">
-        <h1 className="text-2xl font-semibold">Turno activo</h1>
-        <div className="rounded-xl border border-neutral-200 p-5 text-sm">
+      <div className="flex flex-col gap-6 p-6 pb-24 lg:p-8 lg:pb-8">
+        <PageHeader>Turno activo</PageHeader>
+        <Card className="text-sm">
           <div className="flex justify-between">
-            <span className="text-neutral-500">Abierto desde</span>
-            <span className="font-medium text-neutral-900">
+            <span style={{ color: "var(--gx-muted)" }}>Abierto desde</span>
+            <span className="font-medium" style={{ color: "var(--gx-ink)" }}>
               {resumen.turno.abiertoEn.toLocaleString("es-VE")}
             </span>
           </div>
           <div className="flex justify-between">
-            <span className="text-neutral-500">Fondo inicial</span>
-            <span className="font-medium text-neutral-900">
+            <span style={{ color: "var(--gx-muted)" }}>Fondo inicial</span>
+            <span className="font-medium" style={{ color: "var(--gx-ink)" }}>
               ${resumen.turno.fondoInicialUSD.toFixed(2)} / Bs. {formatearBs(resumen.turno.fondoInicialBs)}
             </span>
           </div>
-        </div>
+        </Card>
 
-        <div className="rounded-xl border border-neutral-200 p-5 text-sm">
-          <h2 className="mb-3 font-semibold text-neutral-900">Resumen por método</h2>
+        <Card className="text-sm">
+          <h2 className="mb-3 font-semibold" style={{ color: "var(--gx-ink)" }}>
+            Resumen por método
+          </h2>
           {resumen.lineas.map((linea) => (
-            <div key={linea.metodo} className="flex justify-between border-b border-neutral-100 py-2">
-              <span>{nombreMetodo(linea.metodo)}</span>
-              <span className="font-medium text-neutral-900">{linea.montoEsperado.toFixed(2)} esperado</span>
+            <div
+              key={linea.metodo}
+              className="flex justify-between border-b py-2"
+              style={{ borderColor: "var(--gx-edge)" }}
+            >
+              <span style={{ color: "var(--gx-muted)" }}>{nombreMetodo(linea.metodo)}</span>
+              <span className="font-medium" style={{ color: "var(--gx-ink)" }}>
+                {linea.montoEsperado.toFixed(2)} esperado
+              </span>
             </div>
           ))}
-        </div>
+        </Card>
 
-        <div className="rounded-xl border border-neutral-200 p-5 text-sm">
-          <h2 className="mb-3 font-semibold text-neutral-900">Registrar pago</h2>
+        <Card className="text-sm">
+          <h2 className="mb-3 font-semibold" style={{ color: "var(--gx-ink)" }}>
+            Registrar pago
+          </h2>
           <FormularioPago
             accion={registrarPagoAction}
             miembros={miembrosActivos}
             planes={planesActivos}
             origen="caja"
           />
-        </div>
+        </Card>
 
         {resumen.pagos.length > 0 && (
-          <div className="rounded-xl border border-neutral-200 p-5 text-sm">
-            <h2 className="mb-3 font-semibold text-neutral-900">Pagos del turno</h2>
-            <table className="w-full border-collapse text-left">
-              <thead>
-                <tr className="border-b text-xs text-neutral-500">
-                  <th className="py-2">Miembro</th>
-                  <th className="py-2">Método</th>
-                  <th className="py-2">Monto USD</th>
-                  <th className="py-2">Tasa</th>
-                  <th className="py-2">Monto Bs</th>
-                </tr>
-              </thead>
-              <tbody>
-                {resumen.pagos
-                  .filter((pago) => !pago.anuladoEn)
-                  .map((pago) => (
-                    <tr key={pago.id} className="border-b border-neutral-100">
-                      <td className="py-2">{pago.miembroNombre ?? pago.miembroId}</td>
-                      <td className="py-2">{nombreMetodo(pago.metodo)}</td>
-                      <td className="py-2">${pago.monto.toFixed(2)}</td>
-                      <td className="py-2">{pago.tasaCambio !== null ? pago.tasaCambio.toFixed(2) : "—"}</td>
-                      <td className="py-2">{pago.montoBs !== null ? `Bs. ${formatearBs(pago.montoBs)}` : "—"}</td>
-                    </tr>
-                  ))}
-              </tbody>
-            </table>
-          </div>
+          <Card className="text-sm">
+            <h2 className="mb-3 font-semibold" style={{ color: "var(--gx-ink)" }}>
+              Pagos del turno
+            </h2>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[480px] border-collapse text-left">
+                <thead>
+                  <tr className="border-b text-xs" style={{ borderColor: "var(--gx-edge)", color: "var(--gx-muted)" }}>
+                    <th className="py-2">Miembro</th>
+                    <th className="py-2">Método</th>
+                    <th className="py-2">Monto USD</th>
+                    <th className="py-2">Tasa</th>
+                    <th className="py-2">Monto Bs</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {resumen.pagos
+                    .filter((pago) => !pago.anuladoEn)
+                    .map((pago) => (
+                      <tr key={pago.id} className="border-b" style={{ borderColor: "var(--gx-edge)" }}>
+                        <td className="py-2" style={{ color: "var(--gx-ink)" }}>
+                          {pago.miembroNombre ?? pago.miembroId}
+                        </td>
+                        <td className="py-2" style={{ color: "var(--gx-ink)" }}>
+                          {nombreMetodo(pago.metodo)}
+                        </td>
+                        <td className="py-2" style={{ color: "var(--gx-ink)" }}>
+                          ${pago.monto.toFixed(2)}
+                        </td>
+                        <td className="py-2" style={{ color: "var(--gx-ink)" }}>
+                          {pago.tasaCambio !== null ? pago.tasaCambio.toFixed(2) : "—"}
+                        </td>
+                        <td className="py-2" style={{ color: "var(--gx-ink)" }}>
+                          {pago.montoBs !== null ? `Bs. ${formatearBs(pago.montoBs)}` : "—"}
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
         )}
 
         <FormularioEgreso accion={registrarEgresoAction} turnoId={resumen.turno.id} />
 
         {resumen.egresos.length > 0 && (
-          <div className="rounded-xl border border-neutral-200 p-5 text-sm">
-            <h2 className="mb-3 font-semibold text-neutral-900">Egresos del turno</h2>
+          <Card className="text-sm">
+            <h2 className="mb-3 font-semibold" style={{ color: "var(--gx-ink)" }}>
+              Egresos del turno
+            </h2>
             {resumen.egresos.map((egreso) => (
-              <div key={egreso.id} className="flex justify-between border-b border-neutral-100 py-2">
-                <span>{egreso.motivo}</span>
-                <span>{egreso.monto.toFixed(2)} {egreso.moneda}</span>
+              <div
+                key={egreso.id}
+                className="flex justify-between border-b py-2"
+                style={{ borderColor: "var(--gx-edge)" }}
+              >
+                <span style={{ color: "var(--gx-muted)" }}>{egreso.motivo}</span>
+                <span style={{ color: "var(--gx-ink)" }}>
+                  {egreso.monto.toFixed(2)} {egreso.moneda}
+                </span>
               </div>
             ))}
-          </div>
+          </Card>
         )}
 
         <FormularioArqueo accion={cerrarTurnoAction} turnoId={resumen.turno.id} lineas={resumen.lineas} />
@@ -164,9 +199,9 @@ export default async function PaginaCaja({
   );
 
   return (
-    <div className="flex flex-col gap-6 p-8">
+    <div className="flex flex-col gap-6 p-6 pb-24 lg:p-8 lg:pb-8">
       <div className="flex items-center justify-between print:hidden">
-        <h1 className="text-2xl font-semibold">Cierre de Caja</h1>
+        <PageHeader>Cierre de Caja</PageHeader>
         <BotonImprimir />
       </div>
 
@@ -177,18 +212,15 @@ export default async function PaginaCaja({
       />
 
       <form method="get" className="flex flex-wrap items-end gap-4 print:hidden">
-        <label className="flex flex-col gap-1 text-sm text-neutral-700">
-          Fecha
-          <input
-            type="date"
-            name="fecha"
-            defaultValue={formatearFechaISO(fechaBase)}
-            className="rounded border border-neutral-300 px-3 py-2"
-          />
-        </label>
-        <label className="flex flex-col gap-1 text-sm text-neutral-700">
+        <Input name="fecha" label="Fecha" type="date" defaultValue={formatearFechaISO(fechaBase)} />
+        <label className="flex flex-col gap-1.5 text-sm" style={{ color: "var(--gx-muted)" }}>
           Período
-          <select name="periodo" defaultValue={periodo} className="rounded border border-neutral-300 px-3 py-2">
+          <select
+            name="periodo"
+            defaultValue={periodo}
+            className="min-h-11 rounded-lg border px-3 outline-none focus:border-[var(--gx-accent)]"
+            style={{ background: "var(--gx-surface-2)", borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }}
+          >
             <option value="dia">Día</option>
             <option value="semana">Semana</option>
             <option value="mes">Mes</option>
@@ -197,82 +229,107 @@ export default async function PaginaCaja({
         <Button type="submit">Ver</Button>
       </form>
 
-      <div className="flex items-center gap-3 text-sm text-neutral-500">
+      <div className="flex items-center gap-3 text-sm" style={{ color: "var(--gx-muted)" }}>
         <span>
           {formatearFechaISO(desde)} — {formatearFechaISO(hasta)}
         </span>
-        <span className="ml-auto text-base font-semibold text-neutral-900">
+        <span className="ml-auto text-base font-semibold" style={{ color: "var(--gx-ink)" }}>
           Total: ${reporte.totalUSD.toFixed(2)}
         </span>
       </div>
 
       {reporte.turnos.map((fila) => (
-        <div key={fila.turno.id} className="rounded-xl border border-neutral-200 p-5 text-sm">
-          <div className="mb-2 flex justify-between font-medium text-neutral-900">
+        <Card key={fila.turno.id} className="text-sm">
+          <div className="mb-2 flex justify-between font-medium" style={{ color: "var(--gx-ink)" }}>
             <span>Turno {fila.turno.abiertoEn.toLocaleString("es-VE")}</span>
             <span>Neto: ${fila.netoUSD.toFixed(2)}</span>
           </div>
-          <div className="mb-2 flex justify-between text-neutral-500">
+          <div className="mb-2 flex justify-between" style={{ color: "var(--gx-muted)" }}>
             <span>Cobrado: ${fila.totalPagosUSD.toFixed(2)}</span>
             {fila.totalEgresosUSD > 0 && <span>Egresos (USD): -${fila.totalEgresosUSD.toFixed(2)}</span>}
           </div>
           {fila.pagos.filter((p) => !p.anuladoEn).length > 0 && (
-            <div className="mb-2 flex flex-col gap-1 border-b border-neutral-100 pb-2">
-              <table className="w-full border-collapse text-left text-xs">
-                <thead>
-                  <tr className="text-neutral-500">
-                    <th className="py-1">Miembro</th>
-                    <th className="py-1">Método</th>
-                    <th className="py-1">USD</th>
-                    <th className="py-1">Tasa</th>
-                    <th className="py-1">Bs</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {fila.pagos
-                    .filter((p) => !p.anuladoEn)
-                    .map((pago) => (
-                      <tr key={pago.id}>
-                        <td className="py-1">{pago.miembroNombre ?? pago.miembroId}</td>
-                        <td className="py-1">{nombreMetodo(pago.metodo)}</td>
-                        <td className="py-1">${pago.monto.toFixed(2)}</td>
-                        <td className="py-1">{pago.tasaCambio !== null ? pago.tasaCambio.toFixed(2) : "—"}</td>
-                        <td className="py-1">{pago.montoBs !== null ? `Bs. ${formatearBs(pago.montoBs)}` : "—"}</td>
-                      </tr>
-                    ))}
-                </tbody>
-              </table>
+            <div className="mb-2 flex flex-col gap-1 border-b pb-2" style={{ borderColor: "var(--gx-edge)" }}>
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[420px] border-collapse text-left text-xs">
+                  <thead>
+                    <tr style={{ color: "var(--gx-muted)" }}>
+                      <th className="py-1">Miembro</th>
+                      <th className="py-1">Método</th>
+                      <th className="py-1">USD</th>
+                      <th className="py-1">Tasa</th>
+                      <th className="py-1">Bs</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {fila.pagos
+                      .filter((p) => !p.anuladoEn)
+                      .map((pago) => (
+                        <tr key={pago.id}>
+                          <td className="py-1" style={{ color: "var(--gx-ink)" }}>
+                            {pago.miembroNombre ?? pago.miembroId}
+                          </td>
+                          <td className="py-1" style={{ color: "var(--gx-ink)" }}>
+                            {nombreMetodo(pago.metodo)}
+                          </td>
+                          <td className="py-1" style={{ color: "var(--gx-ink)" }}>
+                            ${pago.monto.toFixed(2)}
+                          </td>
+                          <td className="py-1" style={{ color: "var(--gx-ink)" }}>
+                            {pago.tasaCambio !== null ? pago.tasaCambio.toFixed(2) : "—"}
+                          </td>
+                          <td className="py-1" style={{ color: "var(--gx-ink)" }}>
+                            {pago.montoBs !== null ? `Bs. ${formatearBs(pago.montoBs)}` : "—"}
+                          </td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
 
           {fila.egresos.length > 0 && (
-            <div className="mb-2 flex flex-col gap-1 border-b border-neutral-100 pb-2">
+            <div className="mb-2 flex flex-col gap-1 border-b pb-2" style={{ borderColor: "var(--gx-edge)" }}>
               {fila.egresos.map((egreso) => (
-                <div key={egreso.id} className="flex justify-between text-neutral-500">
+                <div key={egreso.id} className="flex justify-between" style={{ color: "var(--gx-muted)" }}>
                   <span>{egreso.motivo}</span>
-                  <span>-{egreso.monto.toFixed(2)} {egreso.moneda}</span>
+                  <span>
+                    -{egreso.monto.toFixed(2)} {egreso.moneda}
+                  </span>
                 </div>
               ))}
             </div>
           )}
           {fila.arqueo.map((linea) => (
-            <div key={linea.metodo} className="flex justify-between text-neutral-500">
+            <div key={linea.metodo} className="flex justify-between" style={{ color: "var(--gx-muted)" }}>
               <span>{nombreMetodo(linea.metodo)}</span>
               <span>
                 {linea.montoContado.toFixed(2)} contado ({linea.diferencia === 0 ? "sin diferencia" : `dif. ${linea.diferencia.toFixed(2)}`})
               </span>
             </div>
           ))}
-        </div>
+        </Card>
       ))}
 
       {reporte.ajustesFueraDeTurno.length > 0 && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 p-5 text-sm">
-          <h2 className="mb-3 font-semibold text-amber-900">Ajustes fuera de turno</h2>
+        <div
+          className="rounded-2xl border p-5 text-sm"
+          style={{ borderColor: "var(--gx-warn)", background: "color-mix(in srgb, var(--gx-warn) 12%, transparent)" }}
+        >
+          <h2 className="mb-3 font-semibold" style={{ color: "var(--gx-warn)" }}>
+            Ajustes fuera de turno
+          </h2>
           {reporte.ajustesFueraDeTurno.map((pago) => (
-            <div key={pago.id} className="flex justify-between border-b border-amber-100 py-2">
-              <span>{pago.miembroNombre ?? pago.miembroId} — {nombreMetodo(pago.metodo)}</span>
-              <span className="flex gap-3">
+            <div
+              key={pago.id}
+              className="flex justify-between border-b py-2"
+              style={{ borderColor: "color-mix(in srgb, var(--gx-warn) 30%, transparent)" }}
+            >
+              <span style={{ color: "var(--gx-ink)" }}>
+                {pago.miembroNombre ?? pago.miembroId} — {nombreMetodo(pago.metodo)}
+              </span>
+              <span className="flex gap-3" style={{ color: "var(--gx-ink)" }}>
                 <span>${pago.monto.toFixed(2)}</span>
                 <span>{pago.tasaCambio !== null ? `Tasa ${pago.tasaCambio.toFixed(2)}` : "—"}</span>
                 <span>{pago.montoBs !== null ? `Bs. ${formatearBs(pago.montoBs)}` : "—"}</span>
@@ -283,7 +340,7 @@ export default async function PaginaCaja({
       )}
 
       {reporte.turnos.length === 0 && reporte.ajustesFueraDeTurno.length === 0 && (
-        <p className="text-neutral-500">Sin turnos en este período.</p>
+        <p style={{ color: "var(--gx-muted)" }}>Sin turnos en este período.</p>
       )}
     </div>
   );

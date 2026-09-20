@@ -12,7 +12,10 @@ export function Sidebar({ items, pie }: { items: ItemNav[]; pie?: React.ReactNod
   const pathname = usePathname();
 
   return (
-    <nav className="flex h-screen w-56 shrink-0 flex-col justify-between border-r border-neutral-200 bg-neutral-50 p-4 print:hidden">
+    <nav
+      className="flex h-screen w-56 shrink-0 flex-col justify-between border-r p-4 print:hidden"
+      style={{ background: "var(--gx-surface)", borderColor: "var(--gx-edge)" }}
+    >
       <ul className="flex flex-col gap-1">
         {items.map((item) => {
           const activo = pathname.startsWith(item.href);
@@ -20,9 +23,12 @@ export function Sidebar({ items, pie }: { items: ItemNav[]; pie?: React.ReactNod
             <li key={item.href}>
               <Link
                 href={item.href}
-                className={`block rounded px-3 py-2 text-sm font-medium ${
-                  activo ? "bg-blue-600 text-white" : "text-neutral-700 hover:bg-neutral-200"
-                }`}
+                className="block min-h-11 content-center rounded-lg px-3 py-2 text-sm font-medium transition-colors duration-150"
+                style={
+                  activo
+                    ? { background: "var(--gx-accent)", color: "var(--gx-accent-ink)" }
+                    : { color: "var(--gx-muted)" }
+                }
               >
                 {item.label}
               </Link>
@@ -30,7 +36,11 @@ export function Sidebar({ items, pie }: { items: ItemNav[]; pie?: React.ReactNod
           );
         })}
       </ul>
-      {pie && <div className="border-t border-neutral-200 pt-4">{pie}</div>}
+      {pie && (
+        <div className="border-t pt-4" style={{ borderColor: "var(--gx-edge)" }}>
+          {pie}
+        </div>
+      )}
     </nav>
   );
 }

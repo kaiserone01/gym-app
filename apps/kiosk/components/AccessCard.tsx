@@ -1,3 +1,4 @@
+import { CheckCircle, XCircle } from "@phosphor-icons/react/dist/ssr";
 import type { ResultadoCheckIn } from "@/lib/api";
 
 function iniciales(nombre: string): string {
@@ -41,7 +42,10 @@ export function AccessCard({ resultado, hora }: { resultado: ResultadoCheckIn; h
         className="flex items-center justify-between px-8 py-5 text-3xl"
         style={{ background: colorEstado, color: colorEstadoInk, fontFamily: '"Bebas Neue", sans-serif', letterSpacing: "0.02em" }}
       >
-        <span>{activo ? "✓ Acceso permitido" : "✕ Membresía vencida"}</span>
+        <span className="flex items-center gap-2">
+          {activo ? <CheckCircle size={32} weight="fill" /> : <XCircle size={32} weight="fill" />}
+          {activo ? "Acceso permitido" : "Membresía vencida"}
+        </span>
         <span className="text-base font-semibold" style={{ fontFamily: '"Barlow", sans-serif' }}>{hora}</span>
       </div>
 

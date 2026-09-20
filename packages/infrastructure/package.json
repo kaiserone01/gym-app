@@ -3,6 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1136.0",
     "@gym-app/db": "*",
     "@gym-app/domain": "*",
     "bcryptjs": "^3.0.3"

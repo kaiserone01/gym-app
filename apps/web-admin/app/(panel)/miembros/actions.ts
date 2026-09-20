@@ -1,8 +1,6 @@
 "use server";
 
 import { randomUUID } from "crypto";
-import { mkdir, writeFile } from "fs/promises";
-import path from "path";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
@@ -18,6 +16,7 @@ import { crearPlan } from "@gym-app/domain/use-cases/CrearPlan";
 import { PrismaTurnoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaTurnoRepository";
 import { PrismaPermisoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaPermisoRepository";
 import { AuthorizationService } from "@gym-app/domain/services/AuthorizationService";
+import { R2StorageService } from "@gym-app/infrastructure/storage/R2StorageService";
 import {
   registrarPago,
   MiembroNoEncontradoError as PagoMiembroNoEncontradoError,
@@ -48,21 +47,32 @@ async function obtenerOCrearPlan(organizacionId: string, nombre: string, precioU
   return nuevo.id;
 }
 
-// Guarda la foto en apps/web-admin/public/uploads/miembros y devuelve la URL
-// pública. Nota: en un deploy Docker "standalone" esta carpeta vive dentro
-// del contenedor — sin un volumen montado ahí, las fotos no sobreviven un
-// rebuild. Pendiente para cuando se arme el deploy real (Fase E).
+function storageR2(): R2StorageService {
+  const accountId = process.env.R2_ACCOUNT_ID;
+  const accessKeyId = process.env.R2_ACCESS_KEY_ID;
+  const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
+  const bucket = process.env.R2_BUCKET_NAME;
+  const publicUrl = process.env.R2_PUBLIC_URL;
+
+  if (!accountId || !accessKeyId || !secretAccessKey || !bucket || !publicUrl) {
+    throw new Error(
+      "Faltan variables de entorno de R2 (R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET_NAME, R2_PUBLIC_URL)."
+    );
+  }
+
+  return new R2StorageService({ accountId, accessKeyId, secretAccessKey, bucket, publicUrl });
+}
+
+// Sube la foto al bucket "gym-app" en Cloudflare R2 (carpeta "miembros") y
+// devuelve la URL pública (dominio R2.dev configurado en R2_PUBLIC_URL).
 async function guardarFoto(archivo: FormDataEntryValue | null): Promise<string | null> {
   if (!(archivo instanceof File) || archivo.size === 0) return null;
 
   const extension = archivo.name.split(".").pop()?.toLowerCase() || "jpg";
   const nombreArchivo = `${randomUUID()}.${extension}`;
-  const carpeta = path.join(process.cwd(), "public", "uploads", "miembros");
+  const contenido = Buffer.from(await archivo.arrayBuffer());
 
-  await mkdir(carpeta, { recursive: true });
-  await writeFile(path.join(carpeta, nombreArchivo), Buffer.from(await archivo.arrayBuffer()));
-
-  return `/uploads/miembros/${nombreArchivo}`;
+  return storageR2().subir("miembros", nombreArchivo, contenido, archivo.type || "application/octet-stream");
 }
 
 export async function crearMiembroAction(

@@ -26,8 +26,8 @@ export default async function PanelLayout({ children }: { children: React.ReactN
           <Sidebar
             items={[
               { href: "/miembros", label: "Miembros" },
-              { href: "/pagos", label: "Pagos" },
               { href: "/caja", label: "Caja" },
+              { href: "/pagos", label: "Histórico de Pagos" },
               { href: "/estadisticas", label: "Estadísticas" },
               // Planes, Sucursales y Usuarios se administran desde las tabs
               // de Configuraciones (ver diseño acordado) — solo SOCIO llega

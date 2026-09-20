@@ -12,14 +12,16 @@ function iniciales(nombre: string): string {
 
 const ETIQUETA_ESTADO: Record<ResultadoCheckIn["estado"], string> = {
   activo: "Acceso permitido",
+  en_gracia: "Membresía vencida — período de gracia",
   vencido: "Membresía vencida",
   sucursal_incorrecta: "Acceso denegado",
 };
 
 export function AccessCard({ resultado, hora }: { resultado: ResultadoCheckIn; hora: string }) {
   const activo = resultado.estado === "activo";
-  const colorEstado = activo ? "var(--gx-accent)" : "var(--gx-bad)";
-  const colorEstadoInk = activo ? "var(--gx-accent-ink)" : "var(--gx-bad-ink)";
+  const enGracia = resultado.estado === "en_gracia";
+  const colorEstado = activo ? "var(--gx-accent)" : enGracia ? "var(--gx-warn)" : "var(--gx-bad)";
+  const colorEstadoInk = activo ? "var(--gx-accent-ink)" : enGracia ? "var(--gx-ink)" : "var(--gx-bad-ink)";
 
   return (
     <div
@@ -99,20 +101,29 @@ export function AccessCard({ resultado, hora }: { resultado: ResultadoCheckIn; h
               )}
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-4 border-t pt-4" style={{ borderColor: "var(--gx-edge)" }}>
-              <div className="flex flex-col gap-1">
-                <span className="text-xs font-bold uppercase" style={{ letterSpacing: "0.1em", color: "var(--gx-muted-dim)" }}>
-                  Entrada
-                </span>
-                <span className="text-xl font-semibold" style={{ color: "var(--gx-ink)" }}>{hora}</span>
+            <>
+              {(resultado.estado === "en_gracia" || resultado.estado === "vencido") && (
+                <p className="border-t pt-4 text-lg font-medium" style={{ borderColor: "var(--gx-edge)", color: "var(--gx-warn)" }}>
+                  {resultado.estado === "en_gracia"
+                    ? `Tenés ${resultado.diasGraciaRestantes ?? 0} día(s) de gracia — acercate a recepción a renovar tu plan.`
+                    : "Tu período de gracia terminó — acercate a recepción a renovar tu plan."}
+                </p>
+              )}
+              <div className="grid grid-cols-2 gap-4 border-t pt-4" style={{ borderColor: "var(--gx-edge)" }}>
+                <div className="flex flex-col gap-1">
+                  <span className="text-xs font-bold uppercase" style={{ letterSpacing: "0.1em", color: "var(--gx-muted-dim)" }}>
+                    Entrada
+                  </span>
+                  <span className="text-xl font-semibold" style={{ color: "var(--gx-ink)" }}>{hora}</span>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <span className="text-xs font-bold uppercase" style={{ letterSpacing: "0.1em", color: "var(--gx-muted-dim)" }}>
+                    Entrenador
+                  </span>
+                  <span className="text-xl font-semibold" style={{ color: "var(--gx-ink)" }}>{resultado.entrenador ?? "—"}</span>
+                </div>
               </div>
-              <div className="flex flex-col gap-1">
-                <span className="text-xs font-bold uppercase" style={{ letterSpacing: "0.1em", color: "var(--gx-muted-dim)" }}>
-                  Entrenador
-                </span>
-                <span className="text-xl font-semibold" style={{ color: "var(--gx-ink)" }}>{resultado.entrenador ?? "—"}</span>
-              </div>
-            </div>
+            </>
           )}
         </div>
       </div>

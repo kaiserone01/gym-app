@@ -6,6 +6,7 @@ import { EstadoCheckIn } from "../entities/CheckIn";
 import { validarAccesoSucursal } from "./ValidarAccesoSucursalPorPlan";
 
 const VENTANA_IDEMPOTENCIA_MINUTOS = 2;
+const MS_POR_DIA = 24 * 60 * 60 * 1000;
 
 export interface RegistrarCheckInDeps {
   miembros: IMemberRepository;
@@ -30,6 +31,10 @@ export interface RegistrarCheckInResultado {
   // tu sede es X en Y").
   sucursalAsignadaNombre: string;
   sucursalAsignadaDireccion: string | null;
+  // Días de gracia que le quedan al miembro en la sucursal física donde
+  // hizo el check-in — solo tiene sentido cuando estado es "en_gracia"
+  // (null en cualquier otro estado).
+  diasGraciaRestantes: number | null;
 }
 
 export class MiembroNoEncontradoError extends Error {
@@ -52,6 +57,9 @@ export async function registrarCheckIn(
     ? await deps.sucursales.buscarPorId(input.organizacionId, miembro.sucursalId)
     : null;
 
+  const sucursalDelCheckIn = await deps.sucursales.buscarPorId(input.organizacionId, input.sucursalId);
+  const diasGracia = sucursalDelCheckIn?.diasGracia ?? 0;
+
   const base = {
     nombre: miembro.nombre,
     fotoUrl: miembro.fotoUrl,
@@ -70,15 +78,31 @@ export async function registrarCheckIn(
     desde
   );
 
-  if (existente) {
-    return { ...base, estado: existente.estadoAlMomento };
+  function calcularDiasGraciaRestantes(ahora: Date): number | null {
+    if (!miembro!.fechaVencimiento || diasGracia <= 0) return null;
+    const limiteGracia = miembro!.fechaVencimiento.getTime() + diasGracia * MS_POR_DIA;
+    const restantesMs = limiteGracia - ahora.getTime();
+    if (restantesMs <= 0) return null;
+    return Math.ceil(restantesMs / MS_POR_DIA);
   }
 
+  if (existente) {
+    return {
+      ...base,
+      estado: existente.estadoAlMomento,
+      diasGraciaRestantes: existente.estadoAlMomento === "en_gracia" ? calcularDiasGraciaRestantes(new Date()) : null,
+    };
+  }
+
+  const ahora = new Date();
   const estado = await validarAccesoSucursal(
     { suscripciones: deps.suscripciones },
     miembro.id,
     miembro.sucursalId,
-    input.sucursalId
+    input.sucursalId,
+    miembro.fechaVencimiento,
+    diasGracia,
+    ahora
   );
 
   await deps.checkIns.crear({
@@ -87,5 +111,9 @@ export async function registrarCheckIn(
     estadoAlMomento: estado,
   });
 
-  return { ...base, estado };
+  return {
+    ...base,
+    estado,
+    diasGraciaRestantes: estado === "en_gracia" ? calcularDiasGraciaRestantes(ahora) : null,
+  };
 }

@@ -71,10 +71,23 @@ export async function obtenerResumenTurno(
   ]);
 
   const lineas: LineaResumenMetodo[] = [...metodos].map((metodo) => {
-    const enBs = metodo === METODO_EFECTIVO_BS;
-
     const pagosDelMetodo = pagos.filter((p) => p.metodo === metodo && !p.anuladoEn);
     const egresosDelMetodo = egresos.filter((e) => e.metodo === metodo);
+
+    // Un método opera en Bs si así se registraron sus pagos/egresos —no
+    // solo Efectivo: Pago Móvil, Transferencia, Punto de Venta y Biopago
+    // también pueden estar en Bs (MetodoPago.moneda, ver configuraciones).
+    // Se detecta desde las transacciones reales (Pago.montoBs !== null,
+    // Egreso.moneda === "BS"), no comparando el string del método, porque
+    // ese string no lleva la moneda salvo para Efectivo — antes esto
+    // causaba que un Punto de Venta en Bs se mostrara como si fuera USD.
+    // METODO_EFECTIVO_BS se conserva como señal adicional para el caso
+    // sin transacciones todavía (línea "Efectivo (Bs)" con fondo inicial
+    // pero sin pagos/egresos aún).
+    const enBs =
+      metodo === METODO_EFECTIVO_BS ||
+      pagosDelMetodo.some((p) => p.montoBs !== null) ||
+      egresosDelMetodo.some((e) => e.moneda === "BS");
 
     // Pago.monto siempre está en USD; Pago.montoBs es la conversión al
     // momento del pago. Un método en Bs debe sumarse en Bs (montoBs), no

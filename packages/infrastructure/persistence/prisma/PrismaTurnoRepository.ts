@@ -76,8 +76,9 @@ export class PrismaTurnoRepository implements ITurnoRepository {
     const turnos = await this.prisma.turno.findMany({
       where: { organizacionId, abiertoEn: { gte: desde, lte: hasta } },
       orderBy: { abiertoEn: "desc" },
+      include: { usuario: true },
     });
-    return turnos.map(mapear);
+    return turnos.map((turno) => ({ ...mapear(turno), usuarioNombre: turno.usuario.nombre }));
   }
 
   async listarFechasConTurno(organizacionId: string): Promise<Date[]> {

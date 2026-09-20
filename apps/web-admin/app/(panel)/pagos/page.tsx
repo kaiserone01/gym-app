@@ -19,11 +19,17 @@ function nombreMetodo(valor: string): string {
   return valor;
 }
 
-// Igual heurística que FormularioArqueo.tsx: el string del método trae el
-// sufijo "(Bs)" para el único método en bolívares hoy (ver
-// construirNombreMetodo en configuraciones/metodosPagoUI.ts).
-function esMetodoEnBs(valor: string): boolean {
-  return valor.endsWith("(Bs)");
+// Igual criterio que ObtenerResumenTurno.enBs: un método está en Bs si
+// así se registraron sus pagos/egresos reales (Pago.montoBs !== null,
+// Egreso.moneda === "BS"), no por el string del método — Pago Móvil,
+// Transferencia, Punto de Venta y Biopago también pueden ser en Bs (ver
+// MetodoPago.moneda en Configuraciones), y antes solo "Efectivo (Bs)" se
+// detectaba, mostrando el resto como si fueran USD.
+function metodosEnBs(pagos: { metodo: string; montoBs: number | null }[], egresos: { metodo: string; moneda: string }[]): Set<string> {
+  const metodos = new Set<string>();
+  for (const p of pagos) if (p.montoBs !== null) metodos.add(p.metodo);
+  for (const e of egresos) if (e.moneda === "BS") metodos.add(e.metodo);
+  return metodos;
 }
 
 // OJO: nunca usar fecha.toISOString() para pasar diasConActividad al
@@ -84,11 +90,21 @@ export default async function PaginaHistoricoPagos({
         </span>
       </div>
 
-      {reporte.turnos.map((fila) => (
+      {reporte.turnos.map((fila) => {
+        const metodosBsDelTurno = metodosEnBs(fila.pagos, fila.egresos);
+
+        return (
         <Card key={fila.turno.id} className="text-sm">
           <div className="mb-2 flex justify-between font-medium" style={{ color: "var(--gx-ink)" }}>
             <span>Turno {fila.turno.abiertoEn.toLocaleString("es-VE")}</span>
             <span>Neto: ${fila.netoUSD.toFixed(2)}</span>
+          </div>
+          <div className="mb-2 flex justify-between text-xs" style={{ color: "var(--gx-muted)" }}>
+            <span>
+              Apertura: {fila.turno.abiertoEn.toLocaleTimeString("es-VE")} · Cierre:{" "}
+              {fila.turno.cerradoEn ? fila.turno.cerradoEn.toLocaleTimeString("es-VE") : "turno abierto"}
+            </span>
+            <span>{fila.turno.usuarioNombre ?? "—"}</span>
           </div>
           <div className="mb-2 flex justify-between" style={{ color: "var(--gx-muted)" }}>
             <span>Cobrado: ${fila.totalPagosUSD.toFixed(2)}</span>
@@ -148,7 +164,11 @@ export default async function PaginaHistoricoPagos({
             </div>
           )}
           {fila.arqueo.map((linea) => {
-            const enBs = esMetodoEnBs(linea.metodo);
+            // Un método sin pagos ni egresos en este turno (solo con fondo
+            // inicial, ej. Efectivo (Bs) sin movimiento) no aparece en
+            // metodosBsDelTurno — se cae al string como último recurso
+            // para no perder la moneda en ese caso puntual.
+            const enBs = metodosBsDelTurno.has(linea.metodo) || linea.metodo.endsWith("(Bs)");
             // El arqueo no guarda la tasa del cierre — a diferencia de
             // Pago/Egreso, no hay una referencia en USD confiable para
             // reconstruir acá (ver Egreso.tasaCambio/montoUSD, que sí la
@@ -167,7 +187,8 @@ export default async function PaginaHistoricoPagos({
             );
           })}
         </Card>
-      ))}
+        );
+      })}
 
       {reporte.ajustesFueraDeTurno.length > 0 && (
         <div

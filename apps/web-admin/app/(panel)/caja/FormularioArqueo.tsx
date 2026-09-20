@@ -12,6 +12,12 @@ import { formatearBsConRef } from "../tasaBcvFija";
 
 export interface LineaEsperada {
   metodo: string;
+  // Si el método opera en Bs — viene de ObtenerResumenTurno.enBs, que lo
+  // detecta desde las transacciones reales (Pago.montoBs, Egreso.moneda),
+  // no del string del método (antes solo Efectivo (Bs) se reconocía,
+  // dejando Punto de Venta/Pago Móvil/Transferencia/Biopago en Bs
+  // mostrados como si fueran USD).
+  enBs: boolean;
   montoEsperado: number;
   // Solo para líneas en Bs — referencia en USD del montoEsperado,
   // calculada en page.tsx (fondo a la tasa BCV vigente + pagos/egresos a
@@ -48,14 +54,6 @@ export function FormularioArqueo({
     return METODOS_PAGO.find((m) => m.value === valor)?.label ?? valor;
   }
 
-  // La línea del resumen solo trae el string del método, no la moneda —
-  // se infiere del sufijo "(Bs)" que usa construirNombreMetodo() para
-  // EFECTIVO en bolívares (ver metodosPagoUI.ts). El resto de métodos de
-  // este gimnasio son en USD.
-  function monedaDeLinea(valor: string): "USD" | "Bs" {
-    return valor.endsWith("(Bs)") ? "Bs" : "USD";
-  }
-
   return (
     <Card>
       <form action={enviar} className="flex flex-col gap-4">
@@ -88,7 +86,7 @@ export function FormularioArqueo({
                   </span>
                   <span style={{ color: "var(--gx-muted)" }}>
                     Esperado:{" "}
-                    {monedaDeLinea(linea.metodo) === "Bs"
+                    {linea.enBs
                       ? formatearBsConRef(linea.montoEsperado, linea.refUSD ?? null)
                       : `$${linea.montoEsperado.toFixed(2)}`}
                   </span>
@@ -96,7 +94,7 @@ export function FormularioArqueo({
                 <CurrencyInput
                   name={`montoContado_${linea.metodo}`}
                   label="Monto contado"
-                  moneda={monedaDeLinea(linea.metodo)}
+                  moneda={linea.enBs ? "Bs" : "USD"}
                   required
                   value={contado ?? ""}
                   onChange={(valor) => setContados((prev) => ({ ...prev, [linea.metodo]: valor }))}

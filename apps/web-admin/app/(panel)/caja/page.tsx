@@ -6,7 +6,7 @@ import { PrismaPagoRepository } from "@gym-app/infrastructure/persistence/prisma
 import { PrismaEgresoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaEgresoRepository";
 import { PrismaMemberRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaMemberRepository";
 import { PrismaPlanRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaPlanRepository";
-import { obtenerResumenTurno } from "@gym-app/domain/use-cases/ObtenerResumenTurno";
+import { obtenerResumenTurno, METODO_EFECTIVO_BS } from "@gym-app/domain/use-cases/ObtenerResumenTurno";
 import { obtenerTasaActual, SinTasaDisponibleError } from "@gym-app/domain/use-cases/ObtenerTasaActual";
 import { PrismaTasaCambioRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaTasaCambioRepository";
 import { listarMiembros } from "@gym-app/domain/use-cases/ListarMiembros";
@@ -27,19 +27,22 @@ function nombreMetodo(valor: string): string {
   return valor;
 }
 
-// Ref en USD del montoEsperado de una línea en Bs: el fondo inicial no
-// tiene tasa propia capturada (se fijó al abrir el turno, no es una
-// transacción) así que su porción se convierte con la tasa BCV vigente
-// AHORA; pagos y egresos ya traen su propia referencia capturada a SU
-// tasa (ver ObtenerResumenTurno.totalPagosUSD/totalEgresosUSD). Devuelve
-// null si la línea es en USD o si no hay tasa vigente disponible.
+// Ref en USD del montoEsperado de una línea en Bs: el fondo inicial en
+// efectivo no tiene tasa propia capturada (se fijó al abrir el turno, no
+// es una transacción) así que su porción se convierte con la tasa BCV
+// vigente AHORA — y solo aplica a la línea de efectivo en Bs, ningún otro
+// método (Punto de Venta, Pago Móvil, etc.) tiene fondo inicial propio.
+// Pagos y egresos ya traen su propia referencia capturada a SU tasa (ver
+// ObtenerResumenTurno.totalPagosUSD/totalEgresosUSD). Devuelve null si la
+// línea es en USD o si no hay tasa vigente disponible.
 function calcularRefUSD(
-  linea: { enBs: boolean; totalPagosUSD: number; totalEgresosUSD: number },
+  linea: { metodo: string; enBs: boolean; totalPagosUSD: number; totalEgresosUSD: number },
   fondoInicialEfectivoBs: number,
   tasaActual: number | null
 ): number | null {
   if (!linea.enBs || tasaActual === null) return null;
-  const fondoRefUSD = fondoInicialEfectivoBs / tasaActual;
+  const fondoBs = linea.metodo === METODO_EFECTIVO_BS ? fondoInicialEfectivoBs : 0;
+  const fondoRefUSD = fondoBs / tasaActual;
   return fondoRefUSD + linea.totalPagosUSD - linea.totalEgresosUSD;
 }
 import { formatearBs, formatearBsConRef } from "../tasaBcvFija";
@@ -249,6 +252,7 @@ export default async function PaginaCaja() {
               turnoId={resumen.turno.id}
               lineas={resumen.lineas.map((linea) => ({
                 metodo: linea.metodo,
+                enBs: linea.enBs,
                 montoEsperado: linea.montoEsperado,
                 refUSD: calcularRefUSD(linea, resumen.turno.fondoInicialEfectivoBs, tasaActual),
               }))}

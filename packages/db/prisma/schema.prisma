@@ -255,6 +255,12 @@ model Egreso {
   turno        Turno        @relation(fields: [turnoId], references: [id])
   monto        Decimal      @db.Decimal(14, 2)
   moneda       MonedaEgreso
+  // Tasa BCV vigente al registrar — solo para moneda BS (igual patrón que
+  // Pago.tasaCambio/montoBs). null para egresos en USD.
+  tasaCambio   Decimal?     @db.Decimal(10, 2)
+  // Referencia en USD: monto directo si moneda=USD, o monto/tasaCambio si
+  // moneda=BS — permite sumar/comparar egresos de ambas monedas en USD.
+  montoUSD     Decimal?     @db.Decimal(14, 2)
   metodo       String
   motivo       String
   registradoEn DateTime     @default(now())

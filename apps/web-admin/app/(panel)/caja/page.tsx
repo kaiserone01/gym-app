@@ -7,6 +7,8 @@ import { PrismaEgresoRepository } from "@gym-app/infrastructure/persistence/pris
 import { PrismaMemberRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaMemberRepository";
 import { PrismaPlanRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaPlanRepository";
 import { obtenerResumenTurno } from "@gym-app/domain/use-cases/ObtenerResumenTurno";
+import { obtenerTasaActual, SinTasaDisponibleError } from "@gym-app/domain/use-cases/ObtenerTasaActual";
+import { PrismaTasaCambioRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaTasaCambioRepository";
 import { listarMiembros } from "@gym-app/domain/use-cases/ListarMiembros";
 import { listarPlanes } from "@gym-app/domain/use-cases/ListarPlanes";
 import { Card } from "@gym-app/ui/components/Card";
@@ -24,7 +26,23 @@ import { obtenerSucursalesVisiblesParaTurno } from "./obtenerSucursalesVisiblesP
 function nombreMetodo(valor: string): string {
   return valor;
 }
-import { formatearBs } from "../tasaBcvFija";
+
+// Ref en USD del montoEsperado de una línea en Bs: el fondo inicial no
+// tiene tasa propia capturada (se fijó al abrir el turno, no es una
+// transacción) así que su porción se convierte con la tasa BCV vigente
+// AHORA; pagos y egresos ya traen su propia referencia capturada a SU
+// tasa (ver ObtenerResumenTurno.totalPagosUSD/totalEgresosUSD). Devuelve
+// null si la línea es en USD o si no hay tasa vigente disponible.
+function calcularRefUSD(
+  linea: { enBs: boolean; totalPagosUSD: number; totalEgresosUSD: number },
+  fondoInicialEfectivoBs: number,
+  tasaActual: number | null
+): number | null {
+  if (!linea.enBs || tasaActual === null) return null;
+  const fondoRefUSD = fondoInicialEfectivoBs / tasaActual;
+  return fondoRefUSD + linea.totalPagosUSD - linea.totalEgresosUSD;
+}
+import { formatearBs, formatearBsConRef } from "../tasaBcvFija";
 import { inicioDelDia, finDelDia, inicioDeSemana, finDeSemana, inicioDeMes, finDeMes, formatearFechaISO } from "../fechas";
 import { FormularioAbrirTurno } from "./FormularioAbrirTurno";
 import { FormularioEgreso } from "./FormularioEgreso";
@@ -56,7 +74,7 @@ export default async function PaginaCaja() {
   const sucursalId = turnoAbierto ? turnoAbierto.sucursalId : usuario.sucursalId;
 
   if (turnoAbierto) {
-    const [resumen, miembros, planes, metodosPago, todasLasSucursales] = await Promise.all([
+    const [resumen, miembros, planes, metodosPago, todasLasSucursales, tasaCambio] = await Promise.all([
       obtenerResumenTurno(
         {
           turnos: turnoRepo,
@@ -69,7 +87,15 @@ export default async function PaginaCaja() {
       listarPlanes({ planes: new PrismaPlanRepository(prisma) }, usuario.organizacionId),
       listarMetodosPagoActivos({ metodosPago: new PrismaMetodoPagoRepository(prisma) }, usuario.organizacionId),
       listarSucursales({ sucursales: new PrismaSucursalRepository(prisma) }, usuario.organizacionId),
+      // Solo para mostrar la referencia en USD de la porción "fondo
+      // inicial" de la línea en Bs (ver más abajo) — si no hay tasa
+      // guardada todavía, simplemente se omite ese REF.
+      obtenerTasaActual({ tasas: new PrismaTasaCambioRepository(prisma) }).catch((error) => {
+        if (error instanceof SinTasaDisponibleError) return null;
+        throw error;
+      }),
     ]);
+    const tasaActual = tasaCambio?.valor ?? null;
 
     const miembrosActivos = miembros.filter((m) => m.activo);
     const planesActivos = planes.filter((p) => p.activo);
@@ -115,8 +141,11 @@ export default async function PaginaCaja() {
             <div className="mt-1 flex justify-between">
               <span style={{ color: "var(--gx-muted)" }}>Fondo inicial en efectivo</span>
               <span className="font-medium" style={{ color: "var(--gx-ink)" }}>
-                ${resumen.turno.fondoInicialEfectivoUSD.toFixed(2)} / Bs.{" "}
-                {formatearBs(resumen.turno.fondoInicialEfectivoBs)}
+                ${resumen.turno.fondoInicialEfectivoUSD.toFixed(2)} /{" "}
+                {formatearBsConRef(
+                  resumen.turno.fondoInicialEfectivoBs,
+                  tasaActual !== null ? resumen.turno.fondoInicialEfectivoBs / tasaActual : null
+                )}
               </span>
             </div>
           </Card>
@@ -125,18 +154,23 @@ export default async function PaginaCaja() {
             <h2 className="mb-3 font-semibold" style={{ color: "var(--gx-ink)" }}>
               Resumen por método
             </h2>
-            {resumen.lineas.map((linea) => (
-              <div
-                key={linea.metodo}
-                className="flex justify-between border-b py-2"
-                style={{ borderColor: "var(--gx-edge)" }}
-              >
-                <span style={{ color: "var(--gx-muted)" }}>{nombreMetodo(linea.metodo)}</span>
-                <span className="font-medium" style={{ color: "var(--gx-ink)" }}>
-                  {linea.montoEsperado.toFixed(2)} esperado
-                </span>
-              </div>
-            ))}
+            {resumen.lineas.map((linea) => {
+              const refUSD = calcularRefUSD(linea, resumen.turno.fondoInicialEfectivoBs, tasaActual);
+
+              return (
+                <div
+                  key={linea.metodo}
+                  className="flex justify-between border-b py-2"
+                  style={{ borderColor: "var(--gx-edge)" }}
+                >
+                  <span style={{ color: "var(--gx-muted)" }}>{nombreMetodo(linea.metodo)}</span>
+                  <span className="font-medium" style={{ color: "var(--gx-ink)" }}>
+                    {linea.enBs ? formatearBsConRef(linea.montoEsperado, refUSD) : `$${linea.montoEsperado.toFixed(2)}`}{" "}
+                    esperado
+                  </span>
+                </div>
+              );
+            })}
           </Card>
 
           <div className="lg:col-span-2">
@@ -200,7 +234,9 @@ export default async function PaginaCaja() {
                 >
                   <span style={{ color: "var(--gx-muted)" }}>{egreso.motivo}</span>
                   <span style={{ color: "var(--gx-ink)" }}>
-                    {egreso.monto.toFixed(2)} {egreso.moneda}
+                    {egreso.moneda === "BS"
+                      ? formatearBsConRef(egreso.monto, egreso.montoUSD)
+                      : `$${egreso.monto.toFixed(2)}`}
                   </span>
                 </div>
               ))}
@@ -208,7 +244,15 @@ export default async function PaginaCaja() {
           )}
 
           <div className="lg:col-span-3">
-            <FormularioArqueo accion={cerrarTurnoAction} turnoId={resumen.turno.id} lineas={resumen.lineas} />
+            <FormularioArqueo
+              accion={cerrarTurnoAction}
+              turnoId={resumen.turno.id}
+              lineas={resumen.lineas.map((linea) => ({
+                metodo: linea.metodo,
+                montoEsperado: linea.montoEsperado,
+                refUSD: calcularRefUSD(linea, resumen.turno.fondoInicialEfectivoBs, tasaActual),
+              }))}
+            />
           </div>
         </div>
       </div>

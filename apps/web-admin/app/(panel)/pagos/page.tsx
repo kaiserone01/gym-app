@@ -9,7 +9,7 @@ import { obtenerReporteCaja } from "@gym-app/domain/use-cases/ObtenerReporteCaja
 import { obtenerDiasConActividad } from "@gym-app/domain/use-cases/ObtenerDiasConActividad";
 import { Card } from "@gym-app/ui/components/Card";
 import { PageHeader } from "@gym-app/ui/components/PageHeader";
-import { formatearBs } from "../tasaBcvFija";
+import { formatearBs, formatearBsConRef } from "../tasaBcvFija";
 import { inicioDelDia, finDelDia } from "../fechas";
 import { FiltroFechasHistorico } from "./FiltroFechasHistorico";
 
@@ -17,6 +17,13 @@ import { FiltroFechasHistorico } from "./FiltroFechasHistorico";
 // directo en Pago.metodo — no hay catálogo estático que traducir.
 function nombreMetodo(valor: string): string {
   return valor;
+}
+
+// Igual heurística que FormularioArqueo.tsx: el string del método trae el
+// sufijo "(Bs)" para el único método en bolívares hoy (ver
+// construirNombreMetodo en configuraciones/metodosPagoUI.ts).
+function esMetodoEnBs(valor: string): boolean {
+  return valor.endsWith("(Bs)");
 }
 
 // OJO: nunca usar fecha.toISOString() para pasar diasConActividad al
@@ -85,7 +92,7 @@ export default async function PaginaHistoricoPagos({
           </div>
           <div className="mb-2 flex justify-between" style={{ color: "var(--gx-muted)" }}>
             <span>Cobrado: ${fila.totalPagosUSD.toFixed(2)}</span>
-            {fila.totalEgresosUSD > 0 && <span>Egresos (USD): -${fila.totalEgresosUSD.toFixed(2)}</span>}
+            {fila.totalEgresosUSD > 0 && <span>Egresos (ref. USD): -${fila.totalEgresosUSD.toFixed(2)}</span>}
           </div>
           {fila.pagos.filter((p) => !p.anuladoEn).length > 0 && (
             <div className="mb-2 flex flex-col gap-1 border-b pb-2" style={{ borderColor: "var(--gx-edge)" }}>
@@ -134,20 +141,31 @@ export default async function PaginaHistoricoPagos({
                 <div key={egreso.id} className="flex justify-between" style={{ color: "var(--gx-muted)" }}>
                   <span>{egreso.motivo}</span>
                   <span>
-                    -{egreso.monto.toFixed(2)} {egreso.moneda}
+                    -{egreso.moneda === "BS" ? formatearBsConRef(egreso.monto, egreso.montoUSD) : `$${egreso.monto.toFixed(2)}`}
                   </span>
                 </div>
               ))}
             </div>
           )}
-          {fila.arqueo.map((linea) => (
-            <div key={linea.metodo} className="flex justify-between" style={{ color: "var(--gx-muted)" }}>
-              <span>{nombreMetodo(linea.metodo)}</span>
-              <span>
-                {linea.montoContado.toFixed(2)} contado ({linea.diferencia === 0 ? "sin diferencia" : `dif. ${linea.diferencia.toFixed(2)}`})
-              </span>
-            </div>
-          ))}
+          {fila.arqueo.map((linea) => {
+            const enBs = esMetodoEnBs(linea.metodo);
+            // El arqueo no guarda la tasa del cierre — a diferencia de
+            // Pago/Egreso, no hay una referencia en USD confiable para
+            // reconstruir acá (ver Egreso.tasaCambio/montoUSD, que sí la
+            // capturan al momento de cada transacción). Solo se corrige
+            // la moneda mostrada (antes no indicaba Bs vs USD).
+            const montoContadoTexto = enBs ? `Bs. ${formatearBs(linea.montoContado)}` : `$${linea.montoContado.toFixed(2)}`;
+            const diferenciaTexto = enBs ? `Bs. ${formatearBs(linea.diferencia)}` : `$${linea.diferencia.toFixed(2)}`;
+
+            return (
+              <div key={linea.metodo} className="flex justify-between" style={{ color: "var(--gx-muted)" }}>
+                <span>{nombreMetodo(linea.metodo)}</span>
+                <span>
+                  {montoContadoTexto} contado ({linea.diferencia === 0 ? "sin diferencia" : `dif. ${diferenciaTexto}`})
+                </span>
+              </div>
+            );
+          })}
         </Card>
       ))}
 

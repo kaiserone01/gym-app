@@ -8,10 +8,16 @@ import { Card } from "@gym-app/ui/components/Card";
 import { useFeedback } from "@gym-app/ui/components/FeedbackOverlay";
 import type { EstadoCerrarTurno } from "./actions";
 import { METODOS_PAGO } from "../metodosPago";
+import { formatearBsConRef } from "../tasaBcvFija";
 
 export interface LineaEsperada {
   metodo: string;
   montoEsperado: number;
+  // Solo para líneas en Bs — referencia en USD del montoEsperado,
+  // calculada en page.tsx (fondo a la tasa BCV vigente + pagos/egresos a
+  // su propia tasa capturada, ver ObtenerResumenTurno). null si la línea
+  // es en USD o si no hay tasa disponible para calcularla.
+  refUSD?: number | null;
 }
 
 export function FormularioArqueo({
@@ -80,7 +86,12 @@ export function FormularioArqueo({
                   <span className="font-medium" style={{ color: "var(--gx-ink)" }}>
                     {nombreMetodo(linea.metodo)}
                   </span>
-                  <span style={{ color: "var(--gx-muted)" }}>Esperado: {linea.montoEsperado.toFixed(2)}</span>
+                  <span style={{ color: "var(--gx-muted)" }}>
+                    Esperado:{" "}
+                    {monedaDeLinea(linea.metodo) === "Bs"
+                      ? formatearBsConRef(linea.montoEsperado, linea.refUSD ?? null)
+                      : `$${linea.montoEsperado.toFixed(2)}`}
+                  </span>
                 </div>
                 <CurrencyInput
                   name={`montoContado_${linea.metodo}`}

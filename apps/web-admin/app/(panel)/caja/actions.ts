@@ -12,7 +12,7 @@ import { PrismaSucursalRepository } from "@gym-app/infrastructure/persistence/pr
 import { PrismaPermisoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaPermisoRepository";
 import { AuthorizationService } from "@gym-app/domain/services/AuthorizationService";
 import { abrirTurno, RolNoAutorizadoError as RolNoAutorizadoAbrir, TurnoYaAbiertoError, SucursalNoEncontradaError } from "@gym-app/domain/use-cases/AbrirTurno";
-import { registrarEgreso, RolNoAutorizadoError as RolNoAutorizadoEgreso, TurnoCerradoError, TurnoNoEncontradoError as TurnoNoEncontradoEgreso, MotivoRequeridoError } from "@gym-app/domain/use-cases/RegistrarEgreso";
+import { registrarEgreso, RolNoAutorizadoError as RolNoAutorizadoEgreso, TurnoCerradoError, TurnoNoEncontradoError as TurnoNoEncontradoEgreso, MotivoRequeridoError, TasaRequeridaError as TasaRequeridaEgreso } from "@gym-app/domain/use-cases/RegistrarEgreso";
 import { cerrarTurno, RolNoAutorizadoError as RolNoAutorizadoCerrar, TurnoYaCerradoError, TurnoNoEncontradoError as TurnoNoEncontradoCerrar, NotaRequeridaError } from "@gym-app/domain/use-cases/CerrarTurno";
 import { anularPago, RolNoAutorizadoError as RolNoAutorizadoAnular, PagoNoEncontradoError, PagoYaAnuladoError, MotivoRequeridoError as MotivoRequeridoAnular } from "@gym-app/domain/use-cases/AnularPago";
 import { METODOS_PAGO } from "../metodosPago";
@@ -88,6 +88,10 @@ export async function registrarEgresoAction(
   const moneda = formData.get("moneda")?.toString();
   const metodo = formData.get("metodo")?.toString();
   const motivo = formData.get("motivo")?.toString() ?? "";
+  // Solo relevante para moneda BS — capturada en el cliente desde
+  // /api/tasa-cambio al momento de registrar (ver FormularioEgreso).
+  const tasaCambioTexto = formData.get("tasaCambio")?.toString();
+  const tasaCambio = tasaCambioTexto ? Number(tasaCambioTexto) : null;
 
   if (!turnoId || Number.isNaN(monto) || (moneda !== "USD" && moneda !== "BS") || !metodo) {
     return { error: "Monto, moneda y método son requeridos." };
@@ -108,6 +112,7 @@ export async function registrarEgresoAction(
         usuarioIdSolicitante: usuario.id,
         monto,
         moneda,
+        tasaCambio,
         metodo,
         motivo,
       }
@@ -117,6 +122,7 @@ export async function registrarEgresoAction(
       error instanceof TurnoCerradoError ||
       error instanceof TurnoNoEncontradoEgreso ||
       error instanceof MotivoRequeridoError ||
+      error instanceof TasaRequeridaEgreso ||
       error instanceof RolNoAutorizadoEgreso
     ) {
       return { error: error.message };

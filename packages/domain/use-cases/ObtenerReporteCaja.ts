@@ -40,7 +40,12 @@ export async function obtenerReporteCaja(
         deps.arqueo.listarPorTurno(turno.id),
       ]);
       const totalPagosUSD = pagos.filter((p) => !p.anuladoEn).reduce((suma, p) => suma + p.monto, 0);
-      const totalEgresosUSD = egresos.filter((e) => e.moneda === "USD").reduce((suma, e) => suma + e.monto, 0);
+      // Antes solo sumaba egresos en USD (e.monto), excluyendo los egresos
+      // en Bs del total — ahora se usa la referencia en USD que cada
+      // egreso capturó a su propia tasa (montoUSD), sea la moneda que sea
+      // (ver RegistrarEgreso). Egresos anteriores a este cambio no tienen
+      // montoUSD (quedó null en la migración) y no se pueden sumar acá.
+      const totalEgresosUSD = egresos.reduce((suma, e) => suma + (e.montoUSD ?? (e.moneda === "USD" ? e.monto : 0)), 0);
       return { turno, pagos, egresos, arqueo, totalPagosUSD, totalEgresosUSD, netoUSD: totalPagosUSD - totalEgresosUSD };
     })
   );

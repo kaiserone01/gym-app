@@ -11,6 +11,7 @@ export interface ValoresFormularioMetodoPago {
   tipo: TipoMetodoPago;
   nombreBanco: string | null;
   logoUrl: string | null;
+  qrUrl: string | null;
   moneda: MonedaMetodoPago;
   codigoBanco: string | null;
   telefono: string | null;
@@ -36,16 +37,24 @@ export function FormularioMetodoPago({
   const [tipo, setTipo] = useState<TipoMetodoPago>(valoresIniciales?.tipo ?? "PAGO_MOVIL");
   const [moneda, setMoneda] = useState<MonedaMetodoPago>(valoresIniciales?.moneda ?? "BS");
   const [logoPreview, setLogoPreview] = useState<string | null>(valoresIniciales?.logoUrl ?? null);
+  const [qrPreview, setQrPreview] = useState<string | null>(valoresIniciales?.qrUrl ?? null);
 
   const admiteBanco = TIPOS_MULTI_INSTANCIA.includes(tipo);
   const esPagoMovil = tipo === "PAGO_MOVIL";
   const esTransferencia = tipo === "TRANSFERENCIA";
   const esCripto = tipo === "CRIPTO";
-  const esBancario = esPagoMovil || esTransferencia || tipo === "PUNTO_VENTA" || tipo === "BIOPAGO";
+  // Punto de Venta no requiere RIF/Cédula ni ningún otro dato de contacto
+  // en la modal de "Ver datos para el pago" (ver diseño acordado).
+  const esBancario = esPagoMovil || esTransferencia || tipo === "BIOPAGO";
 
   function manejarCambioLogo(archivo: File | undefined) {
     if (!archivo) return;
     setLogoPreview(URL.createObjectURL(archivo));
+  }
+
+  function manejarCambioQr(archivo: File | undefined) {
+    if (!archivo) return;
+    setQrPreview(URL.createObjectURL(archivo));
   }
 
   return (
@@ -60,6 +69,7 @@ export function FormularioMetodoPago({
       )}
 
       <input type="hidden" name="logoUrl" value={valoresIniciales?.logoUrl ?? ""} />
+      <input type="hidden" name="qrUrl" value={valoresIniciales?.qrUrl ?? ""} />
 
       {!esEdicion && (
         <label className="flex flex-col gap-1.5 text-sm" style={{ color: "var(--gx-muted)" }}>
@@ -133,10 +143,39 @@ export function FormularioMetodoPago({
       </div>
 
       {esPagoMovil && (
-        <div className="grid grid-cols-2 gap-4">
-          <Input name="codigoBanco" label="Código de banco" defaultValue={valoresIniciales?.codigoBanco ?? ""} />
-          <Input name="telefono" label="Teléfono" defaultValue={valoresIniciales?.telefono ?? ""} />
-        </div>
+        <>
+          <div className="grid grid-cols-2 gap-4">
+            <Input name="codigoBanco" label="Código de banco" defaultValue={valoresIniciales?.codigoBanco ?? ""} />
+            <Input name="telefono" label="Teléfono" defaultValue={valoresIniciales?.telefono ?? ""} />
+          </div>
+
+          <div className="flex items-center gap-4">
+            <div
+              className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-lg"
+              style={{ background: "var(--gx-surface-2)" }}
+            >
+              {qrPreview ? (
+                // eslint-disable-next-line @next/next/no-img-element -- vista previa de un archivo elegido en el cliente
+                <img src={qrPreview} alt="" className="h-full w-full object-cover" />
+              ) : (
+                <span className="text-xs" style={{ color: "var(--gx-muted)" }}>
+                  Sin QR
+                </span>
+              )}
+            </div>
+            <label className="flex flex-col gap-1 text-sm" style={{ color: "var(--gx-muted)" }}>
+              QR (opcional)
+              <input
+                type="file"
+                name="qr"
+                accept="image/*"
+                onChange={(e) => manejarCambioQr(e.target.files?.[0])}
+                className="text-sm file:mr-3 file:min-h-9 file:rounded-lg file:border-0 file:px-3 file:py-1.5 file:text-sm file:font-medium"
+                style={{ color: "var(--gx-muted)" }}
+              />
+            </label>
+          </div>
+        </>
       )}
 
       {esBancario && <Input name="rif" label="RIF / Cédula" defaultValue={valoresIniciales?.rif ?? ""} />}

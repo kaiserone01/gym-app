@@ -45,6 +45,16 @@ async function guardarLogo(archivo: FormDataEntryValue | null): Promise<string |
   return storageR2().subir("logos-pagos", nombreArchivo, contenido, archivo.type || "image/png");
 }
 
+async function guardarQr(archivo: FormDataEntryValue | null): Promise<string | null> {
+  if (!(archivo instanceof File) || archivo.size === 0) return null;
+
+  const extension = archivo.name.split(".").pop()?.toLowerCase() || "png";
+  const nombreArchivo = `${randomUUID()}.${extension}`;
+  const contenido = Buffer.from(await archivo.arrayBuffer());
+
+  return storageR2().subir("qr-pagos", nombreArchivo, contenido, archivo.type || "image/png");
+}
+
 function leerCoordenadas(formData: FormData) {
   return {
     codigoBanco: formData.get("codigoBanco")?.toString().trim() || null,
@@ -75,6 +85,8 @@ export async function crearMetodoPagoAction(
 
   const logoExistenteUrl = formData.get("logoUrl")?.toString() || null;
   const logoUrl = (await guardarLogo(formData.get("logo"))) ?? logoExistenteUrl;
+  const qrExistenteUrl = formData.get("qrUrl")?.toString() || null;
+  const qrUrl = (await guardarQr(formData.get("qr"))) ?? qrExistenteUrl;
 
   await crearMetodoPago(
     { metodosPago: new PrismaMetodoPagoRepository(prisma) },
@@ -83,6 +95,7 @@ export async function crearMetodoPagoAction(
       tipo,
       nombreBanco,
       logoUrl,
+      qrUrl,
       moneda,
       ...leerCoordenadas(formData),
     }
@@ -110,6 +123,8 @@ export async function actualizarMetodoPagoAction(
 
   const logoExistenteUrl = formData.get("logoUrl")?.toString() || null;
   const logoUrl = (await guardarLogo(formData.get("logo"))) ?? logoExistenteUrl;
+  const qrExistenteUrl = formData.get("qrUrl")?.toString() || null;
+  const qrUrl = (await guardarQr(formData.get("qr"))) ?? qrExistenteUrl;
 
   try {
     await actualizarMetodoPago(
@@ -120,6 +135,7 @@ export async function actualizarMetodoPagoAction(
         cambios: {
           nombreBanco,
           logoUrl,
+          qrUrl,
           moneda,
           ...leerCoordenadas(formData),
         },

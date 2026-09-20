@@ -239,7 +239,7 @@ export function SelectorMetodoPago({
         </div>
       )}
 
-      {metodo && metodo.tipo !== "EFECTIVO" && (
+      {metodo && metodo.tipo !== "EFECTIVO" && metodo.tipo !== "PUNTO_VENTA" && metodo.tipo !== "BIOPAGO" && (
         <Button type="button" variant="secundario" onClick={() => setMostrarDatos(true)}>
           Ver datos para el pago
         </Button>

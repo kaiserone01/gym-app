@@ -27,6 +27,7 @@ export default async function PaginaEditarMetodoPago({ params }: { params: Promi
           tipo: metodo.tipo,
           nombreBanco: metodo.nombreBanco,
           logoUrl: metodo.logoUrl,
+          qrUrl: metodo.qrUrl,
           moneda: metodo.moneda,
           codigoBanco: metodo.codigoBanco,
           telefono: metodo.telefono,

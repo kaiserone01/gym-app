@@ -71,4 +71,22 @@ export class PrismaTurnoRepository implements ITurnoRepository {
     });
     return turnos.map(mapear);
   }
+
+  async listarFechasConTurno(organizacionId: string): Promise<Date[]> {
+    // DATE_TRUNC('day', ...) agrupa por día en la zona horaria del
+    // servidor de PostgreSQL — coherente con TZ=America/Caracas fijado a
+    // nivel de proceso Node (ver Task 1 del plan; la columna abiertoEn se
+    // guarda en UTC en la base, pero acá truncamos según la sesión de
+    // Postgres, que toma su propio timezone — por defecto UTC en la
+    // mayoría de los hostings gestionados). Para evitar depender del
+    // timezone de la sesión de Postgres, se convierte explícitamente a
+    // 'America/Caracas' antes de truncar.
+    const filas = await this.prisma.$queryRaw<{ dia: Date }[]>`
+      SELECT DISTINCT DATE_TRUNC('day', "abiertoEn" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Caracas') AS dia
+      FROM "Turno"
+      WHERE "organizacionId" = ${organizacionId}
+      ORDER BY dia ASC
+    `;
+    return filas.map((fila) => fila.dia);
+  }
 }

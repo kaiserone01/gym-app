@@ -8,6 +8,8 @@ export interface IUsuarioAdminRepository {
     email: string;
     passwordHash: string;
     rol: RolUsuario;
+    telefono?: string | null;
+    fotoUrl?: string | null;
   }): Promise<UsuarioAdmin>;
   buscarPorId(organizacionId: string, id: string): Promise<UsuarioAdmin | null>;
   buscarPorIdSinOrganizacion(id: string): Promise<UsuarioAdmin | null>;

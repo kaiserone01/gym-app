@@ -1,5 +1,6 @@
 "use server";
 
+import { randomUUID } from "crypto";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
@@ -10,6 +11,7 @@ import { PrismaPermisoRepository } from "@gym-app/infrastructure/persistence/pri
 import { AuthorizationService } from "@gym-app/domain/services/AuthorizationService";
 import { BcryptPasswordHasher } from "@gym-app/infrastructure/auth/BcryptPasswordHasher";
 import { PrismaSucursalRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaSucursalRepository";
+import { R2StorageService } from "@gym-app/infrastructure/storage/R2StorageService";
 import {
   crearUsuarioAdmin,
   NoAutorizadoError,
@@ -55,6 +57,34 @@ function redirigirConError(ruta: string, mensaje: string): never {
   redirect(`${ruta}?error=${encodeURIComponent(mensaje)}`);
 }
 
+function storageR2(): R2StorageService {
+  const accountId = process.env.R2_ACCOUNT_ID;
+  const accessKeyId = process.env.R2_ACCESS_KEY_ID;
+  const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
+  const bucket = process.env.R2_BUCKET_NAME;
+  const publicUrl = process.env.R2_PUBLIC_URL;
+
+  if (!accountId || !accessKeyId || !secretAccessKey || !bucket || !publicUrl) {
+    throw new Error(
+      "Faltan variables de entorno de R2 (R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET_NAME, R2_PUBLIC_URL)."
+    );
+  }
+
+  return new R2StorageService({ accountId, accessKeyId, secretAccessKey, bucket, publicUrl });
+}
+
+// Sube la foto al bucket "gym-app" en Cloudflare R2 (carpeta "usuarios") y
+// devuelve la URL pública. Mismo patrón que la foto de Miembro.
+async function guardarFoto(archivo: FormDataEntryValue | null): Promise<string | null> {
+  if (!(archivo instanceof File) || archivo.size === 0) return null;
+
+  const extension = archivo.name.split(".").pop()?.toLowerCase() || "jpg";
+  const nombreArchivo = `${randomUUID()}.${extension}`;
+  const contenido = Buffer.from(await archivo.arrayBuffer());
+
+  return storageR2().subir("usuarios", nombreArchivo, contenido, archivo.type || "application/octet-stream");
+}
+
 export async function crearUsuarioAction(
   _estadoPrevio: EstadoFormularioUsuario,
   formData: FormData
@@ -74,6 +104,9 @@ export async function crearUsuarioAction(
   if (!nombre || !email || !password || !rol) {
     return { error: "Nombre, email, contraseña y rol son requeridos." };
   }
+
+  const telefono = formData.get("telefono")?.toString().trim() || null;
+  const fotoUrl = await guardarFoto(formData.get("foto"));
 
   try {
     const hasher = new BcryptPasswordHasher();
@@ -98,6 +131,8 @@ export async function crearUsuarioAction(
         email,
         passwordHash,
         rol,
+        telefono,
+        fotoUrl,
       }
     );
   } catch (error) {
@@ -125,6 +160,9 @@ export async function actualizarUsuarioAction(
     return { error: "El nombre es requerido." };
   }
 
+  const telefono = formData.get("telefono")?.toString().trim() || null;
+  const fotoUrl = await guardarFoto(formData.get("foto"));
+
   try {
     await actualizarUsuarioAdmin(
       { usuarios: new PrismaUsuarioAdminRepository(prisma) },
@@ -133,7 +171,7 @@ export async function actualizarUsuarioAction(
         rolSolicitante: usuario.rol,
         usuarioIdSolicitante: usuario.id,
         id,
-        cambios: { nombre },
+        cambios: { nombre, telefono, ...(fotoUrl ? { fotoUrl } : {}) },
       }
     );
   } catch (error) {

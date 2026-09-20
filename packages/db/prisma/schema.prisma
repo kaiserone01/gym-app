@@ -40,7 +40,6 @@ model Sucursal {
   apiKey         String       @unique @default(uuid()) // el kiosco se autentica con esto (header X-Kiosk-Api-Key), nunca manda sucursalId directo (ADR v1 §4.2)
 
   usuariosAdmin     UsuarioAdmin[]
-  entrenadores      Entrenador[]
   checkIns          CheckIn[]
   pagos             Pago[]
   turnos            Turno[]
@@ -62,6 +61,8 @@ model UsuarioAdmin {
   sucursalId     String? // sucursal por defecto para operar (preselección) — NO es la fuente de acceso, ver UsuarioSucursal
   sucursal       Sucursal?    @relation(fields: [sucursalId], references: [id])
   nombre         String       @default("")
+  telefono       String?
+  fotoUrl        String?
   rol            RolUsuario
   email          String       @unique
   passwordHash   String
@@ -75,6 +76,7 @@ model UsuarioAdmin {
   pagosAnulados      Pago[] @relation("PagosAnulados")
   permisos           PermisoUsuario[]
   sucursales         UsuarioSucursal[]
+  miembrosEntrenados Miembro[] @relation("EntrenadorDeMiembro")
 }
 
 enum ModuloPermiso {
@@ -112,17 +114,6 @@ model UsuarioSucursal {
   @@id([usuarioId, sucursalId])
 }
 
-model Entrenador {
-  id         String   @id @default(cuid())
-  sucursalId String // Entrenador pertenece a una Sucursal fija (decisión aprobada, ADR v2 §16)
-  sucursal   Sucursal @relation(fields: [sucursalId], references: [id])
-  nombre     String
-  telefono   String?
-  activo     Boolean  @default(true)
-
-  miembros Miembro[]
-}
-
 model Miembro {
   id               String       @id @default(cuid())
   organizacionId   String // el Miembro cuelga de la Organización, no de una Sucursal (ADR v1 §4.1)
@@ -135,8 +126,8 @@ model Miembro {
   fechaNacimiento  DateTime?
   celular          String?
   fotoUrl          String?
-  entrenadorId     String?
-  entrenador       Entrenador?  @relation(fields: [entrenadorId], references: [id])
+  entrenadorId     String? // referencia a UsuarioAdmin con rol ENTRENADOR (ver "EntrenadorDeMiembro")
+  entrenador       UsuarioAdmin? @relation("EntrenadorDeMiembro", fields: [entrenadorId], references: [id])
   planId           String? // plan vigente asignado (frecuencia y con/sin entrenador se leen de ahí)
   plan             Plan?        @relation(fields: [planId], references: [id])
   precioPlan       Decimal      @db.Decimal(10, 2) // precio vigente que paga (puede diferir del precio de catálogo del Plan, ej. "Personalizado")

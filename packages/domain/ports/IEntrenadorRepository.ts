@@ -1,8 +1,8 @@
 import { EntrenadorResumen } from "../entities/EntrenadorResumen";
 
 export interface IEntrenadorRepository {
-  // Solo entrenadores activos, de cualquier sucursal de la organización —
-  // un Miembro cuelga de la Organización, no de una Sucursal (ADR v1 §4.1),
-  // así que puede elegir cualquier entrenador de su gym.
-  listarPorOrganizacion(organizacionId: string): Promise<EntrenadorResumen[]>;
+  // Usuarios administradores con rol ENTRENADOR, activos, que tienen la
+  // sucursal indicada asignada en UsuarioSucursal (ver diseño acordado:
+  // el "entrenador" ya no es una entidad propia, es un UsuarioAdmin).
+  listarPorOrganizacionYSucursal(organizacionId: string, sucursalId: string): Promise<EntrenadorResumen[]>;
 }

@@ -7,6 +7,8 @@ function mapear(usuario: {
   organizacionId: string;
   sucursalId: string | null;
   nombre: string;
+  telefono: string | null;
+  fotoUrl: string | null;
   rol: UsuarioAdmin["rol"];
   email: string;
   activo: boolean;
@@ -16,6 +18,8 @@ function mapear(usuario: {
     organizacionId: usuario.organizacionId,
     sucursalId: usuario.sucursalId,
     nombre: usuario.nombre,
+    telefono: usuario.telefono,
+    fotoUrl: usuario.fotoUrl,
     rol: usuario.rol,
     email: usuario.email,
     activo: usuario.activo,
@@ -32,6 +36,8 @@ export class PrismaUsuarioAdminRepository implements IUsuarioAdminRepository {
     email: string;
     passwordHash: string;
     rol: UsuarioAdmin["rol"];
+    telefono?: string | null;
+    fotoUrl?: string | null;
   }): Promise<UsuarioAdmin> {
     const usuario = await this.prisma.usuarioAdmin.create({ data: datos });
     return mapear(usuario);

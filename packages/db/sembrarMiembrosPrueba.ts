@@ -94,8 +94,8 @@ async function main() {
     throw new Error("No hay ninguna Sucursal en la base — corré el seed real primero.");
   }
 
-  const entrenador = await prisma.entrenador.findFirst({
-    where: { sucursal: { organizacionId: organizacion.id }, activo: true },
+  const entrenador = await prisma.usuarioAdmin.findFirst({
+    where: { organizacionId: organizacion.id, rol: "ENTRENADOR", activo: true },
   });
 
   const admin = await prisma.usuarioAdmin.findFirst({ where: { organizacionId: organizacion.id } });

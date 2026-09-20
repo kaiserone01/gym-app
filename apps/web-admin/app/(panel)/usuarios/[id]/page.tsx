@@ -74,6 +74,8 @@ export default async function PaginaEditarUsuario({
         nombreInicial={detalle.usuario.nombre}
         email={detalle.usuario.email}
         rol={detalle.usuario.rol}
+        telefonoInicial={detalle.usuario.telefono}
+        fotoUrlActual={detalle.usuario.fotoUrl}
       />
 
       <form action={accionSucursales} className="flex flex-col gap-2">

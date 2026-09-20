@@ -5,6 +5,8 @@ export interface UsuarioAdmin {
   organizacionId: string;
   sucursalId: string | null;
   nombre: string;
+  telefono: string | null;
+  fotoUrl: string | null;
   rol: RolUsuario;
   email: string;
   activo: boolean;
@@ -12,5 +14,7 @@ export interface UsuarioAdmin {
 
 export interface CambiosUsuarioAdmin {
   nombre?: string;
+  telefono?: string | null;
+  fotoUrl?: string | null;
   activo?: boolean;
 }

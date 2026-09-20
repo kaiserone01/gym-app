@@ -24,7 +24,7 @@ export default async function PanelLayout({ children }: { children: React.ReactN
             { href: "/sucursales", label: "Sucursales" },
             { href: "/estadisticas", label: "Estadísticas" },
           ]}
-          pie={<BarraUsuario nombre={usuario.nombre} email={usuario.email} />}
+          pie={<BarraUsuario nombre={usuario.nombre} email={usuario.email} fotoUrl={usuario.fotoUrl} />}
         />
       </div>
       <main className="flex-1 pb-16 lg:pb-0">{children}</main>

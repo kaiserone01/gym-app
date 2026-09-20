@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useRef, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { Button } from "@gym-app/ui/components/Button";
 import { Input } from "@gym-app/ui/components/Input";
 import { Card } from "@gym-app/ui/components/Card";
@@ -69,14 +69,17 @@ function Fila({ label, valor }: { label: string; valor: string }) {
 
 export function FormularioMiembro({
   accion,
-  entrenadores,
+  entrenadoresPorSucursal,
   sucursales,
   planes,
   valoresIniciales,
   panelLateral,
 }: {
   accion: (estado: EstadoFormularioMiembro, formData: FormData) => Promise<EstadoFormularioMiembro>;
-  entrenadores: EntrenadorResumen[];
+  // Entrenadores disponibles por cada sucursal visible — el elegible
+  // depende de la sucursal seleccionada en el propio formulario, así que
+  // se filtra en el cliente sin ida y vuelta al servidor.
+  entrenadoresPorSucursal: Record<string, EntrenadorResumen[]>;
   sucursales: SucursalResumen[];
   planes: Plan[];
   valoresIniciales?: ValoresFormularioMiembro;
@@ -110,6 +113,16 @@ export function FormularioMiembro({
     (plan) => plan.activo || (valoresIniciales && plan.id === valoresIniciales.planId)
   );
 
+  // Entrenadores elegibles según la sucursal actualmente seleccionada. Si
+  // el entrenador ya asignado no está en esa lista (p. ej. se cambió de
+  // sede, o el entrenador dejó de tener esa sucursal asignada), se agrega
+  // igual para no perder el dato al mostrar el formulario de edición.
+  const entrenadoresDeLaSede = entrenadoresPorSucursal[sucursalId] ?? [];
+  const entrenadores =
+    valoresIniciales?.entrenadorId && !entrenadoresDeLaSede.some((e) => e.id === valoresIniciales.entrenadorId)
+      ? [...entrenadoresDeLaSede, { id: valoresIniciales.entrenadorId, nombre: "(entrenador actual)" }]
+      : entrenadoresDeLaSede;
+
   const [planId, setPlanId] = useState<string>(() => {
     if (!valoresIniciales) return planesActivos[0]?.id ?? ID_PERSONALIZADO;
     return valoresIniciales.planId ?? ID_PERSONALIZADO;
@@ -130,6 +143,16 @@ export function FormularioMiembro({
   const nombrePlanActual = esPersonalizado ? "Personalizado" : (planSeleccionado?.nombre ?? "—");
   const nombreEntrenadorActual = entrenadores.find((e) => e.id === entrenadorId)?.nombre ?? null;
   const nombreMetodoPagoActual = METODOS_PAGO.find((m) => m.value === metodoPago)?.label ?? null;
+
+  // Si se cambia de sede y el entrenador seleccionado no está entre los
+  // elegibles de la nueva sede, se limpia la selección en vez de dejar un
+  // entrenadorId "fantasma" que el usuario ya no ve en el select.
+  useEffect(() => {
+    if (entrenadorId && !entrenadores.some((e) => e.id === entrenadorId)) {
+      setEntrenadorId("");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- solo debe re-evaluar cuando cambia la sede, no en cada render de `entrenadores`
+  }, [sucursalId]);
   const esPagoEnBs = METODOS_EN_BS.includes(metodoPago);
   const tasaCambioActual = esPagoEnBs ? TASA_BCV_FIJA : "";
   const montoBsActual = esPagoEnBs ? precioActual * TASA_BCV_FIJA : null;

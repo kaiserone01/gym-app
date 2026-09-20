@@ -5,9 +5,14 @@ import type { EntrenadorResumen } from "@gym-app/domain/entities/EntrenadorResum
 export class PrismaEntrenadorRepository implements IEntrenadorRepository {
   constructor(private readonly prisma: PrismaClient) {}
 
-  async listarPorOrganizacion(organizacionId: string): Promise<EntrenadorResumen[]> {
-    return this.prisma.entrenador.findMany({
-      where: { activo: true, sucursal: { organizacionId } },
+  async listarPorOrganizacionYSucursal(organizacionId: string, sucursalId: string): Promise<EntrenadorResumen[]> {
+    return this.prisma.usuarioAdmin.findMany({
+      where: {
+        organizacionId,
+        rol: "ENTRENADOR",
+        activo: true,
+        sucursales: { some: { sucursalId } },
+      },
       select: { id: true, nombre: true },
       orderBy: { nombre: "asc" },
     });

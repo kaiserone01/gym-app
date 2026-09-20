@@ -9,6 +9,7 @@ import { Button } from "@gym-app/ui/components/Button";
 import { Badge } from "@gym-app/ui/components/Badge";
 import { Card } from "@gym-app/ui/components/Card";
 import { PageHeader } from "@gym-app/ui/components/PageHeader";
+import { Avatar } from "@gym-app/ui/components/Avatar";
 import { AvisoError } from "../AvisoError";
 
 export default async function PaginaUsuarios({
@@ -52,6 +53,7 @@ export default async function PaginaUsuarios({
           <table className="w-full border-collapse text-left">
             <thead>
               <tr className="border-b text-sm" style={{ borderColor: "var(--gx-edge)", color: "var(--gx-muted)" }}>
+                <th className="py-2"></th>
                 <th className="py-2">Nombre</th>
                 <th className="py-2">Email</th>
                 <th className="py-2">Rol</th>
@@ -62,6 +64,9 @@ export default async function PaginaUsuarios({
             <tbody>
               {usuarios.map((u) => (
                 <tr key={u.id} className="border-b" style={{ borderColor: "var(--gx-edge)" }}>
+                  <td className="py-2">
+                    <Avatar fotoUrl={u.fotoUrl} nombre={u.nombre || u.email} tamano={36} />
+                  </td>
                   <td className="py-2" style={{ color: "var(--gx-ink)" }}>
                     {u.nombre || "—"}
                   </td>
@@ -88,7 +93,7 @@ export default async function PaginaUsuarios({
 
               {usuarios.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="py-8 text-center" style={{ color: "var(--gx-muted)" }}>
+                  <td colSpan={6} className="py-8 text-center" style={{ color: "var(--gx-muted)" }}>
                     Todavía no hay usuarios.
                   </td>
                 </tr>
@@ -103,9 +108,12 @@ export default async function PaginaUsuarios({
           <Link key={u.id} href={`/usuarios/${u.id}`}>
             <Card className="transition-transform active:scale-[0.98]">
               <div className="flex items-center justify-between">
-                <span className="font-medium" style={{ color: "var(--gx-ink)" }}>
-                  {u.nombre || u.email}
-                </span>
+                <div className="flex items-center gap-3">
+                  <Avatar fotoUrl={u.fotoUrl} nombre={u.nombre || u.email} tamano={36} />
+                  <span className="font-medium" style={{ color: "var(--gx-ink)" }}>
+                    {u.nombre || u.email}
+                  </span>
+                </div>
                 <Badge tono={u.activo ? "verde" : "gris"}>{u.activo ? "Activo" : "Inactivo"}</Badge>
               </div>
               <div className="mt-2 flex justify-between text-sm" style={{ color: "var(--gx-muted)" }}>

@@ -49,13 +49,22 @@ async function main() {
   });
   console.log("✅ Admin creado:", admin.email, "(password: admin1234)");
 
-  // 3. Entrenador (pertenece a la Sucursal, decisión aprobada)
-  const entrenador = await prisma.entrenador.create({
+  // 3. Entrenador — UsuarioAdmin con rol ENTRENADOR (decisión acordada: el
+  // entrenador seleccionable en Miembro es un usuario del panel, no una
+  // entidad propia), asignado a la Sucursal vía UsuarioSucursal.
+  const entrenadorPasswordHash = await bcrypt.hash("entrenador1234", 10);
+  const entrenador = await prisma.usuarioAdmin.create({
     data: {
-      sucursalId: sucursal.id,
+      organizacionId: organizacion.id,
+      email: "carlos@gymdemo.com",
+      passwordHash: entrenadorPasswordHash,
+      rol: "ENTRENADOR",
       nombre: "Carlos Fitness",
       telefono: "0414-1234567",
     },
+  });
+  await prisma.usuarioSucursal.create({
+    data: { usuarioId: entrenador.id, sucursalId: sucursal.id },
   });
   console.log("✅ Entrenador creado:", entrenador.nombre);
 

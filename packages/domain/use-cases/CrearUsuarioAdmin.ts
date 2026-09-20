@@ -23,6 +23,8 @@ export interface CrearUsuarioAdminInput {
   email: string;
   passwordHash: string;
   rol: RolUsuario;
+  telefono?: string | null;
+  fotoUrl?: string | null;
 }
 
 export class NoAutorizadoError extends Error {
@@ -98,6 +100,8 @@ export async function crearUsuarioAdmin(
     email: input.email,
     passwordHash: input.passwordHash,
     rol: input.rol,
+    telefono: input.telefono ?? null,
+    fotoUrl: input.fotoUrl ?? null,
   });
 
   // Sin unit-of-work transversal: si falla la asignación de permisos o sucursales,

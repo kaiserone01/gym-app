@@ -3,7 +3,9 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { obtenerUsuarioDeSesionActual } from "@/lib/sesion";
 import { PrismaMemberRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaMemberRepository";
+import { PrismaPlanRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaPlanRepository";
 import { listarMiembros } from "@gym-app/domain/use-cases/ListarMiembros";
+import { listarPlanes } from "@gym-app/domain/use-cases/ListarPlanes";
 import { Button } from "@gym-app/ui/components/Button";
 import { Input } from "@gym-app/ui/components/Input";
 import { Card } from "@gym-app/ui/components/Card";
@@ -23,7 +25,11 @@ export default async function PaginaMiembros({ searchParams }: { searchParams: P
 
   const filtros = await searchParams;
 
-  const todos = await listarMiembros({ miembros: new PrismaMemberRepository(prisma) }, usuario.organizacionId);
+  const [todos, planes] = await Promise.all([
+    listarMiembros({ miembros: new PrismaMemberRepository(prisma) }, usuario.organizacionId),
+    listarPlanes({ planes: new PrismaPlanRepository(prisma) }, usuario.organizacionId),
+  ]);
+  const planesPorId = new Map(planes.map((plan) => [plan.id, plan]));
 
   const miembros = todos.filter((miembro) => {
     if (
@@ -90,7 +96,7 @@ export default async function PaginaMiembros({ searchParams }: { searchParams: P
                     {miembro.cedula}
                   </td>
                   <td className="py-2" style={{ color: "var(--gx-ink)" }}>
-                    {miembro.planTipo === "CON_ENTRENADOR" ? "Con entrenador" : "Sin entrenador"}
+                    {miembro.planId ? (planesPorId.get(miembro.planId)?.nombre ?? "—") : "Sin plan"}
                   </td>
                   <td className="py-2" style={{ color: "var(--gx-ink)" }}>
                     {miembro.fechaVencimiento

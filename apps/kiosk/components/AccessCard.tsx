@@ -10,6 +10,12 @@ function iniciales(nombre: string): string {
     .join("");
 }
 
+const ETIQUETA_ESTADO: Record<ResultadoCheckIn["estado"], string> = {
+  activo: "Acceso permitido",
+  vencido: "Membresía vencida",
+  sucursal_incorrecta: "Acceso denegado",
+};
+
 export function AccessCard({ resultado, hora }: { resultado: ResultadoCheckIn; hora: string }) {
   const activo = resultado.estado === "activo";
   const colorEstado = activo ? "var(--gx-accent)" : "var(--gx-bad)";
@@ -44,7 +50,7 @@ export function AccessCard({ resultado, hora }: { resultado: ResultadoCheckIn; h
       >
         <span className="flex items-center gap-2">
           {activo ? <CheckCircle size={32} weight="fill" /> : <XCircle size={32} weight="fill" />}
-          {activo ? "Acceso permitido" : "Membresía vencida"}
+          {ETIQUETA_ESTADO[resultado.estado]}
         </span>
         <span className="text-base font-semibold" style={{ fontFamily: '"Barlow", sans-serif' }}>{hora}</span>
       </div>
@@ -78,20 +84,36 @@ export function AccessCard({ resultado, hora }: { resultado: ResultadoCheckIn; h
             {resultado.nombre}
           </p>
 
-          <div className="grid grid-cols-2 gap-4 border-t pt-4" style={{ borderColor: "var(--gx-edge)" }}>
-            <div className="flex flex-col gap-1">
+          {resultado.estado === "sucursal_incorrecta" ? (
+            <div className="border-t pt-4" style={{ borderColor: "var(--gx-edge)" }}>
               <span className="text-xs font-bold uppercase" style={{ letterSpacing: "0.1em", color: "var(--gx-muted-dim)" }}>
-                Entrada
+                Tu sede asignada es
               </span>
-              <span className="text-xl font-semibold" style={{ color: "var(--gx-ink)" }}>{hora}</span>
+              <p className="mt-1 text-2xl font-semibold" style={{ color: "var(--gx-ink)" }}>
+                {resultado.sucursalAsignadaNombre}
+              </p>
+              {resultado.sucursalAsignadaDireccion && (
+                <p className="text-base" style={{ color: "var(--gx-muted)" }}>
+                  {resultado.sucursalAsignadaDireccion}
+                </p>
+              )}
             </div>
-            <div className="flex flex-col gap-1">
-              <span className="text-xs font-bold uppercase" style={{ letterSpacing: "0.1em", color: "var(--gx-muted-dim)" }}>
-                Entrenador
-              </span>
-              <span className="text-xl font-semibold" style={{ color: "var(--gx-ink)" }}>{resultado.entrenador ?? "—"}</span>
+          ) : (
+            <div className="grid grid-cols-2 gap-4 border-t pt-4" style={{ borderColor: "var(--gx-edge)" }}>
+              <div className="flex flex-col gap-1">
+                <span className="text-xs font-bold uppercase" style={{ letterSpacing: "0.1em", color: "var(--gx-muted-dim)" }}>
+                  Entrada
+                </span>
+                <span className="text-xl font-semibold" style={{ color: "var(--gx-ink)" }}>{hora}</span>
+              </div>
+              <div className="flex flex-col gap-1">
+                <span className="text-xs font-bold uppercase" style={{ letterSpacing: "0.1em", color: "var(--gx-muted-dim)" }}>
+                  Entrenador
+                </span>
+                <span className="text-xl font-semibold" style={{ color: "var(--gx-ink)" }}>{resultado.entrenador ?? "—"}</span>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>

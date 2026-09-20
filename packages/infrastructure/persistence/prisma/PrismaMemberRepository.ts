@@ -1,10 +1,11 @@
 import type { PrismaClient } from "@gym-app/db/generated/prisma/client";
 import type { IMemberRepository } from "@gym-app/domain/ports/IMemberRepository";
-import type { Miembro, PlanTipo, DatosNuevoMiembro, CambiosMiembro } from "@gym-app/domain/entities/Miembro";
+import type { Miembro, DatosNuevoMiembro, CambiosMiembro } from "@gym-app/domain/entities/Miembro";
 
 type FilaMiembro = {
   id: string;
   organizacionId: string;
+  sucursalId: string;
   nombre: string;
   cedula: string;
   fechaInscripcion: Date | null;
@@ -13,7 +14,7 @@ type FilaMiembro = {
   fotoUrl: string | null;
   entrenadorId: string | null;
   entrenador?: { nombre: string } | null;
-  planTipo: PlanTipo;
+  planId: string | null;
   precioPlan: { toNumber(): number };
   fechaUltimoPago: Date | null;
   fechaVencimiento: Date | null;
@@ -25,6 +26,7 @@ function mapear(miembro: FilaMiembro): Miembro {
   return {
     id: miembro.id,
     organizacionId: miembro.organizacionId,
+    sucursalId: miembro.sucursalId,
     nombre: miembro.nombre,
     cedula: miembro.cedula,
     fechaInscripcion: miembro.fechaInscripcion,
@@ -33,7 +35,7 @@ function mapear(miembro: FilaMiembro): Miembro {
     fotoUrl: miembro.fotoUrl,
     entrenadorId: miembro.entrenadorId,
     entrenadorNombre: miembro.entrenador?.nombre ?? null,
-    planTipo: miembro.planTipo,
+    planId: miembro.planId,
     precioPlan: miembro.precioPlan.toNumber(),
     fechaUltimoPago: miembro.fechaUltimoPago,
     fechaVencimiento: miembro.fechaVencimiento,

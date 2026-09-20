@@ -1,13 +1,14 @@
 const URL_API = process.env.NEXT_PUBLIC_API_URL;
 
-export type EstadoCheckIn = "activo" | "vencido";
+export type EstadoCheckIn = "activo" | "vencido" | "sucursal_incorrecta";
 
 export interface ResultadoCheckIn {
   nombre: string;
   fotoUrl: string | null;
   entrenador: string | null;
-  planTipo: "SIN_ENTRENADOR" | "CON_ENTRENADOR";
   estado: EstadoCheckIn;
+  sucursalAsignadaNombre: string;
+  sucursalAsignadaDireccion: string | null;
 }
 
 // Se lanza cuando el servidor SÍ respondió, pero con un error (401/400/404/500).

@@ -59,19 +59,26 @@ async function main() {
   });
   console.log("✅ Entrenador creado:", entrenador.nombre);
 
-  // 4. Plan "Sede Única" con acceso a esta sucursal, y una Suscripcion activa
-  const planSedeUnica = await prisma.plan.create({
+  // 4. Planes de prueba (mensual con y sin entrenador) y sus Suscripciones
+  const planConEntrenador = await prisma.plan.create({
     data: {
       organizacionId: organizacion.id,
-      nombre: "Sede Única",
-      tipoAcceso: "SEDE_UNICA",
-      precioUSD: 25.0,
-      sucursalesAcceso: {
-        create: { sucursalId: sucursal.id },
-      },
+      nombre: "Mensual con entrenador",
+      frecuencia: "MENSUAL",
+      incluyeEntrenador: true,
+      precioUSD: 30.0,
     },
   });
-  console.log("✅ Plan creado:", planSedeUnica.nombre);
+  const planSinEntrenador = await prisma.plan.create({
+    data: {
+      organizacionId: organizacion.id,
+      nombre: "Mensual sin entrenador",
+      frecuencia: "MENSUAL",
+      incluyeEntrenador: false,
+      precioUSD: 25.0,
+    },
+  });
+  console.log("✅ Planes creados:", planConEntrenador.nombre, "y", planSinEntrenador.nombre);
 
   // 5. Miembros de prueba (mismos casos que antes: activo, vencido, sin entrenador)
   const hoy = new Date();
@@ -83,11 +90,12 @@ async function main() {
   const miembroActivo = await prisma.miembro.create({
     data: {
       organizacionId: organizacion.id,
+      sucursalId: sucursal.id,
       nombre: "Rayza Aray",
       cedula: "19141319",
       celular: "0424-3332331",
       entrenadorId: entrenador.id,
-      planTipo: "CON_ENTRENADOR",
+      planId: planConEntrenador.id,
       precioPlan: 30.0,
       fechaUltimoPago: hoy,
       fechaVencimiento: en20Dias,
@@ -96,7 +104,7 @@ async function main() {
   await prisma.suscripcion.create({
     data: {
       miembroId: miembroActivo.id,
-      planId: planSedeUnica.id,
+      planId: planConEntrenador.id,
       inicio: hoy,
       fin: en20Dias,
       estado: "ACTIVA",
@@ -107,10 +115,11 @@ async function main() {
   const miembroVencido = await prisma.miembro.create({
     data: {
       organizacionId: organizacion.id,
+      sucursalId: sucursal.id,
       nombre: "Julio César Bastidas",
       cedula: "13264442",
       celular: "0424-5302270",
-      planTipo: "SIN_ENTRENADOR",
+      planId: planSinEntrenador.id,
       precioPlan: 25.0,
       fechaUltimoPago: hace10Dias,
       fechaVencimiento: hace10Dias,
@@ -121,10 +130,11 @@ async function main() {
   const miembroSinEntrenador = await prisma.miembro.create({
     data: {
       organizacionId: organizacion.id,
+      sucursalId: sucursal.id,
       nombre: "Rodrigo Lara",
       cedula: "9275030",
       celular: "0424-9275030",
-      planTipo: "SIN_ENTRENADOR",
+      planId: planSinEntrenador.id,
       precioPlan: 25.0,
       fechaUltimoPago: hoy,
       fechaVencimiento: en20Dias,
@@ -133,7 +143,7 @@ async function main() {
   await prisma.suscripcion.create({
     data: {
       miembroId: miembroSinEntrenador.id,
-      planId: planSedeUnica.id,
+      planId: planSinEntrenador.id,
       inicio: hoy,
       fin: en20Dias,
       estado: "ACTIVA",

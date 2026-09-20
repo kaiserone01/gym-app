@@ -32,9 +32,9 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json();
 
-    if (!body.nombre || !body.cedula || !body.planTipo || body.precioPlan === undefined) {
+    if (!body.nombre || !body.cedula || !body.sucursalId || body.precioPlan === undefined) {
       return NextResponse.json(
-        { error: "nombre, cedula, planTipo y precioPlan son requeridos." },
+        { error: "nombre, cedula, sucursalId y precioPlan son requeridos." },
         { status: 400 }
       );
     }
@@ -43,6 +43,7 @@ export async function POST(req: NextRequest) {
       { miembros: new PrismaMemberRepository(prisma) },
       {
         organizacionId: usuario.organizacionId,
+        sucursalId: body.sucursalId,
         nombre: body.nombre,
         cedula: body.cedula,
         fechaInscripcion: body.fechaInscripcion ? new Date(body.fechaInscripcion) : null,
@@ -50,7 +51,7 @@ export async function POST(req: NextRequest) {
         celular: body.celular ?? null,
         fotoUrl: body.fotoUrl ?? null,
         entrenadorId: body.entrenadorId ?? null,
-        planTipo: body.planTipo,
+        planId: body.planId ?? null,
         precioPlan: body.precioPlan,
       }
     );

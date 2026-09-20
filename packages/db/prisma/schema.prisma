@@ -42,10 +42,10 @@ model Sucursal {
   usuariosAdmin     UsuarioAdmin[]
   entrenadores      Entrenador[]
   checkIns          CheckIn[]
-  planesAcceso      PlanSucursalAcceso[]
   pagos             Pago[]
   turnos            Turno[]
   usuariosConAcceso UsuarioSucursal[]
+  miembros          Miembro[]
 }
 
 enum RolUsuario {
@@ -123,15 +123,12 @@ model Entrenador {
   miembros Miembro[]
 }
 
-enum PlanTipo {
-  SIN_ENTRENADOR
-  CON_ENTRENADOR
-}
-
 model Miembro {
   id               String       @id @default(cuid())
   organizacionId   String // el Miembro cuelga de la Organización, no de una Sucursal (ADR v1 §4.1)
   organizacion     Organizacion @relation(fields: [organizacionId], references: [id])
+  sucursalId       String // sede asignada al miembro — determina en qué sucursal puede hacer check-in (ver RegistrarCheckIn)
+  sucursal         Sucursal     @relation(fields: [sucursalId], references: [id])
   nombre           String
   cedula           String // única POR organización (ver @@unique abajo)
   fechaInscripcion DateTime?
@@ -140,8 +137,9 @@ model Miembro {
   fotoUrl          String?
   entrenadorId     String?
   entrenador       Entrenador?  @relation(fields: [entrenadorId], references: [id])
-  planTipo         PlanTipo     @default(SIN_ENTRENADOR) // recargo por entrenador personal — independiente del Plan/Suscripcion de acceso a sucursales
-  precioPlan       Decimal      @db.Decimal(10, 2)
+  planId           String? // plan vigente asignado (frecuencia y con/sin entrenador se leen de ahí)
+  plan             Plan?        @relation(fields: [planId], references: [id])
+  precioPlan       Decimal      @db.Decimal(10, 2) // precio vigente que paga (puede diferir del precio de catálogo del Plan, ej. "Personalizado")
   fechaUltimoPago  DateTime?
   fechaVencimiento DateTime?
   activo           Boolean      @default(true) // baja lógica del miembro
@@ -154,32 +152,24 @@ model Miembro {
   @@unique([organizacionId, cedula])
 }
 
-enum TipoAccesoPlan {
-  SEDE_UNICA // acceso a 1 sola sucursal, definida en PlanSucursalAcceso
-  LISTA_CERRADA // acceso a un subconjunto explícito de sucursales
-  TODA_LA_ORGANIZACION // "VIP Multi-sede": acceso a todas las sucursales actuales y futuras
+enum FrecuenciaPago {
+  SEMANAL // 7 días
+  QUINCENAL // 15 días
+  MENSUAL // 30 días
 }
 
 model Plan {
-  id             String         @id @default(cuid())
-  organizacionId String
-  organizacion   Organizacion   @relation(fields: [organizacionId], references: [id])
-  nombre         String // "Sede Única", "VIP Multi-sede"
-  tipoAcceso     TipoAccesoPlan
-  precioUSD      Decimal        @db.Decimal(10, 2)
-  activo         Boolean        @default(true)
+  id                String         @id @default(cuid())
+  organizacionId    String
+  organizacion      Organizacion   @relation(fields: [organizacionId], references: [id])
+  nombre            String
+  frecuencia        FrecuenciaPago
+  incluyeEntrenador Boolean        @default(false)
+  precioUSD         Decimal        @db.Decimal(10, 2)
+  activo            Boolean        @default(true)
 
-  suscripciones    Suscripcion[]
-  sucursalesAcceso PlanSucursalAcceso[] // solo relevante si tipoAcceso = SEDE_UNICA o LISTA_CERRADA
-}
-
-model PlanSucursalAcceso {
-  planId     String
-  sucursalId String
-  plan       Plan     @relation(fields: [planId], references: [id])
-  sucursal   Sucursal @relation(fields: [sucursalId], references: [id])
-
-  @@id([planId, sucursalId])
+  suscripciones Suscripcion[]
+  miembros      Miembro[]
 }
 
 enum EstadoSuscripcion {

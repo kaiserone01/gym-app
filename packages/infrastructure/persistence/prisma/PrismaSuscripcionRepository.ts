@@ -5,7 +5,7 @@ import type { Suscripcion } from "@gym-app/domain/entities/Suscripcion";
 type FilaSuscripcion = {
   id: string;
   miembroId: string;
-  plan: { id: string; organizacionId: string; tipoAcceso: Suscripcion["plan"]["tipoAcceso"] };
+  planId: string;
   inicio: Date;
   fin: Date;
   estado: Suscripcion["estado"];
@@ -15,11 +15,7 @@ function mapear(suscripcion: FilaSuscripcion): Suscripcion {
   return {
     id: suscripcion.id,
     miembroId: suscripcion.miembroId,
-    plan: {
-      id: suscripcion.plan.id,
-      organizacionId: suscripcion.plan.organizacionId,
-      tipoAcceso: suscripcion.plan.tipoAcceso,
-    },
+    planId: suscripcion.planId,
     inicio: suscripcion.inicio,
     fin: suscripcion.fin,
     estado: suscripcion.estado,
@@ -37,20 +33,12 @@ export class PrismaSuscripcionRepository implements ISuscripcionRepository {
         inicio: { lte: fecha },
         fin: { gte: fecha },
       },
-      include: { plan: true },
       orderBy: { fin: "desc" },
     });
 
     if (!suscripcion) return null;
 
     return mapear(suscripcion);
-  }
-
-  async tieneAccesoASucursal(planId: string, sucursalId: string): Promise<boolean> {
-    const acceso = await this.prisma.planSucursalAcceso.findUnique({
-      where: { planId_sucursalId: { planId, sucursalId } },
-    });
-    return acceso !== null;
   }
 
   async buscarActivaVigentePorMiembroYPlan(miembroId: string, planId: string, fecha: Date): Promise<Suscripcion | null> {
@@ -61,7 +49,6 @@ export class PrismaSuscripcionRepository implements ISuscripcionRepository {
         estado: "ACTIVA",
         fin: { gte: fecha },
       },
-      include: { plan: true },
       orderBy: { fin: "desc" },
     });
 
@@ -70,11 +57,18 @@ export class PrismaSuscripcionRepository implements ISuscripcionRepository {
     return mapear(suscripcion);
   }
 
+  async listarActivasVigentesPorPlan(planId: string, fecha: Date): Promise<Suscripcion[]> {
+    const suscripciones = await this.prisma.suscripcion.findMany({
+      where: { planId, estado: "ACTIVA", fin: { gte: fecha } },
+    });
+
+    return suscripciones.map(mapear);
+  }
+
   async extenderFin(id: string, nuevoFin: Date): Promise<Suscripcion> {
     const suscripcion = await this.prisma.suscripcion.update({
       where: { id },
       data: { fin: nuevoFin },
-      include: { plan: true },
     });
 
     return mapear(suscripcion);
@@ -89,7 +83,6 @@ export class PrismaSuscripcionRepository implements ISuscripcionRepository {
         fin: datos.fin,
         estado: "ACTIVA",
       },
-      include: { plan: true },
     });
 
     return mapear(suscripcion);

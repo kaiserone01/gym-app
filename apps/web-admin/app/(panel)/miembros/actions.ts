@@ -10,7 +10,11 @@ import { PrismaPlanRepository } from "@gym-app/infrastructure/persistence/prisma
 import { PrismaPagoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaPagoRepository";
 import { PrismaSuscripcionRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaSuscripcionRepository";
 import { crearMiembro, CedulaDuplicadaError } from "@gym-app/domain/use-cases/CrearMiembro";
-import { actualizarMiembro, MiembroNoEncontradoError } from "@gym-app/domain/use-cases/ActualizarMiembro";
+import {
+  actualizarMiembro,
+  MiembroNoEncontradoError,
+  PlanNoEncontradoError as ActualizarPlanNoEncontradoError,
+} from "@gym-app/domain/use-cases/ActualizarMiembro";
 import { listarPlanes } from "@gym-app/domain/use-cases/ListarPlanes";
 import { crearPlan } from "@gym-app/domain/use-cases/CrearPlan";
 import { PrismaTurnoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaTurnoRepository";
@@ -24,27 +28,50 @@ import {
   PlanInactivoError,
   RolNoAutorizadoError as PagoRolNoAutorizadoError,
 } from "@gym-app/domain/use-cases/RegistrarPago";
-import type { PlanTipo } from "@gym-app/domain/entities/Miembro";
+import type { FrecuenciaPago } from "@gym-app/domain/entities/Plan";
 import { METODOS_BANCARIOS } from "../metodosPago";
 
 export interface EstadoFormularioMiembro {
   error?: string;
 }
 
-// Los planes fijos del selector de Nuevo Miembro (Semanal, Corporativo,
-// etc., más "Personalizado") no tienen pantalla propia de alta — se crean
-// solos, una única vez por organización, la primera vez que alguien los
-// usa. /planes los lista y edita después como a cualquier otro plan.
-async function obtenerOCrearPlan(organizacionId: string, nombre: string, precioUSD: number): Promise<string> {
+// El plan "Personalizado" no tiene pantalla propia de alta — se crea/reusa
+// una única vez por organización+frecuencia+entrenador, la primera vez que
+// alguien lo usa desde el formulario de Nuevo/Editar Miembro. /planes lo
+// lista y edita después como a cualquier otro plan.
+async function obtenerOCrearPlanPersonalizado(
+  organizacionId: string,
+  frecuencia: FrecuenciaPago,
+  incluyeEntrenador: boolean,
+  precioUSD: number
+): Promise<string> {
   const planes = await listarPlanes({ planes: new PrismaPlanRepository(prisma) }, organizacionId);
-  const existente = planes.find((plan) => plan.nombre === nombre);
+  const existente = planes.find(
+    (plan) => plan.nombre === "Personalizado" && plan.frecuencia === frecuencia && plan.incluyeEntrenador === incluyeEntrenador
+  );
   if (existente) return existente.id;
 
   const nuevo = await crearPlan(
     { planes: new PrismaPlanRepository(prisma) },
-    { organizacionId, nombre, tipoAcceso: "TODA_LA_ORGANIZACION", precioUSD, sucursalIds: [] }
+    { organizacionId, nombre: "Personalizado", frecuencia, incluyeEntrenador, precioUSD }
   );
   return nuevo.id;
+}
+
+// Resuelve el planId a partir de los campos del formulario: o bien un Plan
+// real del catálogo (planId ya viene armado), o bien "Personalizado"
+// (busca/crea el Plan ad-hoc con la frecuencia y entrenador elegidos).
+async function resolverPlanId(organizacionId: string, formData: FormData, precioPlan: number): Promise<string | null> {
+  const planIdElegido = formData.get("planId")?.toString();
+  if (planIdElegido) return planIdElegido;
+
+  const esPersonalizado = formData.get("planPersonalizado")?.toString() === "1";
+  if (!esPersonalizado) return null;
+
+  const frecuencia = (formData.get("frecuenciaPersonalizada")?.toString() as FrecuenciaPago) || "MENSUAL";
+  const incluyeEntrenador = formData.get("entrenadorPersonalizado")?.toString() === "1";
+
+  return obtenerOCrearPlanPersonalizado(organizacionId, frecuencia, incluyeEntrenador, precioPlan);
 }
 
 function storageR2(): R2StorageService {
@@ -85,18 +112,23 @@ export async function crearMiembroAction(
   const nombre = formData.get("nombre")?.toString().trim();
   const cedula = formData.get("cedula")?.toString().trim();
   const fechaInscripcionTexto = formData.get("fechaInscripcion")?.toString();
+  const sucursalId = formData.get("sucursalId")?.toString();
   const precioPlan = Number(formData.get("precioPlan"));
-  const planNombre = formData.get("planNombre")?.toString().trim();
   const metodo = formData.get("metodo")?.toString();
   const tasaCambioRaw = formData.get("tasaCambio")?.toString();
   const numeroOperacion = formData.get("numeroOperacion")?.toString().trim() || null;
 
-  if (!nombre || !cedula || !fechaInscripcionTexto || !planNombre || !metodo || Number.isNaN(precioPlan)) {
-    return { error: "Nombre, cédula, fecha de inscripción, plan y método de pago son requeridos." };
+  if (!nombre || !cedula || !fechaInscripcionTexto || !sucursalId || !metodo || Number.isNaN(precioPlan)) {
+    return { error: "Nombre, cédula, fecha de inscripción, sede y método de pago son requeridos." };
   }
 
   if (METODOS_BANCARIOS.includes(metodo) && !numeroOperacion) {
     return { error: "El número de operación es requerido para pagos por banco." };
+  }
+
+  const planId = await resolverPlanId(usuario.organizacionId, formData, precioPlan);
+  if (!planId) {
+    return { error: "Elegí un plan para el miembro." };
   }
 
   const fotoUrl = await guardarFoto(formData.get("foto"));
@@ -107,6 +139,7 @@ export async function crearMiembroAction(
       { miembros: new PrismaMemberRepository(prisma) },
       {
         organizacionId: usuario.organizacionId,
+        sucursalId,
         nombre,
         cedula,
         fechaInscripcion: new Date(`${fechaInscripcionTexto}T00:00:00`),
@@ -114,7 +147,7 @@ export async function crearMiembroAction(
         celular: formData.get("celular")?.toString() || null,
         fotoUrl,
         entrenadorId: formData.get("entrenadorId")?.toString() || null,
-        planTipo: (formData.get("planTipo")?.toString() as PlanTipo) ?? "SIN_ENTRENADOR",
+        planId,
         precioPlan,
       }
     );
@@ -134,8 +167,6 @@ export async function crearMiembroAction(
   }
 
   try {
-    const planId = await obtenerOCrearPlan(usuario.organizacionId, planNombre, precioPlan);
-
     await registrarPago(
       {
         pagos: new PrismaPagoRepository(prisma),
@@ -186,33 +217,40 @@ export async function actualizarMiembroAction(
 
   const nombre = formData.get("nombre")?.toString().trim();
   const fechaInscripcionTexto = formData.get("fechaInscripcion")?.toString();
+  const sucursalId = formData.get("sucursalId")?.toString();
   const precioPlan = Number(formData.get("precioPlan"));
 
-  if (!nombre || !fechaInscripcionTexto || Number.isNaN(precioPlan)) {
-    return { error: "Nombre, fecha de inscripción y precio del plan son requeridos." };
+  if (!nombre || !fechaInscripcionTexto || !sucursalId || Number.isNaN(precioPlan)) {
+    return { error: "Nombre, fecha de inscripción, sede y precio del plan son requeridos." };
   }
 
+  const planId = await resolverPlanId(usuario.organizacionId, formData, precioPlan);
   const fotoUrl = await guardarFoto(formData.get("foto"));
 
   try {
     await actualizarMiembro(
-      { miembros: new PrismaMemberRepository(prisma) },
+      {
+        miembros: new PrismaMemberRepository(prisma),
+        planes: new PrismaPlanRepository(prisma),
+        suscripciones: new PrismaSuscripcionRepository(prisma),
+      },
       {
         organizacionId: usuario.organizacionId,
         id,
         cambios: {
           nombre,
+          sucursalId,
           fechaInscripcion: new Date(`${fechaInscripcionTexto}T00:00:00`),
           celular: formData.get("celular")?.toString() || null,
           entrenadorId: formData.get("entrenadorId")?.toString() || null,
-          planTipo: formData.get("planTipo")?.toString() as PlanTipo,
+          ...(planId ? { planId } : {}),
           precioPlan,
           ...(fotoUrl ? { fotoUrl } : {}),
         },
       }
     );
   } catch (error) {
-    if (error instanceof MiembroNoEncontradoError) {
+    if (error instanceof MiembroNoEncontradoError || error instanceof ActualizarPlanNoEncontradoError) {
       return { error: error.message };
     }
     throw error;
@@ -227,7 +265,11 @@ export async function darDeBajaAction(id: string): Promise<void> {
   if (!usuario) redirect("/login");
 
   await actualizarMiembro(
-    { miembros: new PrismaMemberRepository(prisma) },
+    {
+      miembros: new PrismaMemberRepository(prisma),
+      planes: new PrismaPlanRepository(prisma),
+      suscripciones: new PrismaSuscripcionRepository(prisma),
+    },
     { organizacionId: usuario.organizacionId, id, cambios: { activo: false } }
   );
 
@@ -239,7 +281,11 @@ export async function reactivarAction(id: string): Promise<void> {
   if (!usuario) redirect("/login");
 
   await actualizarMiembro(
-    { miembros: new PrismaMemberRepository(prisma) },
+    {
+      miembros: new PrismaMemberRepository(prisma),
+      planes: new PrismaPlanRepository(prisma),
+      suscripciones: new PrismaSuscripcionRepository(prisma),
+    },
     { organizacionId: usuario.organizacionId, id, cambios: { activo: true } }
   );
 

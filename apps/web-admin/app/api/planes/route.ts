@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { obtenerUsuarioDeSesion } from "@/lib/sesion";
 import { PrismaPlanRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaPlanRepository";
 import { listarPlanes } from "@gym-app/domain/use-cases/ListarPlanes";
-import { crearPlan, SucursalesRequeridasError, SucursalInvalidaError } from "@gym-app/domain/use-cases/CrearPlan";
+import { crearPlan } from "@gym-app/domain/use-cases/CrearPlan";
 
 export async function GET(req: NextRequest) {
   const usuario = await obtenerUsuarioDeSesion(req);
@@ -29,9 +29,9 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json();
 
-    if (!body.nombre || !body.tipoAcceso || body.precioUSD === undefined) {
+    if (!body.nombre || !body.frecuencia || body.precioUSD === undefined) {
       return NextResponse.json(
-        { error: "nombre, tipoAcceso y precioUSD son requeridos." },
+        { error: "nombre, frecuencia y precioUSD son requeridos." },
         { status: 400 }
       );
     }
@@ -41,17 +41,14 @@ export async function POST(req: NextRequest) {
       {
         organizacionId: usuario.organizacionId,
         nombre: body.nombre,
-        tipoAcceso: body.tipoAcceso,
+        frecuencia: body.frecuencia,
+        incluyeEntrenador: body.incluyeEntrenador ?? false,
         precioUSD: body.precioUSD,
-        sucursalIds: body.sucursalIds ?? [],
       }
     );
 
     return NextResponse.json(plan, { status: 201 });
   } catch (error) {
-    if (error instanceof SucursalesRequeridasError || error instanceof SucursalInvalidaError) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
-    }
     console.error("Error al crear plan:", error);
     return NextResponse.json({ error: "Error interno al crear el plan." }, { status: 500 });
   }

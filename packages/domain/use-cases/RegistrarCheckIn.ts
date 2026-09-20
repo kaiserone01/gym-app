@@ -1,9 +1,9 @@
 import { IMemberRepository } from "../ports/IMemberRepository";
 import { ICheckInRepository } from "../ports/ICheckInRepository";
 import { ISuscripcionRepository } from "../ports/ISuscripcionRepository";
-import { PlanTipo } from "../entities/Miembro";
+import { ISucursalRepository } from "../ports/ISucursalRepository";
 import { EstadoCheckIn } from "../entities/CheckIn";
-import { validarAccesoSucursalPorPlan } from "./ValidarAccesoSucursalPorPlan";
+import { validarAccesoSucursal } from "./ValidarAccesoSucursalPorPlan";
 
 const VENTANA_IDEMPOTENCIA_MINUTOS = 2;
 
@@ -11,6 +11,7 @@ export interface RegistrarCheckInDeps {
   miembros: IMemberRepository;
   checkIns: ICheckInRepository;
   suscripciones: ISuscripcionRepository;
+  sucursales: ISucursalRepository;
 }
 
 export interface RegistrarCheckInInput {
@@ -23,8 +24,12 @@ export interface RegistrarCheckInResultado {
   nombre: string;
   fotoUrl: string | null;
   entrenadorNombre: string | null;
-  planTipo: PlanTipo;
   estado: EstadoCheckIn;
+  // Sede asignada al miembro — se informa siempre, pero cobra sentido en
+  // el kiosco cuando estado === "sucursal_incorrecta" ("Acceso denegado,
+  // tu sede es X en Y").
+  sucursalAsignadaNombre: string;
+  sucursalAsignadaDireccion: string | null;
 }
 
 export class MiembroNoEncontradoError extends Error {
@@ -43,6 +48,16 @@ export async function registrarCheckIn(
     throw new MiembroNoEncontradoError();
   }
 
+  const sucursalAsignada = await deps.sucursales.buscarPorId(input.organizacionId, miembro.sucursalId);
+
+  const base = {
+    nombre: miembro.nombre,
+    fotoUrl: miembro.fotoUrl,
+    entrenadorNombre: miembro.entrenadorNombre,
+    sucursalAsignadaNombre: sucursalAsignada?.nombre ?? "",
+    sucursalAsignadaDireccion: sucursalAsignada?.direccion ?? null,
+  };
+
   const desde = new Date(Date.now() - VENTANA_IDEMPOTENCIA_MINUTOS * 60_000);
   const existente = await deps.checkIns.buscarRecientePorMiembroYSucursal(
     miembro.id,
@@ -50,20 +65,14 @@ export async function registrarCheckIn(
     desde
   );
 
-  const base = {
-    nombre: miembro.nombre,
-    fotoUrl: miembro.fotoUrl,
-    entrenadorNombre: miembro.entrenadorNombre,
-    planTipo: miembro.planTipo,
-  };
-
   if (existente) {
     return { ...base, estado: existente.estadoAlMomento };
   }
 
-  const estado = await validarAccesoSucursalPorPlan(
+  const estado = await validarAccesoSucursal(
     { suscripciones: deps.suscripciones },
     miembro.id,
+    miembro.sucursalId,
     input.sucursalId
   );
 

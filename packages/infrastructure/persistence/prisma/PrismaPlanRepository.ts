@@ -1,12 +1,13 @@
 import type { PrismaClient } from "@gym-app/db/generated/prisma/client";
 import type { IPlanRepository } from "@gym-app/domain/ports/IPlanRepository";
-import type { Plan, DatosNuevoPlan, CambiosPlan } from "@gym-app/domain/entities/Plan";
+import type { Plan, DatosNuevoPlan, CambiosPlan, FrecuenciaPago } from "@gym-app/domain/entities/Plan";
 
 type FilaPlan = {
   id: string;
   organizacionId: string;
   nombre: string;
-  tipoAcceso: Plan["tipoAcceso"];
+  frecuencia: Plan["frecuencia"];
+  incluyeEntrenador: boolean;
   precioUSD: { toNumber(): number };
   activo: boolean;
 };
@@ -16,7 +17,8 @@ function mapear(plan: FilaPlan): Plan {
     id: plan.id,
     organizacionId: plan.organizacionId,
     nombre: plan.nombre,
-    tipoAcceso: plan.tipoAcceso,
+    frecuencia: plan.frecuencia,
+    incluyeEntrenador: plan.incluyeEntrenador,
     precioUSD: plan.precioUSD.toNumber(),
     activo: plan.activo,
   };
@@ -42,24 +44,14 @@ export class PrismaPlanRepository implements IPlanRepository {
     return mapear(plan);
   }
 
-  async sucursalesValidas(organizacionId: string, sucursalIds: string[]): Promise<boolean> {
-    const cantidad = await this.prisma.sucursal.count({
-      where: { id: { in: sucursalIds }, organizacionId },
-    });
-
-    return cantidad === sucursalIds.length;
-  }
-
   async crear(datos: DatosNuevoPlan): Promise<Plan> {
     const plan = await this.prisma.plan.create({
       data: {
         organizacionId: datos.organizacionId,
         nombre: datos.nombre,
-        tipoAcceso: datos.tipoAcceso,
+        frecuencia: datos.frecuencia,
+        incluyeEntrenador: datos.incluyeEntrenador,
         precioUSD: datos.precioUSD,
-        ...(datos.tipoAcceso !== "TODA_LA_ORGANIZACION"
-          ? { sucursalesAcceso: { create: datos.sucursalIds.map((sucursalId) => ({ sucursalId })) } }
-          : {}),
       },
     });
 
@@ -74,6 +66,25 @@ export class PrismaPlanRepository implements IPlanRepository {
     }
 
     const plan = await this.prisma.plan.update({ where: { id }, data: cambios });
+
+    return mapear(plan);
+  }
+
+  async contarSuscripcionesActivasVigentes(planId: string, ahora: Date): Promise<number> {
+    return this.prisma.suscripcion.count({
+      where: { planId, estado: "ACTIVA", fin: { gte: ahora } },
+    });
+  }
+
+  async actualizarFrecuenciaYEntrenador(
+    id: string,
+    frecuencia: FrecuenciaPago,
+    incluyeEntrenador: boolean
+  ): Promise<Plan> {
+    const plan = await this.prisma.plan.update({
+      where: { id },
+      data: { frecuencia, incluyeEntrenador },
+    });
 
     return mapear(plan);
   }

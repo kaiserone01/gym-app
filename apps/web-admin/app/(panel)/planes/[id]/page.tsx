@@ -2,9 +2,9 @@ import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { obtenerUsuarioDeSesionActual } from "@/lib/sesion";
 import { PrismaPlanRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaPlanRepository";
-import { obtenerSucursalesDeLaOrganizacion } from "../obtenerSucursales";
+import { contarImpactoCambioPlan } from "@gym-app/domain/use-cases/ContarImpactoCambioPlan";
 import { FormularioPlan } from "../FormularioPlan";
-import { actualizarPlanAction, darDeBajaPlanAction, reactivarPlanAction } from "../actions";
+import { actualizarPlanAction, actualizarFrecuenciaPlanAction, darDeBajaPlanAction, reactivarPlanAction } from "../actions";
 import { Button } from "@gym-app/ui/components/Button";
 import { PageHeader } from "@gym-app/ui/components/PageHeader";
 
@@ -14,16 +14,11 @@ export default async function PaginaEditarPlan({ params }: { params: Promise<{ i
 
   const { id } = await params;
 
-  const plan = await new PrismaPlanRepository(prisma).buscarPorId(usuario.organizacionId, id);
+  const planRepo = new PrismaPlanRepository(prisma);
+  const plan = await planRepo.buscarPorId(usuario.organizacionId, id);
   if (!plan) notFound();
 
-  const [sucursales, accesos] = await Promise.all([
-    obtenerSucursalesDeLaOrganizacion(usuario.organizacionId),
-    prisma.planSucursalAcceso.findMany({ where: { planId: id }, select: { sucursalId: true } }),
-  ]);
-
-  const idsAsignados = new Set(accesos.map((a) => a.sucursalId));
-  const sucursalesAsignadas = sucursales.filter((s) => idsAsignados.has(s.id));
+  const cantidadSuscripcionesActivas = await contarImpactoCambioPlan({ planes: planRepo }, id);
 
   return (
     <div className="max-w-lg p-6 lg:p-8">
@@ -33,12 +28,16 @@ export default async function PaginaEditarPlan({ params }: { params: Promise<{ i
 
       <FormularioPlan
         accion={actualizarPlanAction.bind(null, id)}
-        sucursales={sucursales}
         valoresIniciales={{
           nombre: plan.nombre,
-          tipoAcceso: plan.tipoAcceso,
+          frecuencia: plan.frecuencia,
+          incluyeEntrenador: plan.incluyeEntrenador,
           precioUSD: plan.precioUSD,
-          sucursalesAsignadas,
+        }}
+        cambioFrecuencia={{
+          accion: actualizarFrecuenciaPlanAction.bind(null, id),
+          puedeEditar: usuario.rol === "SOCIO",
+          cantidadSuscripcionesActivas,
         }}
       />
 

@@ -10,6 +10,7 @@ import { obtenerMiembro, MiembroNoEncontradoError } from "@gym-app/domain/use-ca
 import { listarPagos } from "@gym-app/domain/use-cases/ListarPagos";
 import { listarPlanes } from "@gym-app/domain/use-cases/ListarPlanes";
 import { listarEntrenadores } from "@gym-app/domain/use-cases/ListarEntrenadores";
+import { obtenerSucursalesVisiblesParaMiembro } from "../obtenerSucursalesVisibles";
 import { FormularioMiembro } from "../FormularioMiembro";
 import { actualizarMiembroAction } from "../actions";
 import { FormularioPago } from "../../pagos/FormularioPago";
@@ -42,13 +43,14 @@ export default async function PaginaEditarMiembro({ params }: { params: Promise<
 
   if (!miembro) notFound();
 
-  const [pagos, planes, entrenadores] = await Promise.all([
+  const [pagos, planes, entrenadores, sucursales] = await Promise.all([
     listarPagos(
       { pagos: new PrismaPagoRepository(prisma), miembros: new PrismaMemberRepository(prisma) },
       { organizacionId: usuario.organizacionId, miembroId: id }
     ),
     listarPlanes({ planes: new PrismaPlanRepository(prisma) }, usuario.organizacionId),
     listarEntrenadores({ entrenadores: new PrismaEntrenadorRepository(prisma) }, usuario.organizacionId),
+    obtenerSucursalesVisiblesParaMiembro(usuario),
   ]);
 
   const planesActivos = planes.filter((plan) => plan.activo);
@@ -62,12 +64,15 @@ export default async function PaginaEditarMiembro({ params }: { params: Promise<
       <FormularioMiembro
         accion={actualizarMiembroAction.bind(null, id)}
         entrenadores={entrenadores}
+        planes={planes}
+        sucursales={sucursales}
         valoresIniciales={{
           nombre: miembro.nombre,
           cedula: miembro.cedula,
           celular: miembro.celular ?? "",
           fechaInscripcion: formatearFechaISO(miembro.fechaInscripcion ?? miembro.createdAt),
-          planTipo: miembro.planTipo,
+          sucursalId: miembro.sucursalId,
+          planId: miembro.planId,
           precioPlan: miembro.precioPlan,
           entrenadorId: miembro.entrenadorId,
           fotoUrl: miembro.fotoUrl,

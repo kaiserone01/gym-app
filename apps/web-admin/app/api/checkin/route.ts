@@ -16,6 +16,7 @@ import { KioskTokenValidator } from "@gym-app/infrastructure/auth/KioskTokenVali
 import { PrismaMemberRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaMemberRepository";
 import { PrismaCheckInRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaCheckInRepository";
 import { PrismaSuscripcionRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaSuscripcionRepository";
+import { PrismaSucursalRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaSucursalRepository";
 import { registrarCheckIn, MiembroNoEncontradoError } from "@gym-app/domain/use-cases/RegistrarCheckIn";
 
 const CORS_HEADERS = {
@@ -58,6 +59,7 @@ export async function POST(req: NextRequest) {
         miembros: new PrismaMemberRepository(prisma),
         checkIns: new PrismaCheckInRepository(prisma),
         suscripciones: new PrismaSuscripcionRepository(prisma),
+        sucursales: new PrismaSucursalRepository(prisma),
       },
       { organizacionId: sucursal.organizacionId, sucursalId: sucursal.id, cedula }
     );
@@ -67,8 +69,9 @@ export async function POST(req: NextRequest) {
         nombre: resultado.nombre,
         fotoUrl: resultado.fotoUrl,
         entrenador: resultado.entrenadorNombre,
-        planTipo: resultado.planTipo,
         estado: resultado.estado,
+        sucursalAsignadaNombre: resultado.sucursalAsignadaNombre,
+        sucursalAsignadaDireccion: resultado.sucursalAsignadaDireccion,
       },
       200
     );

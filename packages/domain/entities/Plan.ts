@@ -1,10 +1,20 @@
-export type TipoAccesoPlan = "SEDE_UNICA" | "LISTA_CERRADA" | "TODA_LA_ORGANIZACION";
+export type FrecuenciaPago = "SEMANAL" | "QUINCENAL" | "MENSUAL";
+
+// Duración en días de un ciclo de pago según la frecuencia — usada al
+// calcular el vencimiento de la Suscripción (RegistrarPago) y al
+// prorratear un cambio de plan (CambiarPlanMiembro, ActualizarFrecuenciaPlan).
+export const DURACION_DIAS_POR_FRECUENCIA: Record<FrecuenciaPago, number> = {
+  SEMANAL: 7,
+  QUINCENAL: 15,
+  MENSUAL: 30,
+};
 
 export interface Plan {
   id: string;
   organizacionId: string;
   nombre: string;
-  tipoAcceso: TipoAccesoPlan;
+  frecuencia: FrecuenciaPago;
+  incluyeEntrenador: boolean;
   precioUSD: number;
   activo: boolean;
 }
@@ -12,11 +22,9 @@ export interface Plan {
 export interface DatosNuevoPlan {
   organizacionId: string;
   nombre: string;
-  tipoAcceso: TipoAccesoPlan;
+  frecuencia: FrecuenciaPago;
+  incluyeEntrenador: boolean;
   precioUSD: number;
-  // Ignorado si tipoAcceso es TODA_LA_ORGANIZACION. Requerido (no vacío) en
-  // cualquier otro caso — CrearPlan lo valida antes de llegar aquí.
-  sucursalIds: string[];
 }
 
 export interface CambiosPlan {

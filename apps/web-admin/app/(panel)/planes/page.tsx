@@ -8,11 +8,12 @@ import { Button } from "@gym-app/ui/components/Button";
 import { Badge } from "@gym-app/ui/components/Badge";
 import { Card } from "@gym-app/ui/components/Card";
 import { PageHeader } from "@gym-app/ui/components/PageHeader";
+import type { FrecuenciaPago } from "@gym-app/domain/entities/Plan";
 
-const ETIQUETA_TIPO_ACCESO: Record<string, string> = {
-  TODA_LA_ORGANIZACION: "Toda la organización",
-  SEDE_UNICA: "Sede única",
-  LISTA_CERRADA: "Lista cerrada",
+const ETIQUETA_FRECUENCIA: Record<FrecuenciaPago, string> = {
+  SEMANAL: "Semanal",
+  QUINCENAL: "Quincenal",
+  MENSUAL: "Mensual",
 };
 
 export default async function PaginaPlanes() {
@@ -36,7 +37,8 @@ export default async function PaginaPlanes() {
             <thead>
               <tr className="border-b text-sm" style={{ borderColor: "var(--gx-edge)", color: "var(--gx-muted)" }}>
                 <th className="py-2">Nombre</th>
-                <th className="py-2">Tipo de acceso</th>
+                <th className="py-2">Frecuencia</th>
+                <th className="py-2">Entrenador</th>
                 <th className="py-2">Precio (USD)</th>
                 <th className="py-2">Estado</th>
                 <th className="py-2"></th>
@@ -49,7 +51,10 @@ export default async function PaginaPlanes() {
                     {plan.nombre}
                   </td>
                   <td className="py-2" style={{ color: "var(--gx-ink)" }}>
-                    {ETIQUETA_TIPO_ACCESO[plan.tipoAcceso]}
+                    {ETIQUETA_FRECUENCIA[plan.frecuencia]}
+                  </td>
+                  <td className="py-2" style={{ color: "var(--gx-ink)" }}>
+                    {plan.incluyeEntrenador ? "Incluido" : "No incluido"}
                   </td>
                   <td className="py-2" style={{ color: "var(--gx-ink)" }}>
                     ${plan.precioUSD.toFixed(2)}
@@ -71,7 +76,7 @@ export default async function PaginaPlanes() {
 
               {planes.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="py-8 text-center" style={{ color: "var(--gx-muted)" }}>
+                  <td colSpan={6} className="py-8 text-center" style={{ color: "var(--gx-muted)" }}>
                     Todavía no hay planes. Creá el primero.
                   </td>
                 </tr>
@@ -92,7 +97,10 @@ export default async function PaginaPlanes() {
                 <Badge tono={plan.activo ? "verde" : "gris"}>{plan.activo ? "Activo" : "Inactivo"}</Badge>
               </div>
               <div className="mt-2 flex justify-between text-sm" style={{ color: "var(--gx-muted)" }}>
-                <span>{ETIQUETA_TIPO_ACCESO[plan.tipoAcceso]}</span>
+                <span>
+                  {ETIQUETA_FRECUENCIA[plan.frecuencia]}
+                  {plan.incluyeEntrenador ? " · con entrenador" : ""}
+                </span>
                 <span>${plan.precioUSD.toFixed(2)}</span>
               </div>
             </Card>

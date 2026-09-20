@@ -33,16 +33,19 @@ const METODOS = ["efectivo_usd", "efectivo_bs", "transferencia", "zelle", "binan
 
 interface PresetPlan {
   nombre: string;
-  planTipo: "SIN_ENTRENADOR" | "CON_ENTRENADOR";
+  frecuencia: "SEMANAL" | "QUINCENAL" | "MENSUAL";
+  incluyeEntrenador: boolean;
   precio: number;
 }
 
 const PRESETS: PresetPlan[] = [
-  { nombre: "Semanal", planTipo: "SIN_ENTRENADOR", precio: 8 },
-  { nombre: "Corporativo", planTipo: "SIN_ENTRENADOR", precio: 22 },
-  { nombre: "Mensual sin entrenador", planTipo: "SIN_ENTRENADOR", precio: 25 },
-  { nombre: "Mensual con entrenador", planTipo: "CON_ENTRENADOR", precio: 30 },
+  { nombre: "Semanal", frecuencia: "SEMANAL", incluyeEntrenador: false, precio: 8 },
+  { nombre: "Corporativo", frecuencia: "MENSUAL", incluyeEntrenador: false, precio: 22 },
+  { nombre: "Mensual sin entrenador", frecuencia: "MENSUAL", incluyeEntrenador: false, precio: 25 },
+  { nombre: "Mensual con entrenador", frecuencia: "MENSUAL", incluyeEntrenador: true, precio: 30 },
 ];
+
+const DURACION_DIAS: Record<PresetPlan["frecuencia"], number> = { SEMANAL: 7, QUINCENAL: 15, MENSUAL: 30 };
 
 function elegir<T>(lista: T[]): T {
   return lista[Math.floor(Math.random() * lista.length)];
@@ -64,12 +67,19 @@ function fechaHaceNDias(n: number): Date {
   return fecha;
 }
 
-async function obtenerOCrearPlan(organizacionId: string, nombre: string, precioUSD: number) {
-  const existente = await prisma.plan.findFirst({ where: { organizacionId, nombre } });
+async function obtenerOCrearPlan(organizacionId: string, preset: PresetPlan) {
+  const existente = await prisma.plan.findFirst({ where: { organizacionId, nombre: preset.nombre } });
   if (existente) return existente;
 
   return prisma.plan.create({
-    data: { organizacionId, nombre, tipoAcceso: "TODA_LA_ORGANIZACION", precioUSD, activo: true },
+    data: {
+      organizacionId,
+      nombre: preset.nombre,
+      frecuencia: preset.frecuencia,
+      incluyeEntrenador: preset.incluyeEntrenador,
+      precioUSD: preset.precio,
+      activo: true,
+    },
   });
 }
 
@@ -79,34 +89,45 @@ async function main() {
     throw new Error("No hay ninguna Organizacion en la base — corré el seed real primero.");
   }
 
+  const sucursal = await prisma.sucursal.findFirst({ where: { organizacionId: organizacion.id } });
+  if (!sucursal) {
+    throw new Error("No hay ninguna Sucursal en la base — corré el seed real primero.");
+  }
+
   const entrenador = await prisma.entrenador.findFirst({
     where: { sucursal: { organizacionId: organizacion.id }, activo: true },
   });
+
+  const admin = await prisma.usuarioAdmin.findFirst({ where: { organizacionId: organizacion.id } });
+  if (!admin) {
+    throw new Error("No hay ningún UsuarioAdmin en la base — corré el seed real primero.");
+  }
 
   const cedulasUsadas = new Set<string>();
   let creados = 0;
 
   for (const preset of PRESETS) {
-    const plan = await obtenerOCrearPlan(organizacion.id, preset.nombre, preset.precio);
+    const plan = await obtenerOCrearPlan(organizacion.id, preset);
 
     for (let i = 0; i < 10; i++) {
       const nombre = `${elegir(NOMBRES)} ${elegir(APELLIDOS)}`;
       const cedula = cedulaAleatoria(cedulasUsadas);
       const fechaPago = fechaHaceNDias(Math.floor(Math.random() * 20));
       const fechaVencimiento = new Date(fechaPago);
-      fechaVencimiento.setDate(fechaVencimiento.getDate() + 30);
+      fechaVencimiento.setDate(fechaVencimiento.getDate() + DURACION_DIAS[preset.frecuencia]);
       const metodo = elegir(METODOS);
       const numeroOperacion = metodo === "pago_movil" ? String(1000 + Math.floor(Math.random() * 9000)) : null;
 
       const miembro = await prisma.miembro.create({
         data: {
           organizacionId: organizacion.id,
+          sucursalId: sucursal.id,
           nombre,
           cedula,
           celular: `0424${Math.floor(1000000 + Math.random() * 8999999)}`,
           fechaInscripcion: fechaPago,
-          entrenadorId: preset.planTipo === "CON_ENTRENADOR" ? (entrenador?.id ?? null) : null,
-          planTipo: preset.planTipo,
+          entrenadorId: preset.incluyeEntrenador ? (entrenador?.id ?? null) : null,
+          planId: plan.id,
           precioPlan: preset.precio,
           fechaUltimoPago: fechaPago,
           fechaVencimiento,
@@ -117,6 +138,8 @@ async function main() {
       await prisma.pago.create({
         data: {
           miembroId: miembro.id,
+          sucursalId: sucursal.id,
+          registradoPorId: admin.id,
           monto: preset.precio,
           metodo,
           numeroOperacion,

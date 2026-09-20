@@ -6,8 +6,7 @@ import { ITurnoRepository } from "../ports/ITurnoRepository";
 import { Pago } from "../entities/Pago";
 import { RolUsuario } from "../entities/UsuarioAdmin";
 import { IAuthorizationService } from "../ports/IAuthorizationService";
-
-const DURACION_SUSCRIPCION_DIAS = 30;
+import { DURACION_DIAS_POR_FRECUENCIA } from "../entities/Plan";
 
 export class MiembroNoEncontradoError extends Error {
   constructor() {
@@ -78,7 +77,7 @@ export async function registrarPago(deps: RegistrarPagoDeps, input: DatosRegistr
 
   const base = activa && activa.fin > ahora ? activa.fin : ahora;
   const fin = new Date(base);
-  fin.setDate(fin.getDate() + DURACION_SUSCRIPCION_DIAS);
+  fin.setDate(fin.getDate() + DURACION_DIAS_POR_FRECUENCIA[plan.frecuencia]);
 
   if (activa) {
     await deps.suscripciones.extenderFin(activa.id, fin);
@@ -86,6 +85,7 @@ export async function registrarPago(deps: RegistrarPagoDeps, input: DatosRegistr
     await deps.suscripciones.crear({ miembroId: input.miembroId, planId: input.planId, inicio: ahora, fin });
   }
 
+  await deps.miembros.actualizar(input.organizacionId, input.miembroId, { planId: input.planId });
   await deps.miembros.actualizarFechasPago(input.miembroId, ahora, fin);
 
   const turnoAbierto = await deps.turnos.buscarAbiertoPorSucursal(input.sucursalId);

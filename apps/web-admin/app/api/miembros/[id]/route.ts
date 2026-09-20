@@ -5,6 +5,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { obtenerUsuarioDeSesion } from "@/lib/sesion";
 import { PrismaMemberRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaMemberRepository";
+import { PrismaPlanRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaPlanRepository";
+import { PrismaSuscripcionRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaSuscripcionRepository";
 import {
   obtenerMiembro,
   MiembroNoEncontradoError as ObtenerMiembroNoEncontradoError,
@@ -55,6 +57,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const cambios: CambiosMiembro = {};
   if (body.nombre !== undefined) cambios.nombre = body.nombre;
+  if (body.sucursalId !== undefined) cambios.sucursalId = body.sucursalId;
   if (body.fechaInscripcion !== undefined) {
     cambios.fechaInscripcion = body.fechaInscripcion ? new Date(body.fechaInscripcion) : null;
   }
@@ -64,13 +67,17 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (body.celular !== undefined) cambios.celular = body.celular;
   if (body.fotoUrl !== undefined) cambios.fotoUrl = body.fotoUrl;
   if (body.entrenadorId !== undefined) cambios.entrenadorId = body.entrenadorId;
-  if (body.planTipo !== undefined) cambios.planTipo = body.planTipo;
+  if (body.planId !== undefined) cambios.planId = body.planId;
   if (body.precioPlan !== undefined) cambios.precioPlan = body.precioPlan;
   if (body.activo !== undefined) cambios.activo = body.activo;
 
   try {
     const miembro = await actualizarMiembro(
-      { miembros: new PrismaMemberRepository(prisma) },
+      {
+        miembros: new PrismaMemberRepository(prisma),
+        planes: new PrismaPlanRepository(prisma),
+        suscripciones: new PrismaSuscripcionRepository(prisma),
+      },
       { organizacionId: usuario.organizacionId, id, cambios }
     );
 

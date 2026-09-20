@@ -5,21 +5,31 @@ import { Button } from "@gym-app/ui/components/Button";
 import { Input } from "@gym-app/ui/components/Input";
 import { Card } from "@gym-app/ui/components/Card";
 import type { EstadoFormularioMiembro } from "./actions";
-import { PRESETS_PLAN_MIEMBRO } from "./planesPreset";
 import { METODOS_PAGO, METODOS_BANCARIOS } from "../metodosPago";
 import { TASA_BCV_FIJA, METODOS_EN_BS, formatearBs } from "../tasaBcvFija";
 import type { EntrenadorResumen } from "@gym-app/domain/entities/EntrenadorResumen";
+import type { SucursalResumen } from "@gym-app/domain/entities/SucursalResumen";
+import type { Plan, FrecuenciaPago } from "@gym-app/domain/entities/Plan";
 
 export interface ValoresFormularioMiembro {
   nombre: string;
   cedula: string;
   celular: string;
   fechaInscripcion: string; // yyyy-mm-dd
-  planTipo: "SIN_ENTRENADOR" | "CON_ENTRENADOR";
+  sucursalId: string;
+  planId: string | null;
   precioPlan: number;
   entrenadorId: string | null;
   fotoUrl: string | null;
 }
+
+const ID_PERSONALIZADO = "__personalizado__";
+
+const ETIQUETA_FRECUENCIA: Record<FrecuenciaPago, string> = {
+  SEMANAL: "Semanal",
+  QUINCENAL: "Quincenal",
+  MENSUAL: "Mensual",
+};
 
 // OJO: nunca usar fecha.toISOString() acá — convierte a UTC primero, y de
 // noche (pasadas las 8pm en Venezuela, UTC-4) eso salta al día siguiente.
@@ -60,11 +70,15 @@ function Fila({ label, valor }: { label: string; valor: string }) {
 export function FormularioMiembro({
   accion,
   entrenadores,
+  sucursales,
+  planes,
   valoresIniciales,
   panelLateral,
 }: {
   accion: (estado: EstadoFormularioMiembro, formData: FormData) => Promise<EstadoFormularioMiembro>;
   entrenadores: EntrenadorResumen[];
+  sucursales: SucursalResumen[];
+  planes: Plan[];
   valoresIniciales?: ValoresFormularioMiembro;
   // Contenido propio de la pantalla de edición (dar de baja, historial de
   // pagos, registrar pago) — se muestra en el panel derecho cuando no hay
@@ -79,56 +93,66 @@ export function FormularioMiembro({
   const [cedula, setCedula] = useState(valoresIniciales?.cedula ?? "");
   const [celular, setCelular] = useState(valoresIniciales?.celular ?? "");
   const [fechaInscripcion, setFechaInscripcion] = useState(valoresIniciales?.fechaInscripcion ?? hoyISO());
+  const [sucursalId, setSucursalId] = useState(valoresIniciales?.sucursalId ?? sucursales[0]?.id ?? "");
   const [entrenadorId, setEntrenadorId] = useState(valoresIniciales?.entrenadorId ?? "");
   const [fotoPreview, setFotoPreview] = useState<string | null>(valoresIniciales?.fotoUrl ?? null);
 
-  const [presetKey, setPresetKey] = useState<string>(() => {
-    if (!valoresIniciales) return "mensual_sin";
-    const coincide = PRESETS_PLAN_MIEMBRO.find(
-      (preset) => preset.planTipo === valoresIniciales.planTipo && preset.precio === valoresIniciales.precioPlan
-    );
-    return coincide?.key ?? "personalizado";
+  // Si la sucursal o el plan actuales del miembro ya no están entre las
+  // opciones visibles (p. ej. un plan que se dio de baja, o una sucursal
+  // fuera del alcance del usuario que edita), se agregan igual a la lista
+  // para no perder el dato al mostrar el formulario.
+  const sucursalesConActual =
+    valoresIniciales && !sucursales.some((s) => s.id === valoresIniciales.sucursalId)
+      ? [...sucursales, { id: valoresIniciales.sucursalId, nombre: "(sede actual)", direccion: null, diasGracia: 0, activo: true }]
+      : sucursales;
+
+  const planesActivos = planes.filter(
+    (plan) => plan.activo || (valoresIniciales && plan.id === valoresIniciales.planId)
+  );
+
+  const [planId, setPlanId] = useState<string>(() => {
+    if (!valoresIniciales) return planesActivos[0]?.id ?? ID_PERSONALIZADO;
+    return valoresIniciales.planId ?? ID_PERSONALIZADO;
   });
-  const [precioPersonalizado, setPrecioPersonalizado] = useState<string>(
-    presetKey === "personalizado" ? String(valoresIniciales?.precioPlan ?? "") : ""
-  );
-  const [entrenadorPersonalizado, setEntrenadorPersonalizado] = useState(
-    valoresIniciales?.planTipo === "CON_ENTRENADOR"
-  );
-  const [errorPrecioPersonalizado, setErrorPrecioPersonalizado] = useState<string | null>(null);
+  const [precio, setPrecio] = useState<string>(String(valoresIniciales?.precioPlan ?? ""));
+  const [frecuenciaPersonalizada, setFrecuenciaPersonalizada] = useState<FrecuenciaPago>("MENSUAL");
+  const [entrenadorPersonalizado, setEntrenadorPersonalizado] = useState(false);
+  const [errorPrecio, setErrorPrecio] = useState<string | null>(null);
   const [metodoPago, setMetodoPago] = useState("");
   const [numeroOperacion, setNumeroOperacion] = useState("");
   const [mostrarTicket, setMostrarTicket] = useState(false);
 
-  const esCustom = presetKey === "personalizado";
-  const presetSeleccionado = PRESETS_PLAN_MIEMBRO.find((preset) => preset.key === presetKey);
+  const esPersonalizado = planId === ID_PERSONALIZADO;
+  const planSeleccionado = planesActivos.find((p) => p.id === planId);
 
-  const planTipoActual: "SIN_ENTRENADOR" | "CON_ENTRENADOR" = esCustom
-    ? entrenadorPersonalizado
-      ? "CON_ENTRENADOR"
-      : "SIN_ENTRENADOR"
-    : (presetSeleccionado?.planTipo ?? "SIN_ENTRENADOR");
-
-  const requiereEntrenador = planTipoActual === "CON_ENTRENADOR";
-  const precioActual = esCustom ? Number(precioPersonalizado) || 0 : (presetSeleccionado?.precio ?? 0);
-  const nombrePlanActual = esCustom ? "Personalizado" : (presetSeleccionado?.nombre ?? "—");
+  const requiereEntrenador = esPersonalizado ? entrenadorPersonalizado : (planSeleccionado?.incluyeEntrenador ?? false);
+  const precioActual = Number(precio) || 0;
+  const nombrePlanActual = esPersonalizado ? "Personalizado" : (planSeleccionado?.nombre ?? "—");
   const nombreEntrenadorActual = entrenadores.find((e) => e.id === entrenadorId)?.nombre ?? null;
   const nombreMetodoPagoActual = METODOS_PAGO.find((m) => m.value === metodoPago)?.label ?? null;
   const esPagoEnBs = METODOS_EN_BS.includes(metodoPago);
   const tasaCambioActual = esPagoEnBs ? TASA_BCV_FIJA : "";
   const montoBsActual = esPagoEnBs ? precioActual * TASA_BCV_FIJA : null;
 
+  function manejarCambioPlan(nuevoId: string) {
+    setPlanId(nuevoId);
+    if (nuevoId !== ID_PERSONALIZADO) {
+      const plan = planesActivos.find((p) => p.id === nuevoId);
+      if (plan) setPrecio(String(plan.precioUSD));
+    }
+  }
+
   function manejarClickGuardar() {
     const form = formRef.current;
     if (!form) return;
     if (!form.reportValidity()) return;
 
-    if (esCustom && (!precioPersonalizado || Number(precioPersonalizado) <= 0)) {
-      setErrorPrecioPersonalizado("Ingresá un precio válido.");
+    if (!precio || Number(precio) <= 0) {
+      setErrorPrecio("Ingresá un precio válido.");
       return;
     }
 
-    setErrorPrecioPersonalizado(null);
+    setErrorPrecio(null);
     setMostrarTicket(true);
   }
 
@@ -151,7 +175,14 @@ export function FormularioMiembro({
           </p>
         )}
 
-        <input type="hidden" name="planTipo" value={planTipoActual} />
+        <input type="hidden" name="planId" value={esPersonalizado ? "" : planId} />
+        <input type="hidden" name="planPersonalizado" value={esPersonalizado ? "1" : ""} />
+        <input type="hidden" name="frecuenciaPersonalizada" value={esPersonalizado ? frecuenciaPersonalizada : ""} />
+        <input
+          type="hidden"
+          name="entrenadorPersonalizado"
+          value={esPersonalizado && entrenadorPersonalizado ? "1" : ""}
+        />
         <input type="hidden" name="precioPlan" value={precioActual} />
         <input type="hidden" name="planNombre" value={nombrePlanActual} />
         {!esEdicion && (
@@ -234,6 +265,28 @@ export function FormularioMiembro({
               value={fechaInscripcion}
               onChange={(e) => setFechaInscripcion(e.target.value)}
             />
+
+            <label className="flex flex-col gap-1.5 text-sm" style={{ color: "var(--gx-muted)" }}>
+              Sede asignada
+              <select
+                name="sucursalId"
+                required
+                value={sucursalId}
+                onChange={(e) => setSucursalId(e.target.value)}
+                className="min-h-11 rounded-lg border px-3 outline-none focus:border-[var(--gx-accent)]"
+                style={{ background: "var(--gx-surface-2)", borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }}
+              >
+                <option value="">Seleccioná una sede</option>
+                {sucursalesConActual.map((sucursal) => (
+                  <option key={sucursal.id} value={sucursal.id}>
+                    {sucursal.nombre}
+                  </option>
+                ))}
+              </select>
+              <span className="text-xs" style={{ color: "var(--gx-muted-dim)" }}>
+                Determina en qué sucursal puede hacer check-in.
+              </span>
+            </label>
           </div>
         </Card>
 
@@ -243,13 +296,13 @@ export function FormularioMiembro({
           </h2>
 
           <div className="grid grid-cols-2 gap-3">
-            {PRESETS_PLAN_MIEMBRO.map((preset) => {
-              const seleccionado = presetKey === preset.key;
+            {planesActivos.map((plan) => {
+              const seleccionado = !esPersonalizado && planId === plan.id;
               return (
                 <button
-                  key={preset.key}
+                  key={plan.id}
                   type="button"
-                  onClick={() => setPresetKey(preset.key)}
+                  onClick={() => manejarCambioPlan(plan.id)}
                   className="flex flex-col items-start gap-1 rounded-lg border-2 p-4 text-left transition-colors duration-150 active:scale-[0.98]"
                   style={
                     seleccionado
@@ -261,15 +314,15 @@ export function FormularioMiembro({
                   }
                 >
                   <span className="text-sm font-medium" style={{ color: "var(--gx-muted)" }}>
-                    {preset.nombre}
+                    {plan.nombre}
                   </span>
                   <span className="text-2xl font-semibold" style={{ color: "var(--gx-ink)" }}>
-                    ${preset.precio}
+                    ${plan.precioUSD}
                     <span className="text-sm font-normal" style={{ color: "var(--gx-muted)" }}>
-                      /mes
+                      /{ETIQUETA_FRECUENCIA[plan.frecuencia].toLowerCase()}
                     </span>
                   </span>
-                  {preset.planTipo === "CON_ENTRENADOR" && (
+                  {plan.incluyeEntrenador && (
                     <span className="text-xs font-medium" style={{ color: "var(--gx-accent)" }}>
                       Incluye entrenador
                     </span>
@@ -280,10 +333,10 @@ export function FormularioMiembro({
 
             <button
               type="button"
-              onClick={() => setPresetKey("personalizado")}
+              onClick={() => manejarCambioPlan(ID_PERSONALIZADO)}
               className="flex flex-col items-start gap-1 rounded-lg border-2 p-4 text-left transition-colors duration-150 active:scale-[0.98]"
               style={
-                esCustom
+                esPersonalizado
                   ? {
                       borderColor: "var(--gx-accent)",
                       background: "color-mix(in srgb, var(--gx-accent) 12%, transparent)",
@@ -295,7 +348,7 @@ export function FormularioMiembro({
                 Personalizado
               </span>
               <span className="text-lg font-semibold" style={{ color: "var(--gx-ink)" }}>
-                Definir precio
+                Definir plan
               </span>
               <span className="text-xs" style={{ color: "var(--gx-muted)" }}>
                 Para casos especiales
@@ -303,24 +356,21 @@ export function FormularioMiembro({
             </button>
           </div>
 
-          {esCustom && (
+          {esPersonalizado && (
             <div className="mt-4 flex flex-col gap-3 rounded-lg border p-4" style={{ borderColor: "var(--gx-edge)" }}>
-              <Input
-                label="Precio personalizado (USD)"
-                type="number"
-                step="0.01"
-                min="0"
-                value={precioPersonalizado}
-                onChange={(e) => {
-                  setPrecioPersonalizado(e.target.value);
-                  setErrorPrecioPersonalizado(null);
-                }}
-              />
-              {errorPrecioPersonalizado && (
-                <p className="text-sm" style={{ color: "var(--gx-bad)" }}>
-                  {errorPrecioPersonalizado}
-                </p>
-              )}
+              <label className="flex flex-col gap-1.5 text-sm" style={{ color: "var(--gx-muted)" }}>
+                Frecuencia de pago
+                <select
+                  value={frecuenciaPersonalizada}
+                  onChange={(e) => setFrecuenciaPersonalizada(e.target.value as FrecuenciaPago)}
+                  className="min-h-11 rounded-lg border px-3 outline-none focus:border-[var(--gx-accent)]"
+                  style={{ background: "var(--gx-surface-2)", borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }}
+                >
+                  <option value="SEMANAL">Semanal</option>
+                  <option value="QUINCENAL">Quincenal</option>
+                  <option value="MENSUAL">Mensual</option>
+                </select>
+              </label>
 
               <label className="flex min-h-11 items-center gap-2 text-sm" style={{ color: "var(--gx-muted)" }}>
                 <input
@@ -333,6 +383,25 @@ export function FormularioMiembro({
               </label>
             </div>
           )}
+
+          <div className="mt-4 flex flex-col gap-3 rounded-lg border p-4" style={{ borderColor: "var(--gx-edge)" }}>
+            <Input
+              label="Precio (USD)"
+              type="number"
+              step="0.01"
+              min="0"
+              value={precio}
+              onChange={(e) => {
+                setPrecio(e.target.value);
+                setErrorPrecio(null);
+              }}
+            />
+            {errorPrecio && (
+              <p className="text-sm" style={{ color: "var(--gx-bad)" }}>
+                {errorPrecio}
+              </p>
+            )}
+          </div>
 
           <label className="mt-4 flex flex-col gap-1.5 text-sm" style={{ color: "var(--gx-muted)" }}>
             Entrenador asignado
@@ -465,6 +534,7 @@ export function FormularioMiembro({
               <Fila label="Cédula" valor={cedula || "—"} />
               <Fila label="Celular" valor={celular || "—"} />
               <Fila label="Inscripción" valor={formatearFecha(fechaInscripcion)} />
+              <Fila label="Sede" valor={sucursales.find((s) => s.id === sucursalId)?.nombre ?? "—"} />
               <Fila label="Plan" valor={nombrePlanActual} />
               <Fila label="Entrenador" valor={requiereEntrenador ? (nombreEntrenadorActual ?? "Sin asignar") : "No aplica"} />
               {!esEdicion && <Fila label="Método de pago" valor={nombreMetodoPagoActual ?? "—"} />}

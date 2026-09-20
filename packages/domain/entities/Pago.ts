@@ -6,6 +6,7 @@ export interface Pago {
   sucursalId: string;
   turnoId: string | null;
   registradoPorId: string;
+  registradoPorNombre?: string;
   monto: number;
   metodo: string;
   metodoPagoId: string | null;
@@ -13,6 +14,8 @@ export interface Pago {
   tasaCambio: number | null;
   montoBs: number | null;
   fechaPago: Date;
+  fechaInicioCiclo: Date | null;
+  fechaFinCiclo: Date | null;
   anuladoEn: Date | null;
   anuladoPorId: string | null;
   motivoAnulacion: string | null;
@@ -29,4 +32,6 @@ export interface DatosNuevoPago {
   numeroOperacion: string | null;
   tasaCambio: number | null;
   montoBs: number | null;
+  fechaInicioCiclo: Date;
+  fechaFinCiclo: Date;
 }

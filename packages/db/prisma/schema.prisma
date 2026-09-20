@@ -226,8 +226,12 @@ model Turno {
   usuarioId      String
   usuario        UsuarioAdmin @relation(fields: [usuarioId], references: [id])
 
-  fondoInicialUSD Decimal @db.Decimal(10, 2)
-  fondoInicialBs  Decimal @db.Decimal(14, 2)
+  // Solo efectivo físico en caja al abrir el turno — no incluye saldos de
+  // cuentas bancarias ni lo recaudado por puntos de venta (ver
+  // ObtenerResumenTurno: únicamente los métodos efectivo_usd/efectivo_bs
+  // arrancan con este fondo, el resto de métodos arranca en 0).
+  fondoInicialEfectivoUSD Decimal @db.Decimal(10, 2)
+  fondoInicialEfectivoBs  Decimal @db.Decimal(14, 2)
 
   abiertoEn DateTime    @default(now())
   cerradoEn DateTime?

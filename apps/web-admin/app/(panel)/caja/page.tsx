@@ -76,9 +76,10 @@ export default async function PaginaCaja() {
             </span>
           </div>
           <div className="flex justify-between">
-            <span style={{ color: "var(--gx-muted)" }}>Fondo inicial</span>
+            <span style={{ color: "var(--gx-muted)" }}>Fondo inicial en efectivo</span>
             <span className="font-medium" style={{ color: "var(--gx-ink)" }}>
-              ${resumen.turno.fondoInicialUSD.toFixed(2)} / Bs. {formatearBs(resumen.turno.fondoInicialBs)}
+              ${resumen.turno.fondoInicialEfectivoUSD.toFixed(2)} / Bs.{" "}
+              {formatearBs(resumen.turno.fondoInicialEfectivoBs)}
             </span>
           </div>
         </Card>

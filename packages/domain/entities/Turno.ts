@@ -5,8 +5,10 @@ export interface Turno {
   organizacionId: string;
   sucursalId: string;
   usuarioId: string;
-  fondoInicialUSD: number;
-  fondoInicialBs: number;
+  // Solo efectivo físico en caja al abrir el turno — no incluye bancos ni
+  // puntos de venta (ver ObtenerResumenTurno).
+  fondoInicialEfectivoUSD: number;
+  fondoInicialEfectivoBs: number;
   abiertoEn: Date;
   cerradoEn: Date | null;
   estado: EstadoTurno;
@@ -16,6 +18,6 @@ export interface DatosNuevoTurno {
   organizacionId: string;
   sucursalId: string;
   usuarioId: string;
-  fondoInicialUSD: number;
-  fondoInicialBs: number;
+  fondoInicialEfectivoUSD: number;
+  fondoInicialEfectivoBs: number;
 }

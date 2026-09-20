@@ -64,8 +64,25 @@ export function FormularioAbrirTurno({
           </label>
         )}
 
-        <Input name="fondoInicialUSD" label="Fondo inicial (USD)" type="number" step="0.01" required defaultValue="0" />
-        <Input name="fondoInicialBs" label="Fondo inicial (Bs)" type="number" step="0.01" required defaultValue="0" />
+        <Input
+          name="fondoInicialEfectivoUSD"
+          label="Fondo inicial en efectivo (USD)"
+          type="number"
+          step="0.01"
+          required
+          defaultValue="0"
+        />
+        <Input
+          name="fondoInicialEfectivoBs"
+          label="Fondo inicial en efectivo (Bs)"
+          type="number"
+          step="0.01"
+          required
+          defaultValue="0"
+        />
+        <p className="text-xs" style={{ color: "var(--gx-muted)" }}>
+          Solo el efectivo físico en caja — no incluye bancos ni puntos de venta.
+        </p>
 
         <Button type="submit" disabled={enviando}>
           {enviando ? "Abriendo..." : "Abrir turno"}

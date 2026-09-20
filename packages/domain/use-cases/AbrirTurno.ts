@@ -27,8 +27,8 @@ export interface DatosAbrirTurno {
   sucursalId: string;
   usuarioId: string;
   rolUsuario: RolUsuario;
-  fondoInicialUSD: number;
-  fondoInicialBs: number;
+  fondoInicialEfectivoUSD: number;
+  fondoInicialEfectivoBs: number;
 }
 
 export async function abrirTurno(
@@ -53,7 +53,7 @@ export async function abrirTurno(
     organizacionId: input.organizacionId,
     sucursalId: input.sucursalId,
     usuarioId: input.usuarioId,
-    fondoInicialUSD: input.fondoInicialUSD,
-    fondoInicialBs: input.fondoInicialBs,
+    fondoInicialEfectivoUSD: input.fondoInicialEfectivoUSD,
+    fondoInicialEfectivoBs: input.fondoInicialEfectivoBs,
   });
 }

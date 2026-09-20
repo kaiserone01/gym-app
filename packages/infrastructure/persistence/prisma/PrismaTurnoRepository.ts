@@ -7,8 +7,8 @@ type FilaTurno = {
   organizacionId: string;
   sucursalId: string;
   usuarioId: string;
-  fondoInicialUSD: { toNumber(): number };
-  fondoInicialBs: { toNumber(): number };
+  fondoInicialEfectivoUSD: { toNumber(): number };
+  fondoInicialEfectivoBs: { toNumber(): number };
   abiertoEn: Date;
   cerradoEn: Date | null;
   estado: "ABIERTO" | "CERRADO";
@@ -20,8 +20,8 @@ function mapear(fila: FilaTurno): Turno {
     organizacionId: fila.organizacionId,
     sucursalId: fila.sucursalId,
     usuarioId: fila.usuarioId,
-    fondoInicialUSD: fila.fondoInicialUSD.toNumber(),
-    fondoInicialBs: fila.fondoInicialBs.toNumber(),
+    fondoInicialEfectivoUSD: fila.fondoInicialEfectivoUSD.toNumber(),
+    fondoInicialEfectivoBs: fila.fondoInicialEfectivoBs.toNumber(),
     abiertoEn: fila.abiertoEn,
     cerradoEn: fila.cerradoEn,
     estado: fila.estado,
@@ -37,8 +37,8 @@ export class PrismaTurnoRepository implements ITurnoRepository {
         organizacionId: datos.organizacionId,
         sucursalId: datos.sucursalId,
         usuarioId: datos.usuarioId,
-        fondoInicialUSD: datos.fondoInicialUSD,
-        fondoInicialBs: datos.fondoInicialBs,
+        fondoInicialEfectivoUSD: datos.fondoInicialEfectivoUSD,
+        fondoInicialEfectivoBs: datos.fondoInicialEfectivoBs,
       },
     });
     return mapear(turno);

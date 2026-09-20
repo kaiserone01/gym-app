@@ -34,10 +34,10 @@ export async function abrirTurnoAction(
     return { error: "Debés seleccionar una sucursal para abrir el turno." };
   }
 
-  const fondoInicialUSD = Number(formData.get("fondoInicialUSD"));
-  const fondoInicialBs = Number(formData.get("fondoInicialBs"));
-  if (Number.isNaN(fondoInicialUSD) || Number.isNaN(fondoInicialBs)) {
-    return { error: "El fondo inicial en USD y en Bs son requeridos." };
+  const fondoInicialEfectivoUSD = Number(formData.get("fondoInicialEfectivoUSD"));
+  const fondoInicialEfectivoBs = Number(formData.get("fondoInicialEfectivoBs"));
+  if (Number.isNaN(fondoInicialEfectivoUSD) || Number.isNaN(fondoInicialEfectivoBs)) {
+    return { error: "El fondo inicial en efectivo (USD y Bs) es requerido." };
   }
 
   try {
@@ -52,8 +52,8 @@ export async function abrirTurnoAction(
         sucursalId,
         usuarioId: usuario.id,
         rolUsuario: usuario.rol,
-        fondoInicialUSD,
-        fondoInicialBs,
+        fondoInicialEfectivoUSD,
+        fondoInicialEfectivoBs,
       }
     );
   } catch (error) {

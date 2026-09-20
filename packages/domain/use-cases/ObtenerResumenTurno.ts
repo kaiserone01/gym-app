@@ -61,9 +61,9 @@ export async function obtenerResumenTurno(
 
     const fondoInicial =
       metodo === "efectivo_usd"
-        ? turno.fondoInicialUSD
+        ? turno.fondoInicialEfectivoUSD
         : metodo === "efectivo_bs"
-          ? turno.fondoInicialBs
+          ? turno.fondoInicialEfectivoBs
           : 0;
 
     return {

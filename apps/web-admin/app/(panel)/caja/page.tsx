@@ -37,9 +37,23 @@ export default async function PaginaCaja() {
   const usuario = await obtenerUsuarioDeSesionActual();
   if (!usuario) redirect("/login");
 
-  const sucursalId = usuario.sucursalId;
   const turnoRepo = new PrismaTurnoRepository(prisma);
-  const turnoAbierto = sucursalId ? await turnoRepo.buscarAbiertoPorSucursal(sucursalId) : null;
+
+  // Gerente/Recepción tienen sucursalId fijo: basta buscar ahí. Un SOCIO no
+  // tiene sucursalId fijo (ve varias sucursales) — si abrió un turno en
+  // alguna de ellas hay que encontrarlo igual, si no la página se queda
+  // trabada mostrando "Abrir turno" aunque el turno ya esté abierto (bug
+  // reportado: "se abrió, pero desde caja no desplegó las funcionalidades").
+  const turnoAbierto = usuario.sucursalId
+    ? await turnoRepo.buscarAbiertoPorSucursal(usuario.sucursalId)
+    : await turnoRepo.buscarAbiertoEntreSucursales(
+        (await obtenerSucursalesVisiblesParaTurno(usuario)).map((s) => s.id)
+      );
+
+  // La sucursal "real" del turno encontrado — para un SOCIO puede diferir
+  // de usuario.sucursalId (que es null), así que el resto de la página usa
+  // esta en vez de usuario.sucursalId directamente.
+  const sucursalId = turnoAbierto ? turnoAbierto.sucursalId : usuario.sucursalId;
 
   if (turnoAbierto) {
     const [resumen, miembros, planes, metodosPago, todasLasSucursales] = await Promise.all([

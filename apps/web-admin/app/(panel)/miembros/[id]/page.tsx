@@ -100,6 +100,15 @@ export default async function PaginaEditarMiembro({ params }: { params: Promise<
                 planes={planesActivos}
                 metodosPago={metodosPago}
                 miembroIdFijo={id}
+                planFijo={
+                  miembro.planId
+                    ? {
+                        id: miembro.planId,
+                        nombre: planes.find((p) => p.id === miembro.planId)?.nombre ?? "Plan actual",
+                        precioUSD: miembro.precioPlan,
+                      }
+                    : undefined
+                }
                 origen="miembro"
               />
             </Card>

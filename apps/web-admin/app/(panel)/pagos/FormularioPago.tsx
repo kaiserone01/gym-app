@@ -18,12 +18,19 @@ export interface PlanParaSelector {
   precioUSD: number;
 }
 
+export interface PlanFijo {
+  id: string;
+  nombre: string;
+  precioUSD: number;
+}
+
 export function FormularioPago({
   accion,
   miembros,
   planes,
   metodosPago,
   miembroIdFijo,
+  planFijo,
   origen,
 }: {
   accion: (estado: EstadoFormularioPago, formData: FormData) => Promise<EstadoFormularioPago>;
@@ -31,6 +38,10 @@ export function FormularioPago({
   planes: PlanParaSelector[];
   metodosPago: MetodoPago[];
   miembroIdFijo?: string;
+  // Cuando se pasa, el pago se registra directo contra este plan (el
+  // vigente en la ficha del miembro) sin selector — ver diseño acordado:
+  // "el valor de esa membresía es lo que se toma en cuenta".
+  planFijo?: PlanFijo;
   /** Marca el origen del formulario para que la Server Action decida si redirige o no al terminar. */
   origen?: string;
 }) {
@@ -44,7 +55,7 @@ export function FormularioPago({
     numeroOperacion: string;
   }>({ metodoPagoId: null, metodo: "", tasaCambio: null, numeroOperacion: "" });
 
-  const montoNumero = Number(monto) || 0;
+  const montoNumero = planFijo ? planFijo.precioUSD : Number(monto) || 0;
 
   function manejarCambioPlan(id: string) {
     setPlanId(id);
@@ -86,34 +97,55 @@ export function FormularioPago({
         </label>
       )}
 
-      <label className="flex flex-col gap-1.5 text-sm" style={{ color: "var(--gx-muted)" }}>
-        Plan
-        <select
-          name="planId"
-          required
-          value={planId}
-          onChange={(e) => manejarCambioPlan(e.target.value)}
-          className="min-h-11 rounded-lg border px-3 outline-none focus:border-[var(--gx-accent)]"
-          style={{ background: "var(--gx-surface-2)", borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }}
-        >
-          <option value="">Seleccioná un plan</option>
-          {planes.map((plan) => (
-            <option key={plan.id} value={plan.id}>
-              {plan.nombre}
-            </option>
-          ))}
-        </select>
-      </label>
+      {planFijo ? (
+        <div className="rounded-lg border p-3 text-sm" style={{ borderColor: "var(--gx-edge)", background: "var(--gx-surface-2)" }}>
+          <div className="flex justify-between">
+            <span style={{ color: "var(--gx-muted)" }}>Plan</span>
+            <span className="font-medium" style={{ color: "var(--gx-ink)" }}>
+              {planFijo.nombre}
+            </span>
+          </div>
+          <div className="mt-1 flex justify-between">
+            <span style={{ color: "var(--gx-muted)" }}>Monto</span>
+            <span className="font-semibold" style={{ color: "var(--gx-ink)" }}>
+              ${planFijo.precioUSD.toFixed(2)}
+            </span>
+          </div>
+          <input type="hidden" name="planId" value={planFijo.id} />
+          <input type="hidden" name="monto" value={planFijo.precioUSD} />
+        </div>
+      ) : (
+        <>
+          <label className="flex flex-col gap-1.5 text-sm" style={{ color: "var(--gx-muted)" }}>
+            Plan
+            <select
+              name="planId"
+              required
+              value={planId}
+              onChange={(e) => manejarCambioPlan(e.target.value)}
+              className="min-h-11 rounded-lg border px-3 outline-none focus:border-[var(--gx-accent)]"
+              style={{ background: "var(--gx-surface-2)", borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }}
+            >
+              <option value="">Seleccioná un plan</option>
+              {planes.map((plan) => (
+                <option key={plan.id} value={plan.id}>
+                  {plan.nombre}
+                </option>
+              ))}
+            </select>
+          </label>
 
-      <Input
-        name="monto"
-        label="Monto (USD)"
-        type="number"
-        step="0.01"
-        required
-        value={monto}
-        onChange={(e) => setMonto(e.target.value)}
-      />
+          <Input
+            name="monto"
+            label="Monto (USD)"
+            type="number"
+            step="0.01"
+            required
+            value={monto}
+            onChange={(e) => setMonto(e.target.value)}
+          />
+        </>
+      )}
 
       <input type="hidden" name="metodo" value={seleccionMetodo.metodo} />
       <input type="hidden" name="metodoPagoId" value={seleccionMetodo.metodoPagoId ?? ""} />

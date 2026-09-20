@@ -155,6 +155,13 @@ export function FormularioMiembro({
   const [editandoPlan, setEditandoPlan] = useState(!esEdicion);
   const [confirmandoCambioPlan, setConfirmandoCambioPlan] = useState(false);
   const planIdOriginal = valoresIniciales?.planId ?? null;
+  // Sede y entrenador también se ven de solo lectura en edición — se
+  // asignan en la inscripción, cambiarlos es una acción explícita aparte
+  // (ver diseño acordado).
+  const [editandoSede, setEditandoSede] = useState(!esEdicion);
+  const [editandoEntrenador, setEditandoEntrenador] = useState(!esEdicion);
+  const sucursalIdOriginal = esEdicion ? valoresIniciales?.sucursalId ?? ID_AMBAS_SEDES : null;
+  const entrenadorIdOriginal = valoresIniciales?.entrenadorId ?? "";
 
   const esPersonalizado = planId === ID_PERSONALIZADO;
   const planSeleccionado = planesActivos.find((p) => p.id === planId);
@@ -316,8 +323,47 @@ export function FormularioMiembro({
               value={fechaInscripcion}
               onChange={(e) => setFechaInscripcion(e.target.value)}
             />
+          </div>
+        </Card>
 
-            <label className="flex flex-col gap-1.5 text-sm" style={{ color: "var(--gx-muted)" }}>
+        <Card>
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--gx-muted)" }}>
+              Plan de membresía
+            </h2>
+            <div className="flex gap-2">
+              {esEdicion && !editandoSede && (
+                <Button type="button" variant="secundario" onClick={() => setEditandoSede(true)}>
+                  Cambiar sede
+                </Button>
+              )}
+              {esEdicion && !editandoEntrenador && (
+                <Button type="button" variant="secundario" onClick={() => setEditandoEntrenador(true)}>
+                  Cambiar entrenador
+                </Button>
+              )}
+              {esEdicion && !editandoPlan && (
+                <Button type="button" variant="secundario" onClick={() => setConfirmandoCambioPlan(true)}>
+                  Cambiar plan
+                </Button>
+              )}
+            </div>
+          </div>
+
+          {esEdicion && !editandoSede && (
+            <div className="mb-4 rounded-lg border p-4" style={{ borderColor: "var(--gx-edge)" }}>
+              <input type="hidden" name="sucursalId" value={sucursalId} />
+              <div className="flex justify-between text-sm">
+                <span style={{ color: "var(--gx-muted)" }}>Sede asignada</span>
+                <span className="font-medium" style={{ color: "var(--gx-ink)" }}>
+                  {sucursalId === ID_AMBAS_SEDES ? "Ambas" : sucursales.find((s) => s.id === sucursalId)?.nombre ?? "—"}
+                </span>
+              </div>
+            </div>
+          )}
+
+          {(editandoSede || !esEdicion) && (
+            <label className="mb-4 flex flex-col gap-1.5 text-sm" style={{ color: "var(--gx-muted)" }}>
               Sede asignada
               <select
                 name="sucursalId"
@@ -340,21 +386,21 @@ export function FormularioMiembro({
                   ? "Puede hacer check-in en cualquier sucursal de la organización."
                   : "Determina en qué sucursal puede hacer check-in."}
               </span>
+              {esEdicion && editandoSede && (
+                <Button
+                  type="button"
+                  variant="secundario"
+                  className="mt-1 self-start"
+                  onClick={() => {
+                    if (sucursalIdOriginal !== null) setSucursalId(sucursalIdOriginal);
+                    setEditandoSede(false);
+                  }}
+                >
+                  Cancelar cambio de sede
+                </Button>
+              )}
             </label>
-          </div>
-        </Card>
-
-        <Card>
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--gx-muted)" }}>
-              Plan de membresía
-            </h2>
-            {esEdicion && !editandoPlan && (
-              <Button type="button" variant="secundario" onClick={() => setConfirmandoCambioPlan(true)}>
-                Cambiar plan
-              </Button>
-            )}
-          </div>
+          )}
 
           {esEdicion && !editandoPlan && (
             <div className="rounded-lg border p-4" style={{ borderColor: "var(--gx-edge)" }}>
@@ -533,25 +579,49 @@ export function FormularioMiembro({
 
           <label className="mt-4 flex flex-col gap-1.5 text-sm" style={{ color: "var(--gx-muted)" }}>
             Entrenador asignado
-            <select
-              name="entrenadorId"
-              value={entrenadorId}
-              onChange={(e) => setEntrenadorId(e.target.value)}
-              disabled={!requiereEntrenador || (esEdicion && !editandoPlan)}
-              className="min-h-11 rounded-lg border px-3 outline-none focus:border-[var(--gx-accent)] disabled:opacity-50"
-              style={{ background: "var(--gx-surface-2)", borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }}
-            >
-              <option value="">Seleccioná un entrenador</option>
-              {entrenadores.map((entrenador) => (
-                <option key={entrenador.id} value={entrenador.id}>
-                  {entrenador.nombre}
-                </option>
-              ))}
-            </select>
+            {(() => {
+              const bloqueado = !requiereEntrenador || (esEdicion && !editandoPlan && !editandoEntrenador);
+              return (
+                <>
+                  {/* Un <select disabled> no se envía en el submit — cuando está
+                      bloqueado se manda su valor actual por un hidden aparte,
+                      así no se pisa el entrenadorId existente con null. */}
+                  {bloqueado && <input type="hidden" name="entrenadorId" value={entrenadorId} />}
+                  <select
+                    name={bloqueado ? undefined : "entrenadorId"}
+                    value={entrenadorId}
+                    onChange={(e) => setEntrenadorId(e.target.value)}
+                    disabled={bloqueado}
+                    className="min-h-11 rounded-lg border px-3 outline-none focus:border-[var(--gx-accent)] disabled:opacity-50"
+                    style={{ background: "var(--gx-surface-2)", borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }}
+                  >
+                    <option value="">Seleccioná un entrenador</option>
+                    {entrenadores.map((entrenador) => (
+                      <option key={entrenador.id} value={entrenador.id}>
+                        {entrenador.nombre}
+                      </option>
+                    ))}
+                  </select>
+                </>
+              );
+            })()}
             {!requiereEntrenador && (
               <span className="text-xs" style={{ color: "var(--gx-muted)" }}>
                 Elegí un plan con entrenador para poder asignar uno.
               </span>
+            )}
+            {esEdicion && editandoEntrenador && !editandoPlan && (
+              <Button
+                type="button"
+                variant="secundario"
+                className="mt-1 self-start"
+                onClick={() => {
+                  setEntrenadorId(entrenadorIdOriginal);
+                  setEditandoEntrenador(false);
+                }}
+              >
+                Cancelar cambio de entrenador
+              </Button>
             )}
           </label>
 

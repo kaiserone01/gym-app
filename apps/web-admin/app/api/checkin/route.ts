@@ -72,6 +72,7 @@ export async function POST(req: NextRequest) {
         estado: resultado.estado,
         sucursalAsignadaNombre: resultado.sucursalAsignadaNombre,
         sucursalAsignadaDireccion: resultado.sucursalAsignadaDireccion,
+        diasGraciaRestantes: resultado.diasGraciaRestantes,
       },
       200
     );

@@ -2,15 +2,18 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { Miembro } from "@gym-app/domain/entities/Miembro";
+import type { FrecuenciaPago } from "@gym-app/domain/entities/Plan";
 
 // Solo los campos que este modal necesita mostrar del plan — evita atar
-// este componente al tipo Plan completo del dominio (frecuencia, activo,
-// etc. no se usan acá).
+// este componente al tipo Plan completo del dominio (activo, etc. no se
+// usa acá). frecuencia sí hace falta: calcularProyeccionRenovacion (Paso 2
+// del modal de Caja) la necesita para saber la duración del plan.
 export interface PlanParaModal {
   id: string;
   nombre: string;
   precioUSD: number;
   multisede: boolean;
+  frecuencia: FrecuenciaPago;
 }
 
 const MINIMO_CARACTERES_BUSQUEDA = 3;
@@ -45,11 +48,114 @@ export interface MiembroConPlan {
   nombre: string;
   cedula: string;
   fotoUrl: string | null;
+  fechaVencimiento: Date | null;
   plan: PlanParaModal | undefined;
 }
 
 /**
- * Modal de búsqueda de miembro para Registrar pago en Caja — reemplaza el
+ * Contenido de búsqueda de miembro por nombre/cédula (mínimo 3
+ * caracteres) con resultados en cards — usado tanto por
+ * SelectorMiembroModal (modal standalone, /pagos/nuevo y
+ * /miembros/[id]) como por el Paso 1 del wizard ModalRegistrarPagoCaja,
+ * sin duplicar la lógica de filtro entre ambos.
+ */
+export function BuscadorMiembro({
+  miembros,
+  planes,
+  onSeleccionar,
+}: {
+  miembros: Miembro[];
+  planes: PlanParaModal[];
+  onSeleccionar: (miembro: MiembroConPlan) => void;
+}) {
+  const [busqueda, setBusqueda] = useState("");
+  const planesPorId = useMemo(() => new Map(planes.map((p) => [p.id, p])), [planes]);
+
+  const busquedaAplicada = busqueda.trim().length >= MINIMO_CARACTERES_BUSQUEDA ? busqueda.trim().toLowerCase() : "";
+
+  const resultados = useMemo(() => {
+    if (!busquedaAplicada) return [];
+    return miembros
+      .filter((m) => `${m.nombre} ${m.cedula}`.toLowerCase().includes(busquedaAplicada))
+      .slice(0, 20)
+      .map((m) => ({
+        id: m.id,
+        nombre: m.nombre,
+        cedula: m.cedula,
+        fotoUrl: m.fotoUrl,
+        fechaVencimiento: m.fechaVencimiento,
+        plan: m.planId ? planesPorId.get(m.planId) : undefined,
+      }));
+  }, [miembros, busquedaAplicada, planesPorId]);
+
+  return (
+    <>
+      <label className="flex flex-col gap-1.5 text-sm" style={{ color: "var(--gx-muted)" }}>
+        Nombre o cédula
+        <input
+          type="text"
+          autoFocus
+          placeholder="Mínimo 3 caracteres..."
+          value={busqueda}
+          onChange={(e) => setBusqueda(e.target.value)}
+          className="min-h-11 rounded-lg border px-3 outline-none transition-colors duration-150 focus:border-[var(--gx-accent)]"
+          style={{ background: "var(--gx-surface-2)", borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }}
+        />
+      </label>
+
+      <div className="mt-4 flex-1 overflow-y-auto">
+        {busquedaAplicada === "" && (
+          <p className="py-8 text-center text-sm" style={{ color: "var(--gx-muted)" }}>
+            Escribí al menos 3 caracteres para buscar.
+          </p>
+        )}
+
+        {busquedaAplicada !== "" && resultados.length === 0 && (
+          <p className="py-8 text-center text-sm" style={{ color: "var(--gx-muted)" }}>
+            Ningún miembro coincide con "{busqueda.trim()}".
+          </p>
+        )}
+
+        <div className="flex flex-col gap-2">
+          {resultados.map((miembro) => (
+            <button
+              key={miembro.id}
+              type="button"
+              onClick={() => onSeleccionar(miembro)}
+              className="flex items-center gap-3 rounded-lg border-2 p-3 text-left transition-colors duration-150"
+              style={{ borderColor: "var(--gx-edge)" }}
+            >
+              <Avatar fotoUrl={miembro.fotoUrl} nombre={miembro.nombre} />
+              <div className="min-w-0 flex-1">
+                <p className="truncate font-medium" style={{ color: "var(--gx-ink)" }}>
+                  {miembro.nombre}
+                </p>
+                <p className="text-sm" style={{ color: "var(--gx-muted)" }}>
+                  {miembro.cedula}
+                </p>
+              </div>
+              <div className="text-right text-sm">
+                {!miembro.plan ? (
+                  <span style={{ color: "var(--gx-muted)" }}>Sin plan asignado</span>
+                ) : (
+                  <>
+                    <p style={{ color: "var(--gx-ink)" }}>{miembro.plan.nombre}</p>
+                    <p className="font-semibold" style={{ color: "var(--gx-accent)" }}>
+                      ${miembro.plan.precioUSD.toFixed(2)}
+                    </p>
+                  </>
+                )}
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+    </>
+  );
+}
+
+/**
+ * Modal de búsqueda de miembro para Registrar pago — reemplaza el
  * <select> plano por búsqueda por nombre/cédula (mínimo 3 caracteres, igual
  * criterio que ListaMiembros en /miembros) con resultados en cards. No
  * navega a la ficha del miembro (eso es exclusivo de /miembros): acá solo
@@ -67,9 +173,6 @@ export function SelectorMiembroModal({
   onSeleccionar: (miembro: MiembroConPlan) => void;
   onCerrar: () => void;
 }) {
-  const [busqueda, setBusqueda] = useState("");
-  const planesPorId = useMemo(() => new Map(planes.map((p) => [p.id, p])), [planes]);
-
   useEffect(() => {
     function alPresionarTecla(e: KeyboardEvent) {
       if (e.key === "Escape") onCerrar();
@@ -77,22 +180,6 @@ export function SelectorMiembroModal({
     document.addEventListener("keydown", alPresionarTecla);
     return () => document.removeEventListener("keydown", alPresionarTecla);
   }, [onCerrar]);
-
-  const busquedaAplicada = busqueda.trim().length >= MINIMO_CARACTERES_BUSQUEDA ? busqueda.trim().toLowerCase() : "";
-
-  const resultados = useMemo(() => {
-    if (!busquedaAplicada) return [];
-    return miembros
-      .filter((m) => `${m.nombre} ${m.cedula}`.toLowerCase().includes(busquedaAplicada))
-      .slice(0, 20)
-      .map((m) => ({
-        id: m.id,
-        nombre: m.nombre,
-        cedula: m.cedula,
-        fotoUrl: m.fotoUrl,
-        plan: m.planId ? planesPorId.get(m.planId) : undefined,
-      }));
-  }, [miembros, busquedaAplicada, planesPorId]);
 
   return (
     <div
@@ -123,69 +210,8 @@ export function SelectorMiembroModal({
           </button>
         </div>
 
-        <label className="mt-4 flex flex-col gap-1.5 text-sm" style={{ color: "var(--gx-muted)" }}>
-          Nombre o cédula
-          <input
-            type="text"
-            autoFocus
-            placeholder="Mínimo 3 caracteres..."
-            value={busqueda}
-            onChange={(e) => setBusqueda(e.target.value)}
-            className="min-h-11 rounded-lg border px-3 outline-none transition-colors duration-150 focus:border-[var(--gx-accent)]"
-            style={{ background: "var(--gx-surface-2)", borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }}
-          />
-        </label>
-
-        <div className="mt-4 flex-1 overflow-y-auto">
-          {busquedaAplicada === "" && (
-            <p className="py-8 text-center text-sm" style={{ color: "var(--gx-muted)" }}>
-              Escribí al menos 3 caracteres para buscar.
-            </p>
-          )}
-
-          {busquedaAplicada !== "" && resultados.length === 0 && (
-            <p className="py-8 text-center text-sm" style={{ color: "var(--gx-muted)" }}>
-              Ningún miembro coincide con "{busqueda.trim()}".
-            </p>
-          )}
-
-          <div className="flex flex-col gap-2">
-            {resultados.map((miembro) => {
-              const sinPlan = !miembro.plan;
-              return (
-                <button
-                  key={miembro.id}
-                  type="button"
-                  disabled={sinPlan}
-                  onClick={() => !sinPlan && onSeleccionar(miembro)}
-                  className="flex items-center gap-3 rounded-lg border-2 p-3 text-left transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-60"
-                  style={{ borderColor: "var(--gx-edge)" }}
-                >
-                  <Avatar fotoUrl={miembro.fotoUrl} nombre={miembro.nombre} />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium" style={{ color: "var(--gx-ink)" }}>
-                      {miembro.nombre}
-                    </p>
-                    <p className="text-sm" style={{ color: "var(--gx-muted)" }}>
-                      {miembro.cedula}
-                    </p>
-                  </div>
-                  <div className="text-right text-sm">
-                    {sinPlan ? (
-                      <span style={{ color: "var(--gx-bad)" }}>Sin plan asignado</span>
-                    ) : (
-                      <>
-                        <p style={{ color: "var(--gx-ink)" }}>{miembro.plan!.nombre}</p>
-                        <p className="font-semibold" style={{ color: "var(--gx-accent)" }}>
-                          ${miembro.plan!.precioUSD.toFixed(2)}
-                        </p>
-                      </>
-                    )}
-                  </div>
-                </button>
-              );
-            })}
-          </div>
+        <div className="mt-4 flex flex-1 flex-col overflow-hidden">
+          <BuscadorMiembro miembros={miembros} planes={planes} onSeleccionar={onSeleccionar} />
         </div>
       </div>
     </div>

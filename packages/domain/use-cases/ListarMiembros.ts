@@ -3,7 +3,9 @@ import { Miembro } from "../entities/Miembro";
 
 export async function listarMiembros(
   deps: { miembros: IMemberRepository },
-  organizacionId: string
+  organizacionId: string,
+  sucursalActivaId: string
 ): Promise<Miembro[]> {
-  return deps.miembros.listarPorOrganizacion(organizacionId);
+  const todos = await deps.miembros.listarPorOrganizacion(organizacionId);
+  return todos.filter((m) => m.sucursalId === null || m.sucursalId === sucursalActivaId);
 }

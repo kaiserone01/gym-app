@@ -6,6 +6,7 @@ import { Input } from "@gym-app/ui/components/Input";
 import { Button } from "@gym-app/ui/components/Button";
 import { Card } from "@gym-app/ui/components/Card";
 import { EstadoToggle } from "./EstadoToggle";
+import { DiasDisponibles } from "./vencimiento";
 import type { Miembro } from "@gym-app/domain/entities/Miembro";
 import type { Plan } from "@gym-app/domain/entities/Plan";
 import type { SucursalResumen } from "@gym-app/domain/entities/SucursalResumen";
@@ -27,16 +28,6 @@ function formatearFecha(fecha: Date): string {
   return new Date(fecha).toLocaleDateString("es-VE");
 }
 
-// Días entre hoy y fechaVencimiento, redondeado a días completos — positivo
-// si falta para vencer, negativo si ya venció.
-function diasHastaVencimiento(fechaVencimiento: Date): number {
-  const hoy = new Date();
-  hoy.setHours(0, 0, 0, 0);
-  const vencimiento = new Date(fechaVencimiento);
-  vencimiento.setHours(0, 0, 0, 0);
-  return Math.round((vencimiento.getTime() - hoy.getTime()) / (24 * 60 * 60 * 1000));
-}
-
 function Avatar({ fotoUrl, nombre, tamano }: { fotoUrl: string | null; nombre: string; tamano: number }) {
   return (
     <div
@@ -56,28 +47,6 @@ function Avatar({ fotoUrl, nombre, tamano }: { fotoUrl: string | null; nombre: s
         iniciales(nombre || "?")
       )}
     </div>
-  );
-}
-
-function DiasDisponibles({ fechaVencimiento }: { fechaVencimiento: Date | null }) {
-  if (!fechaVencimiento) {
-    return <span style={{ color: "var(--gx-muted)" }}>Sin pagos registrados</span>;
-  }
-
-  const dias = diasHastaVencimiento(fechaVencimiento);
-
-  if (dias < 0) {
-    return (
-      <span style={{ color: "var(--gx-bad)" }}>
-        Vencido hace {Math.abs(dias)} {Math.abs(dias) === 1 ? "día" : "días"}
-      </span>
-    );
-  }
-
-  return (
-    <span style={{ color: "var(--gx-ink)" }}>
-      {dias} {dias === 1 ? "día" : "días"}
-    </span>
   );
 }
 

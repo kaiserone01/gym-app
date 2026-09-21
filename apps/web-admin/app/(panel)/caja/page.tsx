@@ -19,6 +19,7 @@ import { PrismaMetodoPagoRepository } from "@gym-app/infrastructure/persistence/
 import { listarMetodosPagoActivos } from "@gym-app/domain/use-cases/ListarMetodosPago";
 import { obtenerTurnoAbiertoParaUsuario } from "./obtenerTurnoAbiertoParaUsuario";
 import { AvisoCajaAjena } from "./AvisoCajaAjena";
+import { BotonRegistrarPagoCaja } from "./BotonRegistrarPagoCaja";
 
 // El método ahora se guarda como snapshot legible ("Pago Móvil - Banesco")
 // directo en Pago.metodo, ya no como código a traducir contra un catálogo
@@ -51,9 +52,7 @@ import { inicioDelDia, finDelDia, inicioDeSemana, finDeSemana, inicioDeMes, finD
 import { FormularioAbrirTurno } from "./FormularioAbrirTurno";
 import { FormularioEgreso } from "./FormularioEgreso";
 import { FormularioArqueo } from "./FormularioArqueo";
-import { FormularioPago } from "../pagos/FormularioPago";
 import { abrirTurnoAction, registrarEgresoAction, cerrarTurnoAction } from "./actions";
-import { registrarPagoAction } from "../pagos/actions";
 
 export default async function PaginaCaja() {
   const sesion = await obtenerUsuarioDeSesionActual();
@@ -100,27 +99,25 @@ export default async function PaginaCaja() {
       <div className="flex flex-col gap-6 p-6 pb-24 lg:p-8 lg:pb-8">
         <PageHeader>Turno activo</PageHeader>
 
-        {/* Bento grid en desktop: Registrar pago (la acción más frecuente)
-            ocupa 2/3 del ancho; turno + resumen por método comparten la
-            columna lateral. Pagos/egresos del turno y arqueo van a todo el
+        {/* Bento grid en desktop: las 3 cards de la fila superior
+            (Registrar pago, Abierto desde, Resumen por método) tienen el
+            mismo ancho. Pagos/egresos del turno y arqueo van a todo el
             ancho debajo. En mobile todo se apila en una sola columna. */}
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3 lg:auto-rows-min">
           {esPropio ? (
-            <Card className="text-sm lg:col-span-2 lg:row-span-2">
+            <Card className="text-sm">
               <h2 className="mb-3 font-semibold" style={{ color: "var(--gx-ink)" }}>
                 Registrar pago
               </h2>
-              <FormularioPago
-                accion={registrarPagoAction}
+              <BotonRegistrarPagoCaja
                 miembros={miembrosActivos}
-                miembrosConPlan={miembrosActivos}
                 planes={planesActivos}
                 metodosPago={metodosPago}
-                origen="caja"
+                tasaActual={tasaActual}
               />
             </Card>
           ) : (
-            <div className="lg:col-span-2 lg:row-span-2">
+            <div>
               <AvisoCajaAjena
                 usuarioNombre={turnoAbierto.turno.usuarioNombre ?? "otro usuario"}
                 abiertoEn={turnoAbierto.turno.abiertoEn}

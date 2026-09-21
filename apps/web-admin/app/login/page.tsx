@@ -172,15 +172,46 @@ export default function LoginPage() {
                     type="button"
                     disabled={cargando}
                     onClick={() => elegirSucursal(sucursal.id)}
-                    className="flex flex-col gap-1 rounded-lg border px-4 py-3 text-left transition-opacity disabled:opacity-50"
+                    className="group flex flex-col gap-1 rounded-lg border px-4 py-3 text-left transition-opacity disabled:opacity-50"
                     style={{ borderColor: "var(--gx-edge)", background: "var(--gx-surface-2)", color: "var(--gx-ink)" }}
                   >
-                    <span className="font-semibold">{sucursal.nombre}</span>
+                    <span className="flex items-center justify-between">
+                      <span className="font-semibold">{sucursal.nombre}</span>
+                      <span
+                        className="text-xs font-semibold uppercase tracking-wide opacity-0 transition-opacity group-hover:opacity-100"
+                        style={{ color: "var(--gx-accent)" }}
+                      >
+                        Entrar para continuar
+                      </span>
+                    </span>
                     {sucursal.cajaAbiertaPor && (
                       <span
-                        className="rounded px-2 py-1 text-xs"
-                        style={{ background: "color-mix(in srgb, var(--gx-warn) 15%, transparent)", color: "var(--gx-warn)", width: "fit-content" }}
+                        className="flex items-center gap-1 rounded px-2 py-1 text-xs"
+                        style={{
+                          background: sucursal.cajaAbiertaPorMi
+                            ? "color-mix(in srgb, var(--gx-good) 15%, transparent)"
+                            : "color-mix(in srgb, var(--gx-warn) 15%, transparent)",
+                          color: sucursal.cajaAbiertaPorMi ? "var(--gx-good)" : "var(--gx-warn)",
+                          width: "fit-content",
+                        }}
                       >
+                        <svg
+                          width="14"
+                          height="14"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          aria-hidden="true"
+                        >
+                          <rect x="3" y="10" width="18" height="10" rx="1" />
+                          <path d="M7 10V7a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v3" />
+                          <path d="M3 14h18" />
+                          <path d="M9 14v2" />
+                          <path d="M15 14v2" />
+                        </svg>
                         {sucursal.cajaAbiertaPorMi
                           ? "Ya tienes una caja abierta y activa"
                           : `Caja abierta por ${sucursal.cajaAbiertaPor}`}

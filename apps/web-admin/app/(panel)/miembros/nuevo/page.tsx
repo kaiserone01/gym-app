@@ -23,14 +23,24 @@ export default async function PaginaNuevoMiembro() {
 
   // Inscribir un miembro es una operación de caja (ver diseño acordado:
   // hay que abrir turno antes de inscribir o cobrar) — en vez del
-  // formulario se muestra el aviso con acceso directo a Abrir turno.
-  if (!turnoAbierto) {
+  // formulario se muestra el aviso con acceso directo a Abrir turno. Si ya
+  // hay una caja abierta pero es de OTRO usuario (típicamente un SOCIO
+  // viendo la caja de otra sucursal), tampoco se deja operar — se avisa
+  // quién la tiene abierta en vez de decir "abrí la caja" (ya está
+  // abierta, solo que no por este usuario).
+  if (!turnoAbierto?.esPropio) {
     return (
       <div className="max-w-4xl p-6 lg:p-8">
         <div className="mb-6">
           <PageHeader>Nuevo miembro</PageHeader>
         </div>
-        <AvisoCajaCerrada mensaje="Para inscribir un miembro primero tenés que abrir la caja." />
+        <AvisoCajaCerrada
+          mensaje={
+            turnoAbierto
+              ? `No podés inscribir miembros: la caja está abierta por ${turnoAbierto.turno.usuarioNombre ?? "otro usuario"}.`
+              : "Para inscribir un miembro primero tenés que abrir la caja."
+          }
+        />
       </div>
     );
   }

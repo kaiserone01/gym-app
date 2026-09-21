@@ -108,7 +108,7 @@ export default async function PaginaEditarMiembro({ params }: { params: Promise<
               Ver historial de pagos ({pagos.length})
             </Link>
 
-            {turnoAbierto ? (
+            {turnoAbierto?.esPropio ? (
               <Card>
                 <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--gx-muted)" }}>
                   Registrar pago
@@ -139,8 +139,16 @@ export default async function PaginaEditarMiembro({ params }: { params: Promise<
               // Cobrar una mensualidad es una operación de caja — no se
               // puede sin turno abierto (ver diseño acordado). Editar los
               // datos del miembro (el formulario principal) sí sigue
-              // disponible, esto solo bloquea el bloque de cobro.
-              <AvisoCajaCerrada mensaje="Para registrar un pago primero tenés que abrir la caja." />
+              // disponible, esto solo bloquea el bloque de cobro. Si la
+              // caja está abierta pero por OTRO usuario, se avisa quién la
+              // tiene en vez del genérico "abrí la caja".
+              <AvisoCajaCerrada
+                mensaje={
+                  turnoAbierto
+                    ? `No podés registrar pagos: la caja está abierta por ${turnoAbierto.turno.usuarioNombre ?? "otro usuario"}.`
+                    : "Para registrar un pago primero tenés que abrir la caja."
+                }
+              />
             )}
           </div>
         }

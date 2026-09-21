@@ -54,12 +54,30 @@ export function FormularioArqueo({
     return METODOS_PAGO.find((m) => m.value === valor)?.label ?? valor;
   }
 
+  // Atajo para el caso común (caja cuadrada): carga el monto esperado de
+  // cada método como "contado". Si el usuario después edita alguno a mano,
+  // hayDiferencia se recalcula normal contra montoEsperado y pide nota
+  // como siempre — este botón solo prellena, no cambia esa validación.
+  function usarMontosEsperados() {
+    setContados(Object.fromEntries(lineas.map((linea) => [linea.metodo, String(linea.montoEsperado)])));
+  }
+
   return (
     <Card>
       <form action={enviar} className="flex flex-col gap-4">
-        <h2 className="text-lg font-semibold" style={{ color: "var(--gx-ink)" }}>
-          Arqueo de cierre
-        </h2>
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-lg font-semibold" style={{ color: "var(--gx-ink)" }}>
+            Arqueo de cierre
+          </h2>
+          <button
+            type="button"
+            onClick={usarMontosEsperados}
+            className="rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors duration-150"
+            style={{ borderColor: "var(--gx-edge)", color: "var(--gx-muted)" }}
+          >
+            Usar montos esperados
+          </button>
+        </div>
 
         {estado.error && (
           <p

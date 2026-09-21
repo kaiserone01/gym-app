@@ -10,11 +10,13 @@ import { PrismaMemberRepository } from "@gym-app/infrastructure/persistence/pris
 import { PrismaPlanRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaPlanRepository";
 import { PrismaTurnoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaTurnoRepository";
 import { PrismaPermisoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaPermisoRepository";
+import { PrismaSucursalRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaSucursalRepository";
 import { AuthorizationService } from "@gym-app/domain/services/AuthorizationService";
 import { conMensajeOk } from "../redirectConMensaje";
 import {
   registrarPago,
   MiembroNoEncontradoError,
+  MiembroFueraDeSucursalError,
   PlanNoEncontradoError,
   PlanInactivoError,
   RolNoAutorizadoError,
@@ -64,6 +66,7 @@ export async function registrarPagoAction(
         miembros: new PrismaMemberRepository(prisma),
         planes: new PrismaPlanRepository(prisma),
         turnos: new PrismaTurnoRepository(prisma),
+        sucursales: new PrismaSucursalRepository(prisma),
         autorizacion: new AuthorizationService(new PrismaPermisoRepository(prisma)),
       },
       {
@@ -83,6 +86,7 @@ export async function registrarPagoAction(
   } catch (error) {
     if (
       error instanceof MiembroNoEncontradoError ||
+      error instanceof MiembroFueraDeSucursalError ||
       error instanceof PlanNoEncontradoError ||
       error instanceof PlanInactivoError ||
       error instanceof RolNoAutorizadoError

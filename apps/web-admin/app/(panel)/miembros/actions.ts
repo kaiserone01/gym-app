@@ -13,17 +13,20 @@ import { crearMiembro, CedulaDuplicadaError } from "@gym-app/domain/use-cases/Cr
 import {
   actualizarMiembro,
   MiembroNoEncontradoError,
+  MiembroFueraDeSucursalError,
   PlanNoEncontradoError as ActualizarPlanNoEncontradoError,
 } from "@gym-app/domain/use-cases/ActualizarMiembro";
 import { listarPlanes } from "@gym-app/domain/use-cases/ListarPlanes";
 import { crearPlan } from "@gym-app/domain/use-cases/CrearPlan";
 import { PrismaTurnoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaTurnoRepository";
 import { PrismaPermisoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaPermisoRepository";
+import { PrismaSucursalRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaSucursalRepository";
 import { AuthorizationService } from "@gym-app/domain/services/AuthorizationService";
 import { R2StorageService } from "@gym-app/infrastructure/storage/R2StorageService";
 import {
   registrarPago,
   MiembroNoEncontradoError as PagoMiembroNoEncontradoError,
+  MiembroFueraDeSucursalError as PagoMiembroFueraDeSucursalError,
   PlanNoEncontradoError,
   PlanInactivoError,
   RolNoAutorizadoError as PagoRolNoAutorizadoError,
@@ -186,6 +189,7 @@ export async function crearMiembroAction(
         miembros: new PrismaMemberRepository(prisma),
         planes: new PrismaPlanRepository(prisma),
         turnos: new PrismaTurnoRepository(prisma),
+        sucursales: new PrismaSucursalRepository(prisma),
         autorizacion: new AuthorizationService(new PrismaPermisoRepository(prisma)),
       },
       {
@@ -205,6 +209,7 @@ export async function crearMiembroAction(
   } catch (error) {
     if (
       error instanceof PagoMiembroNoEncontradoError ||
+      error instanceof PagoMiembroFueraDeSucursalError ||
       error instanceof PlanNoEncontradoError ||
       error instanceof PlanInactivoError ||
       error instanceof PagoRolNoAutorizadoError
@@ -227,7 +232,7 @@ export async function actualizarMiembroAction(
 ): Promise<EstadoFormularioMiembro> {
   const sesion = await obtenerUsuarioDeSesionActual();
   if (!sesion) redirect("/login");
-  const { usuario } = sesion;
+  const { usuario, sucursalActivaId } = sesion;
 
   const nombre = formData.get("nombre")?.toString().trim();
   const fechaInscripcionTexto = formData.get("fechaInscripcion")?.toString();
@@ -247,10 +252,12 @@ export async function actualizarMiembroAction(
         miembros: new PrismaMemberRepository(prisma),
         planes: new PrismaPlanRepository(prisma),
         suscripciones: new PrismaSuscripcionRepository(prisma),
+        sucursales: new PrismaSucursalRepository(prisma),
       },
       {
         organizacionId: usuario.organizacionId,
         id,
+        sucursalActivaId,
         cambios: {
           nombre,
           sucursalId: resolverSucursalId(sucursalId),
@@ -264,7 +271,11 @@ export async function actualizarMiembroAction(
       }
     );
   } catch (error) {
-    if (error instanceof MiembroNoEncontradoError || error instanceof ActualizarPlanNoEncontradoError) {
+    if (
+      error instanceof MiembroNoEncontradoError ||
+      error instanceof MiembroFueraDeSucursalError ||
+      error instanceof ActualizarPlanNoEncontradoError
+    ) {
       return { error: error.message };
     }
     throw error;
@@ -277,15 +288,16 @@ export async function actualizarMiembroAction(
 export async function darDeBajaAction(id: string): Promise<void> {
   const sesion = await obtenerUsuarioDeSesionActual();
   if (!sesion) redirect("/login");
-  const { usuario } = sesion;
+  const { usuario, sucursalActivaId } = sesion;
 
   await actualizarMiembro(
     {
       miembros: new PrismaMemberRepository(prisma),
       planes: new PrismaPlanRepository(prisma),
       suscripciones: new PrismaSuscripcionRepository(prisma),
+      sucursales: new PrismaSucursalRepository(prisma),
     },
-    { organizacionId: usuario.organizacionId, id, cambios: { activo: false } }
+    { organizacionId: usuario.organizacionId, id, sucursalActivaId, cambios: { activo: false } }
   );
 
   revalidatePath("/miembros");
@@ -294,15 +306,16 @@ export async function darDeBajaAction(id: string): Promise<void> {
 export async function reactivarAction(id: string): Promise<void> {
   const sesion = await obtenerUsuarioDeSesionActual();
   if (!sesion) redirect("/login");
-  const { usuario } = sesion;
+  const { usuario, sucursalActivaId } = sesion;
 
   await actualizarMiembro(
     {
       miembros: new PrismaMemberRepository(prisma),
       planes: new PrismaPlanRepository(prisma),
       suscripciones: new PrismaSuscripcionRepository(prisma),
+      sucursales: new PrismaSucursalRepository(prisma),
     },
-    { organizacionId: usuario.organizacionId, id, cambios: { activo: true } }
+    { organizacionId: usuario.organizacionId, id, sucursalActivaId, cambios: { activo: true } }
   );
 
   revalidatePath("/miembros");

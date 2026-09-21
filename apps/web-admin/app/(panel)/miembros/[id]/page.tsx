@@ -6,7 +6,7 @@ import { PrismaMemberRepository } from "@gym-app/infrastructure/persistence/pris
 import { PrismaPagoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaPagoRepository";
 import { PrismaPlanRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaPlanRepository";
 import { PrismaMetodoPagoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaMetodoPagoRepository";
-import { obtenerMiembro, MiembroNoEncontradoError } from "@gym-app/domain/use-cases/ObtenerMiembro";
+import { obtenerMiembro, MiembroNoEncontradoError, MiembroFueraDeSucursalError } from "@gym-app/domain/use-cases/ObtenerMiembro";
 import { listarPagos } from "@gym-app/domain/use-cases/ListarPagos";
 import { PrismaSucursalRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaSucursalRepository";
 import { listarPlanes } from "@gym-app/domain/use-cases/ListarPlanes";
@@ -14,6 +14,7 @@ import { listarMetodosPagoActivos } from "@gym-app/domain/use-cases/ListarMetodo
 import { listarSucursales } from "@gym-app/domain/use-cases/ListarSucursales";
 import { obtenerSucursalesVisiblesParaMiembro } from "../obtenerSucursalesVisibles";
 import { obtenerEntrenadoresPorSucursal } from "../obtenerEntrenadoresPorSucursal";
+import { MiembroFueraDeSucursal } from "./MiembroFueraDeSucursal";
 import { FormularioMiembro } from "../FormularioMiembro";
 import { actualizarMiembroAction } from "../actions";
 import { FormularioPago } from "../../pagos/FormularioPago";
@@ -39,15 +40,19 @@ export default async function PaginaEditarMiembro({ params }: { params: Promise<
 
   const { id } = await params;
 
-  const miembro = await obtenerMiembro(
-    { miembros: new PrismaMemberRepository(prisma) },
-    { organizacionId: usuario.organizacionId, id }
-  ).catch((error) => {
-    if (error instanceof MiembroNoEncontradoError) return null;
+  let miembro;
+  try {
+    miembro = await obtenerMiembro(
+      { miembros: new PrismaMemberRepository(prisma), sucursales: new PrismaSucursalRepository(prisma) },
+      { organizacionId: usuario.organizacionId, id, sucursalActivaId }
+    );
+  } catch (error) {
+    if (error instanceof MiembroNoEncontradoError) notFound();
+    if (error instanceof MiembroFueraDeSucursalError) {
+      return <MiembroFueraDeSucursal mensaje={error.message} />;
+    }
     throw error;
-  });
-
-  if (!miembro) notFound();
+  }
 
   const [pagos, planes, sucursales, sucursalesOrganizacion, metodosPago, turnoAbierto] = await Promise.all([
     listarPagos(

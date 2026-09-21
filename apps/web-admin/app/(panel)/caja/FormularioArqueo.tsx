@@ -71,6 +71,16 @@ export function FormularioArqueo({
         )}
 
         <input type="hidden" name="turnoId" value={turnoId} />
+        {/* Los nombres de método reales del turno (ej. "Efectivo (USD)",
+            "Punto de Venta - Banesco") — cerrarTurnoAction los necesita
+            para saber qué campos montoContado_* leer del FormData. Antes
+            se adivinaban iterando un catálogo estático (METODOS_PAGO) que
+            quedó desactualizado con códigos viejos (efectivo_usd, etc.),
+            así que ningún campo coincidía y el arqueo se guardaba vacío
+            aunque el operador sí hubiera escrito montos contados. */}
+        {lineas.map((linea) => (
+          <input key={linea.metodo} type="hidden" name="metodos" value={linea.metodo} />
+        ))}
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {lineas.map((linea) => {

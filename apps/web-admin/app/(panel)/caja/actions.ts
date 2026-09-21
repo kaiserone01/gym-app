@@ -15,7 +15,6 @@ import { abrirTurno, RolNoAutorizadoError as RolNoAutorizadoAbrir, TurnoYaAbiert
 import { registrarEgreso, RolNoAutorizadoError as RolNoAutorizadoEgreso, TurnoCerradoError, TurnoNoEncontradoError as TurnoNoEncontradoEgreso, MotivoRequeridoError, TasaRequeridaError as TasaRequeridaEgreso } from "@gym-app/domain/use-cases/RegistrarEgreso";
 import { cerrarTurno, RolNoAutorizadoError as RolNoAutorizadoCerrar, TurnoYaCerradoError, TurnoNoEncontradoError as TurnoNoEncontradoCerrar, NotaRequeridaError } from "@gym-app/domain/use-cases/CerrarTurno";
 import { anularPago, RolNoAutorizadoError as RolNoAutorizadoAnular, PagoNoEncontradoError, PagoYaAnuladoError, MotivoRequeridoError as MotivoRequeridoAnular } from "@gym-app/domain/use-cases/AnularPago";
-import { METODOS_PAGO } from "../metodosPago";
 
 export interface EstadoAbrirTurno {
   error?: string;
@@ -149,13 +148,20 @@ export async function cerrarTurnoAction(
   const turnoId = formData.get("turnoId")?.toString();
   if (!turnoId) redirect("/caja");
 
-  const lineas = METODOS_PAGO.map((m) => {
-    const montoContadoTexto = formData.get(`montoContado_${m.value}`)?.toString();
+  // Los métodos reales del turno vienen del propio formulario (ver
+  // FormularioArqueo) — antes se iteraba el catálogo estático
+  // METODOS_PAGO, que quedó con códigos viejos (efectivo_usd, etc.) que
+  // ya no coinciden con los métodos reales (ej. "Efectivo (USD)"), así
+  // que ningún campo montoContado_* se encontraba y el arqueo se
+  // guardaba vacío aunque el operador sí hubiera escrito los montos.
+  const metodos = formData.getAll("metodos").map((m) => m.toString());
+  const lineas = metodos.map((metodo) => {
+    const montoContadoTexto = formData.get(`montoContado_${metodo}`)?.toString();
     if (montoContadoTexto === undefined || montoContadoTexto === "") return null;
     return {
-      metodo: m.value,
+      metodo,
       montoContado: Number(montoContadoTexto),
-      nota: formData.get(`nota_${m.value}`)?.toString() || undefined,
+      nota: formData.get(`nota_${metodo}`)?.toString() || undefined,
     };
   }).filter((l): l is NonNullable<typeof l> => l !== null);
 

@@ -1,8 +1,12 @@
 import { IMemberRepository } from "../ports/IMemberRepository";
 import { IPlanRepository } from "../ports/IPlanRepository";
 import { ISuscripcionRepository } from "../ports/ISuscripcionRepository";
+import { ISucursalRepository } from "../ports/ISucursalRepository";
 import { Miembro, CambiosMiembro } from "../entities/Miembro";
 import { prorratearVencimiento } from "./CalcularVencimientoPlan";
+import { MiembroFueraDeSucursalError } from "./ObtenerMiembro";
+
+export { MiembroFueraDeSucursalError };
 
 export class MiembroNoEncontradoError extends Error {
   constructor() {
@@ -17,12 +21,22 @@ export class PlanNoEncontradoError extends Error {
 }
 
 export async function actualizarMiembro(
-  deps: { miembros: IMemberRepository; planes: IPlanRepository; suscripciones: ISuscripcionRepository },
-  input: { organizacionId: string; id: string; cambios: CambiosMiembro }
+  deps: {
+    miembros: IMemberRepository;
+    planes: IPlanRepository;
+    suscripciones: ISuscripcionRepository;
+    sucursales: ISucursalRepository;
+  },
+  input: { organizacionId: string; id: string; sucursalActivaId: string; cambios: CambiosMiembro }
 ): Promise<Miembro> {
   const antes = await deps.miembros.buscarPorId(input.organizacionId, input.id);
   if (!antes) {
     throw new MiembroNoEncontradoError();
+  }
+
+  if (antes.sucursalId !== null && antes.sucursalId !== input.sucursalActivaId) {
+    const sucursal = await deps.sucursales.buscarPorId(input.organizacionId, antes.sucursalId);
+    throw new MiembroFueraDeSucursalError(sucursal?.nombre ?? "otra sucursal");
   }
 
   const cambiaDePlan =

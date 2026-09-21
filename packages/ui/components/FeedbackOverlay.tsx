@@ -19,7 +19,7 @@ interface FeedbackContextValor {
 
 const FeedbackContext = createContext<FeedbackContextValor | null>(null);
 
-const DURACION_MS = 4000;
+export const DURACION_MS = 4000;
 
 // Se monta una vez en el layout del panel — cualquier página/formulario
 // cliente dispara mostrarExito/mostrarError vía useFeedback() sin tener

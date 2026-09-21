@@ -21,6 +21,7 @@ import { listarMetodosPagoActivos } from "@gym-app/domain/use-cases/ListarMetodo
 import { listarSucursales } from "@gym-app/domain/use-cases/ListarSucursales";
 import { obtenerSucursalesVisiblesParaTurno } from "./obtenerSucursalesVisiblesParaTurno";
 import { obtenerTurnoAbiertoParaUsuario } from "./obtenerTurnoAbiertoParaUsuario";
+import { AvisoCajaAjena } from "./AvisoCajaAjena";
 
 // El método ahora se guarda como snapshot legible ("Pago Móvil - Banesco")
 // directo en Pago.metodo, ya no como código a traducir contra un catálogo
@@ -67,9 +68,10 @@ export default async function PaginaCaja() {
   // La sucursal "real" del turno encontrado — para un SOCIO puede diferir
   // de usuario.sucursalId (que es null), así que el resto de la página usa
   // esta en vez de usuario.sucursalId directamente.
-  const sucursalId = turnoAbierto ? turnoAbierto.sucursalId : usuario.sucursalId;
+  const sucursalId = turnoAbierto ? turnoAbierto.turno.sucursalId : usuario.sucursalId;
 
   if (turnoAbierto) {
+    const esPropio = turnoAbierto.esPropio;
     const [resumen, miembros, planes, metodosPago, todasLasSucursales, tasaCambio] = await Promise.all([
       obtenerResumenTurno(
         {
@@ -77,7 +79,7 @@ export default async function PaginaCaja() {
           pagos: new PrismaPagoRepository(prisma),
           egresos: new PrismaEgresoRepository(prisma),
         },
-        { organizacionId: usuario.organizacionId, turnoId: turnoAbierto.id }
+        { organizacionId: usuario.organizacionId, turnoId: turnoAbierto.turno.id }
       ),
       listarMiembros({ miembros: new PrismaMemberRepository(prisma) }, usuario.organizacionId),
       listarPlanes({ planes: new PrismaPlanRepository(prisma) }, usuario.organizacionId),
@@ -110,22 +112,28 @@ export default async function PaginaCaja() {
             columna lateral. Pagos/egresos del turno y arqueo van a todo el
             ancho debajo. En mobile todo se apila en una sola columna. */}
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3 lg:auto-rows-min">
-          <Card className="text-sm lg:col-span-2 lg:row-span-2">
-            <h2 className="mb-3 font-semibold" style={{ color: "var(--gx-ink)" }}>
-              Registrar pago
-            </h2>
-            <FormularioPago
-              accion={registrarPagoAction}
-              miembros={miembrosActivos}
-              miembrosConPlan={miembrosActivos}
-              planes={planesActivos}
-              metodosPago={metodosPago}
-              sucursalesVisibles={sucursalDelTurno}
-              sucursalesOrganizacion={sucursalDelTurno}
-              sucursalIdDefault={sucursalId}
-              origen="caja"
-            />
-          </Card>
+          {esPropio ? (
+            <Card className="text-sm lg:col-span-2 lg:row-span-2">
+              <h2 className="mb-3 font-semibold" style={{ color: "var(--gx-ink)" }}>
+                Registrar pago
+              </h2>
+              <FormularioPago
+                accion={registrarPagoAction}
+                miembros={miembrosActivos}
+                miembrosConPlan={miembrosActivos}
+                planes={planesActivos}
+                metodosPago={metodosPago}
+                sucursalesVisibles={sucursalDelTurno}
+                sucursalesOrganizacion={sucursalDelTurno}
+                sucursalIdDefault={sucursalId}
+                origen="caja"
+              />
+            </Card>
+          ) : (
+            <div className="lg:col-span-2 lg:row-span-2">
+              <AvisoCajaAjena usuarioNombre={resumen.turno.usuarioNombre ?? "otro usuario"} abiertoEn={resumen.turno.abiertoEn} />
+            </div>
+          )}
 
           <Card className="text-sm">
             <div className="flex justify-between">
@@ -169,9 +177,11 @@ export default async function PaginaCaja() {
             })}
           </Card>
 
-          <div className="lg:col-span-2">
-            <FormularioEgreso accion={registrarEgresoAction} turnoId={resumen.turno.id} />
-          </div>
+          {esPropio && (
+            <div className="lg:col-span-2">
+              <FormularioEgreso accion={registrarEgresoAction} turnoId={resumen.turno.id} />
+            </div>
+          )}
 
           {resumen.pagos.length > 0 && (
             <Card className="text-sm lg:col-span-3">
@@ -239,18 +249,20 @@ export default async function PaginaCaja() {
             </Card>
           )}
 
-          <div className="lg:col-span-3">
-            <FormularioArqueo
-              accion={cerrarTurnoAction}
-              turnoId={resumen.turno.id}
-              lineas={resumen.lineas.map((linea) => ({
-                metodo: linea.metodo,
-                enBs: linea.enBs,
-                montoEsperado: linea.montoEsperado,
-                refUSD: calcularRefUSD(linea, resumen.turno.fondoInicialEfectivoBs, tasaActual),
-              }))}
-            />
-          </div>
+          {esPropio && (
+            <div className="lg:col-span-3">
+              <FormularioArqueo
+                accion={cerrarTurnoAction}
+                turnoId={resumen.turno.id}
+                lineas={resumen.lineas.map((linea) => ({
+                  metodo: linea.metodo,
+                  enBs: linea.enBs,
+                  montoEsperado: linea.montoEsperado,
+                  refUSD: calcularRefUSD(linea, resumen.turno.fondoInicialEfectivoBs, tasaActual),
+                }))}
+              />
+            </div>
+          )}
         </div>
       </div>
     );

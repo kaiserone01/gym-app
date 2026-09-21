@@ -6,7 +6,6 @@ import { Input } from "@gym-app/ui/components/Input";
 import { CurrencyInput } from "@gym-app/ui/components/CurrencyInput";
 import type { MetodoPago, TipoMetodoPago } from "@gym-app/domain/entities/MetodoPago";
 import { TIPOS_QUE_PUEDEN_SER_EN_BS } from "@gym-app/domain/entities/MetodoPago";
-import type { SucursalResumen } from "@gym-app/domain/entities/SucursalResumen";
 import { ETIQUETA_TIPO_METODO_PAGO, construirNombreMetodo } from "../configuraciones/metodosPagoUI";
 import { formatearBs } from "../tasaBcvFija";
 import { registrarTasaManualAction } from "../configuraciones/actions";
@@ -95,10 +94,6 @@ export function SelectorMetodoPago({
   monto,
   onCambio,
   idFormulario,
-  sucursalesVisibles,
-  sucursalesOrganizacion,
-  sucursalIdDefault,
-  planEsMultisede,
 }: {
   metodos: MetodoPago[];
   monto: number;
@@ -107,24 +102,10 @@ export function SelectorMetodoPago({
     metodo: string;
     tasaCambio: number | null;
     numeroOperacion: string;
-    sucursalId: string | null;
   }) => void;
   // El <Input> de "número de operación" vive dentro de este selector pero
   // el submit final es el <form> del padre — se enlaza con el atributo form=.
   idFormulario?: string;
-  // Sedes que el operador puede administrar (ver
-  // obtenerSucursalesVisiblesParaMiembro) — determinan las opciones del
-  // selector "Sede del pago", salvo que el plan sea multisede.
-  sucursalesVisibles: SucursalResumen[];
-  // Todas las sedes de la organización — se usan en vez de
-  // sucursalesVisibles cuando el plan del miembro es multisede (el plan
-  // otorga ese alcance, ver diseño acordado).
-  sucursalesOrganizacion: SucursalResumen[];
-  // Sede activa de la sesión del operador logueado (sucursalActivaId) —
-  // preselección del selector de sede del pago cuando está entre las
-  // opciones.
-  sucursalIdDefault: string | null;
-  planEsMultisede: boolean;
 }) {
   const [tipoAbierto, setTipoAbierto] = useState<TipoMetodoPago | null>(null);
   const [metodoId, setMetodoId] = useState<string | null>(null);
@@ -134,12 +115,6 @@ export function SelectorMetodoPago({
   const [tasa, setTasa] = useState<number | null>(null);
   const [errorTasa, setErrorTasa] = useState(false);
   const [modalTasaAbierto, setModalTasaAbierto] = useState(false);
-
-  const opcionesSede = planEsMultisede ? sucursalesOrganizacion : sucursalesVisibles;
-  const [sucursalId, setSucursalId] = useState<string | null>(() => {
-    if (sucursalIdDefault && opcionesSede.some((s) => s.id === sucursalIdDefault)) return sucursalIdDefault;
-    return opcionesSede[0]?.id ?? null;
-  });
 
   const tiposDisponibles = Array.from(new Set(metodos.map((m) => m.tipo)));
   const metodo = metodos.find((m) => m.id === metodoId) ?? null;
@@ -176,10 +151,9 @@ export function SelectorMetodoPago({
       metodo: metodo ? construirNombreMetodo(metodo) : "",
       tasaCambio,
       numeroOperacion,
-      sucursalId,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- onCambio se reconstruye cada render en el padre, no debe disparar el efecto
-  }, [metodo, esEnBs, tasa, numeroOperacion, sucursalId]);
+  }, [metodo, esEnBs, tasa, numeroOperacion]);
 
   function elegirTipo(tipo: TipoMetodoPago) {
     setTipoAbierto(tipo);
@@ -195,24 +169,6 @@ export function SelectorMetodoPago({
 
   return (
     <div className="flex flex-col gap-4">
-      {opcionesSede.length > 1 && (
-        <label className="flex flex-col gap-1.5 text-sm" style={{ color: "var(--gx-muted)" }}>
-          Sede del pago
-          <select
-            value={sucursalId ?? ""}
-            onChange={(e) => setSucursalId(e.target.value || null)}
-            className="min-h-11 rounded-lg border px-3 outline-none focus:border-[var(--gx-accent)]"
-            style={{ background: "var(--gx-surface-2)", borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }}
-          >
-            {opcionesSede.map((sucursal) => (
-              <option key={sucursal.id} value={sucursal.id}>
-                {sucursal.nombre}
-              </option>
-            ))}
-          </select>
-        </label>
-      )}
-
       <div className="grid grid-cols-3 gap-2">
         {tiposDisponibles.map((tipo) => {
           const Icono = ICONO_TIPO[tipo];
@@ -357,7 +313,7 @@ function ModalErrorTasa({ onReintentar, onIngresarManual }: { onReintentar: () =
         No se obtuvo la tasa actualizada
       </p>
       <p className="mt-1 text-xs" style={{ color: "var(--gx-muted)" }}>
-        Puede ser un problema temporal, o podés ingresar la tasa manualmente consultándola en el BCV.
+        Puede ser un problema temporal, o puedes ingresar la tasa manualmente consultándola en el BCV.
       </p>
       <div className="mt-3 flex gap-2">
         <Button type="button" variant="secundario" className="flex-1" onClick={onReintentar}>

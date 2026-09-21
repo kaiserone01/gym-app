@@ -8,7 +8,6 @@ import { useFeedback } from "@gym-app/ui/components/FeedbackOverlay";
 import type { EstadoFormularioPago } from "./actions";
 import type { Miembro } from "@gym-app/domain/entities/Miembro";
 import type { MetodoPago } from "@gym-app/domain/entities/MetodoPago";
-import type { SucursalResumen } from "@gym-app/domain/entities/SucursalResumen";
 import { SelectorMetodoPago } from "./SelectorMetodoPago";
 import { SelectorMiembroModal, type MiembroConPlan } from "../caja/SelectorMiembroModal";
 
@@ -36,9 +35,6 @@ export function FormularioPago({
   miembros,
   planes,
   metodosPago,
-  sucursalesVisibles,
-  sucursalesOrganizacion,
-  sucursalIdDefault,
   miembroIdFijo,
   planFijo,
   origen,
@@ -48,10 +44,6 @@ export function FormularioPago({
   miembros: MiembroParaSelector[];
   planes: PlanParaSelector[];
   metodosPago: MetodoPago[];
-  // Ver SelectorMetodoPago — determinan el selector "Sede del pago".
-  sucursalesVisibles: SucursalResumen[];
-  sucursalesOrganizacion: SucursalResumen[];
-  sucursalIdDefault: string | null;
   miembroIdFijo?: string;
   // Cuando se pasa, el pago se registra directo contra este plan (el
   // vigente en la ficha del miembro) sin selector — ver diseño acordado:
@@ -89,8 +81,7 @@ export function FormularioPago({
     metodo: string;
     tasaCambio: number | null;
     numeroOperacion: string;
-    sucursalId: string | null;
-  }>({ metodoPagoId: null, metodo: "", tasaCambio: null, numeroOperacion: "", sucursalId: sucursalIdDefault ?? null });
+  }>({ metodoPagoId: null, metodo: "", tasaCambio: null, numeroOperacion: "" });
 
   // El planFijo efectivo: el que llega por prop (ficha del miembro), o —
   // en Caja — el del plan vigente del miembro elegido en el modal.
@@ -106,9 +97,6 @@ export function FormularioPago({
       : undefined);
 
   const montoNumero = planFijoEfectivo ? planFijoEfectivo.precioUSD : Number(monto) || 0;
-  const planEsMultisede = planFijoEfectivo
-    ? planFijoEfectivo.multisede
-    : (planes.find((p) => p.id === planId)?.multisede ?? false);
 
   function manejarCambioPlan(id: string) {
     setPlanId(id);
@@ -250,16 +238,11 @@ export function FormularioPago({
       <input type="hidden" name="metodoPagoId" value={seleccionMetodo.metodoPagoId ?? ""} />
       <input type="hidden" name="tasaCambio" value={seleccionMetodo.tasaCambio ?? ""} />
       <input type="hidden" name="numeroOperacion" value={seleccionMetodo.numeroOperacion} />
-      <input type="hidden" name="sucursalIdPago" value={seleccionMetodo.sucursalId ?? ""} />
 
       <SelectorMetodoPago
         metodos={metodosPago}
         monto={montoNumero}
         onCambio={setSeleccionMetodo}
-        sucursalesVisibles={sucursalesVisibles}
-        sucursalesOrganizacion={sucursalesOrganizacion}
-        sucursalIdDefault={sucursalIdDefault}
-        planEsMultisede={planEsMultisede}
       />
 
       <Button type="submit" disabled={enviando || !seleccionMetodo.metodoPagoId}>

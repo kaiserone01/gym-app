@@ -8,6 +8,7 @@ interface SucursalParaElegir {
   id: string;
   nombre: string;
   cajaAbiertaPor: string | null;
+  cajaAbiertaPorMi: boolean;
 }
 
 export default function LoginPage() {
@@ -152,7 +153,7 @@ export default function LoginPage() {
           ) : (
             <div className="flex flex-col gap-4 p-10" style={{ background: "var(--gx-surface)" }}>
               <h1 className="text-2xl" style={{ fontFamily: '"Bebas Neue", sans-serif', letterSpacing: "0.02em" }}>
-                Elegí una sucursal
+                Elige una sucursal
               </h1>
 
               {error && (
@@ -180,7 +181,9 @@ export default function LoginPage() {
                         className="rounded px-2 py-1 text-xs"
                         style={{ background: "color-mix(in srgb, var(--gx-warn) 15%, transparent)", color: "var(--gx-warn)", width: "fit-content" }}
                       >
-                        Caja abierta por {sucursal.cajaAbiertaPor}
+                        {sucursal.cajaAbiertaPorMi
+                          ? "Ya tienes una caja abierta y activa"
+                          : `Caja abierta por ${sucursal.cajaAbiertaPor}`}
                       </span>
                     )}
                   </button>

@@ -50,7 +50,13 @@ export async function POST(req: NextRequest) {
       const sucursales = await Promise.all(
         sucursalesVisibles.map(async (s) => {
           const turnoAbierto = await turnoRepo.buscarAbiertoPorSucursal(s.id);
-          return { id: s.id, nombre: s.nombre, cajaAbiertaPor: turnoAbierto?.usuarioNombre ?? null };
+          const cajaAbiertaPorMi = turnoAbierto?.usuarioId === credenciales.usuario.id;
+          return {
+            id: s.id,
+            nombre: s.nombre,
+            cajaAbiertaPor: turnoAbierto?.usuarioNombre ?? null,
+            cajaAbiertaPorMi,
+          };
         })
       );
       return NextResponse.json({ requiereSeleccion: true, sucursales });

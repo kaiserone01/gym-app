@@ -60,7 +60,7 @@ export default async function PaginaMiembros() {
           <AvisoCajaCerrada
             mensaje={
               turnoAbierto
-                ? `No podés inscribir miembros ni registrar pagos: la caja está abierta por ${turnoAbierto.turno.usuarioNombre ?? "otro usuario"}.`
+                ? `No puedes inscribir miembros ni registrar pagos: la caja está abierta por ${turnoAbierto.turno.usuarioNombre ?? "otro usuario"}.`
                 : undefined
             }
           />

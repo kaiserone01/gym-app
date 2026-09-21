@@ -35,21 +35,34 @@ export default async function PaginaMiembros() {
           {/* Inscribir un miembro es una operación de caja — el alta
               queda atada a un turno para el cuadre (ver diseño acordado:
               hay que abrir caja antes de inscribir o cobrar). */}
-          {turnoAbierto ? (
+          {turnoAbierto?.esPropio ? (
             <Link href="/miembros/nuevo">
               <Button>Nuevo miembro</Button>
             </Link>
           ) : (
-            <Button disabled title="Abrí la caja para poder inscribir un miembro">
+            <Button
+              disabled
+              title={
+                turnoAbierto
+                  ? `La caja la tiene abierta ${turnoAbierto.turno.usuarioNombre ?? "otro usuario"}`
+                  : "Abrí la caja para poder inscribir un miembro"
+              }
+            >
               Nuevo miembro
             </Button>
           )}
         </div>
       </div>
 
-      {!turnoAbierto && (
+      {!turnoAbierto?.esPropio && (
         <div className="mb-6 print:hidden">
-          <AvisoCajaCerrada />
+          <AvisoCajaCerrada
+            mensaje={
+              turnoAbierto
+                ? `No podés inscribir miembros ni registrar pagos: la caja está abierta por ${turnoAbierto.turno.usuarioNombre ?? "otro usuario"}.`
+                : undefined
+            }
+          />
         </div>
       )}
 

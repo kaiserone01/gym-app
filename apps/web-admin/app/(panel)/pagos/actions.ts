@@ -32,8 +32,9 @@ export async function registrarPagoAction(
   _estadoPrevio: EstadoFormularioPago,
   formData: FormData
 ): Promise<EstadoFormularioPago> {
-  const usuario = await obtenerUsuarioDeSesionActual();
-  if (!usuario) redirect("/login");
+  const sesion = await obtenerUsuarioDeSesionActual();
+  if (!sesion) redirect("/login");
+  const { usuario, sucursalActivaId } = sesion;
 
   const miembroId = formData.get("miembroId")?.toString();
   const planId = formData.get("planId")?.toString();
@@ -45,8 +46,8 @@ export async function registrarPagoAction(
   const numeroOperacion = formData.get("numeroOperacion")?.toString().trim() || null;
   // Sede elegida en el selector "Sede del pago" (ver SelectorMetodoPago);
   // si no vino (formularios viejos o sin selector visible), se cae a la
-  // sede default del operador.
-  const sucursalIdPago = formData.get("sucursalIdPago")?.toString() || usuario.sucursalId;
+  // sede activa de la sesión.
+  const sucursalIdPago = formData.get("sucursalIdPago")?.toString() || sucursalActivaId;
 
   if (!miembroId || !planId || !metodo || !metodoPagoId || Number.isNaN(monto)) {
     return { error: "Miembro, plan, método y monto son requeridos." };

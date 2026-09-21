@@ -115,8 +115,9 @@ export async function crearMiembroAction(
   _estadoPrevio: EstadoFormularioMiembro,
   formData: FormData
 ): Promise<EstadoFormularioMiembro> {
-  const usuario = await obtenerUsuarioDeSesionActual();
-  if (!usuario) redirect("/login");
+  const sesion = await obtenerUsuarioDeSesionActual();
+  if (!sesion) redirect("/login");
+  const { usuario, sucursalActivaId } = sesion;
 
   const nombre = formData.get("nombre")?.toString().trim();
   const cedula = formData.get("cedula")?.toString().trim();
@@ -128,8 +129,8 @@ export async function crearMiembroAction(
   const tasaCambioRaw = formData.get("tasaCambio")?.toString();
   const numeroOperacion = formData.get("numeroOperacion")?.toString().trim() || null;
   // Sede elegida en el selector "Sede del pago" (ver SelectorMetodoPago);
-  // si no vino, se cae a la sede default del operador.
-  const sucursalIdPago = formData.get("sucursalIdPago")?.toString() || usuario.sucursalId;
+  // si no vino, se cae a la sede activa de la sesión.
+  const sucursalIdPago = formData.get("sucursalIdPago")?.toString() || sucursalActivaId;
 
   if (!nombre || !cedula || !fechaInscripcionTexto || !sucursalId || !metodo || !metodoPagoId || Number.isNaN(precioPlan)) {
     return { error: "Nombre, cédula, fecha de inscripción, sede y método de pago son requeridos." };
@@ -224,8 +225,9 @@ export async function actualizarMiembroAction(
   _estadoPrevio: EstadoFormularioMiembro,
   formData: FormData
 ): Promise<EstadoFormularioMiembro> {
-  const usuario = await obtenerUsuarioDeSesionActual();
-  if (!usuario) redirect("/login");
+  const sesion = await obtenerUsuarioDeSesionActual();
+  if (!sesion) redirect("/login");
+  const { usuario } = sesion;
 
   const nombre = formData.get("nombre")?.toString().trim();
   const fechaInscripcionTexto = formData.get("fechaInscripcion")?.toString();
@@ -273,8 +275,9 @@ export async function actualizarMiembroAction(
 }
 
 export async function darDeBajaAction(id: string): Promise<void> {
-  const usuario = await obtenerUsuarioDeSesionActual();
-  if (!usuario) redirect("/login");
+  const sesion = await obtenerUsuarioDeSesionActual();
+  if (!sesion) redirect("/login");
+  const { usuario } = sesion;
 
   await actualizarMiembro(
     {
@@ -289,8 +292,9 @@ export async function darDeBajaAction(id: string): Promise<void> {
 }
 
 export async function reactivarAction(id: string): Promise<void> {
-  const usuario = await obtenerUsuarioDeSesionActual();
-  if (!usuario) redirect("/login");
+  const sesion = await obtenerUsuarioDeSesionActual();
+  if (!sesion) redirect("/login");
+  const { usuario } = sesion;
 
   await actualizarMiembro(
     {

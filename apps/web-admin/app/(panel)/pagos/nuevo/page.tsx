@@ -15,8 +15,9 @@ import { registrarPagoAction } from "../actions";
 import { PageHeader } from "@gym-app/ui/components/PageHeader";
 
 export default async function PaginaNuevoPago() {
-  const usuario = await obtenerUsuarioDeSesionActual();
-  if (!usuario) redirect("/login");
+  const sesion = await obtenerUsuarioDeSesionActual();
+  if (!sesion) redirect("/login");
+  const { usuario, sucursalActivaId } = sesion;
 
   const [miembros, planes, metodosPago, sucursalesVisibles, sucursalesOrganizacion] = await Promise.all([
     listarMiembros({ miembros: new PrismaMemberRepository(prisma) }, usuario.organizacionId),
@@ -41,7 +42,7 @@ export default async function PaginaNuevoPago() {
         metodosPago={metodosPago}
         sucursalesVisibles={sucursalesVisibles}
         sucursalesOrganizacion={sucursalesOrganizacion}
-        sucursalIdDefault={usuario.sucursalId}
+        sucursalIdDefault={sucursalActivaId}
       />
     </div>
   );

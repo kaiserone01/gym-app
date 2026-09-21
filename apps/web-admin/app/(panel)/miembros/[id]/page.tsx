@@ -33,8 +33,9 @@ function formatearFechaISO(fecha: Date): string {
 }
 
 export default async function PaginaEditarMiembro({ params }: { params: Promise<{ id: string }> }) {
-  const usuario = await obtenerUsuarioDeSesionActual();
-  if (!usuario) redirect("/login");
+  const sesion = await obtenerUsuarioDeSesionActual();
+  if (!sesion) redirect("/login");
+  const { usuario, sucursalActivaId } = sesion;
 
   const { id } = await params;
 
@@ -57,7 +58,7 @@ export default async function PaginaEditarMiembro({ params }: { params: Promise<
     obtenerSucursalesVisiblesParaMiembro(usuario),
     listarSucursales({ sucursales: new PrismaSucursalRepository(prisma) }, usuario.organizacionId),
     listarMetodosPagoActivos({ metodosPago: new PrismaMetodoPagoRepository(prisma) }, usuario.organizacionId),
-    obtenerTurnoAbiertoParaUsuario(usuario),
+    obtenerTurnoAbiertoParaUsuario(sucursalActivaId, usuario.id),
   ]);
   const entrenadoresPorSucursal = await obtenerEntrenadoresPorSucursal(usuario.organizacionId, sucursales);
 
@@ -83,7 +84,7 @@ export default async function PaginaEditarMiembro({ params }: { params: Promise<
         planes={planes}
         sucursales={sucursales}
         sucursalesOrganizacion={sucursalesOrganizacion}
-        sucursalIdDefault={usuario.sucursalId}
+        sucursalIdDefault={sucursalActivaId}
         metodosPago={metodosPago}
         miembroId={id}
         ultimosCiclos={ultimosCiclos}
@@ -120,7 +121,7 @@ export default async function PaginaEditarMiembro({ params }: { params: Promise<
                   metodosPago={metodosPago}
                   sucursalesVisibles={sucursales}
                   sucursalesOrganizacion={sucursalesOrganizacion}
-                  sucursalIdDefault={usuario.sucursalId}
+                  sucursalIdDefault={sucursalActivaId}
                   miembroIdFijo={id}
                   planFijo={
                     miembro.planId

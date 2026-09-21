@@ -16,10 +16,11 @@ import { obtenerTurnoAbiertoParaUsuario } from "../../caja/obtenerTurnoAbiertoPa
 import { AvisoCajaCerrada } from "../../caja/AvisoCajaCerrada";
 
 export default async function PaginaNuevoMiembro() {
-  const usuario = await obtenerUsuarioDeSesionActual();
-  if (!usuario) redirect("/login");
+  const sesion = await obtenerUsuarioDeSesionActual();
+  if (!sesion) redirect("/login");
+  const { usuario, sucursalActivaId } = sesion;
 
-  const turnoAbierto = await obtenerTurnoAbiertoParaUsuario(usuario);
+  const turnoAbierto = await obtenerTurnoAbiertoParaUsuario(sucursalActivaId, usuario.id);
 
   // Inscribir un miembro es una operación de caja (ver diseño acordado:
   // hay que abrir turno antes de inscribir o cobrar) — en vez del
@@ -64,7 +65,7 @@ export default async function PaginaNuevoMiembro() {
         planes={planes}
         sucursales={sucursales}
         sucursalesOrganizacion={sucursalesOrganizacion}
-        sucursalIdDefault={usuario.sucursalId}
+        sucursalIdDefault={sucursalActivaId}
         metodosPago={metodosPago}
         miembroId={null}
         ultimosCiclos={[]}

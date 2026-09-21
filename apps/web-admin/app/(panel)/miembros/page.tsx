@@ -16,14 +16,15 @@ import { obtenerTurnoAbiertoParaUsuario } from "../caja/obtenerTurnoAbiertoParaU
 import { AvisoCajaCerrada } from "../caja/AvisoCajaCerrada";
 
 export default async function PaginaMiembros() {
-  const usuario = await obtenerUsuarioDeSesionActual();
-  if (!usuario) redirect("/login");
+  const sesion = await obtenerUsuarioDeSesionActual();
+  if (!sesion) redirect("/login");
+  const { usuario, sucursalActivaId } = sesion;
 
   const [miembros, planes, sucursales, turnoAbierto] = await Promise.all([
     listarMiembros({ miembros: new PrismaMemberRepository(prisma) }, usuario.organizacionId),
     listarPlanes({ planes: new PrismaPlanRepository(prisma) }, usuario.organizacionId),
     listarSucursales({ sucursales: new PrismaSucursalRepository(prisma) }, usuario.organizacionId),
-    obtenerTurnoAbiertoParaUsuario(usuario),
+    obtenerTurnoAbiertoParaUsuario(sucursalActivaId, usuario.id),
   ]);
 
   return (

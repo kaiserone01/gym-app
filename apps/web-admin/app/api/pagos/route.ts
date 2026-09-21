@@ -24,11 +24,12 @@ import {
 } from "@gym-app/domain/use-cases/ListarPagos";
 
 export async function GET(req: NextRequest) {
-  const usuario = await obtenerUsuarioDeSesion(req);
+  const sesion = await obtenerUsuarioDeSesion(req);
 
-  if (!usuario) {
+  if (!sesion) {
     return NextResponse.json({ error: "No autenticado." }, { status: 401 });
   }
+  const { usuario } = sesion;
 
   const miembroId = req.nextUrl.searchParams.get("miembroId") ?? undefined;
 
@@ -50,11 +51,12 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const usuario = await obtenerUsuarioDeSesion(req);
+    const sesion = await obtenerUsuarioDeSesion(req);
 
-    if (!usuario) {
+    if (!sesion) {
       return NextResponse.json({ error: "No autenticado." }, { status: 401 });
     }
+    const { usuario, sucursalActivaId } = sesion;
 
     const body = await req.json();
 
@@ -65,7 +67,11 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (!usuario.sucursalId) {
+    // sucursalActivaId siempre existe para una sesión válida (garantizado
+    // por Sesion.sucursalActivaId, ver plan de selección de sucursal al
+    // iniciar sesión) — este chequeo queda como guardia defensiva de tipos,
+    // no debería ser alcanzable en la práctica.
+    if (!sucursalActivaId) {
       return NextResponse.json(
         { error: "El usuario no tiene una sucursal asignada para registrar pagos." },
         { status: 400 }
@@ -90,7 +96,7 @@ export async function POST(req: NextRequest) {
         metodoPagoId: body.metodoPagoId ?? null,
         numeroOperacion: body.numeroOperacion ?? null,
         tasaCambio: body.tasaCambio ?? null,
-        sucursalId: usuario.sucursalId,
+        sucursalId: sucursalActivaId,
         registradoPorId: usuario.id,
         rolUsuario: usuario.rol,
       }

@@ -19,7 +19,6 @@ import { PrismaMetodoPagoRepository } from "@gym-app/infrastructure/persistence/
 import { PrismaSucursalRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaSucursalRepository";
 import { listarMetodosPagoActivos } from "@gym-app/domain/use-cases/ListarMetodosPago";
 import { listarSucursales } from "@gym-app/domain/use-cases/ListarSucursales";
-import { obtenerSucursalesVisiblesParaTurno } from "./obtenerSucursalesVisiblesParaTurno";
 import { obtenerTurnoAbiertoParaUsuario } from "./obtenerTurnoAbiertoParaUsuario";
 import { AvisoCajaAjena } from "./AvisoCajaAjena";
 
@@ -59,16 +58,18 @@ import { abrirTurnoAction, registrarEgresoAction, cerrarTurnoAction } from "./ac
 import { registrarPagoAction } from "../pagos/actions";
 
 export default async function PaginaCaja() {
-  const usuario = await obtenerUsuarioDeSesionActual();
-  if (!usuario) redirect("/login");
+  const sesion = await obtenerUsuarioDeSesionActual();
+  if (!sesion) redirect("/login");
+  const { usuario, sucursalActivaId } = sesion;
 
   const turnoRepo = new PrismaTurnoRepository(prisma);
-  const turnoAbierto = await obtenerTurnoAbiertoParaUsuario(usuario);
+  const turnoAbierto = await obtenerTurnoAbiertoParaUsuario(sucursalActivaId, usuario.id);
 
-  // La sucursal "real" del turno encontrado — para un SOCIO puede diferir
-  // de usuario.sucursalId (que es null), así que el resto de la página usa
-  // esta en vez de usuario.sucursalId directamente.
-  const sucursalId = turnoAbierto ? turnoAbierto.turno.sucursalId : usuario.sucursalId;
+  // La sucursal activa de esta sesión (elegida al loguearse) — ya no hace
+  // falta distinguir "la del turno" vs "la fija del usuario": son siempre
+  // la misma, porque el turno que se busca es justamente el de
+  // sucursalActivaId (ver obtenerTurnoAbiertoParaUsuario).
+  const sucursalId = sucursalActivaId;
 
   if (turnoAbierto) {
     const esPropio = turnoAbierto.esPropio;
@@ -271,31 +272,14 @@ export default async function PaginaCaja() {
     );
   }
 
-  const sucursalesVisibles = await obtenerSucursalesVisiblesParaTurno(usuario);
-
-  // Si el operador ya tiene una sucursal fija (la mayoría de Gerente/
-  // Recepción) se usa esa sin preguntar. Si no (típicamente un SOCIO), y
-  // solo hay una sucursal visible, se toma esa por defecto tampoco. Solo
-  // se pregunta cuando hay más de una opción real — antes de esta tarea
-  // el formulario siempre recibía sucursales=[] acá, por eso el SOCIO no
-  // podía elegir (ver Task 2).
-  const requiereSucursal = !sucursalId && sucursalesVisibles.length > 1;
-  const sucursalesParaFormulario = requiereSucursal
-    ? sucursalesVisibles.map((s) => ({ id: s.id, nombre: s.nombre }))
-    : [];
-
-  // La sucursal donde se abrirá el turno, si ya se sabe sin preguntar
-  // (fija, o la única visible) — se usa para traer de una vez el último
-  // cierre de esa sede. Si hay que elegir sucursal (requiereSucursal), no
-  // se sabe todavía: FormularioAbrirTurno lo consulta él mismo al cambiar
-  // el <select> (ver /api/caja/ultimo-cierre).
-  const sucursalIdConocida = sucursalId ?? (sucursalesVisibles.length === 1 ? sucursalesVisibles[0].id : null);
-  const ultimoCierre = sucursalIdConocida
-    ? await obtenerUltimoCierrePorSucursal(
-        { turnos: turnoRepo, arqueo: new PrismaArqueoRepository(prisma) },
-        { sucursalId: sucursalIdConocida }
-      )
-    : null;
+  // sucursalActivaId siempre está resuelta desde el login (ver plan de
+  // selección de sucursal) — ya no hace falta preguntar la sucursal acá
+  // ni consultar sucursalesVisibles: el operador ya la eligió (o era la
+  // única) al iniciar sesión, antes de llegar a esta pantalla.
+  const ultimoCierre = await obtenerUltimoCierrePorSucursal(
+    { turnos: turnoRepo, arqueo: new PrismaArqueoRepository(prisma) },
+    { sucursalId: sucursalActivaId }
+  );
 
   return (
     <div className="flex flex-col gap-6 p-6 pb-24 lg:p-8 lg:pb-8">
@@ -303,8 +287,8 @@ export default async function PaginaCaja() {
 
       <FormularioAbrirTurno
         accion={abrirTurnoAction}
-        requiereSucursal={requiereSucursal}
-        sucursales={sucursalesParaFormulario}
+        requiereSucursal={false}
+        sucursales={[]}
         ultimoCierre={ultimoCierre ? { ...ultimoCierre, cerradoEn: ultimoCierre.cerradoEn.toISOString() } : null}
       />
     </div>

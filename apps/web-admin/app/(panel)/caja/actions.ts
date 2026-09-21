@@ -25,13 +25,16 @@ export async function abrirTurnoAction(
   _estadoPrevio: EstadoAbrirTurno,
   formData: FormData
 ): Promise<EstadoAbrirTurno> {
-  const usuario = await obtenerUsuarioDeSesionActual();
-  if (!usuario) redirect("/login");
+  const sesion = await obtenerUsuarioDeSesionActual();
+  if (!sesion) redirect("/login");
+  const { usuario, sucursalActivaId } = sesion;
 
-  const sucursalId = usuario.sucursalId ?? formData.get("sucursalId")?.toString();
-  if (!sucursalId) {
-    return { error: "Debés seleccionar una sucursal para abrir el turno." };
-  }
+  // sucursalActivaId siempre existe (garantizado por Sesion, ver Task 1
+  // del plan de selección de sucursal) — ya no hace falta el fallback al
+  // <select> del formulario, ni el error de "sucursal requerida": la
+  // sucursal ya está decidida por la sesión, no por lo que el operador
+  // haya elegido en un campo del formulario de abrir turno.
+  const sucursalId = sucursalActivaId;
 
   const fondoInicialEfectivoUSD = Number(formData.get("fondoInicialEfectivoUSD"));
   const fondoInicialEfectivoBs = Number(formData.get("fondoInicialEfectivoBs"));
@@ -79,8 +82,9 @@ export async function registrarEgresoAction(
   _estadoPrevio: EstadoRegistrarEgreso,
   formData: FormData
 ): Promise<EstadoRegistrarEgreso> {
-  const usuario = await obtenerUsuarioDeSesionActual();
-  if (!usuario) redirect("/login");
+  const sesion = await obtenerUsuarioDeSesionActual();
+  if (!sesion) redirect("/login");
+  const { usuario, sucursalActivaId } = sesion;
 
   const turnoId = formData.get("turnoId")?.toString();
   const monto = Number(formData.get("monto"));
@@ -105,7 +109,7 @@ export async function registrarEgresoAction(
       },
       {
         organizacionId: usuario.organizacionId,
-        sucursalIdUsuario: usuario.sucursalId,
+        sucursalIdUsuario: sucursalActivaId,
         turnoId,
         rolUsuario: usuario.rol,
         usuarioIdSolicitante: usuario.id,
@@ -142,8 +146,9 @@ export async function cerrarTurnoAction(
   _estadoPrevio: EstadoCerrarTurno,
   formData: FormData
 ): Promise<EstadoCerrarTurno> {
-  const usuario = await obtenerUsuarioDeSesionActual();
-  if (!usuario) redirect("/login");
+  const sesion = await obtenerUsuarioDeSesionActual();
+  if (!sesion) redirect("/login");
+  const { usuario, sucursalActivaId } = sesion;
 
   const turnoId = formData.get("turnoId")?.toString();
   if (!turnoId) redirect("/caja");
@@ -176,7 +181,7 @@ export async function cerrarTurnoAction(
       },
       {
         organizacionId: usuario.organizacionId,
-        sucursalIdUsuario: usuario.sucursalId,
+        sucursalIdUsuario: sucursalActivaId,
         turnoId,
         rolUsuario: usuario.rol,
         usuarioIdSolicitante: usuario.id,
@@ -208,8 +213,9 @@ export async function anularPagoAction(
   _estadoPrevio: EstadoAnularPago,
   formData: FormData
 ): Promise<EstadoAnularPago> {
-  const usuario = await obtenerUsuarioDeSesionActual();
-  if (!usuario) redirect("/login");
+  const sesion = await obtenerUsuarioDeSesionActual();
+  if (!sesion) redirect("/login");
+  const { usuario } = sesion;
 
   const pagoId = formData.get("pagoId")?.toString();
   const motivo = formData.get("motivo")?.toString() ?? "";

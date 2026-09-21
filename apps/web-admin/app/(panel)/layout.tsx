@@ -37,7 +37,12 @@ export default async function PanelLayout({ children }: { children: React.ReactN
             pie={<BarraUsuario nombre={usuario.nombre} email={usuario.email} fotoUrl={usuario.fotoUrl} />}
           />
         </div>
-        <main className="flex-1 pb-16 lg:pb-0">{children}</main>
+        {/* pt-16 reserva el espacio del badge de RelojYTasa (fixed,
+            arriba a la derecha) — sin esto tapaba controles de página
+            que también viven en esa esquina (ej. "Nuevo miembro" en
+            /miembros). Se aplica acá, una sola vez, en vez de que cada
+            página tenga que acordarse de dejarle margen. */}
+        <main className="flex-1 pt-16 pb-16 lg:pb-0">{children}</main>
         <NavegacionMobile nombre={usuario.nombre} email={usuario.email} rol={usuario.rol} />
       </div>
     </FeedbackProvider>

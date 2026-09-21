@@ -12,15 +12,18 @@ import { Button } from "@gym-app/ui/components/Button";
 import { PageHeader } from "@gym-app/ui/components/PageHeader";
 import { ListaMiembros } from "./ListaMiembros";
 import { BotonImprimir } from "../BotonImprimir";
+import { obtenerTurnoAbiertoParaUsuario } from "../caja/obtenerTurnoAbiertoParaUsuario";
+import { AvisoCajaCerrada } from "../caja/AvisoCajaCerrada";
 
 export default async function PaginaMiembros() {
   const usuario = await obtenerUsuarioDeSesionActual();
   if (!usuario) redirect("/login");
 
-  const [miembros, planes, sucursales] = await Promise.all([
+  const [miembros, planes, sucursales, turnoAbierto] = await Promise.all([
     listarMiembros({ miembros: new PrismaMemberRepository(prisma) }, usuario.organizacionId),
     listarPlanes({ planes: new PrismaPlanRepository(prisma) }, usuario.organizacionId),
     listarSucursales({ sucursales: new PrismaSucursalRepository(prisma) }, usuario.organizacionId),
+    obtenerTurnoAbiertoParaUsuario(usuario),
   ]);
 
   return (
@@ -29,11 +32,26 @@ export default async function PaginaMiembros() {
         <PageHeader>Miembros</PageHeader>
         <div className="flex gap-2">
           <BotonImprimir />
-          <Link href="/miembros/nuevo">
-            <Button>Nuevo miembro</Button>
-          </Link>
+          {/* Inscribir un miembro es una operación de caja — el alta
+              queda atada a un turno para el cuadre (ver diseño acordado:
+              hay que abrir caja antes de inscribir o cobrar). */}
+          {turnoAbierto ? (
+            <Link href="/miembros/nuevo">
+              <Button>Nuevo miembro</Button>
+            </Link>
+          ) : (
+            <Button disabled title="Abrí la caja para poder inscribir un miembro">
+              Nuevo miembro
+            </Button>
+          )}
         </div>
       </div>
+
+      {!turnoAbierto && (
+        <div className="mb-6 print:hidden">
+          <AvisoCajaCerrada />
+        </div>
+      )}
 
       <ListaMiembros miembros={miembros} planes={planes} sucursales={sucursales} />
     </div>

@@ -12,10 +12,28 @@ import { obtenerEntrenadoresPorSucursal } from "../obtenerEntrenadoresPorSucursa
 import { FormularioMiembro } from "../FormularioMiembro";
 import { crearMiembroAction } from "../actions";
 import { PageHeader } from "@gym-app/ui/components/PageHeader";
+import { obtenerTurnoAbiertoParaUsuario } from "../../caja/obtenerTurnoAbiertoParaUsuario";
+import { AvisoCajaCerrada } from "../../caja/AvisoCajaCerrada";
 
 export default async function PaginaNuevoMiembro() {
   const usuario = await obtenerUsuarioDeSesionActual();
   if (!usuario) redirect("/login");
+
+  const turnoAbierto = await obtenerTurnoAbiertoParaUsuario(usuario);
+
+  // Inscribir un miembro es una operación de caja (ver diseño acordado:
+  // hay que abrir turno antes de inscribir o cobrar) — en vez del
+  // formulario se muestra el aviso con acceso directo a Abrir turno.
+  if (!turnoAbierto) {
+    return (
+      <div className="max-w-4xl p-6 lg:p-8">
+        <div className="mb-6">
+          <PageHeader>Nuevo miembro</PageHeader>
+        </div>
+        <AvisoCajaCerrada mensaje="Para inscribir un miembro primero tenés que abrir la caja." />
+      </div>
+    );
+  }
 
   const [planes, sucursales, sucursalesOrganizacion, metodosPago] = await Promise.all([
     listarPlanes({ planes: new PrismaPlanRepository(prisma) }, usuario.organizacionId),

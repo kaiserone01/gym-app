@@ -20,6 +20,8 @@ import { FormularioPago } from "../../pagos/FormularioPago";
 import { registrarPagoAction } from "../../pagos/actions";
 import { Card } from "@gym-app/ui/components/Card";
 import { PageHeader } from "@gym-app/ui/components/PageHeader";
+import { obtenerTurnoAbiertoParaUsuario } from "../../caja/obtenerTurnoAbiertoParaUsuario";
+import { AvisoCajaCerrada } from "../../caja/AvisoCajaCerrada";
 
 // OJO: nunca usar fecha.toISOString() acá — convierte a UTC primero, y de
 // noche (pasadas las 8pm en Venezuela, UTC-4) eso salta al día siguiente.
@@ -46,7 +48,7 @@ export default async function PaginaEditarMiembro({ params }: { params: Promise<
 
   if (!miembro) notFound();
 
-  const [pagos, planes, sucursales, sucursalesOrganizacion, metodosPago] = await Promise.all([
+  const [pagos, planes, sucursales, sucursalesOrganizacion, metodosPago, turnoAbierto] = await Promise.all([
     listarPagos(
       { pagos: new PrismaPagoRepository(prisma), miembros: new PrismaMemberRepository(prisma) },
       { organizacionId: usuario.organizacionId, miembroId: id }
@@ -55,6 +57,7 @@ export default async function PaginaEditarMiembro({ params }: { params: Promise<
     obtenerSucursalesVisiblesParaMiembro(usuario),
     listarSucursales({ sucursales: new PrismaSucursalRepository(prisma) }, usuario.organizacionId),
     listarMetodosPagoActivos({ metodosPago: new PrismaMetodoPagoRepository(prisma) }, usuario.organizacionId),
+    obtenerTurnoAbiertoParaUsuario(usuario),
   ]);
   const entrenadoresPorSucursal = await obtenerEntrenadoresPorSucursal(usuario.organizacionId, sucursales);
 
@@ -105,32 +108,40 @@ export default async function PaginaEditarMiembro({ params }: { params: Promise<
               Ver historial de pagos ({pagos.length})
             </Link>
 
-            <Card>
-              <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--gx-muted)" }}>
-                Registrar pago
-              </h2>
-              <FormularioPago
-                accion={registrarPagoAction}
-                miembros={[]}
-                planes={planesActivos}
-                metodosPago={metodosPago}
-                sucursalesVisibles={sucursales}
-                sucursalesOrganizacion={sucursalesOrganizacion}
-                sucursalIdDefault={usuario.sucursalId}
-                miembroIdFijo={id}
-                planFijo={
-                  miembro.planId
-                    ? {
-                        id: miembro.planId,
-                        nombre: planes.find((p) => p.id === miembro.planId)?.nombre ?? "Plan actual",
-                        precioUSD: miembro.precioPlan,
-                        multisede: planes.find((p) => p.id === miembro.planId)?.multisede ?? false,
-                      }
-                    : undefined
-                }
-                origen="miembro"
-              />
-            </Card>
+            {turnoAbierto ? (
+              <Card>
+                <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--gx-muted)" }}>
+                  Registrar pago
+                </h2>
+                <FormularioPago
+                  accion={registrarPagoAction}
+                  miembros={[]}
+                  planes={planesActivos}
+                  metodosPago={metodosPago}
+                  sucursalesVisibles={sucursales}
+                  sucursalesOrganizacion={sucursalesOrganizacion}
+                  sucursalIdDefault={usuario.sucursalId}
+                  miembroIdFijo={id}
+                  planFijo={
+                    miembro.planId
+                      ? {
+                          id: miembro.planId,
+                          nombre: planes.find((p) => p.id === miembro.planId)?.nombre ?? "Plan actual",
+                          precioUSD: miembro.precioPlan,
+                          multisede: planes.find((p) => p.id === miembro.planId)?.multisede ?? false,
+                        }
+                      : undefined
+                  }
+                  origen="miembro"
+                />
+              </Card>
+            ) : (
+              // Cobrar una mensualidad es una operación de caja — no se
+              // puede sin turno abierto (ver diseño acordado). Editar los
+              // datos del miembro (el formulario principal) sí sigue
+              // disponible, esto solo bloquea el bloque de cobro.
+              <AvisoCajaCerrada mensaje="Para registrar un pago primero tenés que abrir la caja." />
+            )}
           </div>
         }
       />

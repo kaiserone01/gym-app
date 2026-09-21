@@ -4,19 +4,35 @@ import type { Turno } from "@gym-app/domain/entities/Turno";
 import type { UsuarioAdmin } from "@gym-app/domain/entities/UsuarioAdmin";
 import { obtenerSucursalesVisiblesParaTurno } from "./obtenerSucursalesVisiblesParaTurno";
 
-// El turno abierto (si existe) para este usuario, sin importar en cuál de
-// sus sucursales visibles esté — extraído de caja/page.tsx para
-// reutilizarse en Miembros (no se puede inscribir ni cobrar sin turno
-// abierto, ver diseño acordado). Gerente/Recepción tienen sucursalId fijo:
-// basta buscar ahí. Un SOCIO no lo tiene (ve varias sucursales) — hay que
-// buscar entre todas las que puede ver (mismo fix que el bug de /caja
-// donde la página no encontraba el turno recién abierto).
-export async function obtenerTurnoAbiertoParaUsuario(usuario: UsuarioAdmin): Promise<Turno | null> {
+// El turno abierto visible para este usuario, con una bandera explícita de
+// si es SUYO (turno.usuarioId === usuario.id) o de otra persona. Antes esta
+// función devolvía el turno abierto de la sucursal sin esa distinción: un
+// SOCIO (ve todas las sucursales) terminaba "usando" como propio el turno
+// que otro usuario tenía abierto, pudiendo registrar pagos/egresos/cerrar
+// una caja que no era suya (ver caso de uso: un solo usuario a la vez por
+// caja). Gerente/Recepción tienen sucursalId fijo: basta buscar ahí, y ahí
+// el turno encontrado siempre es de ellos mismos (regla de "una caja
+// abierta por sucursal" a nivel de datos, ver TurnoYaAbiertoError)  salvo
+// que hayan dos usuarios con la misma sucursalId fija, caso cubierto igual
+// por la comparación de usuarioId. Un SOCIO no tiene sucursalId fijo — hay
+// que buscar entre todas las que puede ver.
+export interface TurnoAbiertoParaUsuario {
+  turno: Turno;
+  esPropio: boolean;
+}
+
+export async function obtenerTurnoAbiertoParaUsuario(
+  usuario: UsuarioAdmin
+): Promise<TurnoAbiertoParaUsuario | null> {
   const turnoRepo = new PrismaTurnoRepository(prisma);
 
-  return usuario.sucursalId
-    ? turnoRepo.buscarAbiertoPorSucursal(usuario.sucursalId)
-    : turnoRepo.buscarAbiertoEntreSucursales(
+  const turno = usuario.sucursalId
+    ? await turnoRepo.buscarAbiertoPorSucursal(usuario.sucursalId)
+    : await turnoRepo.buscarAbiertoEntreSucursales(
         (await obtenerSucursalesVisiblesParaTurno(usuario)).map((s) => s.id)
       );
+
+  if (!turno) return null;
+
+  return { turno, esPropio: turno.usuarioId === usuario.id };
 }

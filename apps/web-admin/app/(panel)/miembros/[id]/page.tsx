@@ -11,7 +11,6 @@ import { listarPagos } from "@gym-app/domain/use-cases/ListarPagos";
 import { PrismaSucursalRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaSucursalRepository";
 import { listarPlanes } from "@gym-app/domain/use-cases/ListarPlanes";
 import { listarMetodosPagoActivos } from "@gym-app/domain/use-cases/ListarMetodosPago";
-import { listarSucursales } from "@gym-app/domain/use-cases/ListarSucursales";
 import { obtenerSucursalesVisiblesParaMiembro } from "../obtenerSucursalesVisibles";
 import { obtenerEntrenadoresPorSucursal } from "../obtenerEntrenadoresPorSucursal";
 import { MiembroFueraDeSucursal } from "./MiembroFueraDeSucursal";
@@ -54,14 +53,13 @@ export default async function PaginaEditarMiembro({ params }: { params: Promise<
     throw error;
   }
 
-  const [pagos, planes, sucursales, sucursalesOrganizacion, metodosPago, turnoAbierto] = await Promise.all([
+  const [pagos, planes, sucursales, metodosPago, turnoAbierto] = await Promise.all([
     listarPagos(
       { pagos: new PrismaPagoRepository(prisma), miembros: new PrismaMemberRepository(prisma) },
       { organizacionId: usuario.organizacionId, miembroId: id }
     ),
     listarPlanes({ planes: new PrismaPlanRepository(prisma) }, usuario.organizacionId),
     obtenerSucursalesVisiblesParaMiembro(usuario),
-    listarSucursales({ sucursales: new PrismaSucursalRepository(prisma) }, usuario.organizacionId),
     listarMetodosPagoActivos({ metodosPago: new PrismaMetodoPagoRepository(prisma) }, usuario.organizacionId),
     obtenerTurnoAbiertoParaUsuario(sucursalActivaId, usuario.id),
   ]);
@@ -88,7 +86,7 @@ export default async function PaginaEditarMiembro({ params }: { params: Promise<
         entrenadoresPorSucursal={entrenadoresPorSucursal}
         planes={planes}
         sucursales={sucursales}
-        sucursalesOrganizacion={sucursalesOrganizacion}
+        sucursalActivaNombre={sucursales.find((s) => s.id === sucursalActivaId)?.nombre ?? "—"}
         sucursalIdDefault={sucursalActivaId}
         metodosPago={metodosPago}
         miembroId={id}
@@ -124,9 +122,6 @@ export default async function PaginaEditarMiembro({ params }: { params: Promise<
                   miembros={[]}
                   planes={planesActivos}
                   metodosPago={metodosPago}
-                  sucursalesVisibles={sucursales}
-                  sucursalesOrganizacion={sucursalesOrganizacion}
-                  sucursalIdDefault={sucursalActivaId}
                   miembroIdFijo={id}
                   planFijo={
                     miembro.planId
@@ -151,7 +146,7 @@ export default async function PaginaEditarMiembro({ params }: { params: Promise<
               <AvisoCajaCerrada
                 mensaje={
                   turnoAbierto
-                    ? `No podés registrar pagos: la caja está abierta por ${turnoAbierto.turno.usuarioNombre ?? "otro usuario"}.`
+                    ? `No puedes registrar pagos: la caja está abierta por ${turnoAbierto.turno.usuarioNombre ?? "otro usuario"}.`
                     : "Para registrar un pago primero tenés que abrir la caja."
                 }
               />

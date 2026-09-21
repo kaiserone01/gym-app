@@ -3,10 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { obtenerUsuarioDeSesionActual } from "@/lib/sesion";
 import { PrismaPlanRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaPlanRepository";
 import { PrismaMetodoPagoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaMetodoPagoRepository";
-import { PrismaSucursalRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaSucursalRepository";
 import { listarPlanes } from "@gym-app/domain/use-cases/ListarPlanes";
 import { listarMetodosPagoActivos } from "@gym-app/domain/use-cases/ListarMetodosPago";
-import { listarSucursales } from "@gym-app/domain/use-cases/ListarSucursales";
 import { obtenerSucursalesVisiblesParaMiembro } from "../obtenerSucursalesVisibles";
 import { obtenerEntrenadoresPorSucursal } from "../obtenerEntrenadoresPorSucursal";
 import { FormularioMiembro } from "../FormularioMiembro";
@@ -38,7 +36,7 @@ export default async function PaginaNuevoMiembro() {
         <AvisoCajaCerrada
           mensaje={
             turnoAbierto
-              ? `No podés inscribir miembros: la caja está abierta por ${turnoAbierto.turno.usuarioNombre ?? "otro usuario"}.`
+              ? `No puedes inscribir miembros: la caja está abierta por ${turnoAbierto.turno.usuarioNombre ?? "otro usuario"}.`
               : "Para inscribir un miembro primero tenés que abrir la caja."
           }
         />
@@ -46,13 +44,13 @@ export default async function PaginaNuevoMiembro() {
     );
   }
 
-  const [planes, sucursales, sucursalesOrganizacion, metodosPago] = await Promise.all([
+  const [planes, sucursales, metodosPago] = await Promise.all([
     listarPlanes({ planes: new PrismaPlanRepository(prisma) }, usuario.organizacionId),
     obtenerSucursalesVisiblesParaMiembro(usuario),
-    listarSucursales({ sucursales: new PrismaSucursalRepository(prisma) }, usuario.organizacionId),
     listarMetodosPagoActivos({ metodosPago: new PrismaMetodoPagoRepository(prisma) }, usuario.organizacionId),
   ]);
   const entrenadoresPorSucursal = await obtenerEntrenadoresPorSucursal(usuario.organizacionId, sucursales);
+  const sucursalActiva = sucursales.find((s) => s.id === sucursalActivaId);
 
   return (
     <div className="max-w-4xl p-6 lg:p-8">
@@ -64,7 +62,7 @@ export default async function PaginaNuevoMiembro() {
         entrenadoresPorSucursal={entrenadoresPorSucursal}
         planes={planes}
         sucursales={sucursales}
-        sucursalesOrganizacion={sucursalesOrganizacion}
+        sucursalActivaNombre={sucursalActiva?.nombre ?? "—"}
         sucursalIdDefault={sucursalActivaId}
         metodosPago={metodosPago}
         miembroId={null}

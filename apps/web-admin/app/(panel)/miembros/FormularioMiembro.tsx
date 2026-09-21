@@ -81,7 +81,7 @@ export function FormularioMiembro({
   accion,
   entrenadoresPorSucursal,
   sucursales,
-  sucursalesOrganizacion,
+  sucursalActivaNombre,
   sucursalIdDefault,
   planes,
   metodosPago,
@@ -95,10 +95,14 @@ export function FormularioMiembro({
   // depende de la sucursal seleccionada en el propio formulario, así que
   // se filtra en el cliente sin ida y vuelta al servidor.
   entrenadoresPorSucursal: Record<string, EntrenadorResumen[]>;
+  // Se sigue usando para resolver entrenadoresDeLaSede y para mostrar el
+  // nombre cuando sucursalId === ID_AMBAS_SEDES; ya NO se usa para poblar
+  // un <select> de sedes.
   sucursales: SucursalResumen[];
-  // Ver SelectorMetodoPago — determinan el selector "Sede del pago" del
-  // primer pago.
-  sucursalesOrganizacion: SucursalResumen[];
+  // Nombre de la sucursal activa de la sesión — se muestra como texto fijo
+  // en vez de ofrecer un selector (ver diseño acordado: crear/editar un
+  // miembro siempre lo asigna a la sede activa, salvo "Ambas").
+  sucursalActivaNombre: string;
   sucursalIdDefault: string | null;
   planes: Plan[];
   metodosPago: MetodoPago[];
@@ -130,7 +134,7 @@ export function FormularioMiembro({
   const [celular, setCelular] = useState(valoresIniciales?.celular ?? "");
   const [fechaInscripcion, setFechaInscripcion] = useState(valoresIniciales?.fechaInscripcion ?? hoyISO());
   const [sucursalId, setSucursalId] = useState(
-    valoresIniciales ? (valoresIniciales.sucursalId ?? ID_AMBAS_SEDES) : sucursales[0]?.id ?? ""
+    valoresIniciales ? (valoresIniciales.sucursalId ?? ID_AMBAS_SEDES) : sucursalIdDefault ?? ""
   );
   const [entrenadorId, setEntrenadorId] = useState(valoresIniciales?.entrenadorId ?? "");
   const [fotoPreview, setFotoPreview] = useState<string | null>(valoresIniciales?.fotoUrl ?? null);
@@ -176,8 +180,7 @@ export function FormularioMiembro({
     metodo: string;
     tasaCambio: number | null;
     numeroOperacion: string;
-    sucursalId: string | null;
-  }>({ metodoPagoId: null, metodo: "", tasaCambio: null, numeroOperacion: "", sucursalId: sucursalIdDefault ?? null });
+  }>({ metodoPagoId: null, metodo: "", tasaCambio: null, numeroOperacion: "" });
   const [mostrarTicket, setMostrarTicket] = useState(false);
   // En edición, el plan asignado se ve de solo lectura hasta que se
   // confirma explícitamente que se quiere cambiar (ver diseño acordado:
@@ -185,12 +188,12 @@ export function FormularioMiembro({
   const [editandoPlan, setEditandoPlan] = useState(!esEdicion);
   const [confirmandoCambioPlan, setConfirmandoCambioPlan] = useState(false);
   const planIdOriginal = valoresIniciales?.planId ?? null;
-  // Sede y entrenador también se ven de solo lectura en edición — se
-  // asignan en la inscripción, cambiarlos es una acción explícita aparte
-  // (ver diseño acordado).
-  const [editandoSede, setEditandoSede] = useState(!esEdicion);
+  // El entrenador también se ve de solo lectura en edición — se asigna en
+  // la inscripción, cambiarlo es una acción explícita aparte (ver diseño
+  // acordado). La sede ya no tiene modo edición propio — la única
+  // alternativa a la sede activa es el toggle de "Ambas sedes" (ver bloque
+  // "Sede asignada" más abajo).
   const [editandoEntrenador, setEditandoEntrenador] = useState(!esEdicion);
-  const sucursalIdOriginal = esEdicion ? valoresIniciales?.sucursalId ?? ID_AMBAS_SEDES : null;
   const entrenadorIdOriginal = valoresIniciales?.entrenadorId ?? "";
 
   const esPersonalizado = planId === ID_PERSONALIZADO;
@@ -238,7 +241,7 @@ export function FormularioMiembro({
     // seleccionado, se cae a la primera sede visible en vez de dejar un
     // valor que ya no es válido para este plan.
     if (!permiteMultisede && sucursalId === ID_AMBAS_SEDES) {
-      setSucursalId(sucursales[0]?.id ?? "");
+      setSucursalId(sucursalIdDefault ?? "");
     }
   }
 
@@ -293,7 +296,6 @@ export function FormularioMiembro({
             <input type="hidden" name="metodoPagoId" value={seleccionMetodo.metodoPagoId ?? ""} />
             <input type="hidden" name="tasaCambio" value={seleccionMetodo.tasaCambio ?? ""} />
             <input type="hidden" name="numeroOperacion" value={seleccionMetodo.numeroOperacion} />
-            <input type="hidden" name="sucursalIdPago" value={seleccionMetodo.sucursalId ?? ""} />
           </>
         )}
 
@@ -418,11 +420,6 @@ export function FormularioMiembro({
               Plan de membresía
             </h2>
             <div className="flex gap-2">
-              {esEdicion && !editandoSede && (
-                <Button type="button" variant="secundario" onClick={() => setEditandoSede(true)}>
-                  Cambiar sede
-                </Button>
-              )}
               {esEdicion && !editandoEntrenador && (
                 <Button type="button" variant="secundario" onClick={() => setEditandoEntrenador(true)}>
                   Cambiar entrenador
@@ -436,57 +433,31 @@ export function FormularioMiembro({
             </div>
           </div>
 
-          {esEdicion && !editandoSede && (
-            <div className="mb-4 rounded-lg border p-4" style={{ borderColor: "var(--gx-edge)" }}>
-              <input type="hidden" name="sucursalId" value={sucursalId} />
-              <div className="flex justify-between text-sm">
-                <span style={{ color: "var(--gx-muted)" }}>Sede asignada</span>
-                <span className="font-medium" style={{ color: "var(--gx-ink)" }}>
-                  {sucursalId === ID_AMBAS_SEDES ? "Ambas" : sucursales.find((s) => s.id === sucursalId)?.nombre ?? "—"}
-                </span>
-              </div>
-            </div>
-          )}
-
-          {(editandoSede || !esEdicion) && (
-            <label className="mb-4 flex flex-col gap-1.5 text-sm" style={{ color: "var(--gx-muted)" }}>
-              Sede asignada
-              <select
-                name="sucursalId"
-                required
-                value={sucursalId}
-                onChange={(e) => setSucursalId(e.target.value)}
-                className="min-h-11 rounded-lg border px-3 outline-none focus:border-[var(--gx-accent)]"
-                style={{ background: "var(--gx-surface-2)", borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }}
-              >
-                <option value="">Seleccioná una sede</option>
-                {sucursalesConActual.map((sucursal) => (
-                  <option key={sucursal.id} value={sucursal.id}>
-                    {sucursal.nombre}
-                  </option>
-                ))}
-                {planPermiteMultisede && <option value={ID_AMBAS_SEDES}>Ambas</option>}
-              </select>
-              <span className="text-xs" style={{ color: "var(--gx-muted-dim)" }}>
-                {sucursalId === ID_AMBAS_SEDES
-                  ? "Puede hacer check-in en cualquier sucursal de la organización."
-                  : "Determina en qué sucursal puede hacer check-in."}
+          <div className="mb-4 rounded-lg border p-4" style={{ borderColor: "var(--gx-edge)" }}>
+            <input type="hidden" name="sucursalId" value={sucursalId} />
+            <div className="flex justify-between text-sm">
+              <span style={{ color: "var(--gx-muted)" }}>Sede asignada</span>
+              <span className="font-medium" style={{ color: "var(--gx-ink)" }}>
+                {sucursalId === ID_AMBAS_SEDES ? "Ambas" : sucursalActivaNombre}
               </span>
-              {esEdicion && editandoSede && (
-                <Button
-                  type="button"
-                  variant="secundario"
-                  className="mt-1 self-start"
-                  onClick={() => {
-                    if (sucursalIdOriginal !== null) setSucursalId(sucursalIdOriginal);
-                    setEditandoSede(false);
-                  }}
-                >
-                  Cancelar cambio de sede
-                </Button>
-              )}
-            </label>
-          )}
+            </div>
+            {planPermiteMultisede && (
+              <label className="mt-3 flex min-h-11 items-center gap-2 text-sm" style={{ color: "var(--gx-muted)" }}>
+                <input
+                  type="checkbox"
+                  checked={sucursalId === ID_AMBAS_SEDES}
+                  onChange={(e) => setSucursalId(e.target.checked ? ID_AMBAS_SEDES : sucursalIdDefault ?? "")}
+                  className="h-5 w-5 accent-[var(--gx-accent)]"
+                />
+                Disponible en ambas sedes
+              </label>
+            )}
+            <span className="mt-2 block text-xs" style={{ color: "var(--gx-muted-dim)" }}>
+              {sucursalId === ID_AMBAS_SEDES
+                ? "Puede hacer check-in en cualquier sucursal de la organización."
+                : "Determina en qué sucursal puede hacer check-in."}
+            </span>
+          </div>
 
           {esEdicion && !editandoPlan && (
             <div className="rounded-lg border p-4" style={{ borderColor: "var(--gx-edge)" }}>
@@ -757,10 +728,6 @@ export function FormularioMiembro({
                 monto={precioActual}
                 onCambio={setSeleccionMetodo}
                 idFormulario={idFormulario}
-                sucursalesVisibles={sucursales}
-                sucursalesOrganizacion={sucursalesOrganizacion}
-                sucursalIdDefault={sucursalIdDefault}
-                planEsMultisede={planPermiteMultisede}
               />
             </Card>
           )
@@ -799,7 +766,7 @@ export function FormularioMiembro({
               <Fila label="Inscripción" valor={formatearFecha(fechaInscripcion)} />
               <Fila
                 label="Sede"
-                valor={sucursalId === ID_AMBAS_SEDES ? "Ambas" : sucursales.find((s) => s.id === sucursalId)?.nombre ?? "—"}
+                valor={sucursalId === ID_AMBAS_SEDES ? "Ambas" : sucursalActivaNombre}
               />
               <Fila label="Plan" valor={nombrePlanActual} />
               <Fila label="Entrenador" valor={requiereEntrenador ? (nombreEntrenadorActual ?? "Sin asignar") : "No aplica"} />

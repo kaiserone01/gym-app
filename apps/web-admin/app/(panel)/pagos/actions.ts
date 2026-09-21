@@ -28,6 +28,10 @@ export interface EstadoFormularioPago {
   // "caja", ver más abajo) — el formulario sigue montado en la misma
   // página, así que el éxito viaja por acá en vez de por ?ok= en la URL.
   ok?: string;
+  // Fecha real de fin de ciclo tras el pago (ISO) — solo presente junto
+  // con `ok`. La usa el Paso 4 del modal de Caja para mostrar la fecha de
+  // vencimiento resultante sin recalcularla en el cliente.
+  fechaFinCiclo?: string;
 }
 
 export async function registrarPagoAction(
@@ -58,8 +62,9 @@ export async function registrarPagoAction(
     return { error: "No se pudo determinar en qué sucursal se registra el pago." };
   }
 
+  let pago;
   try {
-    await registrarPago(
+    pago = await registrarPago(
       {
         pagos: new PrismaPagoRepository(prisma),
         suscripciones: new PrismaSuscripcionRepository(prisma),
@@ -105,5 +110,5 @@ export async function registrarPagoAction(
     redirect(conMensajeOk(`/miembros/${miembroId}`, "Pago registrado."));
   }
 
-  return { ok: "Pago registrado." };
+  return { ok: "Pago registrado.", fechaFinCiclo: pago.fechaFinCiclo?.toISOString() };
 }

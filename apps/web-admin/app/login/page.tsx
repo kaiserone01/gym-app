@@ -172,21 +172,23 @@ export default function LoginPage() {
                     type="button"
                     disabled={cargando}
                     onClick={() => elegirSucursal(sucursal.id)}
-                    className="group flex flex-col gap-1 rounded-lg border px-4 py-3 text-left transition-opacity disabled:opacity-50"
+                    className="flex flex-col gap-1 rounded-lg border px-4 py-3 text-left transition-opacity disabled:opacity-50"
                     style={{ borderColor: "var(--gx-edge)", background: "var(--gx-surface-2)", color: "var(--gx-ink)" }}
                   >
                     <span className="flex items-center justify-between">
                       <span className="font-semibold">{sucursal.nombre}</span>
-                      <span
-                        className="text-xs font-semibold uppercase tracking-wide opacity-0 transition-opacity group-hover:opacity-100"
-                        style={{ color: "var(--gx-accent)" }}
-                      >
-                        Entrar para continuar
-                      </span>
+                      {sucursal.cajaAbiertaPorMi && (
+                        <span
+                          className="text-xs font-semibold uppercase tracking-wide"
+                          style={{ color: "var(--gx-good)" }}
+                        >
+                          Entrar para continuar
+                        </span>
+                      )}
                     </span>
                     {sucursal.cajaAbiertaPor && (
                       <span
-                        className="flex items-center gap-1 rounded px-2 py-1 text-xs"
+                        className="flex items-center gap-2 rounded px-2 py-1 text-xs"
                         style={{
                           background: sucursal.cajaAbiertaPorMi
                             ? "color-mix(in srgb, var(--gx-good) 15%, transparent)"
@@ -215,6 +217,13 @@ export default function LoginPage() {
                         {sucursal.cajaAbiertaPorMi
                           ? "Ya tienes una caja abierta y activa"
                           : `Caja abierta por ${sucursal.cajaAbiertaPor}`}
+                        {sucursal.cajaAbiertaPorMi && (
+                          <span
+                            className="ml-auto inline-block h-2.5 w-2.5 rounded-full"
+                            style={{ background: "var(--gx-good)" }}
+                            aria-hidden="true"
+                          />
+                        )}
                       </span>
                     )}
                   </button>

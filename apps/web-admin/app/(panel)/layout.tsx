@@ -9,11 +9,12 @@ import { BarraUsuario } from "./BarraUsuario";
 import { NavegacionMobile } from "./NavegacionMobile";
 
 export default async function PanelLayout({ children }: { children: React.ReactNode }) {
-  const usuario = await obtenerUsuarioDeSesionActual();
+  const sesion = await obtenerUsuarioDeSesionActual();
 
-  if (!usuario) {
+  if (!sesion) {
     redirect("/login");
   }
+  const { usuario } = sesion;
 
   return (
     <FeedbackProvider>

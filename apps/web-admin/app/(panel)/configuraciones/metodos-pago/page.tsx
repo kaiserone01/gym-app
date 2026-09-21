@@ -11,8 +11,9 @@ import { ETIQUETA_TIPO_METODO_PAGO, TONO_TIPO_METODO_PAGO } from "../metodosPago
 import { ToggleActivoMetodoPago } from "./ToggleActivoMetodoPago";
 
 export default async function PaginaMetodosPago() {
-  const usuario = await obtenerUsuarioDeSesionActual();
-  if (!usuario) redirect("/login");
+  const sesion = await obtenerUsuarioDeSesionActual();
+  if (!sesion) redirect("/login");
+  const { usuario } = sesion;
 
   const metodos = await listarMetodosPago({ metodosPago: new PrismaMetodoPagoRepository(prisma) }, usuario.organizacionId);
 

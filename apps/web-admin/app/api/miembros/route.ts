@@ -8,11 +8,12 @@ import { listarMiembros } from "@gym-app/domain/use-cases/ListarMiembros";
 import { crearMiembro, CedulaDuplicadaError } from "@gym-app/domain/use-cases/CrearMiembro";
 
 export async function GET(req: NextRequest) {
-  const usuario = await obtenerUsuarioDeSesion(req);
+  const sesion = await obtenerUsuarioDeSesion(req);
 
-  if (!usuario) {
+  if (!sesion) {
     return NextResponse.json({ error: "No autenticado." }, { status: 401 });
   }
+  const { usuario } = sesion;
 
   const miembros = await listarMiembros(
     { miembros: new PrismaMemberRepository(prisma) },
@@ -24,11 +25,12 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const usuario = await obtenerUsuarioDeSesion(req);
+    const sesion = await obtenerUsuarioDeSesion(req);
 
-    if (!usuario) {
+    if (!sesion) {
       return NextResponse.json({ error: "No autenticado." }, { status: 401 });
     }
+    const { usuario } = sesion;
 
     const body = await req.json();
 

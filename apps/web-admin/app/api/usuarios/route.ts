@@ -18,10 +18,11 @@ import {
 import { listarUsuariosAdmin } from "@gym-app/domain/use-cases/ListarUsuariosAdmin";
 
 export async function GET(req: NextRequest) {
-  const usuario = await obtenerUsuarioDeSesion(req);
-  if (!usuario) {
+  const sesion = await obtenerUsuarioDeSesion(req);
+  if (!sesion) {
     return NextResponse.json({ error: "No autenticado." }, { status: 401 });
   }
+  const { usuario } = sesion;
 
   const usuarios = await listarUsuariosAdmin(
     { usuarios: new PrismaUsuarioAdminRepository(prisma) },
@@ -33,11 +34,12 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const solicitante = await obtenerUsuarioDeSesion(req);
+    const sesion = await obtenerUsuarioDeSesion(req);
 
-    if (!solicitante) {
+    if (!sesion) {
       return NextResponse.json({ error: "No autenticado." }, { status: 401 });
     }
+    const { usuario: solicitante } = sesion;
 
     const { nombre, email, password, rol, sucursalId, sucursalIds } = await req.json();
 

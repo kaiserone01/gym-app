@@ -3,8 +3,8 @@ import { obtenerUsuarioDeSesionActual } from "@/lib/sesion";
 import { FormularioCambiarPassword } from "./FormularioCambiarPassword";
 
 export default async function PaginaCambiarPassword() {
-  const usuario = await obtenerUsuarioDeSesionActual();
-  if (!usuario) redirect("/login");
+  const sesion = await obtenerUsuarioDeSesionActual();
+  if (!sesion) redirect("/login");
 
   return (
     <div className="p-8">

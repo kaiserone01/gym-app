@@ -5,8 +5,9 @@ import { TabsConfiguraciones } from "./TabsConfiguraciones";
 import { TABS_CONFIGURACIONES } from "./tabs";
 
 export default async function LayoutConfiguraciones({ children }: { children: React.ReactNode }) {
-  const usuario = await obtenerUsuarioDeSesionActual();
-  if (!usuario) redirect("/login");
+  const sesion = await obtenerUsuarioDeSesionActual();
+  if (!sesion) redirect("/login");
+  const { usuario } = sesion;
   if (usuario.rol !== "SOCIO") redirect("/miembros");
 
   return (

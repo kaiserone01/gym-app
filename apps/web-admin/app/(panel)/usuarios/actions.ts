@@ -97,8 +97,9 @@ export async function crearUsuarioAction(
   _estadoPrevio: EstadoFormularioUsuario,
   formData: FormData
 ): Promise<EstadoFormularioUsuario> {
-  const usuario = await obtenerUsuarioDeSesionActual();
-  if (!usuario) redirect("/login");
+  const sesion = await obtenerUsuarioDeSesionActual();
+  if (!sesion) redirect("/login");
+  const { usuario } = sesion;
   // Defensa en profundidad: el caso de uso ya lo valida, pero la Server Action
   // también (Restricción Global #1 del plan).
   if (usuario.rol !== "SOCIO") return { error: SOLO_SOCIO };
@@ -159,8 +160,9 @@ export async function actualizarUsuarioAction(
   _estadoPrevio: EstadoFormularioUsuario,
   formData: FormData
 ): Promise<EstadoFormularioUsuario> {
-  const usuario = await obtenerUsuarioDeSesionActual();
-  if (!usuario) redirect("/login");
+  const sesion = await obtenerUsuarioDeSesionActual();
+  if (!sesion) redirect("/login");
+  const { usuario } = sesion;
   if (usuario.rol !== "SOCIO") return { error: SOLO_SOCIO };
 
   const nombre = formData.get("nombre")?.toString().trim();
@@ -194,8 +196,9 @@ export async function actualizarUsuarioAction(
 }
 
 export async function actualizarSucursalesUsuarioAction(id: string, formData: FormData): Promise<void> {
-  const usuario = await obtenerUsuarioDeSesionActual();
-  if (!usuario) redirect("/login");
+  const sesion = await obtenerUsuarioDeSesionActual();
+  if (!sesion) redirect("/login");
+  const { usuario } = sesion;
   if (usuario.rol !== "SOCIO") redirigirConError(`/usuarios/${id}`, SOLO_SOCIO);
 
   const sucursalIds = formData.getAll("sucursalIds").map((v) => v.toString());
@@ -226,8 +229,9 @@ export async function actualizarSucursalesUsuarioAction(id: string, formData: Fo
 }
 
 export async function actualizarPermisosUsuarioAction(id: string, formData: FormData): Promise<void> {
-  const usuario = await obtenerUsuarioDeSesionActual();
-  if (!usuario) redirect("/login");
+  const sesion = await obtenerUsuarioDeSesionActual();
+  if (!sesion) redirect("/login");
+  const { usuario } = sesion;
   if (usuario.rol !== "SOCIO") redirigirConError(`/usuarios/${id}`, SOLO_SOCIO);
 
   const permisos = MODULOS.flatMap((modulo) =>
@@ -255,8 +259,9 @@ export async function actualizarPermisosUsuarioAction(id: string, formData: Form
 }
 
 async function cambiarEstadoUsuario(id: string, activo: boolean): Promise<void> {
-  const usuario = await obtenerUsuarioDeSesionActual();
-  if (!usuario) redirect("/login");
+  const sesion = await obtenerUsuarioDeSesionActual();
+  if (!sesion) redirect("/login");
+  const { usuario } = sesion;
   if (usuario.rol !== "SOCIO") redirigirConError("/usuarios", SOLO_SOCIO);
 
   try {

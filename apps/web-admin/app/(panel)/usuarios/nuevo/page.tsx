@@ -9,8 +9,9 @@ import { crearUsuarioAction } from "../actions";
 import { PageHeader } from "@gym-app/ui/components/PageHeader";
 
 export default async function PaginaNuevoUsuario() {
-  const usuario = await obtenerUsuarioDeSesionActual();
-  if (!usuario) redirect("/login");
+  const sesion = await obtenerUsuarioDeSesionActual();
+  if (!sesion) redirect("/login");
+  const { usuario } = sesion;
 
   const permisos = new PrismaPermisoRepository(prisma);
   // Un SOCIO siempre tiene acceso total.

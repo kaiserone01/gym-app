@@ -120,8 +120,9 @@ export function SelectorMetodoPago({
   // sucursalesVisibles cuando el plan del miembro es multisede (el plan
   // otorga ese alcance, ver diseño acordado).
   sucursalesOrganizacion: SucursalResumen[];
-  // Sede default del operador logueado (usuario.sucursalId) — preselección
-  // del selector de sede del pago cuando está entre las opciones.
+  // Sede activa de la sesión del operador logueado (sucursalActivaId) —
+  // preselección del selector de sede del pago cuando está entre las
+  // opciones.
   sucursalIdDefault: string | null;
   planEsMultisede: boolean;
 }) {

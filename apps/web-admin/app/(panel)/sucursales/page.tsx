@@ -11,8 +11,9 @@ import { Card } from "@gym-app/ui/components/Card";
 import { PageHeader } from "@gym-app/ui/components/PageHeader";
 
 export default async function PaginaSucursales() {
-  const usuario = await obtenerUsuarioDeSesionActual();
-  if (!usuario) redirect("/login");
+  const sesion = await obtenerUsuarioDeSesionActual();
+  if (!sesion) redirect("/login");
+  const { usuario } = sesion;
 
   const esSocio = usuario.rol === "SOCIO";
   const permisos = new PrismaPermisoRepository(prisma);

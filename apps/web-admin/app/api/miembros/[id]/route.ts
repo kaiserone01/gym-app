@@ -18,11 +18,12 @@ import {
 import type { CambiosMiembro } from "@gym-app/domain/entities/Miembro";
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const usuario = await obtenerUsuarioDeSesion(req);
+  const sesion = await obtenerUsuarioDeSesion(req);
 
-  if (!usuario) {
+  if (!sesion) {
     return NextResponse.json({ error: "No autenticado." }, { status: 401 });
   }
+  const { usuario } = sesion;
 
   const { id } = await params;
 
@@ -46,11 +47,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const usuario = await obtenerUsuarioDeSesion(req);
+  const sesion = await obtenerUsuarioDeSesion(req);
 
-  if (!usuario) {
+  if (!sesion) {
     return NextResponse.json({ error: "No autenticado." }, { status: 401 });
   }
+  const { usuario } = sesion;
 
   const { id } = await params;
   const body = await req.json();

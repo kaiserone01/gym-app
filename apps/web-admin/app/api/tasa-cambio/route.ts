@@ -7,9 +7,9 @@ import { PrismaTasaCambioRepository } from "@gym-app/infrastructure/persistence/
 import { obtenerTasaActual, SinTasaDisponibleError } from "@gym-app/domain/use-cases/ObtenerTasaActual";
 
 export async function GET(req: NextRequest) {
-  const usuario = await obtenerUsuarioDeSesion(req);
+  const sesion = await obtenerUsuarioDeSesion(req);
 
-  if (!usuario) {
+  if (!sesion) {
     return NextResponse.json({ error: "No autenticado." }, { status: 401 });
   }
 

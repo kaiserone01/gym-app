@@ -16,8 +16,9 @@ export default async function PaginaEditarSucursal({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ error?: string }>;
 }) {
-  const usuario = await obtenerUsuarioDeSesionActual();
-  if (!usuario) redirect("/login");
+  const sesion = await obtenerUsuarioDeSesionActual();
+  if (!sesion) redirect("/login");
+  const { usuario } = sesion;
 
   const esSocio = usuario.rol === "SOCIO";
   const permisos = new PrismaPermisoRepository(prisma);

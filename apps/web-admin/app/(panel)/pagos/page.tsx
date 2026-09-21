@@ -51,8 +51,9 @@ export default async function PaginaHistoricoPagos({
 }: {
   searchParams: Promise<{ desde?: string; hasta?: string }>;
 }) {
-  const usuario = await obtenerUsuarioDeSesionActual();
-  if (!usuario) redirect("/login");
+  const sesion = await obtenerUsuarioDeSesionActual();
+  if (!sesion) redirect("/login");
+  const { usuario } = sesion;
 
   const { desde: desdeTexto, hasta: hastaTexto } = await searchParams;
   const hoy = new Date();

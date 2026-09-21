@@ -20,8 +20,9 @@ function formatearRangoCiclo(inicio: Date | null, fin: Date | null): string {
 }
 
 export default async function PaginaHistorialPagos({ params }: { params: Promise<{ id: string }> }) {
-  const usuario = await obtenerUsuarioDeSesionActual();
-  if (!usuario) redirect("/login");
+  const sesion = await obtenerUsuarioDeSesionActual();
+  if (!sesion) redirect("/login");
+  const { usuario } = sesion;
 
   const { id } = await params;
 

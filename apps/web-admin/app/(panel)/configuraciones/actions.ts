@@ -72,8 +72,9 @@ export async function crearMetodoPagoAction(
   _estadoPrevio: EstadoFormularioMetodoPago,
   formData: FormData
 ): Promise<EstadoFormularioMetodoPago> {
-  const usuario = await obtenerUsuarioDeSesionActual();
-  if (!usuario) redirect("/login");
+  const sesion = await obtenerUsuarioDeSesionActual();
+  if (!sesion) redirect("/login");
+  const { usuario } = sesion;
   if (usuario.rol !== "SOCIO") return { error: SOLO_SOCIO };
 
   const tipo = formData.get("tipo")?.toString() as TipoMetodoPago | undefined;
@@ -111,8 +112,9 @@ export async function actualizarMetodoPagoAction(
   _estadoPrevio: EstadoFormularioMetodoPago,
   formData: FormData
 ): Promise<EstadoFormularioMetodoPago> {
-  const usuario = await obtenerUsuarioDeSesionActual();
-  if (!usuario) redirect("/login");
+  const sesion = await obtenerUsuarioDeSesionActual();
+  if (!sesion) redirect("/login");
+  const { usuario } = sesion;
   if (usuario.rol !== "SOCIO") return { error: SOLO_SOCIO };
 
   const moneda = formData.get("moneda")?.toString() as MonedaMetodoPago | undefined;
@@ -154,8 +156,9 @@ export async function actualizarMetodoPagoAction(
 }
 
 export async function alternarActivoMetodoPagoAction(id: string, activo: boolean): Promise<void> {
-  const usuario = await obtenerUsuarioDeSesionActual();
-  if (!usuario) redirect("/login");
+  const sesion = await obtenerUsuarioDeSesionActual();
+  if (!sesion) redirect("/login");
+  const { usuario } = sesion;
   if (usuario.rol !== "SOCIO") return;
 
   await actualizarMetodoPago(
@@ -179,8 +182,8 @@ export async function registrarTasaManualAction(
   _estadoPrevio: EstadoTasaManual,
   formData: FormData
 ): Promise<EstadoTasaManual> {
-  const usuario = await obtenerUsuarioDeSesionActual();
-  if (!usuario) redirect("/login");
+  const sesion = await obtenerUsuarioDeSesionActual();
+  if (!sesion) redirect("/login");
 
   const valorTexto = formData.get("valor")?.toString().trim();
   const valor = Number(valorTexto);

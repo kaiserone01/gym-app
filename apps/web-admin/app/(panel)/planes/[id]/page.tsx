@@ -9,8 +9,9 @@ import { Button } from "@gym-app/ui/components/Button";
 import { PageHeader } from "@gym-app/ui/components/PageHeader";
 
 export default async function PaginaEditarPlan({ params }: { params: Promise<{ id: string }> }) {
-  const usuario = await obtenerUsuarioDeSesionActual();
-  if (!usuario) redirect("/login");
+  const sesion = await obtenerUsuarioDeSesionActual();
+  if (!sesion) redirect("/login");
+  const { usuario } = sesion;
 
   const { id } = await params;
 

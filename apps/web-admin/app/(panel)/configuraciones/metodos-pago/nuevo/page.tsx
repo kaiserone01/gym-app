@@ -5,8 +5,8 @@ import { crearMetodoPagoAction } from "../../actions";
 import { PageHeader } from "@gym-app/ui/components/PageHeader";
 
 export default async function PaginaNuevoMetodoPago() {
-  const usuario = await obtenerUsuarioDeSesionActual();
-  if (!usuario) redirect("/login");
+  const sesion = await obtenerUsuarioDeSesionActual();
+  if (!sesion) redirect("/login");
 
   return (
     <div className="max-w-lg">

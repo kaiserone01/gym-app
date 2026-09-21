@@ -17,8 +17,9 @@ const ETIQUETA_FRECUENCIA: Record<FrecuenciaPago, string> = {
 };
 
 export default async function PaginaPlanes() {
-  const usuario = await obtenerUsuarioDeSesionActual();
-  if (!usuario) redirect("/login");
+  const sesion = await obtenerUsuarioDeSesionActual();
+  if (!sesion) redirect("/login");
+  const { usuario } = sesion;
 
   const planes = await listarPlanes({ planes: new PrismaPlanRepository(prisma) }, usuario.organizacionId);
 

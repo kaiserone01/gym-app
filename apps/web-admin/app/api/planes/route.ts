@@ -8,11 +8,12 @@ import { listarPlanes } from "@gym-app/domain/use-cases/ListarPlanes";
 import { crearPlan } from "@gym-app/domain/use-cases/CrearPlan";
 
 export async function GET(req: NextRequest) {
-  const usuario = await obtenerUsuarioDeSesion(req);
+  const sesion = await obtenerUsuarioDeSesion(req);
 
-  if (!usuario) {
+  if (!sesion) {
     return NextResponse.json({ error: "No autenticado." }, { status: 401 });
   }
+  const { usuario } = sesion;
 
   const planes = await listarPlanes({ planes: new PrismaPlanRepository(prisma) }, usuario.organizacionId);
 
@@ -21,11 +22,12 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const usuario = await obtenerUsuarioDeSesion(req);
+    const sesion = await obtenerUsuarioDeSesion(req);
 
-    if (!usuario) {
+    if (!sesion) {
       return NextResponse.json({ error: "No autenticado." }, { status: 401 });
     }
+    const { usuario } = sesion;
 
     const body = await req.json();
 

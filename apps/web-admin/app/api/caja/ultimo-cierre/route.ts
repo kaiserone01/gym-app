@@ -14,10 +14,11 @@ import { obtenerSucursalesVisiblesParaTurno } from "../../../(panel)/caja/obtene
 // app/(panel)/caja/obtenerSucursalesVisiblesParaTurno.ts)
 
 export async function GET(req: NextRequest) {
-  const usuario = await obtenerUsuarioDeSesion(req);
-  if (!usuario) {
+  const sesion = await obtenerUsuarioDeSesion(req);
+  if (!sesion) {
     return NextResponse.json({ error: "No autenticado." }, { status: 401 });
   }
+  const { usuario } = sesion;
 
   const sucursalId = req.nextUrl.searchParams.get("sucursalId");
   if (!sucursalId) {

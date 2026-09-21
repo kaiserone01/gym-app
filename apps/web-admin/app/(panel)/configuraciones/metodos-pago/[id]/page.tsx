@@ -8,8 +8,9 @@ import { ETIQUETA_TIPO_METODO_PAGO } from "../../metodosPagoUI";
 import { PageHeader } from "@gym-app/ui/components/PageHeader";
 
 export default async function PaginaEditarMetodoPago({ params }: { params: Promise<{ id: string }> }) {
-  const usuario = await obtenerUsuarioDeSesionActual();
-  if (!usuario) redirect("/login");
+  const sesion = await obtenerUsuarioDeSesionActual();
+  if (!sesion) redirect("/login");
+  const { usuario } = sesion;
 
   const { id } = await params;
 

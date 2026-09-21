@@ -5,8 +5,8 @@ import { crearPlanAction } from "../actions";
 import { PageHeader } from "@gym-app/ui/components/PageHeader";
 
 export default async function PaginaNuevoPlan() {
-  const usuario = await obtenerUsuarioDeSesionActual();
-  if (!usuario) redirect("/login");
+  const sesion = await obtenerUsuarioDeSesionActual();
+  if (!sesion) redirect("/login");
 
   return (
     <div className="max-w-lg p-6 lg:p-8">

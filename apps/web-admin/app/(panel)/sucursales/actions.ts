@@ -30,8 +30,9 @@ export async function crearSucursalAction(
   _estadoPrevio: EstadoFormularioSucursal,
   formData: FormData
 ): Promise<EstadoFormularioSucursal> {
-  const usuario = await obtenerUsuarioDeSesionActual();
-  if (!usuario) redirect("/login");
+  const sesion = await obtenerUsuarioDeSesionActual();
+  if (!sesion) redirect("/login");
+  const { usuario } = sesion;
 
   const nombre = formData.get("nombre")?.toString().trim();
   const direccion = formData.get("direccion")?.toString().trim() || null;
@@ -65,8 +66,9 @@ export async function actualizarSucursalAction(
   _estadoPrevio: EstadoFormularioSucursal,
   formData: FormData
 ): Promise<EstadoFormularioSucursal> {
-  const usuario = await obtenerUsuarioDeSesionActual();
-  if (!usuario) redirect("/login");
+  const sesion = await obtenerUsuarioDeSesionActual();
+  if (!sesion) redirect("/login");
+  const { usuario } = sesion;
 
   const nombre = formData.get("nombre")?.toString().trim();
   const direccion = formData.get("direccion")?.toString().trim() || null;
@@ -95,8 +97,9 @@ export async function actualizarSucursalAction(
 }
 
 export async function darDeBajaSucursalAction(id: string): Promise<void> {
-  const usuario = await obtenerUsuarioDeSesionActual();
-  if (!usuario) redirect("/login");
+  const sesion = await obtenerUsuarioDeSesionActual();
+  if (!sesion) redirect("/login");
+  const { usuario } = sesion;
 
   await actualizarSucursal(deps(), {
     organizacionId: usuario.organizacionId,
@@ -110,8 +113,9 @@ export async function darDeBajaSucursalAction(id: string): Promise<void> {
 }
 
 export async function reactivarSucursalAction(id: string): Promise<void> {
-  const usuario = await obtenerUsuarioDeSesionActual();
-  if (!usuario) redirect("/login");
+  const sesion = await obtenerUsuarioDeSesionActual();
+  if (!sesion) redirect("/login");
+  const { usuario } = sesion;
 
   await actualizarSucursal(deps(), {
     organizacionId: usuario.organizacionId,

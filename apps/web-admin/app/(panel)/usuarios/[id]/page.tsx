@@ -27,8 +27,9 @@ export default async function PaginaEditarUsuario({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ error?: string }>;
 }) {
-  const usuarioSesion = await obtenerUsuarioDeSesionActual();
-  if (!usuarioSesion) redirect("/login");
+  const sesion = await obtenerUsuarioDeSesionActual();
+  if (!sesion) redirect("/login");
+  const { usuario: usuarioSesion } = sesion;
 
   const permisos = new PrismaPermisoRepository(prisma);
   // Un SOCIO siempre tiene acceso total: nunca puede quedar bloqueado por la matriz

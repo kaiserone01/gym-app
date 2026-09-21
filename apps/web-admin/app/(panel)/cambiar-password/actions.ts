@@ -24,8 +24,9 @@ export async function cambiarPasswordAction(
   _estadoPrevio: EstadoFormularioCambiarPassword,
   formData: FormData
 ): Promise<EstadoFormularioCambiarPassword> {
-  const usuario = await obtenerUsuarioDeSesionActual();
-  if (!usuario) redirect("/login");
+  const sesion = await obtenerUsuarioDeSesionActual();
+  if (!sesion) redirect("/login");
+  const { usuario } = sesion;
 
   const passwordActual = formData.get("passwordActual")?.toString() ?? "";
   const passwordNueva = formData.get("passwordNueva")?.toString() ?? "";

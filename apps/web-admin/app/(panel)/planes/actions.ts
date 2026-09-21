@@ -25,8 +25,9 @@ export async function crearPlanAction(
   _estadoPrevio: EstadoFormularioPlan,
   formData: FormData
 ): Promise<EstadoFormularioPlan> {
-  const usuario = await obtenerUsuarioDeSesionActual();
-  if (!usuario) redirect("/login");
+  const sesion = await obtenerUsuarioDeSesionActual();
+  if (!sesion) redirect("/login");
+  const { usuario } = sesion;
 
   const nombre = formData.get("nombre")?.toString().trim();
   const frecuencia = formData.get("frecuencia")?.toString() as FrecuenciaPago | undefined;
@@ -59,8 +60,9 @@ export async function actualizarPlanAction(
   _estadoPrevio: EstadoFormularioPlan,
   formData: FormData
 ): Promise<EstadoFormularioPlan> {
-  const usuario = await obtenerUsuarioDeSesionActual();
-  if (!usuario) redirect("/login");
+  const sesion = await obtenerUsuarioDeSesionActual();
+  if (!sesion) redirect("/login");
+  const { usuario } = sesion;
 
   const nombre = formData.get("nombre")?.toString().trim();
   const precioUSD = Number(formData.get("precioUSD"));
@@ -91,8 +93,9 @@ export async function actualizarFrecuenciaPlanAction(
   _estadoPrevio: EstadoFormularioPlan,
   formData: FormData
 ): Promise<EstadoFormularioPlan> {
-  const usuario = await obtenerUsuarioDeSesionActual();
-  if (!usuario) redirect("/login");
+  const sesion = await obtenerUsuarioDeSesionActual();
+  if (!sesion) redirect("/login");
+  const { usuario } = sesion;
 
   const frecuencia = formData.get("frecuencia")?.toString() as FrecuenciaPago | undefined;
   const incluyeEntrenador = formData.get("incluyeEntrenador")?.toString() === "1";
@@ -132,8 +135,9 @@ export async function actualizarFrecuenciaPlanAction(
 }
 
 export async function darDeBajaPlanAction(id: string): Promise<void> {
-  const usuario = await obtenerUsuarioDeSesionActual();
-  if (!usuario) redirect("/login");
+  const sesion = await obtenerUsuarioDeSesionActual();
+  if (!sesion) redirect("/login");
+  const { usuario } = sesion;
 
   await actualizarPlan(
     { planes: new PrismaPlanRepository(prisma) },
@@ -145,8 +149,9 @@ export async function darDeBajaPlanAction(id: string): Promise<void> {
 }
 
 export async function reactivarPlanAction(id: string): Promise<void> {
-  const usuario = await obtenerUsuarioDeSesionActual();
-  if (!usuario) redirect("/login");
+  const sesion = await obtenerUsuarioDeSesionActual();
+  if (!sesion) redirect("/login");
+  const { usuario } = sesion;
 
   await actualizarPlan(
     { planes: new PrismaPlanRepository(prisma) },

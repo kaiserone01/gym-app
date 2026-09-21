@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 // Formato monetario latino: punto para miles, coma para decimales
 // ("1.234,56") — el que espera el usuario del panel, distinto del
@@ -47,15 +47,27 @@ export function CurrencyInput({
   className?: string;
 }) {
   const [interno, setInterno] = useState(() => formatearVisual(String(value ?? defaultValue ?? "")));
+  // El último valor numérico que ESTE input emitió hacia el padre vía
+  // onChange — permite distinguir "el padre me devolvió el mismo valor
+  // que yo le mandé" (no tocar `interno`, para no pisar lo que el
+  // usuario está tipeando) de "el padre cambió el valor por su cuenta"
+  // (ej. precarga desde un fetch, otro control que resetea el monto —
+  // ahí sí hay que resincronizar `interno`). Sin esto, cada tecleo podía
+  // rebotar: setInterno(texto) local, el padre re-renderiza con el mismo
+  // valor, y el useEffect de abajo pisaba `interno` de vuelta.
+  const ultimoEmitido = useRef<string | undefined>(value);
 
-  // Modo controlado: si el padre cambia `value` externamente, refleja el nuevo formato visual.
   useEffect(() => {
-    if (value !== undefined) setInterno(formatearVisual(value));
+    if (value !== undefined && value !== ultimoEmitido.current) {
+      setInterno(formatearVisual(value));
+      ultimoEmitido.current = value;
+    }
   }, [value]);
 
   function manejarCambio(texto: string) {
     const numerico = aValorNumerico(texto);
     setInterno(texto);
+    ultimoEmitido.current = numerico;
     onChange?.(numerico);
   }
 

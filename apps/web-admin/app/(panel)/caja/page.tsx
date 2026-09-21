@@ -8,7 +8,9 @@ import { PrismaMemberRepository } from "@gym-app/infrastructure/persistence/pris
 import { PrismaPlanRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaPlanRepository";
 import { obtenerResumenTurno, METODO_EFECTIVO_BS } from "@gym-app/domain/use-cases/ObtenerResumenTurno";
 import { obtenerTasaActual, SinTasaDisponibleError } from "@gym-app/domain/use-cases/ObtenerTasaActual";
+import { obtenerUltimoCierrePorSucursal } from "@gym-app/domain/use-cases/ObtenerUltimoCierrePorSucursal";
 import { PrismaTasaCambioRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaTasaCambioRepository";
+import { PrismaArqueoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaArqueoRepository";
 import { listarMiembros } from "@gym-app/domain/use-cases/ListarMiembros";
 import { listarPlanes } from "@gym-app/domain/use-cases/ListarPlanes";
 import { Card } from "@gym-app/ui/components/Card";
@@ -267,6 +269,19 @@ export default async function PaginaCaja() {
     ? sucursalesVisibles.map((s) => ({ id: s.id, nombre: s.nombre }))
     : [];
 
+  // La sucursal donde se abrirá el turno, si ya se sabe sin preguntar
+  // (fija, o la única visible) — se usa para traer de una vez el último
+  // cierre de esa sede. Si hay que elegir sucursal (requiereSucursal), no
+  // se sabe todavía: FormularioAbrirTurno lo consulta él mismo al cambiar
+  // el <select> (ver /api/caja/ultimo-cierre).
+  const sucursalIdConocida = sucursalId ?? (sucursalesVisibles.length === 1 ? sucursalesVisibles[0].id : null);
+  const ultimoCierre = sucursalIdConocida
+    ? await obtenerUltimoCierrePorSucursal(
+        { turnos: turnoRepo, arqueo: new PrismaArqueoRepository(prisma) },
+        { sucursalId: sucursalIdConocida }
+      )
+    : null;
+
   return (
     <div className="flex flex-col gap-6 p-6 pb-24 lg:p-8 lg:pb-8">
       <PageHeader>Abrir turno</PageHeader>
@@ -275,6 +290,7 @@ export default async function PaginaCaja() {
         accion={abrirTurnoAction}
         requiereSucursal={requiereSucursal}
         sucursales={sucursalesParaFormulario}
+        ultimoCierre={ultimoCierre ? { ...ultimoCierre, cerradoEn: ultimoCierre.cerradoEn.toISOString() } : null}
       />
     </div>
   );

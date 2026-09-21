@@ -10,6 +10,11 @@ export interface ITurnoRepository {
   // resultado real entre todas (ver bug de /caja: la página no podía
   // encontrar el turno recién abierto porque solo miraba usuario.sucursalId).
   buscarAbiertoEntreSucursales(sucursalIds: string[]): Promise<Turno | null>;
+  // El turno CERRADO más reciente de esta sucursal — para sugerir el
+  // fondo inicial del próximo turno a partir de lo que quedó contado en
+  // el cierre anterior (ver diseño acordado: al abrir turno se muestra
+  // "Último cierre" con esos montos como valor por defecto, editable).
+  buscarUltimoCerradoPorSucursal(sucursalId: string): Promise<Turno | null>;
   cerrar(id: string, cerradoEn: Date): Promise<Turno>;
   listarPorOrganizacionYRango(organizacionId: string, desde: Date, hasta: Date): Promise<Turno[]>;
   // Un Date por cada día distinto (en la zona horaria del servidor, ver

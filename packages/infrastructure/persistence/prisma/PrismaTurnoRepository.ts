@@ -64,6 +64,14 @@ export class PrismaTurnoRepository implements ITurnoRepository {
     return turno ? mapear(turno) : null;
   }
 
+  async buscarUltimoCerradoPorSucursal(sucursalId: string): Promise<Turno | null> {
+    const turno = await this.prisma.turno.findFirst({
+      where: { sucursalId, estado: "CERRADO" },
+      orderBy: { cerradoEn: "desc" },
+    });
+    return turno ? mapear(turno) : null;
+  }
+
   async cerrar(id: string, cerradoEn: Date): Promise<Turno> {
     const turno = await this.prisma.turno.update({
       where: { id },

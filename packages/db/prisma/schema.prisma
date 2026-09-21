@@ -46,6 +46,7 @@ model Sucursal {
   turnos            Turno[]
   usuariosConAcceso UsuarioSucursal[]
   miembros          Miembro[]
+  sesiones          Sesion[]
 }
 
 enum RolUsuario {
@@ -356,10 +357,17 @@ model RegistroAuditoria {
 }
 
 model Sesion {
-  id        String       @id @default(cuid())
-  token     String       @unique
-  usuarioId String
-  usuario   UsuarioAdmin @relation(fields: [usuarioId], references: [id])
-  expiraEn  DateTime
-  createdAt DateTime     @default(now())
+  id               String       @id @default(cuid())
+  token            String       @unique
+  usuarioId        String
+  usuario          UsuarioAdmin @relation(fields: [usuarioId], references: [id])
+  // Sucursal elegida al iniciar esta sesión (o la única visible, si no
+  // hizo falta elegir) — fija hasta el próximo login. Nullable a nivel de
+  // columna solo por sesiones ya existentes antes de esta migración; el
+  // código de aplicación nunca crea una Sesion sin esto (ver
+  // ISesionRepository.crear).
+  sucursalActivaId String?
+  sucursalActiva   Sucursal?    @relation(fields: [sucursalActivaId], references: [id])
+  expiraEn         DateTime
+  createdAt        DateTime     @default(now())
 }

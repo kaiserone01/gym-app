@@ -2,18 +2,26 @@ import type { PrismaClient } from "@gym-app/db/generated/prisma/client";
 import type { ISesionRepository } from "@gym-app/domain/ports/ISesionRepository";
 import type { Sesion } from "@gym-app/domain/entities/Sesion";
 
+function mapear(fila: { id: string; token: string; usuarioId: string; sucursalActivaId: string | null; expiraEn: Date }): Sesion {
+  // sucursalActivaId es NOT NULL a nivel de aplicación desde este plan en
+  // adelante (la columna es nullable solo por la migración de filas
+  // viejas) — el "!" es seguro para cualquier sesión creada por
+  // ISesionRepository.crear(), que siempre lo exige.
+  return { id: fila.id, token: fila.token, usuarioId: fila.usuarioId, sucursalActivaId: fila.sucursalActivaId!, expiraEn: fila.expiraEn };
+}
+
 export class PrismaSesionRepository implements ISesionRepository {
   constructor(private readonly prisma: PrismaClient) {}
 
-  async crear(datos: { usuarioId: string; token: string; expiraEn: Date }): Promise<Sesion> {
+  async crear(datos: { usuarioId: string; token: string; expiraEn: Date; sucursalActivaId: string }): Promise<Sesion> {
     const sesion = await this.prisma.sesion.create({ data: datos });
-    return { id: sesion.id, token: sesion.token, usuarioId: sesion.usuarioId, expiraEn: sesion.expiraEn };
+    return mapear(sesion);
   }
 
   async buscarPorToken(token: string): Promise<Sesion | null> {
     const sesion = await this.prisma.sesion.findUnique({ where: { token } });
     if (!sesion) return null;
-    return { id: sesion.id, token: sesion.token, usuarioId: sesion.usuarioId, expiraEn: sesion.expiraEn };
+    return mapear(sesion);
   }
 
   async eliminarPorToken(token: string): Promise<void> {

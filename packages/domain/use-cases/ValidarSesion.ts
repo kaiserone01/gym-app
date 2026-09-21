@@ -7,7 +7,12 @@ export interface ValidarSesionDeps {
   usuarios: IUsuarioAdminRepository;
 }
 
-export async function validarSesion(deps: ValidarSesionDeps, token: string): Promise<UsuarioAdmin | null> {
+export interface SesionValidada {
+  usuario: UsuarioAdmin;
+  sucursalActivaId: string;
+}
+
+export async function validarSesion(deps: ValidarSesionDeps, token: string): Promise<SesionValidada | null> {
   const sesion = await deps.sesiones.buscarPorToken(token);
 
   if (!sesion) {
@@ -19,5 +24,10 @@ export async function validarSesion(deps: ValidarSesionDeps, token: string): Pro
     return null;
   }
 
-  return deps.usuarios.buscarPorIdSinOrganizacion(sesion.usuarioId);
+  const usuario = await deps.usuarios.buscarPorIdSinOrganizacion(sesion.usuarioId);
+  if (!usuario) {
+    return null;
+  }
+
+  return { usuario, sucursalActivaId: sesion.sucursalActivaId };
 }

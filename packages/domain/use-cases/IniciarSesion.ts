@@ -15,6 +15,7 @@ export interface IniciarSesionDeps {
 export interface IniciarSesionInput {
   email: string;
   password: string;
+  sucursalActivaId: string;
 }
 
 export interface IniciarSesionResultado {
@@ -48,7 +49,7 @@ export async function iniciarSesion(
   const token = randomBytes(32).toString("hex");
   const expiraEn = new Date(Date.now() + DURACION_SESION_MS);
 
-  await deps.sesiones.crear({ usuarioId: credenciales.usuario.id, token, expiraEn });
+  await deps.sesiones.crear({ usuarioId: credenciales.usuario.id, token, expiraEn, sucursalActivaId: input.sucursalActivaId });
 
   return { token, expiraEn, usuario: credenciales.usuario };
 }

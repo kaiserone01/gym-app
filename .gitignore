@@ -49,3 +49,4 @@ next-env.d.ts
 
 # fotos subidas desde el panel admin — contenido de usuario, no del repo
 apps/web-admin/public/uploads/
+.superpowers/

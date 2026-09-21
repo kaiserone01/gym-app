@@ -7,12 +7,11 @@ import { cookies } from "next/headers";
 import { prisma } from "./prisma";
 import { PrismaSesionRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaSesionRepository";
 import { PrismaUsuarioAdminRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaUsuarioAdminRepository";
-import { validarSesion } from "@gym-app/domain/use-cases/ValidarSesion";
-import { UsuarioAdmin } from "@gym-app/domain/entities/UsuarioAdmin";
+import { validarSesion, SesionValidada } from "@gym-app/domain/use-cases/ValidarSesion";
 
 export const NOMBRE_COOKIE_SESION = "sesion_token";
 
-export async function obtenerUsuarioDeSesion(req: NextRequest): Promise<UsuarioAdmin | null> {
+export async function obtenerUsuarioDeSesion(req: NextRequest): Promise<SesionValidada | null> {
   const token = req.cookies.get(NOMBRE_COOKIE_SESION)?.value;
 
   if (!token) {
@@ -30,7 +29,7 @@ export async function obtenerUsuarioDeSesion(req: NextRequest): Promise<UsuarioA
 
 // Igual que obtenerUsuarioDeSesion, pero para Server Components/Actions,
 // que no reciben un NextRequest — leen la cookie con next/headers.
-export async function obtenerUsuarioDeSesionActual(): Promise<UsuarioAdmin | null> {
+export async function obtenerUsuarioDeSesionActual(): Promise<SesionValidada | null> {
   const token = (await cookies()).get(NOMBRE_COOKIE_SESION)?.value;
 
   if (!token) {

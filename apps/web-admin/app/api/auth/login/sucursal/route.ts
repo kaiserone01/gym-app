@@ -1,3 +1,8 @@
+// POST /api/auth/login/sucursal — paso 2 del login, solo cuando el paso 1
+// (POST /api/auth/login) respondió requiereSeleccion: true. Recibe de
+// nuevo email+password (no hay sesión ni token intermedio entre los dos
+// pasos — ver la nota en api/auth/login/route.ts) más la sucursalId
+// elegida, revalida credenciales y crea recién ahí la sesión.
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { NOMBRE_COOKIE_SESION } from "@/lib/sesion";
@@ -5,75 +10,48 @@ import { PrismaUsuarioAdminRepository } from "@gym-app/infrastructure/persistenc
 import { PrismaSesionRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaSesionRepository";
 import { PrismaSucursalRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaSucursalRepository";
 import { PrismaUsuarioSucursalRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaUsuarioSucursalRepository";
-import { PrismaTurnoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaTurnoRepository";
 import { BcryptPasswordHasher } from "@gym-app/infrastructure/auth/BcryptPasswordHasher";
 import { iniciarSesion, CredencialesInvalidasError } from "@gym-app/domain/use-cases/IniciarSesion";
 import { obtenerSucursalesVisiblesParaUsuario } from "@gym-app/domain/use-cases/ObtenerSucursalesVisiblesParaUsuario";
 
 export async function POST(req: NextRequest) {
   try {
-    const { email, password } = await req.json();
+    const { email, password, sucursalId } = await req.json();
 
-    if (!email || !password) {
+    if (!email || !password || !sucursalId) {
       return NextResponse.json(
-        { error: "Email y contraseña son requeridos." },
+        { error: "Email, contraseña y sucursal son requeridos." },
         { status: 400 }
       );
     }
 
     const hasher = new BcryptPasswordHasher();
     const usuarios = new PrismaUsuarioAdminRepository(prisma);
-
-    // Se valida credenciales primero (reutilizando la lógica exacta de
-    // iniciarSesion vía su propio caso de uso más abajo cuando ya se sabe
-    // la sucursal) pero acá hace falta saber el usuario ANTES de decidir
-    // si hace falta preguntar la sucursal — por eso se resuelven
-    // credenciales acá, no dentro de iniciarSesion todavía.
     const credenciales = await usuarios.buscarCredencialesPorEmail(email);
     if (!credenciales || !(await hasher.comparar(password, credenciales.passwordHash))) {
       return NextResponse.json({ error: "Email o contraseña incorrectos." }, { status: 401 });
     }
 
+    // No confiar en el sucursalId que manda el cliente sin validar que
+    // esté entre las que este usuario puede ver (mismo criterio que
+    // /api/caja/ultimo-cierre) — evita que alguien fuerce una sucursal
+    // ajena editando el body del POST.
     const sucursalesVisibles = await obtenerSucursalesVisiblesParaUsuario(
       { sucursales: new PrismaSucursalRepository(prisma), usuarioSucursales: new PrismaUsuarioSucursalRepository(prisma) },
       credenciales.usuario
     );
-
-    if (sucursalesVisibles.length > 1) {
-      // Más de una opción: no se loguea todavía (sin cookie) — se le pide
-      // al cliente que elija sucursal (ver FormularioLogin/paso 2), que
-      // reenvía las credenciales a /api/auth/login/sucursal (ver ese
-      // archivo para por qué se reenvían en vez de usar un token
-      // intermedio: evita agregar una entidad de "sesión temporal" solo
-      // para cubrir un intervalo de segundos).
-      const turnoRepo = new PrismaTurnoRepository(prisma);
-      const sucursales = await Promise.all(
-        sucursalesVisibles.map(async (s) => {
-          const turnoAbierto = await turnoRepo.buscarAbiertoPorSucursal(s.id);
-          return { id: s.id, nombre: s.nombre, cajaAbiertaPor: turnoAbierto?.usuarioNombre ?? null };
-        })
-      );
-      return NextResponse.json({ requiereSeleccion: true, sucursales });
-    }
-
-    // Una sola sucursal visible (o ninguna, caso borde: usuario sin
-    // sucursales asignadas todavía) — se loguea directo, sin preguntar.
-    // sucursalesVisibles[0] no existe en el caso "ninguna"; se lo trata
-    // como error explícito en vez de crear una sesión sin sucursal activa
-    // válida (violaría la garantía de que sucursalActivaId siempre existe).
-    if (sucursalesVisibles.length === 0) {
-      return NextResponse.json(
-        { error: "Tu usuario no tiene ninguna sucursal asignada. Contactá a un administrador." },
-        { status: 403 }
-      );
+    if (!sucursalesVisibles.some((s) => s.id === sucursalId)) {
+      return NextResponse.json({ error: "Sucursal no accesible." }, { status: 403 });
     }
 
     const resultado = await iniciarSesion(
       { usuarios, hasher, sesiones: new PrismaSesionRepository(prisma) },
-      { email, password, sucursalActivaId: sucursalesVisibles[0].id }
+      { email, password, sucursalActivaId: sucursalId }
     );
 
-    const response = NextResponse.json({ requiereSeleccion: false });
+    const response = NextResponse.json({
+      usuario: { id: resultado.usuario.id, email: resultado.usuario.email, rol: resultado.usuario.rol },
+    });
     response.cookies.set(NOMBRE_COOKIE_SESION, resultado.token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
@@ -86,7 +64,7 @@ export async function POST(req: NextRequest) {
     if (error instanceof CredencialesInvalidasError) {
       return NextResponse.json({ error: error.message }, { status: 401 });
     }
-    console.error("Error en login:", error);
+    console.error("Error en login (paso sucursal):", error);
     return NextResponse.json(
       { error: "Error interno al iniciar sesión." },
       { status: 500 }

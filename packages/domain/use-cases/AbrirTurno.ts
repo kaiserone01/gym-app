@@ -11,8 +11,8 @@ export class RolNoAutorizadoError extends Error {
 }
 
 export class TurnoYaAbiertoError extends Error {
-  constructor() {
-    super("Ya hay un turno abierto en esta sucursal.");
+  constructor(public readonly usuarioNombre: string) {
+    super(`Ya hay una caja abierta en esta sucursal por ${usuarioNombre}.`);
   }
 }
 
@@ -46,7 +46,7 @@ export async function abrirTurno(
 
   const abierto = await deps.turnos.buscarAbiertoPorSucursal(input.sucursalId);
   if (abierto) {
-    throw new TurnoYaAbiertoError();
+    throw new TurnoYaAbiertoError(abierto.usuarioNombre ?? "otro usuario");
   }
 
   return deps.turnos.crear({

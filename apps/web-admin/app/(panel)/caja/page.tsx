@@ -82,7 +82,7 @@ export default async function PaginaCaja() {
         },
         { organizacionId: usuario.organizacionId, turnoId: turnoAbierto.turno.id }
       ),
-      listarMiembros({ miembros: new PrismaMemberRepository(prisma) }, usuario.organizacionId),
+      listarMiembros({ miembros: new PrismaMemberRepository(prisma) }, usuario.organizacionId, sucursalActivaId),
       listarPlanes({ planes: new PrismaPlanRepository(prisma) }, usuario.organizacionId),
       listarMetodosPagoActivos({ metodosPago: new PrismaMetodoPagoRepository(prisma) }, usuario.organizacionId),
       listarSucursales({ sucursales: new PrismaSucursalRepository(prisma) }, usuario.organizacionId),

@@ -20,7 +20,7 @@ export default async function PaginaNuevoPago() {
   const { usuario, sucursalActivaId } = sesion;
 
   const [miembros, planes, metodosPago, sucursalesVisibles, sucursalesOrganizacion] = await Promise.all([
-    listarMiembros({ miembros: new PrismaMemberRepository(prisma) }, usuario.organizacionId),
+    listarMiembros({ miembros: new PrismaMemberRepository(prisma) }, usuario.organizacionId, sucursalActivaId),
     listarPlanes({ planes: new PrismaPlanRepository(prisma) }, usuario.organizacionId),
     listarMetodosPagoActivos({ metodosPago: new PrismaMetodoPagoRepository(prisma) }, usuario.organizacionId),
     obtenerSucursalesVisiblesParaMiembro(usuario),

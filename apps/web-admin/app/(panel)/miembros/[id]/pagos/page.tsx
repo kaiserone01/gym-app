@@ -4,10 +4,12 @@ import { prisma } from "@/lib/prisma";
 import { obtenerUsuarioDeSesionActual } from "@/lib/sesion";
 import { PrismaMemberRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaMemberRepository";
 import { PrismaPagoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaPagoRepository";
-import { obtenerMiembro, MiembroNoEncontradoError } from "@gym-app/domain/use-cases/ObtenerMiembro";
+import { PrismaSucursalRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaSucursalRepository";
+import { obtenerMiembro, MiembroNoEncontradoError, MiembroFueraDeSucursalError } from "@gym-app/domain/use-cases/ObtenerMiembro";
 import { listarPagos } from "@gym-app/domain/use-cases/ListarPagos";
 import { Card } from "@gym-app/ui/components/Card";
 import { PageHeader } from "@gym-app/ui/components/PageHeader";
+import { MiembroFueraDeSucursal } from "../MiembroFueraDeSucursal";
 
 function formatearFechaHora(fecha: Date): string {
   return new Date(fecha).toLocaleString("es-VE", { dateStyle: "short", timeStyle: "short" });
@@ -22,19 +24,23 @@ function formatearRangoCiclo(inicio: Date | null, fin: Date | null): string {
 export default async function PaginaHistorialPagos({ params }: { params: Promise<{ id: string }> }) {
   const sesion = await obtenerUsuarioDeSesionActual();
   if (!sesion) redirect("/login");
-  const { usuario } = sesion;
+  const { usuario, sucursalActivaId } = sesion;
 
   const { id } = await params;
 
-  const miembro = await obtenerMiembro(
-    { miembros: new PrismaMemberRepository(prisma) },
-    { organizacionId: usuario.organizacionId, id }
-  ).catch((error) => {
-    if (error instanceof MiembroNoEncontradoError) return null;
+  let miembro;
+  try {
+    miembro = await obtenerMiembro(
+      { miembros: new PrismaMemberRepository(prisma), sucursales: new PrismaSucursalRepository(prisma) },
+      { organizacionId: usuario.organizacionId, id, sucursalActivaId }
+    );
+  } catch (error) {
+    if (error instanceof MiembroNoEncontradoError) notFound();
+    if (error instanceof MiembroFueraDeSucursalError) {
+      return <MiembroFueraDeSucursal mensaje={error.message} />;
+    }
     throw error;
-  });
-
-  if (!miembro) notFound();
+  }
 
   const pagos = await listarPagos(
     { pagos: new PrismaPagoRepository(prisma), miembros: new PrismaMemberRepository(prisma) },

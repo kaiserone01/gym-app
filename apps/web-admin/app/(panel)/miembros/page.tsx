@@ -21,7 +21,7 @@ export default async function PaginaMiembros() {
   const { usuario, sucursalActivaId } = sesion;
 
   const [miembros, planes, sucursales, turnoAbierto] = await Promise.all([
-    listarMiembros({ miembros: new PrismaMemberRepository(prisma) }, usuario.organizacionId),
+    listarMiembros({ miembros: new PrismaMemberRepository(prisma) }, usuario.organizacionId, sucursalActivaId),
     listarPlanes({ planes: new PrismaPlanRepository(prisma) }, usuario.organizacionId),
     listarSucursales({ sucursales: new PrismaSucursalRepository(prisma) }, usuario.organizacionId),
     obtenerTurnoAbiertoParaUsuario(sucursalActivaId, usuario.id),

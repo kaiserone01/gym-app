@@ -3,10 +3,14 @@ import { ISuscripcionRepository } from "../ports/ISuscripcionRepository";
 import { IMemberRepository } from "../ports/IMemberRepository";
 import { IPlanRepository } from "../ports/IPlanRepository";
 import { ITurnoRepository } from "../ports/ITurnoRepository";
+import { ISucursalRepository } from "../ports/ISucursalRepository";
 import { Pago } from "../entities/Pago";
 import { RolUsuario } from "../entities/UsuarioAdmin";
 import { IAuthorizationService } from "../ports/IAuthorizationService";
 import { DURACION_DIAS_POR_FRECUENCIA } from "../entities/Plan";
+import { MiembroFueraDeSucursalError } from "./ObtenerMiembro";
+
+export { MiembroFueraDeSucursalError };
 
 export class MiembroNoEncontradoError extends Error {
   constructor() {
@@ -38,6 +42,7 @@ export interface RegistrarPagoDeps {
   miembros: IMemberRepository;
   planes: IPlanRepository;
   turnos: ITurnoRepository;
+  sucursales: ISucursalRepository;
   autorizacion: IAuthorizationService;
 }
 
@@ -63,6 +68,11 @@ export async function registrarPago(deps: RegistrarPagoDeps, input: DatosRegistr
   const miembro = await deps.miembros.buscarPorId(input.organizacionId, input.miembroId);
   if (!miembro) {
     throw new MiembroNoEncontradoError();
+  }
+
+  if (miembro.sucursalId !== null && miembro.sucursalId !== input.sucursalId) {
+    const sucursal = await deps.sucursales.buscarPorId(input.organizacionId, miembro.sucursalId);
+    throw new MiembroFueraDeSucursalError(sucursal?.nombre ?? "otra sucursal");
   }
 
   const plan = await deps.planes.buscarPorId(input.organizacionId, input.planId);

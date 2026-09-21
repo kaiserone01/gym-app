@@ -131,7 +131,10 @@ export default async function PaginaCaja() {
             </Card>
           ) : (
             <div className="lg:col-span-2 lg:row-span-2">
-              <AvisoCajaAjena usuarioNombre={resumen.turno.usuarioNombre ?? "otro usuario"} abiertoEn={resumen.turno.abiertoEn} />
+              <AvisoCajaAjena
+                usuarioNombre={turnoAbierto.turno.usuarioNombre ?? "otro usuario"}
+                abiertoEn={turnoAbierto.turno.abiertoEn}
+              />
             </div>
           )}
 

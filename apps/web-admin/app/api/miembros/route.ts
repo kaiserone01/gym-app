@@ -13,11 +13,12 @@ export async function GET(req: NextRequest) {
   if (!sesion) {
     return NextResponse.json({ error: "No autenticado." }, { status: 401 });
   }
-  const { usuario } = sesion;
+  const { usuario, sucursalActivaId } = sesion;
 
   const miembros = await listarMiembros(
     { miembros: new PrismaMemberRepository(prisma) },
-    usuario.organizacionId
+    usuario.organizacionId,
+    sucursalActivaId
   );
 
   return NextResponse.json({ miembros });

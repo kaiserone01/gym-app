@@ -7,13 +7,16 @@ import { obtenerUsuarioDeSesion } from "@/lib/sesion";
 import { PrismaMemberRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaMemberRepository";
 import { PrismaPlanRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaPlanRepository";
 import { PrismaSuscripcionRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaSuscripcionRepository";
+import { PrismaSucursalRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaSucursalRepository";
 import {
   obtenerMiembro,
   MiembroNoEncontradoError as ObtenerMiembroNoEncontradoError,
+  MiembroFueraDeSucursalError as ObtenerMiembroFueraDeSucursalError,
 } from "@gym-app/domain/use-cases/ObtenerMiembro";
 import {
   actualizarMiembro,
   MiembroNoEncontradoError as ActualizarMiembroNoEncontradoError,
+  MiembroFueraDeSucursalError as ActualizarMiembroFueraDeSucursalError,
 } from "@gym-app/domain/use-cases/ActualizarMiembro";
 import type { CambiosMiembro } from "@gym-app/domain/entities/Miembro";
 
@@ -23,20 +26,23 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   if (!sesion) {
     return NextResponse.json({ error: "No autenticado." }, { status: 401 });
   }
-  const { usuario } = sesion;
+  const { usuario, sucursalActivaId } = sesion;
 
   const { id } = await params;
 
   try {
     const miembro = await obtenerMiembro(
-      { miembros: new PrismaMemberRepository(prisma) },
-      { organizacionId: usuario.organizacionId, id }
+      { miembros: new PrismaMemberRepository(prisma), sucursales: new PrismaSucursalRepository(prisma) },
+      { organizacionId: usuario.organizacionId, id, sucursalActivaId }
     );
 
     return NextResponse.json(miembro);
   } catch (error) {
     if (error instanceof ObtenerMiembroNoEncontradoError) {
       return NextResponse.json({ error: error.message }, { status: 404 });
+    }
+    if (error instanceof ObtenerMiembroFueraDeSucursalError) {
+      return NextResponse.json({ error: error.message }, { status: 403 });
     }
     console.error("Error al obtener miembro:", error);
     return NextResponse.json(
@@ -52,7 +58,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (!sesion) {
     return NextResponse.json({ error: "No autenticado." }, { status: 401 });
   }
-  const { usuario } = sesion;
+  const { usuario, sucursalActivaId } = sesion;
 
   const { id } = await params;
   const body = await req.json();
@@ -79,14 +85,18 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         miembros: new PrismaMemberRepository(prisma),
         planes: new PrismaPlanRepository(prisma),
         suscripciones: new PrismaSuscripcionRepository(prisma),
+        sucursales: new PrismaSucursalRepository(prisma),
       },
-      { organizacionId: usuario.organizacionId, id, cambios }
+      { organizacionId: usuario.organizacionId, id, sucursalActivaId, cambios }
     );
 
     return NextResponse.json(miembro);
   } catch (error) {
     if (error instanceof ActualizarMiembroNoEncontradoError) {
       return NextResponse.json({ error: error.message }, { status: 404 });
+    }
+    if (error instanceof ActualizarMiembroFueraDeSucursalError) {
+      return NextResponse.json({ error: error.message }, { status: 403 });
     }
     console.error("Error al actualizar miembro:", error);
     return NextResponse.json(

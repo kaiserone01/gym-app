@@ -10,10 +10,12 @@ import { PrismaMemberRepository } from "@gym-app/infrastructure/persistence/pris
 import { PrismaPlanRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaPlanRepository";
 import { PrismaTurnoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaTurnoRepository";
 import { PrismaPermisoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaPermisoRepository";
+import { PrismaSucursalRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaSucursalRepository";
 import { AuthorizationService } from "@gym-app/domain/services/AuthorizationService";
 import {
   registrarPago,
   MiembroNoEncontradoError as RegistrarPagoMiembroNoEncontradoError,
+  MiembroFueraDeSucursalError,
   PlanNoEncontradoError as RegistrarPagoPlanNoEncontradoError,
   PlanInactivoError,
   RolNoAutorizadoError,
@@ -85,6 +87,7 @@ export async function POST(req: NextRequest) {
         miembros: new PrismaMemberRepository(prisma),
         planes: new PrismaPlanRepository(prisma),
         turnos: new PrismaTurnoRepository(prisma),
+        sucursales: new PrismaSucursalRepository(prisma),
         autorizacion: new AuthorizationService(new PrismaPermisoRepository(prisma)),
       },
       {
@@ -106,6 +109,9 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     if (error instanceof RegistrarPagoMiembroNoEncontradoError || error instanceof RegistrarPagoPlanNoEncontradoError) {
       return NextResponse.json({ error: error.message }, { status: 404 });
+    }
+    if (error instanceof MiembroFueraDeSucursalError) {
+      return NextResponse.json({ error: error.message }, { status: 403 });
     }
     if (error instanceof PlanInactivoError) {
       return NextResponse.json({ error: error.message }, { status: 400 });

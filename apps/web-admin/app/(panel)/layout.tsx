@@ -1,11 +1,14 @@
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
+import { prisma } from "@/lib/prisma";
 import { obtenerUsuarioDeSesionActual } from "@/lib/sesion";
+import { PrismaSucursalRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaSucursalRepository";
 import { Sidebar } from "@gym-app/ui/components/Sidebar";
 import { FeedbackProvider } from "@gym-app/ui/components/FeedbackOverlay";
 import { FeedbackDesdeUrl } from "@gym-app/ui/components/FeedbackDesdeUrl";
 import { RelojYTasa } from "@gym-app/ui/components/RelojYTasa";
 import { BarraUsuario } from "./BarraUsuario";
+import { EncabezadoSidebar } from "./EncabezadoSidebar";
 import { NavegacionMobile } from "./NavegacionMobile";
 
 export default async function PanelLayout({ children }: { children: React.ReactNode }) {
@@ -14,7 +17,12 @@ export default async function PanelLayout({ children }: { children: React.ReactN
   if (!sesion) {
     redirect("/login");
   }
-  const { usuario } = sesion;
+  const { usuario, sucursalActivaId } = sesion;
+
+  const sucursalActiva = await new PrismaSucursalRepository(prisma).buscarPorId(
+    usuario.organizacionId,
+    sucursalActivaId
+  );
 
   return (
     <FeedbackProvider>
@@ -25,6 +33,7 @@ export default async function PanelLayout({ children }: { children: React.ReactN
       <div className="flex min-h-dvh flex-col lg:flex-row" style={{ background: "var(--gx-ground)" }}>
         <div className="hidden lg:block">
           <Sidebar
+            encabezado={<EncabezadoSidebar sucursalNombre={sucursalActiva?.nombre ?? "—"} />}
             items={[
               { href: "/miembros", label: "Miembros" },
               { href: "/caja", label: "Caja" },

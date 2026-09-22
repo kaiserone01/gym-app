@@ -3,11 +3,10 @@ import type { ISesionRepository } from "@gym-app/domain/ports/ISesionRepository"
 import type { Sesion } from "@gym-app/domain/entities/Sesion";
 
 function mapear(fila: { id: string; token: string; usuarioId: string; sucursalActivaId: string | null; expiraEn: Date }): Sesion {
-  // sucursalActivaId es NOT NULL a nivel de aplicación desde este plan en
-  // adelante (la columna es nullable solo por la migración de filas
-  // viejas) — el "!" es seguro para cualquier sesión creada por
-  // ISesionRepository.crear(), que siempre lo exige.
-  return { id: fila.id, token: fila.token, usuarioId: fila.usuarioId, sucursalActivaId: fila.sucursalActivaId!, expiraEn: fila.expiraEn };
+  // Se mapea tal cual viene (puede ser null en sesiones viejas, ver
+  // Sesion.sucursalActivaId) — ValidarSesion es quien decide qué hacer
+  // con una sesión sin sucursal, acá no se fuerza el tipo con "!".
+  return { id: fila.id, token: fila.token, usuarioId: fila.usuarioId, sucursalActivaId: fila.sucursalActivaId, expiraEn: fila.expiraEn };
 }
 
 export class PrismaSesionRepository implements ISesionRepository {

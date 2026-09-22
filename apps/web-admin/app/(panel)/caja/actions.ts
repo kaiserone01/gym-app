@@ -92,7 +92,7 @@ export async function registrarEgresoAction(
   const metodo = formData.get("metodo")?.toString();
   const motivo = formData.get("motivo")?.toString() ?? "";
   // Solo relevante para moneda BS — capturada en el cliente desde
-  // /api/tasa-cambio al momento de registrar (ver FormularioEgreso).
+  // /api/tasa-cambio al momento de registrar (ver ModalRegistrarEgreso).
   const tasaCambioTexto = formData.get("tasaCambio")?.toString();
   const tasaCambio = tasaCambioTexto ? Number(tasaCambioTexto) : null;
 

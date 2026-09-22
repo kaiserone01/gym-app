@@ -20,6 +20,7 @@ import { listarMetodosPagoActivos } from "@gym-app/domain/use-cases/ListarMetodo
 import { obtenerTurnoAbiertoParaUsuario } from "./obtenerTurnoAbiertoParaUsuario";
 import { AvisoCajaAjena } from "./AvisoCajaAjena";
 import { BotonRegistrarPagoCaja } from "./BotonRegistrarPagoCaja";
+import { BotonRegistrarEgreso } from "./BotonRegistrarEgreso";
 
 // El método ahora se guarda como snapshot legible ("Pago Móvil - Banesco")
 // directo en Pago.metodo, ya no como código a traducir contra un catálogo
@@ -50,7 +51,6 @@ function calcularRefUSD(
 import { formatearBs, formatearBsConRef } from "../tasaBcvFija";
 import { inicioDelDia, finDelDia, inicioDeSemana, finDeSemana, inicioDeMes, finDeMes, formatearFechaISO } from "../fechas";
 import { FormularioAbrirTurno } from "./FormularioAbrirTurno";
-import { FormularioEgreso } from "./FormularioEgreso";
 import { FormularioArqueo } from "./FormularioArqueo";
 import { abrirTurnoAction, registrarEgresoAction, cerrarTurnoAction } from "./actions";
 
@@ -99,159 +99,158 @@ export default async function PaginaCaja() {
       <div className="flex flex-col gap-6 p-6 pb-24 lg:p-8 lg:pb-8">
         <PageHeader>Turno activo</PageHeader>
 
-        {/* Bento grid en desktop: las 3 cards de la fila superior
-            (Registrar pago, Abierto desde, Resumen por método) tienen el
-            mismo ancho. Pagos/egresos del turno y arqueo van a todo el
-            ancho debajo. En mobile todo se apila en una sola columna. */}
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3 lg:auto-rows-min">
+        {/* Layout compacto: una sola barra de estado + acciones arriba
+            (en vez de 3 cards del mismo ancho con la de "Registrar pago"
+            casi vacía — el botón ahora abre un modal, no necesita todo el
+            ancho de una card), resumen por método en grilla densa, pagos
+            y egresos lado a lado con scroll interno propio, arqueo al
+            final. Objetivo: que todo entre sin scroll excesivo (ver
+            mockup acordado). En mobile se apila igual que antes. */}
+        <div className="flex flex-col gap-4">
           {esPropio ? (
-            <Card className="text-sm">
-              <h2 className="mb-3 font-semibold" style={{ color: "var(--gx-ink)" }}>
-                Registrar pago
-              </h2>
-              <BotonRegistrarPagoCaja
-                miembros={miembrosActivos}
-                planes={planesActivos}
-                metodosPago={metodosPago}
-                tasaActual={tasaActual}
-              />
+            <Card className="flex flex-col gap-4 text-sm sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-wrap gap-6">
+                <div>
+                  <p className="text-xs" style={{ color: "var(--gx-muted)" }}>
+                    Abierto desde
+                  </p>
+                  <p className="font-medium" style={{ color: "var(--gx-ink)" }}>
+                    {resumen.turno.abiertoEn.toLocaleString("es-VE")}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs" style={{ color: "var(--gx-muted)" }}>
+                    Fondo inicial en efectivo
+                  </p>
+                  <p className="font-medium" style={{ color: "var(--gx-ink)" }}>
+                    ${resumen.turno.fondoInicialEfectivoUSD.toFixed(2)} /{" "}
+                    {formatearBsConRef(
+                      resumen.turno.fondoInicialEfectivoBs,
+                      tasaActual !== null ? resumen.turno.fondoInicialEfectivoBs / tasaActual : null
+                    )}
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <BotonRegistrarPagoCaja
+                  miembros={miembrosActivos}
+                  planes={planesActivos}
+                  metodosPago={metodosPago}
+                  tasaActual={tasaActual}
+                />
+                <BotonRegistrarEgreso accion={registrarEgresoAction} turnoId={resumen.turno.id} />
+              </div>
             </Card>
           ) : (
-            <div>
-              <AvisoCajaAjena
-                usuarioNombre={turnoAbierto.turno.usuarioNombre ?? "otro usuario"}
-                abiertoEn={turnoAbierto.turno.abiertoEn}
-              />
-            </div>
+            <AvisoCajaAjena
+              usuarioNombre={turnoAbierto.turno.usuarioNombre ?? "otro usuario"}
+              abiertoEn={turnoAbierto.turno.abiertoEn}
+            />
           )}
-
-          <Card className="text-sm">
-            <div className="flex justify-between">
-              <span style={{ color: "var(--gx-muted)" }}>Abierto desde</span>
-              <span className="font-medium" style={{ color: "var(--gx-ink)" }}>
-                {resumen.turno.abiertoEn.toLocaleString("es-VE")}
-              </span>
-            </div>
-            <div className="mt-1 flex justify-between">
-              <span style={{ color: "var(--gx-muted)" }}>Fondo inicial en efectivo</span>
-              <span className="font-medium" style={{ color: "var(--gx-ink)" }}>
-                ${resumen.turno.fondoInicialEfectivoUSD.toFixed(2)} /{" "}
-                {formatearBsConRef(
-                  resumen.turno.fondoInicialEfectivoBs,
-                  tasaActual !== null ? resumen.turno.fondoInicialEfectivoBs / tasaActual : null
-                )}
-              </span>
-            </div>
-          </Card>
 
           <Card className="text-sm">
             <h2 className="mb-3 font-semibold" style={{ color: "var(--gx-ink)" }}>
               Resumen por método
             </h2>
-            {resumen.lineas.map((linea) => {
-              const refUSD = calcularRefUSD(linea, resumen.turno.fondoInicialEfectivoBs, tasaActual);
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {resumen.lineas.map((linea) => {
+                const refUSD = calcularRefUSD(linea, resumen.turno.fondoInicialEfectivoBs, tasaActual);
 
-              return (
-                <div
-                  key={linea.metodo}
-                  className="flex justify-between border-b py-2"
-                  style={{ borderColor: "var(--gx-edge)" }}
-                >
-                  <span style={{ color: "var(--gx-muted)" }}>{nombreMetodo(linea.metodo)}</span>
-                  <span className="font-medium" style={{ color: "var(--gx-ink)" }}>
-                    {linea.enBs ? formatearBsConRef(linea.montoEsperado, refUSD) : `$${linea.montoEsperado.toFixed(2)}`}{" "}
-                    esperado
-                  </span>
-                </div>
-              );
-            })}
+                return (
+                  <div
+                    key={linea.metodo}
+                    className="flex justify-between gap-3 rounded-lg px-3 py-2.5"
+                    style={{ background: "var(--gx-surface-2)" }}
+                  >
+                    <span style={{ color: "var(--gx-muted)" }}>{nombreMetodo(linea.metodo)}</span>
+                    <span className="font-medium" style={{ color: "var(--gx-ink)" }}>
+                      {linea.enBs ? formatearBsConRef(linea.montoEsperado, refUSD) : `$${linea.montoEsperado.toFixed(2)}`}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
           </Card>
 
-          {esPropio && (
-            <div className="lg:col-span-2">
-              <FormularioEgreso accion={registrarEgresoAction} turnoId={resumen.turno.id} />
-            </div>
-          )}
-
-          {resumen.pagos.length > 0 && (
-            <Card className="text-sm lg:col-span-3">
-              <h2 className="mb-3 font-semibold" style={{ color: "var(--gx-ink)" }}>
-                Pagos del turno
-              </h2>
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[480px] border-collapse text-left">
-                  <thead>
-                    <tr className="border-b text-xs" style={{ borderColor: "var(--gx-edge)", color: "var(--gx-muted)" }}>
-                      <th className="py-2">Miembro</th>
-                      <th className="py-2">Método</th>
-                      <th className="py-2">Monto USD</th>
-                      <th className="py-2">Tasa</th>
-                      <th className="py-2">Monto Bs</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {resumen.pagos
-                      .filter((pago) => !pago.anuladoEn)
-                      .map((pago) => (
-                        <tr key={pago.id} className="border-b" style={{ borderColor: "var(--gx-edge)" }}>
-                          <td className="py-2" style={{ color: "var(--gx-ink)" }}>
-                            {pago.miembroNombre ?? pago.miembroId}
-                          </td>
-                          <td className="py-2" style={{ color: "var(--gx-ink)" }}>
-                            {nombreMetodo(pago.metodo)}
-                          </td>
-                          <td className="py-2" style={{ color: "var(--gx-ink)" }}>
-                            ${pago.monto.toFixed(2)}
-                          </td>
-                          <td className="py-2" style={{ color: "var(--gx-ink)" }}>
-                            {pago.tasaCambio !== null ? pago.tasaCambio.toFixed(2) : "—"}
-                          </td>
-                          <td className="py-2" style={{ color: "var(--gx-ink)" }}>
-                            {pago.montoBs !== null ? `Bs. ${formatearBs(pago.montoBs)}` : "—"}
-                          </td>
+          {(resumen.pagos.length > 0 || resumen.egresos.length > 0) && (
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+              {resumen.pagos.length > 0 && (
+                <Card className="text-sm">
+                  <h2 className="mb-3 font-semibold" style={{ color: "var(--gx-ink)" }}>
+                    Pagos del turno
+                  </h2>
+                  <div className="max-h-80 overflow-y-auto overflow-x-auto">
+                    <table className="w-full min-w-[420px] border-collapse text-left">
+                      <thead>
+                        <tr className="border-b text-xs" style={{ borderColor: "var(--gx-edge)", color: "var(--gx-muted)" }}>
+                          <th className="py-2">Miembro</th>
+                          <th className="py-2">Método</th>
+                          <th className="py-2">USD</th>
+                          <th className="py-2">Bs</th>
                         </tr>
-                      ))}
-                  </tbody>
-                </table>
-              </div>
-            </Card>
-          )}
+                      </thead>
+                      <tbody>
+                        {resumen.pagos
+                          .filter((pago) => !pago.anuladoEn)
+                          .map((pago) => (
+                            <tr key={pago.id} className="border-b" style={{ borderColor: "var(--gx-edge)" }}>
+                              <td className="py-2" style={{ color: "var(--gx-ink)" }}>
+                                {pago.miembroNombre ?? pago.miembroId}
+                              </td>
+                              <td className="py-2" style={{ color: "var(--gx-ink)" }}>
+                                {nombreMetodo(pago.metodo)}
+                              </td>
+                              <td className="py-2" style={{ color: "var(--gx-ink)" }}>
+                                ${pago.monto.toFixed(2)}
+                              </td>
+                              <td className="py-2" style={{ color: "var(--gx-ink)" }}>
+                                {pago.montoBs !== null ? `Bs. ${formatearBs(pago.montoBs)}` : "—"}
+                              </td>
+                            </tr>
+                          ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </Card>
+              )}
 
-          {resumen.egresos.length > 0 && (
-            <Card className="text-sm lg:col-span-3">
-              <h2 className="mb-3 font-semibold" style={{ color: "var(--gx-ink)" }}>
-                Egresos del turno
-              </h2>
-              {resumen.egresos.map((egreso) => (
-                <div
-                  key={egreso.id}
-                  className="flex justify-between border-b py-2"
-                  style={{ borderColor: "var(--gx-edge)" }}
-                >
-                  <span style={{ color: "var(--gx-muted)" }}>{egreso.motivo}</span>
-                  <span style={{ color: "var(--gx-ink)" }}>
-                    {egreso.moneda === "BS"
-                      ? formatearBsConRef(egreso.monto, egreso.montoUSD)
-                      : `$${egreso.monto.toFixed(2)}`}
-                  </span>
-                </div>
-              ))}
-            </Card>
+              {resumen.egresos.length > 0 && (
+                <Card className="text-sm">
+                  <h2 className="mb-3 font-semibold" style={{ color: "var(--gx-ink)" }}>
+                    Egresos del turno
+                  </h2>
+                  <div className="max-h-80 overflow-y-auto">
+                    {resumen.egresos.map((egreso) => (
+                      <div
+                        key={egreso.id}
+                        className="flex justify-between border-b py-2"
+                        style={{ borderColor: "var(--gx-edge)" }}
+                      >
+                        <span style={{ color: "var(--gx-muted)" }}>{egreso.motivo}</span>
+                        <span style={{ color: "var(--gx-ink)" }}>
+                          {egreso.moneda === "BS"
+                            ? formatearBsConRef(egreso.monto, egreso.montoUSD)
+                            : `$${egreso.monto.toFixed(2)}`}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+              )}
+            </div>
           )}
 
           {esPropio && (
-            <div className="lg:col-span-3">
-              <FormularioArqueo
-                accion={cerrarTurnoAction}
-                turnoId={resumen.turno.id}
-                lineas={resumen.lineas.map((linea) => ({
-                  metodo: linea.metodo,
-                  enBs: linea.enBs,
-                  montoEsperado: linea.montoEsperado,
-                  refUSD: calcularRefUSD(linea, resumen.turno.fondoInicialEfectivoBs, tasaActual),
-                }))}
-              />
-            </div>
+            <FormularioArqueo
+              accion={cerrarTurnoAction}
+              turnoId={resumen.turno.id}
+              lineas={resumen.lineas.map((linea) => ({
+                metodo: linea.metodo,
+                enBs: linea.enBs,
+                montoEsperado: linea.montoEsperado,
+                refUSD: calcularRefUSD(linea, resumen.turno.fondoInicialEfectivoBs, tasaActual),
+              }))}
+            />
           )}
         </div>
       </div>

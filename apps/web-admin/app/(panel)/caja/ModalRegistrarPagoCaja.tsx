@@ -44,7 +44,7 @@ function iniciales(nombre: string): string {
 function Avatar({ fotoUrl, nombre }: { fotoUrl: string | null; nombre: string }) {
   return (
     <div
-      className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full text-lg font-semibold"
+      className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full text-xl font-semibold"
       style={{ background: "var(--gx-surface-2)", color: "var(--gx-muted)" }}
     >
       {fotoUrl ? (
@@ -59,11 +59,11 @@ function Avatar({ fotoUrl, nombre }: { fotoUrl: string | null; nombre: string })
 
 function BarraProgreso({ paso }: { paso: Paso }) {
   return (
-    <div className="mb-4 flex items-center gap-2">
+    <div className="mb-6 flex items-center gap-2">
       {([1, 2, 3, 4] as Paso[]).map((n) => (
         <div key={n} className="flex flex-1 items-center gap-2">
           <div
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-semibold"
             style={
               n <= paso
                 ? { background: "var(--gx-accent)", color: "var(--gx-accent-ink)" }
@@ -95,7 +95,9 @@ function ContenidoPaso1({
 }) {
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
-      <BuscadorMiembro miembros={miembros} planes={planes} onSeleccionar={onSeleccionar} />
+      {/* grande=true solo acá — el modal standalone de /miembros y
+          /pagos/nuevo (SelectorMiembroModal) sigue con su tamaño actual. */}
+      <BuscadorMiembro miembros={miembros} planes={planes} onSeleccionar={onSeleccionar} grande />
     </div>
   );
 }
@@ -124,33 +126,31 @@ function ContenidoPaso2({
     : null;
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center gap-3">
+    <div className="flex flex-col gap-5 text-base">
+      <div className="flex items-center gap-4">
         <Avatar fotoUrl={miembro.fotoUrl} nombre={miembro.nombre} />
         <div className="min-w-0">
-          <p className="truncate font-semibold" style={{ color: "var(--gx-ink)" }}>
+          <p className="truncate text-lg font-semibold" style={{ color: "var(--gx-ink)" }}>
             {miembro.nombre}
           </p>
-          <p className="text-sm" style={{ color: "var(--gx-muted)" }}>
-            {miembro.cedula}
-          </p>
+          <p style={{ color: "var(--gx-muted)" }}>{miembro.cedula}</p>
         </div>
       </div>
 
-      <div className="flex justify-between text-sm">
+      <div className="flex justify-between">
         <span style={{ color: "var(--gx-muted)" }}>Vencimiento</span>
         <DiasDisponibles fechaVencimiento={miembro.fechaVencimiento} />
       </div>
 
       {planEfectivo ? (
-        <div className="rounded-lg border p-3 text-sm" style={{ borderColor: "var(--gx-edge)", background: "var(--gx-surface-2)" }}>
+        <div className="rounded-lg border p-4" style={{ borderColor: "var(--gx-edge)", background: "var(--gx-surface-2)" }}>
           <div className="flex justify-between">
             <span style={{ color: "var(--gx-muted)" }}>Plan</span>
             <span className="font-medium" style={{ color: "var(--gx-ink)" }}>
               {planEfectivo.nombre}
             </span>
           </div>
-          <div className="mt-1 flex justify-between">
+          <div className="mt-2 flex justify-between">
             <span style={{ color: "var(--gx-muted)" }}>Precio</span>
             <span className="font-semibold" style={{ color: "var(--gx-ink)" }}>
               ${planEfectivo.precioUSD.toFixed(2)}/{ETIQUETA_FRECUENCIA[planEfectivo.frecuencia]}
@@ -159,12 +159,12 @@ function ContenidoPaso2({
           </div>
         </div>
       ) : (
-        <label className="flex flex-col gap-1.5 text-sm" style={{ color: "var(--gx-muted)" }}>
+        <label className="flex flex-col gap-2" style={{ color: "var(--gx-muted)" }}>
           Este miembro no tiene un plan asignado — elegí uno para continuar
           <select
             value={planElegidoId ?? ""}
             onChange={(e) => onElegirPlan(e.target.value)}
-            className="min-h-11 rounded-lg border px-3 outline-none focus:border-[var(--gx-accent)]"
+            className="min-h-12 rounded-lg border px-3 text-base outline-none focus:border-[var(--gx-accent)]"
             style={{ background: "var(--gx-surface-2)", borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }}
           >
             <option value="">Seleccioná un plan</option>
@@ -178,7 +178,7 @@ function ContenidoPaso2({
       )}
 
       {proyeccion && (
-        <div className="rounded-lg border p-3 text-sm" style={{ borderColor: "var(--gx-edge)" }}>
+        <div className="rounded-lg border p-4" style={{ borderColor: "var(--gx-edge)" }}>
           <p style={{ color: "var(--gx-ink)" }}>
             Al pagar la renovación, disfrutará de <strong>{proyeccion.diasDelPlan} días</strong>
             {proyeccion.adelantandoCuota && (
@@ -186,19 +186,19 @@ function ContenidoPaso2({
             )}
             .
           </p>
-          <p className="mt-1" style={{ color: "var(--gx-muted)" }}>
+          <p className="mt-2" style={{ color: "var(--gx-muted)" }}>
             Próximo vencimiento: {formatearFechaCorta(proyeccion.fechaProximoVencimiento)}
           </p>
         </div>
       )}
 
-      <div className="mt-2 flex gap-2">
-        <Button type="button" variant="secundario" className="flex-1" onClick={onVolver}>
+      <div className="mt-2 flex gap-3">
+        <Button type="button" variant="secundario" className="min-h-12 flex-1 text-base" onClick={onVolver}>
           Volver
         </Button>
         <Button
           type="button"
-          className="flex-1"
+          className="min-h-12 flex-1 text-base"
           disabled={!planEfectivo}
           onClick={() => planEfectivo && onContinuar(planEfectivo)}
         >
@@ -247,7 +247,7 @@ function ContenidoPaso3({
   }, [estado.ok]);
 
   return (
-    <form action={enviar} className="flex flex-col gap-4">
+    <form action={enviar} className="flex flex-col gap-4 text-base">
       <input type="hidden" name="miembroId" value={miembroId} />
       <input type="hidden" name="planId" value={planId} />
       <input type="hidden" name="monto" value={monto} />
@@ -257,13 +257,23 @@ function ContenidoPaso3({
       <input type="hidden" name="tasaCambio" value={seleccionMetodo.tasaCambio ?? ""} />
       <input type="hidden" name="numeroOperacion" value={seleccionMetodo.numeroOperacion} />
 
-      <SelectorMetodoPago metodos={metodosPago} monto={monto} onCambio={setSeleccionMetodo} />
+      <SelectorMetodoPago metodos={metodosPago} monto={monto} onCambio={setSeleccionMetodo} grande />
 
-      <div className="mt-2 flex gap-2">
-        <Button type="button" variant="secundario" className="flex-1" onClick={onVolver} disabled={enviando}>
+      <div className="mt-2 flex gap-3">
+        <Button
+          type="button"
+          variant="secundario"
+          className="min-h-12 flex-1 text-base"
+          onClick={onVolver}
+          disabled={enviando}
+        >
           Volver
         </Button>
-        <Button type="submit" className="flex-1" disabled={enviando || !seleccionMetodo.metodoPagoId}>
+        <Button
+          type="submit"
+          className="min-h-12 flex-1 text-base"
+          disabled={enviando || !seleccionMetodo.metodoPagoId}
+        >
           {enviando ? "Registrando..." : "Registrar pago"}
         </Button>
       </div>
@@ -283,38 +293,36 @@ function ContenidoPaso4({
   onCerrar: () => void;
 }) {
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center gap-3">
+    <div className="flex flex-col gap-5 text-base">
+      <div className="flex items-center gap-4">
         <Avatar fotoUrl={miembro.fotoUrl} nombre={miembro.nombre} />
         <div className="min-w-0">
-          <p className="truncate font-semibold" style={{ color: "var(--gx-ink)" }}>
+          <p className="truncate text-lg font-semibold" style={{ color: "var(--gx-ink)" }}>
             {miembro.nombre}
           </p>
-          <p className="text-sm" style={{ color: "var(--gx-muted)" }}>
-            {miembro.cedula}
-          </p>
+          <p style={{ color: "var(--gx-muted)" }}>{miembro.cedula}</p>
         </div>
       </div>
 
-      <div className="flex justify-between text-sm">
+      <div className="flex justify-between">
         <span style={{ color: "var(--gx-muted)" }}>Nuevo vencimiento</span>
         <DiasDisponibles fechaVencimiento={fechaFinCiclo} />
       </div>
 
       {fechaFinCiclo && (
-        <p className="text-right text-sm" style={{ color: "var(--gx-muted)" }}>
+        <p className="text-right" style={{ color: "var(--gx-muted)" }}>
           {formatearFechaCorta(fechaFinCiclo)}
         </p>
       )}
 
-      <div className="flex justify-between text-sm">
+      <div className="flex justify-between">
         <span style={{ color: "var(--gx-muted)" }}>Plan</span>
         <span className="font-medium" style={{ color: "var(--gx-ink)" }}>
           {planNombre}
         </span>
       </div>
 
-      <Button type="button" className="mt-2" onClick={onCerrar}>
+      <Button type="button" className="min-h-12 mt-2 text-base" onClick={onCerrar}>
         Cerrar
       </Button>
     </div>
@@ -358,19 +366,19 @@ export function ModalRegistrarPagoCaja({
       onClick={pedirCierre}
     >
       <div
-        className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-y-auto rounded-2xl border-2 p-6"
+        className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-y-auto rounded-2xl border-2 p-8 text-base"
         style={{ borderColor: "var(--gx-accent)", background: "var(--gx-surface)" }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-bold" style={{ color: "var(--gx-ink)" }}>
+        <div className="relative flex items-center justify-center">
+          <h3 className="text-center text-2xl font-bold" style={{ color: "var(--gx-ink)" }}>
             {TITULOS_PASO[paso]}
           </h3>
           <button
             type="button"
             onClick={pedirCierre}
             aria-label="Cerrar"
-            className="rounded-full p-1.5 text-sm transition-colors duration-150 hover:bg-[var(--gx-surface-2)]"
+            className="absolute right-0 rounded-full p-1.5 text-base transition-colors duration-150 hover:bg-[var(--gx-surface-2)]"
             style={{ color: "var(--gx-muted)" }}
           >
             ✕
@@ -384,19 +392,19 @@ export function ModalRegistrarPagoCaja({
             className="mb-4 rounded-lg border-2 p-4"
             style={{ borderColor: "var(--gx-bad)", background: "var(--gx-surface-2)" }}
           >
-            <p className="text-sm" style={{ color: "var(--gx-ink)" }}>
+            <p className="text-base" style={{ color: "var(--gx-ink)" }}>
               ¿Descartar este pago en curso? Se perderá la selección hecha hasta ahora.
             </p>
-            <div className="mt-3 flex gap-2">
+            <div className="mt-3 flex gap-3">
               <Button
                 type="button"
                 variant="secundario"
-                className="flex-1"
+                className="min-h-12 flex-1 text-base"
                 onClick={() => setConfirmandoCierre(false)}
               >
                 Seguir aquí
               </Button>
-              <Button type="button" variant="peligro" className="flex-1" onClick={onCerrar}>
+              <Button type="button" variant="peligro" className="min-h-12 flex-1 text-base" onClick={onCerrar}>
                 Descartar
               </Button>
             </div>

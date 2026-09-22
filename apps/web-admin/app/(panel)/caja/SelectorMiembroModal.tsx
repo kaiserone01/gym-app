@@ -63,10 +63,14 @@ export function BuscadorMiembro({
   miembros,
   planes,
   onSeleccionar,
+  grande = false,
 }: {
   miembros: Miembro[];
   planes: PlanParaModal[];
   onSeleccionar: (miembro: MiembroConPlan) => void;
+  // Solo el wizard de Caja (ModalRegistrarPagoCaja) lo pide — el modal
+  // standalone de /miembros y /pagos/nuevo se queda con su tamaño actual.
+  grande?: boolean;
 }) {
   const [busqueda, setBusqueda] = useState("");
   const planesPorId = useMemo(() => new Map(planes.map((p) => [p.id, p])), [planes]);
@@ -88,9 +92,12 @@ export function BuscadorMiembro({
       }));
   }, [miembros, busquedaAplicada, planesPorId]);
 
+  const textoBase = grande ? "text-base" : "text-sm";
+  const textoBusqueda = grande ? "text-lg" : "";
+
   return (
     <>
-      <label className="flex flex-col gap-1.5 text-sm" style={{ color: "var(--gx-muted)" }}>
+      <label className={`flex flex-col gap-1.5 ${textoBase}`} style={{ color: "var(--gx-muted)" }}>
         Nombre o cédula
         <input
           type="text"
@@ -98,20 +105,20 @@ export function BuscadorMiembro({
           placeholder="Mínimo 3 caracteres..."
           value={busqueda}
           onChange={(e) => setBusqueda(e.target.value)}
-          className="min-h-11 rounded-lg border px-3 outline-none transition-colors duration-150 focus:border-[var(--gx-accent)]"
+          className={`min-h-11 rounded-lg border px-3 outline-none transition-colors duration-150 focus:border-[var(--gx-accent)] ${textoBusqueda}`}
           style={{ background: "var(--gx-surface-2)", borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }}
         />
       </label>
 
-      <div className="mt-4 flex-1 overflow-y-auto">
+      <div className={`mt-4 flex-1 overflow-y-auto ${textoBase}`}>
         {busquedaAplicada === "" && (
-          <p className="py-8 text-center text-sm" style={{ color: "var(--gx-muted)" }}>
+          <p className="py-8 text-center" style={{ color: "var(--gx-muted)" }}>
             Escribí al menos 3 caracteres para buscar.
           </p>
         )}
 
         {busquedaAplicada !== "" && resultados.length === 0 && (
-          <p className="py-8 text-center text-sm" style={{ color: "var(--gx-muted)" }}>
+          <p className="py-8 text-center" style={{ color: "var(--gx-muted)" }}>
             Ningún miembro coincide con "{busqueda.trim()}".
           </p>
         )}
@@ -130,11 +137,9 @@ export function BuscadorMiembro({
                 <p className="truncate font-medium" style={{ color: "var(--gx-ink)" }}>
                   {miembro.nombre}
                 </p>
-                <p className="text-sm" style={{ color: "var(--gx-muted)" }}>
-                  {miembro.cedula}
-                </p>
+                <p style={{ color: "var(--gx-muted)" }}>{miembro.cedula}</p>
               </div>
-              <div className="text-right text-sm">
+              <div className="text-right">
                 {!miembro.plan ? (
                   <span style={{ color: "var(--gx-muted)" }}>Sin plan asignado</span>
                 ) : (

@@ -94,6 +94,7 @@ export function SelectorMetodoPago({
   monto,
   onCambio,
   idFormulario,
+  grande = false,
 }: {
   metodos: MetodoPago[];
   monto: number;
@@ -106,6 +107,9 @@ export function SelectorMetodoPago({
   // El <Input> de "número de operación" vive dentro de este selector pero
   // el submit final es el <form> del padre — se enlaza con el atributo form=.
   idFormulario?: string;
+  // Solo el wizard de Caja (ModalRegistrarPagoCaja) lo pide — el uso en
+  // /miembros/[id] y /pagos/nuevo se queda con su tamaño actual.
+  grande?: boolean;
 }) {
   const [tipoAbierto, setTipoAbierto] = useState<TipoMetodoPago | null>(null);
   const [metodoId, setMetodoId] = useState<string | null>(null);
@@ -166,6 +170,9 @@ export function SelectorMetodoPago({
   }
 
   const montoBs = esEnBs && tasa !== null ? monto * tasa : null;
+  const textoTipo = grande ? "text-sm" : "text-xs";
+  const textoInstancia = grande ? "text-base" : "text-sm";
+  const textoEfectivo = grande ? "text-base" : "text-sm";
 
   return (
     <div className="flex flex-col gap-4">
@@ -188,7 +195,7 @@ export function SelectorMetodoPago({
               <span style={{ color: seleccionado ? "var(--gx-accent)" : "var(--gx-muted)" }}>
                 <Icono />
               </span>
-              <span className="text-xs font-medium text-center" style={{ color: "var(--gx-ink)" }}>
+              <span className={`${textoTipo} font-medium text-center`} style={{ color: "var(--gx-ink)" }}>
                 {ETIQUETA_TIPO_METODO_PAGO[tipo]}
               </span>
             </button>
@@ -216,7 +223,7 @@ export function SelectorMetodoPago({
               ) : (
                 <div className="h-8 w-8 shrink-0 rounded-full" style={{ background: "var(--gx-surface-2)" }} />
               )}
-              <span className="text-sm font-medium" style={{ color: "var(--gx-ink)" }}>
+              <span className={`${textoInstancia} font-medium`} style={{ color: "var(--gx-ink)" }}>
                 {instancia.nombreBanco}
               </span>
             </button>
@@ -233,7 +240,7 @@ export function SelectorMetodoPago({
                 key={m.id}
                 type="button"
                 onClick={() => setMetodoId(m.id)}
-                className="min-h-10 flex-1 rounded-lg border-2 text-sm font-medium transition-colors duration-150"
+                className={`min-h-10 flex-1 rounded-lg border-2 ${textoEfectivo} font-medium transition-colors duration-150`}
                 style={
                   metodoId === m.id
                     ? { borderColor: "var(--gx-accent)", background: "color-mix(in srgb, var(--gx-accent) 12%, transparent)" }
@@ -265,7 +272,10 @@ export function SelectorMetodoPago({
       )}
 
       {esEnBs && tasa !== null && (
-        <div className="rounded-lg border p-3 text-sm" style={{ borderColor: "var(--gx-edge)", background: "var(--gx-surface-2)" }}>
+        <div
+          className={`rounded-lg border p-3 ${grande ? "text-base" : "text-sm"}`}
+          style={{ borderColor: "var(--gx-edge)", background: "var(--gx-surface-2)" }}
+        >
           <div className="flex justify-between">
             <span style={{ color: "var(--gx-muted)" }}>Tasa BCV</span>
             <span className="font-medium" style={{ color: "var(--gx-ink)" }}>

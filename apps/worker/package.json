@@ -3,14 +3,16 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "actualizar-tasa": "tsx src/actualizar-tasa.ts"
+    "actualizar-tasa": "tsx src/actualizar-tasa.ts",
+    "daemon": "tsx src/daemon.ts"
   },
   "dependencies": {
     "@gym-app/db": "*",
     "@gym-app/domain": "*",
     "@gym-app/infrastructure": "*",
     "@prisma/adapter-pg": "^7.10.0",
-    "dotenv": "^17.4.2"
+    "dotenv": "^17.4.2",
+    "node-cron": "^4.6.0"
   },
   "devDependencies": {
     "@types/node": "^20",

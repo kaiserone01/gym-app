@@ -69,14 +69,9 @@ export function FormularioArqueo({
           <h2 className="text-lg font-semibold" style={{ color: "var(--gx-ink)" }}>
             Arqueo de cierre
           </h2>
-          <button
-            type="button"
-            onClick={usarMontosEsperados}
-            className="rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors duration-150"
-            style={{ borderColor: "var(--gx-edge)", color: "var(--gx-muted)" }}
-          >
+          <Button type="button" onClick={usarMontosEsperados} className="min-h-9 px-3 py-1.5 text-xs">
             Usar montos esperados
-          </button>
+          </Button>
         </div>
 
         {estado.error && (

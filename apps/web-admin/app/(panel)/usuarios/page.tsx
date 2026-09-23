@@ -1,13 +1,10 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { obtenerUsuarioDeSesionActual } from "@/lib/sesion";
 import { PrismaUsuarioAdminRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaUsuarioAdminRepository";
 import { PrismaPermisoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaPermisoRepository";
 import { listarUsuariosAdmin } from "@gym-app/domain/use-cases/ListarUsuariosAdmin";
-import { Button } from "@gym-app/ui/components/Button";
 import { Card } from "@gym-app/ui/components/Card";
-import { PageHeader } from "@gym-app/ui/components/PageHeader";
 import { AvisoError } from "../AvisoError";
 import { TarjetaUsuario } from "./TarjetaUsuario";
 
@@ -27,7 +24,6 @@ export default async function PaginaUsuarios({
   if (!puedeVer) redirect("/miembros");
 
   const { error: errorMensaje } = await searchParams;
-  const puedeCrear = esSocio || (await permisos.tiene(usuario.id, "USUARIOS", "CREAR"));
   const usuarios = await listarUsuariosAdmin(
     { usuarios: new PrismaUsuarioAdminRepository(prisma) },
     usuario.organizacionId
@@ -40,15 +36,6 @@ export default async function PaginaUsuarios({
 
   return (
     <div className="p-6 lg:p-8">
-      <div className="mb-6 flex items-center justify-between">
-        <PageHeader>Usuarios</PageHeader>
-        {puedeCrear && (
-          <Link href="/usuarios/nuevo">
-            <Button>Nuevo usuario</Button>
-          </Link>
-        )}
-      </div>
-
       <div className="mb-4">
         <AvisoError mensaje={errorMensaje} />
       </div>

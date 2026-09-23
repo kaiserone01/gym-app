@@ -16,8 +16,6 @@ import {
   MiembroFueraDeSucursalError,
   PlanNoEncontradoError as ActualizarPlanNoEncontradoError,
 } from "@gym-app/domain/use-cases/ActualizarMiembro";
-import { listarPlanes } from "@gym-app/domain/use-cases/ListarPlanes";
-import { crearPlan } from "@gym-app/domain/use-cases/CrearPlan";
 import { PrismaTurnoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaTurnoRepository";
 import { PrismaPermisoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaPermisoRepository";
 import { PrismaSucursalRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaSucursalRepository";
@@ -31,34 +29,10 @@ import {
   PlanInactivoError,
   RolNoAutorizadoError as PagoRolNoAutorizadoError,
 } from "@gym-app/domain/use-cases/RegistrarPago";
-import type { FrecuenciaPago } from "@gym-app/domain/entities/Plan";
 import { conMensajeOk } from "../redirectConMensaje";
 
 export interface EstadoFormularioMiembro {
   error?: string;
-}
-
-// El plan "Personalizado" no tiene pantalla propia de alta — se crea/reusa
-// una única vez por organización+frecuencia+entrenador, la primera vez que
-// alguien lo usa desde el formulario de Nuevo/Editar Miembro. /planes lo
-// lista y edita después como a cualquier otro plan.
-async function obtenerOCrearPlanPersonalizado(
-  organizacionId: string,
-  frecuencia: FrecuenciaPago,
-  incluyeEntrenador: boolean,
-  precioUSD: number
-): Promise<string> {
-  const planes = await listarPlanes({ planes: new PrismaPlanRepository(prisma) }, organizacionId);
-  const existente = planes.find(
-    (plan) => plan.nombre === "Personalizado" && plan.frecuencia === frecuencia && plan.incluyeEntrenador === incluyeEntrenador
-  );
-  if (existente) return existente.id;
-
-  const nuevo = await crearPlan(
-    { planes: new PrismaPlanRepository(prisma) },
-    { organizacionId, nombre: "Personalizado", frecuencia, incluyeEntrenador, precioUSD, multisede: false }
-  );
-  return nuevo.id;
 }
 
 const ID_AMBAS_SEDES = "__ambas__";
@@ -70,20 +44,8 @@ function resolverSucursalId(valor: string | undefined): string | null {
   return valor;
 }
 
-// Resuelve el planId a partir de los campos del formulario: o bien un Plan
-// real del catálogo (planId ya viene armado), o bien "Personalizado"
-// (busca/crea el Plan ad-hoc con la frecuencia y entrenador elegidos).
-async function resolverPlanId(organizacionId: string, formData: FormData, precioPlan: number): Promise<string | null> {
-  const planIdElegido = formData.get("planId")?.toString();
-  if (planIdElegido) return planIdElegido;
-
-  const esPersonalizado = formData.get("planPersonalizado")?.toString() === "1";
-  if (!esPersonalizado) return null;
-
-  const frecuencia = (formData.get("frecuenciaPersonalizada")?.toString() as FrecuenciaPago) || "MENSUAL";
-  const incluyeEntrenador = formData.get("entrenadorPersonalizado")?.toString() === "1";
-
-  return obtenerOCrearPlanPersonalizado(organizacionId, frecuencia, incluyeEntrenador, precioPlan);
+function resolverPlanId(formData: FormData): string | null {
+  return formData.get("planId")?.toString() || null;
 }
 
 function storageR2(): R2StorageService {
@@ -139,7 +101,7 @@ export async function crearMiembroAction(
     return { error: "Nombre, cédula, fecha de inscripción, sede y método de pago son requeridos." };
   }
 
-  const planId = await resolverPlanId(usuario.organizacionId, formData, precioPlan);
+  const planId = resolverPlanId(formData);
   if (!planId) {
     return { error: "Elegí un plan para el miembro." };
   }
@@ -243,7 +205,7 @@ export async function actualizarMiembroAction(
     return { error: "Nombre, fecha de inscripción, sede y precio del plan son requeridos." };
   }
 
-  const planId = await resolverPlanId(usuario.organizacionId, formData, precioPlan);
+  const planId = resolverPlanId(formData);
   const fotoUrl = await guardarFoto(formData.get("foto"));
 
   try {

@@ -28,7 +28,6 @@ export interface ValoresFormularioMiembro {
   fotoUrl: string | null;
 }
 
-const ID_PERSONALIZADO = "__personalizado__";
 const ID_AMBAS_SEDES = "__ambas__";
 
 const ETIQUETA_FRECUENCIA: Record<FrecuenciaPago, string> = {
@@ -88,6 +87,7 @@ export function FormularioMiembro({
   miembroId,
   ultimosCiclos,
   valoresIniciales,
+  tieneCicloVigente,
   panelLateral,
 }: {
   accion: (estado: EstadoFormularioMiembro, formData: FormData) => Promise<EstadoFormularioMiembro>;
@@ -114,6 +114,12 @@ export function FormularioMiembro({
   // fechaFinCiclo y no aparecen aquí) — solo se usa en modo edición.
   ultimosCiclos: { id: string; fechaInicioCiclo: Date | null; fechaFinCiclo: Date | null }[];
   valoresIniciales?: ValoresFormularioMiembro;
+  // Mientras el ciclo actual esté vigente, cambiar de plan gratis desde acá
+  // quedaría pisado por "Cambiar de plan" del panel derecho (que sí cobra
+  // la diferencia) — se oculta el editor de plan acá para no tener dos
+  // botones "Cambiar plan" haciendo cosas distintas al mismo tiempo (ver
+  // diseño acordado). Solo relevante en edición; en alta siempre es true.
+  tieneCicloVigente?: boolean;
   // Contenido propio de la pantalla de edición (dar de baja, historial de
   // pagos, registrar pago) — se muestra en el panel derecho cuando no hay
   // ticket de confirmación abierto, para no tener que scrollear.
@@ -168,12 +174,10 @@ export function FormularioMiembro({
       : entrenadoresDeLaSede;
 
   const [planId, setPlanId] = useState<string>(() => {
-    if (!valoresIniciales) return planesActivos[0]?.id ?? ID_PERSONALIZADO;
-    return valoresIniciales.planId ?? ID_PERSONALIZADO;
+    if (!valoresIniciales) return planesActivos[0]?.id ?? "";
+    return valoresIniciales.planId ?? "";
   });
   const [precio, setPrecio] = useState<string>(String(valoresIniciales?.precioPlan ?? ""));
-  const [frecuenciaPersonalizada, setFrecuenciaPersonalizada] = useState<FrecuenciaPago>("MENSUAL");
-  const [entrenadorPersonalizado, setEntrenadorPersonalizado] = useState(false);
   const [errorPrecio, setErrorPrecio] = useState<string | null>(null);
   const [seleccionMetodo, setSeleccionMetodo] = useState<{
     metodoPagoId: string | null;
@@ -182,6 +186,10 @@ export function FormularioMiembro({
     numeroOperacion: string;
   }>({ metodoPagoId: null, metodo: "", tasaCambio: null, numeroOperacion: "" });
   const [mostrarTicket, setMostrarTicket] = useState(false);
+  // Mientras el ciclo actual esté vigente, el cambio de plan gratis queda
+  // deshabilitado acá — usa "Cambiar de plan" del panel derecho, que cobra
+  // la diferencia correspondiente (ver diseño acordado).
+  const puedeCambiarPlanGratis = !esEdicion || !tieneCicloVigente;
   // En edición, el plan asignado se ve de solo lectura hasta que se
   // confirma explícitamente que se quiere cambiar (ver diseño acordado:
   // evita cambios de plan por error, ya que dispara el prorrateo).
@@ -196,12 +204,11 @@ export function FormularioMiembro({
   const [editandoEntrenador, setEditandoEntrenador] = useState(!esEdicion);
   const entrenadorIdOriginal = valoresIniciales?.entrenadorId ?? "";
 
-  const esPersonalizado = planId === ID_PERSONALIZADO;
   const planSeleccionado = planesActivos.find((p) => p.id === planId);
 
-  const requiereEntrenador = esPersonalizado ? entrenadorPersonalizado : (planSeleccionado?.incluyeEntrenador ?? false);
+  const requiereEntrenador = planSeleccionado?.incluyeEntrenador ?? false;
   const precioActual = Number(precio) || 0;
-  const nombrePlanActual = esPersonalizado ? "Personalizado" : (planSeleccionado?.nombre ?? "—");
+  const nombrePlanActual = planSeleccionado?.nombre ?? "—";
   const nombreEntrenadorActual = entrenadores.find((e) => e.id === entrenadorId)?.nombre ?? null;
   const nombreMetodoPagoActual = seleccionMetodo.metodo || null;
   // El ciclo más reciente (por fechaFinCiclo) entre los que tienen datos
@@ -229,14 +236,9 @@ export function FormularioMiembro({
 
   function manejarCambioPlan(nuevoId: string) {
     setPlanId(nuevoId);
-    let permiteMultisede = false;
-    if (nuevoId !== ID_PERSONALIZADO) {
-      const plan = planesActivos.find((p) => p.id === nuevoId);
-      if (plan) {
-        setPrecio(String(plan.precioUSD));
-        permiteMultisede = plan.multisede;
-      }
-    }
+    const plan = planesActivos.find((p) => p.id === nuevoId);
+    const permiteMultisede = plan?.multisede ?? false;
+    if (plan) setPrecio(String(plan.precioUSD));
     // Si el nuevo plan no permite multisede y había quedado "Ambas"
     // seleccionado, se cae a la primera sede visible en vez de dejar un
     // valor que ya no es válido para este plan.
@@ -245,7 +247,7 @@ export function FormularioMiembro({
     }
   }
 
-  const planPermiteMultisede = esPersonalizado ? false : (planesActivos.find((p) => p.id === planId)?.multisede ?? false);
+  const planPermiteMultisede = planesActivos.find((p) => p.id === planId)?.multisede ?? false;
 
   function manejarClickGuardar() {
     const form = formRef.current;
@@ -280,14 +282,7 @@ export function FormularioMiembro({
           </p>
         )}
 
-        <input type="hidden" name="planId" value={esPersonalizado ? "" : planId} />
-        <input type="hidden" name="planPersonalizado" value={esPersonalizado ? "1" : ""} />
-        <input type="hidden" name="frecuenciaPersonalizada" value={esPersonalizado ? frecuenciaPersonalizada : ""} />
-        <input
-          type="hidden"
-          name="entrenadorPersonalizado"
-          value={esPersonalizado && entrenadorPersonalizado ? "1" : ""}
-        />
+        <input type="hidden" name="planId" value={planId} />
         <input type="hidden" name="precioPlan" value={precioActual} />
         <input type="hidden" name="planNombre" value={nombrePlanActual} />
         {!esEdicion && (
@@ -425,7 +420,7 @@ export function FormularioMiembro({
                   Cambiar entrenador
                 </Button>
               )}
-              {esEdicion && !editandoPlan && (
+              {esEdicion && !editandoPlan && puedeCambiarPlanGratis && (
                 <Button type="button" variant="secundario" onClick={() => setConfirmandoCambioPlan(true)}>
                   Cambiar plan
                 </Button>
@@ -485,6 +480,12 @@ export function FormularioMiembro({
                   {ultimaFechaRenovacion ? formatearFechaCorta(ultimaFechaRenovacion) : "—"}
                 </span>
               </div>
+              {!puedeCambiarPlanGratis && (
+                <p className="mt-2 text-xs" style={{ color: "var(--gx-muted)" }}>
+                  Este ciclo ya está pagado — para subir o bajar de plan usá &quot;Cambiar de plan&quot; en el panel
+                  de la derecha.
+                </p>
+              )}
             </div>
           )}
 
@@ -531,7 +532,7 @@ export function FormularioMiembro({
           {editandoPlan && (
           <div className="grid grid-cols-2 gap-3">
             {planesActivos.map((plan) => {
-              const seleccionado = !esPersonalizado && planId === plan.id;
+              const seleccionado = planId === plan.id;
               return (
                 <button
                   key={plan.id}
@@ -564,59 +565,7 @@ export function FormularioMiembro({
                 </button>
               );
             })}
-
-            <button
-              type="button"
-              onClick={() => manejarCambioPlan(ID_PERSONALIZADO)}
-              className="flex flex-col items-start gap-1 rounded-lg border-2 p-4 text-left transition-colors duration-150 active:scale-[0.98]"
-              style={
-                esPersonalizado
-                  ? {
-                      borderColor: "var(--gx-accent)",
-                      background: "color-mix(in srgb, var(--gx-accent) 12%, transparent)",
-                    }
-                  : { borderColor: "var(--gx-edge)" }
-              }
-            >
-              <span className="text-sm font-medium" style={{ color: "var(--gx-muted)" }}>
-                Personalizado
-              </span>
-              <span className="text-lg font-semibold" style={{ color: "var(--gx-ink)" }}>
-                Definir plan
-              </span>
-              <span className="text-xs" style={{ color: "var(--gx-muted)" }}>
-                Para casos especiales
-              </span>
-            </button>
           </div>
-          )}
-
-          {editandoPlan && esPersonalizado && (
-            <div className="mt-4 flex flex-col gap-3 rounded-lg border p-4" style={{ borderColor: "var(--gx-edge)" }}>
-              <label className="flex flex-col gap-1.5 text-sm" style={{ color: "var(--gx-muted)" }}>
-                Frecuencia de pago
-                <select
-                  value={frecuenciaPersonalizada}
-                  onChange={(e) => setFrecuenciaPersonalizada(e.target.value as FrecuenciaPago)}
-                  className="min-h-11 rounded-lg border px-3 outline-none focus:border-[var(--gx-accent)]"
-                  style={{ background: "var(--gx-surface-2)", borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }}
-                >
-                  <option value="SEMANAL">Semanal</option>
-                  <option value="QUINCENAL">Quincenal</option>
-                  <option value="MENSUAL">Mensual</option>
-                </select>
-              </label>
-
-              <label className="flex min-h-11 items-center gap-2 text-sm" style={{ color: "var(--gx-muted)" }}>
-                <input
-                  type="checkbox"
-                  checked={entrenadorPersonalizado}
-                  onChange={(e) => setEntrenadorPersonalizado(e.target.checked)}
-                  className="h-5 w-5 accent-[var(--gx-accent)]"
-                />
-                Incluye entrenador personal
-              </label>
-            </div>
           )}
 
           {editandoPlan && (

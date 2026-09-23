@@ -96,6 +96,7 @@ export default async function PaginaEditarMiembro({ params }: { params: Promise<
         metodosPago={metodosPago}
         miembroId={id}
         ultimosCiclos={ultimosCiclos}
+        tieneCicloVigente={tieneCicloVigente}
         valoresIniciales={{
           nombre: miembro.nombre,
           cedula: miembro.cedula,
@@ -109,6 +110,11 @@ export default async function PaginaEditarMiembro({ params }: { params: Promise<
         }}
         panelLateral={
           <div className="flex flex-col gap-6">
+            <p className="text-xs" style={{ color: "var(--gx-muted)" }}>
+              Registrar pago y Cambiar de plan se aplican al instante — no hace falta tocar &quot;Guardar&quot;
+              primero.
+            </p>
+
             <Link
               href={`/miembros/${id}/pagos`}
               className="block min-h-11 content-center rounded-lg px-4 text-center text-sm font-medium transition-colors duration-150 active:scale-95"

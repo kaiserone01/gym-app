@@ -120,9 +120,10 @@ export function FormularioMiembro({
   // botones "Cambiar plan" haciendo cosas distintas al mismo tiempo (ver
   // diseño acordado). Solo relevante en edición; en alta siempre es true.
   tieneCicloVigente?: boolean;
-  // Contenido propio de la pantalla de edición (dar de baja, historial de
-  // pagos, registrar pago) — se muestra en el panel derecho cuando no hay
-  // ticket de confirmación abierto, para no tener que scrollear.
+  // Contenido propio de la pantalla de edición (historial de pagos,
+  // panel de Registrar pago / Cambiar de plan) — se muestra en la
+  // columna derecha, debajo de "Plan de membresía", cuando no hay ticket
+  // de confirmación abierto.
   panelLateral?: React.ReactNode;
 }) {
   const [estado, enviar, enviando] = useActionState(accion, {});
@@ -271,7 +272,8 @@ export function FormularioMiembro({
   const idFormulario = "formulario-miembro";
 
   return (
-    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_320px]">
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      {/* Columna izquierda: datos personales — el único bloque que "Guardar" realmente guarda. */}
       <form ref={formRef} id={idFormulario} action={enviar} className="flex flex-col gap-6">
         {estado.error && (
           <p
@@ -282,6 +284,9 @@ export function FormularioMiembro({
           </p>
         )}
 
+        {/* planId/precioPlan/planNombre y (en alta) los datos del primer pago viven acá aunque
+            "Plan de membresía" se vea en la columna derecha — sus controles apuntan a este
+            formulario con el atributo form={idFormulario} en vez de vivir dentro del <form>. */}
         <input type="hidden" name="planId" value={planId} />
         <input type="hidden" name="precioPlan" value={precioActual} />
         <input type="hidden" name="planNombre" value={nombrePlanActual} />
@@ -365,321 +370,327 @@ export function FormularioMiembro({
           </div>
         </Card>
 
-        {esEdicion && ultimosCiclos.length > 0 && (
-          <Card>
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--gx-muted)" }}>
-                Ciclos
-              </h2>
-              {diasHastaProximoCobro !== null && (
-                <Badge tono={diasHastaProximoCobro < 0 ? "rojo" : diasHastaProximoCobro <= 3 ? "ambar" : "verde"}>
-                  {diasHastaProximoCobro < 0
-                    ? `Vencido hace ${Math.abs(diasHastaProximoCobro)} día${Math.abs(diasHastaProximoCobro) === 1 ? "" : "s"}`
-                    : diasHastaProximoCobro === 0
-                      ? "Vence hoy"
-                      : `${diasHastaProximoCobro} día${diasHastaProximoCobro === 1 ? "" : "s"} para el próximo cobro`}
-                </Badge>
-              )}
-            </div>
-            <div className="flex flex-col gap-2">
-              {ultimosCiclos.map((ciclo, indice) => (
-                <div
-                  key={ciclo.id}
-                  className="flex items-center justify-between rounded-lg border p-3 text-sm"
-                  style={{ borderColor: "var(--gx-edge)" }}
-                >
-                  <span style={{ color: "var(--gx-ink)" }}>
-                    {ciclo.fechaInicioCiclo && ciclo.fechaFinCiclo
-                      ? `${formatearFechaCorta(ciclo.fechaInicioCiclo)} → ${formatearFechaCorta(ciclo.fechaFinCiclo)}`
-                      : "—"}
-                  </span>
-                  <Badge tono={indice === 0 ? "verde" : "gris"}>{indice === 0 ? "VIGENTE" : "VENCIDO"}</Badge>
-                </div>
-              ))}
-            </div>
-            {miembroId && (
-              <Link
-                href={`/miembros/${miembroId}/pagos`}
-                className="mt-3 inline-block text-sm font-medium hover:underline"
-                style={{ color: "var(--gx-accent)" }}
-              >
-                Ver todos los ciclos
-              </Link>
-            )}
-          </Card>
-        )}
-
-        <Card>
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--gx-muted)" }}>
-              Plan de membresía
-            </h2>
-            <div className="flex gap-2">
-              {esEdicion && !editandoEntrenador && requiereEntrenador && (
-                <Button type="button" variant="secundario" onClick={() => setEditandoEntrenador(true)}>
-                  Cambiar entrenador
-                </Button>
-              )}
-              {esEdicion && !editandoPlan && puedeCambiarPlanGratis && (
-                <Button type="button" variant="secundario" onClick={() => setConfirmandoCambioPlan(true)}>
-                  Cambiar plan
-                </Button>
-              )}
-            </div>
-          </div>
-
-          <div className="mb-4 rounded-lg border p-4" style={{ borderColor: "var(--gx-edge)" }}>
-            <input type="hidden" name="sucursalId" value={sucursalId} />
-            <div className="flex justify-between text-sm">
-              <span style={{ color: "var(--gx-muted)" }}>Sede asignada</span>
-              <span className="font-medium" style={{ color: "var(--gx-ink)" }}>
-                {sucursalId === ID_AMBAS_SEDES ? "Ambas" : sucursalActivaNombre}
-              </span>
-            </div>
-            {planPermiteMultisede && (
-              <label className="mt-3 flex min-h-11 items-center gap-2 text-sm" style={{ color: "var(--gx-muted)" }}>
-                <input
-                  type="checkbox"
-                  checked={sucursalId === ID_AMBAS_SEDES}
-                  onChange={(e) => setSucursalId(e.target.checked ? ID_AMBAS_SEDES : sucursalIdDefault ?? "")}
-                  className="h-5 w-5 accent-[var(--gx-accent)]"
-                />
-                Disponible en ambas sedes
-              </label>
-            )}
-            <span className="mt-2 block text-xs" style={{ color: "var(--gx-muted-dim)" }}>
-              {sucursalId === ID_AMBAS_SEDES
-                ? "Puede hacer check-in en cualquier sucursal de la organización."
-                : "Determina en qué sucursal puede hacer check-in."}
-            </span>
-          </div>
-
-          {esEdicion && !editandoPlan && (
-            <div className="rounded-lg border p-4" style={{ borderColor: "var(--gx-edge)" }}>
-              <div className="flex items-baseline justify-between">
-                <span className="text-sm font-medium" style={{ color: "var(--gx-muted)" }}>
-                  {nombrePlanActual}
-                </span>
-                <span className="text-2xl font-semibold" style={{ color: "var(--gx-ink)" }}>
-                  ${precioActual}
-                  {planSeleccionado && (
-                    <span className="text-sm font-normal" style={{ color: "var(--gx-muted)" }}>
-                      /{ETIQUETA_FRECUENCIA[planSeleccionado.frecuencia].toLowerCase()}
-                    </span>
-                  )}
-                </span>
-              </div>
-              {requiereEntrenador && (
-                <p className="mt-1 text-xs font-medium" style={{ color: "var(--gx-accent)" }}>
-                  Entrenador: {nombreEntrenadorActual ?? "Sin asignar"}
-                </p>
-              )}
-              <div className="mt-2 flex justify-between text-xs" style={{ color: "var(--gx-muted)" }}>
-                <span>Última fecha de renovación</span>
-                <span className="font-medium" style={{ color: "var(--gx-ink)" }}>
-                  {ultimaFechaRenovacion ? formatearFechaCorta(ultimaFechaRenovacion) : "—"}
-                </span>
-              </div>
-              {!puedeCambiarPlanGratis && (
-                <p className="mt-2 text-xs" style={{ color: "var(--gx-muted)" }}>
-                  Este ciclo ya está pagado — para subir o bajar de plan usá &quot;Cambiar de plan&quot; en el panel
-                  de la derecha.
-                </p>
-              )}
-            </div>
-          )}
-
-          {confirmandoCambioPlan && !editandoPlan && (
-            <div
-              className="fixed inset-0 z-50 flex items-center justify-center p-4"
-              style={{ background: "color-mix(in srgb, black 60%, transparent)" }}
-            >
-              <div
-                className="w-full max-w-sm rounded-2xl border-2 p-6"
-                style={{ borderColor: "var(--gx-accent)", background: "var(--gx-surface)" }}
-              >
-                <h3 className="text-lg font-bold" style={{ color: "var(--gx-ink)" }}>
-                  ¿Cambiar el plan?
-                </h3>
-                <p className="mt-2 text-sm" style={{ color: "var(--gx-muted)" }}>
-                  Se va a cambiar el plan de membresía. Si el miembro tiene una suscripción activa, su fecha de
-                  vencimiento se recalcula (prorrateo) a la nueva frecuencia. ¿Estás seguro?
-                </p>
-                <div className="mt-4 flex gap-3">
-                  <Button
-                    type="button"
-                    variant="secundario"
-                    className="flex-1"
-                    onClick={() => setConfirmandoCambioPlan(false)}
-                  >
-                    Abortar
-                  </Button>
-                  <Button
-                    type="button"
-                    className="flex-1"
-                    onClick={() => {
-                      setConfirmandoCambioPlan(false);
-                      setEditandoPlan(true);
-                    }}
-                  >
-                    Sí, cambiar plan
-                  </Button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {editandoPlan && (
-          <div className="grid grid-cols-2 gap-3">
-            {planesActivos.map((plan) => {
-              const seleccionado = planId === plan.id;
-              return (
-                <button
-                  key={plan.id}
-                  type="button"
-                  onClick={() => manejarCambioPlan(plan.id)}
-                  className="flex flex-col items-start gap-1 rounded-lg border-2 p-4 text-left transition-colors duration-150 active:scale-[0.98]"
-                  style={
-                    seleccionado
-                      ? {
-                          borderColor: "var(--gx-accent)",
-                          background: "color-mix(in srgb, var(--gx-accent) 12%, transparent)",
-                        }
-                      : { borderColor: "var(--gx-edge)" }
-                  }
-                >
-                  <span className="text-sm font-medium" style={{ color: "var(--gx-muted)" }}>
-                    {plan.nombre}
-                  </span>
-                  <span className="text-2xl font-semibold" style={{ color: "var(--gx-ink)" }}>
-                    ${plan.precioUSD}
-                    <span className="text-sm font-normal" style={{ color: "var(--gx-muted)" }}>
-                      /{ETIQUETA_FRECUENCIA[plan.frecuencia].toLowerCase()}
-                    </span>
-                  </span>
-                  {plan.incluyeEntrenador && (
-                    <span className="text-xs font-medium" style={{ color: "var(--gx-accent)" }}>
-                      Incluye entrenador
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-          )}
-
-          {editandoPlan && (
-          <div className="mt-4 flex flex-col gap-3 rounded-lg border p-4" style={{ borderColor: "var(--gx-edge)" }}>
-            <CurrencyInput
-              name="precioPlanEditado"
-              label="Precio"
-              moneda="USD"
-              value={precio}
-              onChange={(valor) => {
-                setPrecio(valor);
-                setErrorPrecio(null);
-              }}
-            />
-            {errorPrecio && (
-              <p className="text-sm" style={{ color: "var(--gx-bad)" }}>
-                {errorPrecio}
-              </p>
-            )}
-          </div>
-          )}
-
-          <label className="mt-4 flex flex-col gap-1.5 text-sm" style={{ color: "var(--gx-muted)" }}>
-            Entrenador asignado
-            {(() => {
-              const bloqueado = !requiereEntrenador || (esEdicion && !editandoPlan && !editandoEntrenador);
-              return (
-                <>
-                  {/* Un <select disabled> no se envía en el submit — cuando está
-                      bloqueado se manda su valor actual por un hidden aparte,
-                      así no se pisa el entrenadorId existente con null. */}
-                  {bloqueado && <input type="hidden" name="entrenadorId" value={entrenadorId} />}
-                  <select
-                    name={bloqueado ? undefined : "entrenadorId"}
-                    value={entrenadorId}
-                    onChange={(e) => setEntrenadorId(e.target.value)}
-                    disabled={bloqueado}
-                    className="min-h-11 rounded-lg border px-3 outline-none focus:border-[var(--gx-accent)] disabled:opacity-50"
-                    style={{ background: "var(--gx-surface-2)", borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }}
-                  >
-                    <option value="">Seleccioná un entrenador</option>
-                    {entrenadores.map((entrenador) => (
-                      <option key={entrenador.id} value={entrenador.id}>
-                        {entrenador.nombre}
-                      </option>
-                    ))}
-                  </select>
-                </>
-              );
-            })()}
-            {!requiereEntrenador && (
-              <span className="text-xs" style={{ color: "var(--gx-muted)" }}>
-                Elegí un plan con entrenador para poder asignar uno.
-              </span>
-            )}
-            {esEdicion && editandoEntrenador && !editandoPlan && (
-              <Button
-                type="button"
-                variant="secundario"
-                className="mt-1 self-start"
-                onClick={() => {
-                  setEntrenadorId(entrenadorIdOriginal);
-                  setEditandoEntrenador(false);
-                }}
-              >
-                Cancelar cambio de entrenador
-              </Button>
-            )}
-          </label>
-
-          {esEdicion && editandoPlan && (
-            <Button
-              type="button"
-              variant="secundario"
-              className="mt-4"
-              onClick={() => {
-                // Revierte al plan original del miembro sin tocar el resto
-                // del formulario (nombre, sede, etc. ya editados se conservan).
-                if (planIdOriginal) manejarCambioPlan(planIdOriginal);
-                setEditandoPlan(false);
-              }}
-            >
-              Cancelar cambio de plan
-            </Button>
-          )}
-        </Card>
-
         <Button type="button" onClick={manejarClickGuardar} disabled={enviando}>
           Guardar
         </Button>
       </form>
 
-      <aside className="lg:sticky lg:top-8 lg:self-start">
+      {/* Columna derecha: plan de membresía, registrar pago / cambiar de plan, y ciclos. */}
+      <div className="flex flex-col gap-6">
         {!mostrarTicket ? (
-          esEdicion ? (
-            panelLateral
-          ) : (
+          <>
             <Card>
-              <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--gx-muted)" }}>
-                Primer pago
-              </h2>
-              <p className="mb-4 text-xs" style={{ color: "var(--gx-muted)" }}>
-                Se registra en el mismo paso que creás al miembro, así queda activo desde hoy sin
-                tener que entrar después a &quot;Registrar pago&quot;.
-              </p>
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--gx-muted)" }}>
+                  Plan de membresía
+                </h2>
+                <div className="flex gap-2">
+                  {esEdicion && !editandoEntrenador && requiereEntrenador && (
+                    <Button type="button" variant="secundario" onClick={() => setEditandoEntrenador(true)}>
+                      Cambiar entrenador
+                    </Button>
+                  )}
+                  {esEdicion && !editandoPlan && puedeCambiarPlanGratis && (
+                    <Button type="button" variant="secundario" onClick={() => setConfirmandoCambioPlan(true)}>
+                      Cambiar plan
+                    </Button>
+                  )}
+                </div>
+              </div>
 
-              <SelectorMetodoPago
-                metodos={metodosPago}
-                monto={precioActual}
-                onCambio={setSeleccionMetodo}
-                idFormulario={idFormulario}
-              />
+              <div className="mb-4 rounded-lg border p-4" style={{ borderColor: "var(--gx-edge)" }}>
+                <input type="hidden" name="sucursalId" value={sucursalId} form={idFormulario} />
+                <div className="flex justify-between text-sm">
+                  <span style={{ color: "var(--gx-muted)" }}>Sede asignada</span>
+                  <span className="font-medium" style={{ color: "var(--gx-ink)" }}>
+                    {sucursalId === ID_AMBAS_SEDES ? "Ambas" : sucursalActivaNombre}
+                  </span>
+                </div>
+                {planPermiteMultisede && (
+                  <label className="mt-3 flex min-h-11 items-center gap-2 text-sm" style={{ color: "var(--gx-muted)" }}>
+                    <input
+                      type="checkbox"
+                      checked={sucursalId === ID_AMBAS_SEDES}
+                      onChange={(e) => setSucursalId(e.target.checked ? ID_AMBAS_SEDES : sucursalIdDefault ?? "")}
+                      className="h-5 w-5 accent-[var(--gx-accent)]"
+                    />
+                    Disponible en ambas sedes
+                  </label>
+                )}
+                <span className="mt-2 block text-xs" style={{ color: "var(--gx-muted-dim)" }}>
+                  {sucursalId === ID_AMBAS_SEDES
+                    ? "Puede hacer check-in en cualquier sucursal de la organización."
+                    : "Determina en qué sucursal puede hacer check-in."}
+                </span>
+              </div>
+
+              {esEdicion && !editandoPlan && (
+                <div className="rounded-lg border p-4" style={{ borderColor: "var(--gx-edge)" }}>
+                  <div className="flex items-baseline justify-between">
+                    <span className="text-sm font-medium" style={{ color: "var(--gx-muted)" }}>
+                      {nombrePlanActual}
+                    </span>
+                    <span className="text-2xl font-semibold" style={{ color: "var(--gx-ink)" }}>
+                      ${precioActual}
+                      {planSeleccionado && (
+                        <span className="text-sm font-normal" style={{ color: "var(--gx-muted)" }}>
+                          /{ETIQUETA_FRECUENCIA[planSeleccionado.frecuencia].toLowerCase()}
+                        </span>
+                      )}
+                    </span>
+                  </div>
+                  {requiereEntrenador && (
+                    <p className="mt-1 text-xs font-medium" style={{ color: "var(--gx-accent)" }}>
+                      Entrenador: {nombreEntrenadorActual ?? "Sin asignar"}
+                    </p>
+                  )}
+                  <div className="mt-2 flex justify-between text-xs" style={{ color: "var(--gx-muted)" }}>
+                    <span>Última fecha de renovación</span>
+                    <span className="font-medium" style={{ color: "var(--gx-ink)" }}>
+                      {ultimaFechaRenovacion ? formatearFechaCorta(ultimaFechaRenovacion) : "—"}
+                    </span>
+                  </div>
+                  {!puedeCambiarPlanGratis && (
+                    <p className="mt-2 text-xs" style={{ color: "var(--gx-muted)" }}>
+                      Este ciclo ya está pagado — para subir o bajar de plan usá &quot;Cambiar de plan&quot; acá
+                      abajo.
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {confirmandoCambioPlan && !editandoPlan && (
+                <div
+                  className="fixed inset-0 z-50 flex items-center justify-center p-4"
+                  style={{ background: "color-mix(in srgb, black 60%, transparent)" }}
+                >
+                  <div
+                    className="w-full max-w-sm rounded-2xl border-2 p-6"
+                    style={{ borderColor: "var(--gx-accent)", background: "var(--gx-surface)" }}
+                  >
+                    <h3 className="text-lg font-bold" style={{ color: "var(--gx-ink)" }}>
+                      ¿Cambiar el plan?
+                    </h3>
+                    <p className="mt-2 text-sm" style={{ color: "var(--gx-muted)" }}>
+                      Se va a cambiar el plan de membresía. Si el miembro tiene una suscripción activa, su fecha de
+                      vencimiento se recalcula (prorrateo) a la nueva frecuencia. ¿Estás seguro?
+                    </p>
+                    <div className="mt-4 flex gap-3">
+                      <Button
+                        type="button"
+                        variant="secundario"
+                        className="flex-1"
+                        onClick={() => setConfirmandoCambioPlan(false)}
+                      >
+                        Abortar
+                      </Button>
+                      <Button
+                        type="button"
+                        className="flex-1"
+                        onClick={() => {
+                          setConfirmandoCambioPlan(false);
+                          setEditandoPlan(true);
+                        }}
+                      >
+                        Sí, cambiar plan
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {editandoPlan && (
+              <div className="grid grid-cols-2 gap-3">
+                {planesActivos.map((plan) => {
+                  const seleccionado = planId === plan.id;
+                  return (
+                    <button
+                      key={plan.id}
+                      type="button"
+                      onClick={() => manejarCambioPlan(plan.id)}
+                      className="flex flex-col items-start gap-1 rounded-lg border-2 p-4 text-left transition-colors duration-150 active:scale-[0.98]"
+                      style={
+                        seleccionado
+                          ? {
+                              borderColor: "var(--gx-accent)",
+                              background: "color-mix(in srgb, var(--gx-accent) 12%, transparent)",
+                            }
+                          : { borderColor: "var(--gx-edge)" }
+                      }
+                    >
+                      <span className="text-sm font-medium" style={{ color: "var(--gx-muted)" }}>
+                        {plan.nombre}
+                      </span>
+                      <span className="text-2xl font-semibold" style={{ color: "var(--gx-ink)" }}>
+                        ${plan.precioUSD}
+                        <span className="text-sm font-normal" style={{ color: "var(--gx-muted)" }}>
+                          /{ETIQUETA_FRECUENCIA[plan.frecuencia].toLowerCase()}
+                        </span>
+                      </span>
+                      {plan.incluyeEntrenador && (
+                        <span className="text-xs font-medium" style={{ color: "var(--gx-accent)" }}>
+                          Incluye entrenador
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+              )}
+
+              {editandoPlan && (
+              <div className="mt-4 flex flex-col gap-3 rounded-lg border p-4" style={{ borderColor: "var(--gx-edge)" }}>
+                <CurrencyInput
+                  name="precioPlanEditado"
+                  label="Precio"
+                  moneda="USD"
+                  value={precio}
+                  onChange={(valor) => {
+                    setPrecio(valor);
+                    setErrorPrecio(null);
+                  }}
+                />
+                {errorPrecio && (
+                  <p className="text-sm" style={{ color: "var(--gx-bad)" }}>
+                    {errorPrecio}
+                  </p>
+                )}
+              </div>
+              )}
+
+              <label className="mt-4 flex flex-col gap-1.5 text-sm" style={{ color: "var(--gx-muted)" }}>
+                Entrenador asignado
+                {(() => {
+                  const bloqueado = !requiereEntrenador || (esEdicion && !editandoPlan && !editandoEntrenador);
+                  return (
+                    <>
+                      {/* Un <select disabled> no se envía en el submit — cuando está
+                          bloqueado se manda su valor actual por un hidden aparte,
+                          así no se pisa el entrenadorId existente con null. Ambos
+                          apuntan a formulario-miembro con form= porque esta card
+                          ahora vive fuera del <form> (columna derecha). */}
+                      {bloqueado && <input type="hidden" name="entrenadorId" value={entrenadorId} form={idFormulario} />}
+                      <select
+                        name={bloqueado ? undefined : "entrenadorId"}
+                        form={bloqueado ? undefined : idFormulario}
+                        value={entrenadorId}
+                        onChange={(e) => setEntrenadorId(e.target.value)}
+                        disabled={bloqueado}
+                        className="min-h-11 rounded-lg border px-3 outline-none focus:border-[var(--gx-accent)] disabled:opacity-50"
+                        style={{ background: "var(--gx-surface-2)", borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }}
+                      >
+                        <option value="">Seleccioná un entrenador</option>
+                        {entrenadores.map((entrenador) => (
+                          <option key={entrenador.id} value={entrenador.id}>
+                            {entrenador.nombre}
+                          </option>
+                        ))}
+                      </select>
+                    </>
+                  );
+                })()}
+                {!requiereEntrenador && (
+                  <span className="text-xs" style={{ color: "var(--gx-muted)" }}>
+                    Elegí un plan con entrenador para poder asignar uno.
+                  </span>
+                )}
+                {esEdicion && editandoEntrenador && !editandoPlan && (
+                  <Button
+                    type="button"
+                    variant="secundario"
+                    className="mt-1 self-start"
+                    onClick={() => {
+                      setEntrenadorId(entrenadorIdOriginal);
+                      setEditandoEntrenador(false);
+                    }}
+                  >
+                    Cancelar cambio de entrenador
+                  </Button>
+                )}
+              </label>
+
+              {esEdicion && editandoPlan && (
+                <Button
+                  type="button"
+                  variant="secundario"
+                  className="mt-4"
+                  onClick={() => {
+                    // Revierte al plan original del miembro sin tocar el resto
+                    // del formulario (nombre, sede, etc. ya editados se conservan).
+                    if (planIdOriginal) manejarCambioPlan(planIdOriginal);
+                    setEditandoPlan(false);
+                  }}
+                >
+                  Cancelar cambio de plan
+                </Button>
+              )}
             </Card>
-          )
+
+            {esEdicion ? (
+              panelLateral
+            ) : (
+              <Card>
+                <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--gx-muted)" }}>
+                  Primer pago
+                </h2>
+                <p className="mb-4 text-xs" style={{ color: "var(--gx-muted)" }}>
+                  Se registra en el mismo paso que creás al miembro, así queda activo desde hoy sin
+                  tener que entrar después a &quot;Registrar pago&quot;.
+                </p>
+
+                <SelectorMetodoPago
+                  metodos={metodosPago}
+                  monto={precioActual}
+                  onCambio={setSeleccionMetodo}
+                  idFormulario={idFormulario}
+                />
+              </Card>
+            )}
+
+            {esEdicion && ultimosCiclos.length > 0 && (
+              <Card>
+                <div className="mb-3 flex items-center justify-between">
+                  <h2 className="text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--gx-muted)" }}>
+                    Ciclos
+                  </h2>
+                  {diasHastaProximoCobro !== null && (
+                    <Badge tono={diasHastaProximoCobro < 0 ? "rojo" : diasHastaProximoCobro <= 3 ? "ambar" : "verde"}>
+                      {diasHastaProximoCobro < 0
+                        ? `Vencido hace ${Math.abs(diasHastaProximoCobro)} día${Math.abs(diasHastaProximoCobro) === 1 ? "" : "s"}`
+                        : diasHastaProximoCobro === 0
+                          ? "Vence hoy"
+                          : `${diasHastaProximoCobro} día${diasHastaProximoCobro === 1 ? "" : "s"} para el próximo cobro`}
+                    </Badge>
+                  )}
+                </div>
+                <div className="flex flex-col">
+                  {ultimosCiclos.map((ciclo, indice) => (
+                    <div
+                      key={ciclo.id}
+                      className="flex items-center justify-between border-b py-2 text-sm last:border-b-0"
+                      style={{ borderColor: "var(--gx-edge)" }}
+                    >
+                      <span style={{ color: "var(--gx-ink)" }}>
+                        {ciclo.fechaInicioCiclo && ciclo.fechaFinCiclo
+                          ? `${formatearFechaCorta(ciclo.fechaInicioCiclo)} → ${formatearFechaCorta(ciclo.fechaFinCiclo)}`
+                          : "—"}
+                      </span>
+                      <Badge tono={indice === 0 ? "verde" : "gris"}>{indice === 0 ? "VIGENTE" : "VENCIDO"}</Badge>
+                    </div>
+                  ))}
+                </div>
+                {miembroId && (
+                  <Link
+                    href={`/miembros/${miembroId}/pagos`}
+                    className="mt-3 inline-block text-sm font-medium hover:underline"
+                    style={{ color: "var(--gx-accent)" }}
+                  >
+                    Ver todos los ciclos
+                  </Link>
+                )}
+              </Card>
+            )}
+          </>
         ) : (
           <div
             className="rounded-2xl border-2 border-dashed p-5"
@@ -762,7 +773,7 @@ export function FormularioMiembro({
             </div>
           </div>
         )}
-      </aside>
+      </div>
     </div>
   );
 }

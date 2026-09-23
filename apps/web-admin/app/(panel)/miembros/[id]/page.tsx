@@ -86,6 +86,11 @@ export default async function PaginaEditarMiembro({ params }: { params: Promise<
       </div>
 
       <FormularioMiembro
+        // Fuerza un remount cuando el plan/precio del miembro cambian en el
+        // servidor (p. ej. tras "Cambiar de plan" en el panel de al lado) —
+        // sin esto, planId/precio quedan pisados por el estado local viejo,
+        // porque useState solo lee valoresIniciales en el primer montaje.
+        key={`${miembro.planId}-${miembro.precioPlan}`}
         accion={actualizarMiembroAction.bind(null, id)}
         entrenadoresPorSucursal={entrenadoresPorSucursal}
         planes={planes}

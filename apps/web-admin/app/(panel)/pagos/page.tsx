@@ -12,6 +12,7 @@ import { PageHeader } from "@gym-app/ui/components/PageHeader";
 import { formatearBs, formatearBsConRef } from "../tasaBcvFija";
 import { inicioDelDia, finDelDia } from "../fechas";
 import { FiltroFechasHistorico } from "./FiltroFechasHistorico";
+import { BotonImprimir } from "../BotonImprimir";
 
 // El método se guarda como snapshot legible ("Pago Móvil - Banesco")
 // directo en Pago.metodo — no hay catálogo estático que traducir.
@@ -75,22 +76,93 @@ export default async function PaginaHistoricoPagos({
     obtenerDiasConActividad({ turnos: turnoRepo }, usuario.organizacionId),
   ]);
 
+  const pagosOrdenados = [...reporte.turnos.flatMap((fila) => fila.pagos), ...reporte.ajustesFueraDeTurno]
+    .filter((p) => !p.anuladoEn)
+    .sort((a, b) => b.fechaPago.getTime() - a.fechaPago.getTime());
+
   return (
     <div className="flex flex-col gap-6 p-6 pb-24 lg:p-8 lg:pb-8">
-      <PageHeader>Histórico de Pagos</PageHeader>
+      <div className="flex items-center justify-between print:hidden">
+        <PageHeader>Histórico de Pagos</PageHeader>
+        <BotonImprimir />
+      </div>
 
-      <FiltroFechasHistorico
-        desde={desde}
-        hasta={hasta}
-        diasConActividadISO={diasConActividad.map((d) => formatearFechaISO(d))}
-      />
+      <div className="print:hidden">
+        <FiltroFechasHistorico
+          desde={desde}
+          hasta={hasta}
+          diasConActividadISO={diasConActividad.map((d) => formatearFechaISO(d))}
+        />
+      </div>
 
-      <div className="flex items-center gap-3 text-sm" style={{ color: "var(--gx-muted)" }}>
+      <div className="flex items-center gap-3 text-sm print:hidden" style={{ color: "var(--gx-muted)" }}>
         <span className="ml-auto text-base font-semibold" style={{ color: "var(--gx-ink)" }}>
           Total: ${reporte.totalUSD.toFixed(2)}
         </span>
       </div>
 
+      {/* Lista de pagos — vista plana del período, es lo único que se imprime. */}
+      <div>
+        <div className="hidden print:block mb-4">
+          <h1 className="text-xl font-bold text-black">Histórico de pagos</h1>
+          <div className="text-xs text-black">
+            {desde.toLocaleDateString("es-VE")} – {hasta.toLocaleDateString("es-VE")} · {pagosOrdenados.length}{" "}
+            {pagosOrdenados.length === 1 ? "pago" : "pagos"} · Total: ${reporte.totalUSD.toFixed(2)}
+          </div>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[560px] border-collapse text-left text-sm">
+            <thead>
+              <tr
+                className="border-b text-xs print:border-b-2 print:border-black"
+                style={{ borderColor: "var(--gx-edge)", color: "var(--gx-muted)" }}
+              >
+                <th className="py-2 print:text-black">Fecha</th>
+                <th className="py-2 print:text-black">Miembro</th>
+                <th className="py-2 print:text-black">Método</th>
+                <th className="py-2 print:text-black">USD</th>
+                <th className="py-2 print:text-black">Tasa</th>
+                <th className="py-2 print:text-black">Bs</th>
+              </tr>
+            </thead>
+            <tbody>
+              {pagosOrdenados.map((pago) => (
+                <tr key={pago.id} className="border-b print:border-gray-400" style={{ borderColor: "var(--gx-edge)" }}>
+                  <td className="py-1.5 print:text-black" style={{ color: "var(--gx-ink)" }}>
+                    {pago.fechaPago.toLocaleString("es-VE", { dateStyle: "short", timeStyle: "short" })}
+                  </td>
+                  <td className="py-1.5 print:text-black" style={{ color: "var(--gx-ink)" }}>
+                    {pago.miembroNombre ?? pago.miembroId}
+                  </td>
+                  <td className="py-1.5 print:text-black" style={{ color: "var(--gx-ink)" }}>
+                    {nombreMetodo(pago.metodo)}
+                  </td>
+                  <td className="py-1.5 print:text-black" style={{ color: "var(--gx-ink)" }}>
+                    ${pago.monto.toFixed(2)}
+                  </td>
+                  <td className="py-1.5 print:text-black" style={{ color: "var(--gx-ink)" }}>
+                    {pago.tasaCambio !== null ? pago.tasaCambio.toFixed(2) : "—"}
+                  </td>
+                  <td className="py-1.5 print:text-black" style={{ color: "var(--gx-ink)" }}>
+                    {pago.montoBs !== null ? `Bs. ${formatearBs(pago.montoBs)}` : "—"}
+                  </td>
+                </tr>
+              ))}
+
+              {pagosOrdenados.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="py-6 text-center print:text-black" style={{ color: "var(--gx-muted)" }}>
+                    Sin pagos en este período.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Detalle por turno (apertura/cierre, egresos, arqueo) — no se imprime, la lista de arriba ya cubre los pagos. */}
+      <div className="flex flex-col gap-6 print:hidden">
       {reporte.turnos.map((fila) => {
         const metodosBsDelTurno = metodosEnBs(fila.pagos, fila.egresos);
 
@@ -221,6 +293,7 @@ export default async function PaginaHistoricoPagos({
       {reporte.turnos.length === 0 && reporte.ajustesFueraDeTurno.length === 0 && (
         <p style={{ color: "var(--gx-muted)" }}>Sin turnos en este período.</p>
       )}
+      </div>
     </div>
   );
 }

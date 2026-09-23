@@ -31,7 +31,7 @@ export default async function PanelLayout({ children }: { children: React.ReactN
       </Suspense>
       <RelojYTasa />
       <div className="flex min-h-dvh flex-col lg:flex-row" style={{ background: "var(--gx-ground)" }}>
-        <div className="hidden lg:block">
+        <div className="hidden lg:block print:hidden">
           <Sidebar
             encabezado={<EncabezadoSidebar sucursalNombre={sucursalActiva?.nombre ?? "—"} />}
             items={[
@@ -53,7 +53,9 @@ export default async function PanelLayout({ children }: { children: React.ReactN
             /miembros). Se aplica acá, una sola vez, en vez de que cada
             página tenga que acordarse de dejarle margen. */}
         <main className="flex-1 pt-16 pb-16 lg:pb-0">{children}</main>
-        <NavegacionMobile nombre={usuario.nombre} email={usuario.email} rol={usuario.rol} />
+        <div className="print:hidden">
+          <NavegacionMobile nombre={usuario.nombre} email={usuario.email} rol={usuario.rol} />
+        </div>
       </div>
     </FeedbackProvider>
   );

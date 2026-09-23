@@ -149,10 +149,65 @@ export function ListaMiembros({
       </div>
 
       {/* Forzado a Cards por debajo de lg, sin importar el toggle (ver diseño acordado). */}
-      <div className="lg:hidden">
+      <div className="lg:hidden print:hidden">
         <VistaCards miembros={filtradas} />
       </div>
-      <div className="hidden lg:block">{modo === "cards" ? <VistaCards miembros={filtradas} /> : <VistaLista miembros={filtradas} />}</div>
+      <div className="hidden lg:block print:hidden">
+        {modo === "cards" ? <VistaCards miembros={filtradas} /> : <VistaLista miembros={filtradas} />}
+      </div>
+
+      {/* Vista exclusiva de impresión: siempre la lista completa, sin fotos ni acciones, sin importar el modo elegido en pantalla. */}
+      <div className="hidden print:block">
+        <VistaImpresion miembros={filtradas} />
+      </div>
+    </div>
+  );
+}
+
+function VistaImpresion({ miembros }: { miembros: FilaMiembro[] }) {
+  const generadoEl = new Date().toLocaleDateString("es-VE", { day: "2-digit", month: "2-digit", year: "numeric" });
+
+  return (
+    <div>
+      <div className="mb-4 flex items-baseline justify-between">
+        <h1 className="text-xl font-bold text-black">Lista de miembros registrados</h1>
+        <div className="text-right text-xs text-black">
+          <div>Generado el {generadoEl}</div>
+          <div>{miembros.length} {miembros.length === 1 ? "miembro" : "miembros"}</div>
+        </div>
+      </div>
+      <table className="w-full border-collapse text-left text-sm text-black">
+        <thead>
+          <tr className="border-b-2 border-black text-xs uppercase tracking-wide">
+            <th className="py-1 pr-2">Nombre</th>
+            <th className="py-1 pr-2">Cédula</th>
+            <th className="py-1 pr-2">Plan</th>
+            <th className="py-1 pr-2">Sede</th>
+            <th className="py-1 pr-2">Vencimiento</th>
+            <th className="py-1">Estado</th>
+          </tr>
+        </thead>
+        <tbody>
+          {miembros.map((miembro) => (
+            <tr key={miembro.id} className="border-b border-gray-400">
+              <td className="py-1.5 pr-2 font-medium">{miembro.nombre}</td>
+              <td className="py-1.5 pr-2">{miembro.cedula}</td>
+              <td className="py-1.5 pr-2">{miembro.plan?.nombre ?? "Sin plan"}</td>
+              <td className="py-1.5 pr-2">{miembro.sucursalNombre}</td>
+              <td className="py-1.5 pr-2">{miembro.fechaVencimiento ? formatearFecha(miembro.fechaVencimiento) : "—"}</td>
+              <td className="py-1.5 font-semibold">{miembro.activo ? "Activo" : "Inactivo"}</td>
+            </tr>
+          ))}
+
+          {miembros.length === 0 && (
+            <tr>
+              <td colSpan={6} className="py-6 text-center">
+                Ningún miembro coincide con los filtros.
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
     </div>
   );
 }

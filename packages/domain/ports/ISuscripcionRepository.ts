@@ -8,4 +8,8 @@ export interface ISuscripcionRepository {
   listarActivasVigentesPorPlan(planId: string, fecha: Date): Promise<Suscripcion[]>;
   extenderFin(id: string, nuevoFin: Date): Promise<Suscripcion>;
   crear(datos: { miembroId: string; planId: string; inicio: Date; fin: Date }): Promise<Suscripcion>;
+  // Cambia el plan de una Suscripcion sin tocar inicio/fin — usado al subir
+  // de plan cobrando solo la diferencia (ver CambiarPlanConPago), donde el
+  // ciclo ya pagado no se extiende.
+  cambiarPlan(id: string, planId: string): Promise<Suscripcion>;
 }

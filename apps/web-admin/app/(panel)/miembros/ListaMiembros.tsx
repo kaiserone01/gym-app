@@ -272,6 +272,13 @@ function VistaCards({ miembros }: { miembros: FilaMiembro[] }) {
                   </div>
                 )}
               </dl>
+
+              <span
+                className="mt-1 self-end text-sm font-medium hover:underline"
+                style={{ color: "var(--gx-accent)" }}
+              >
+                Editar
+              </span>
             </Card>
           </Link>
         );

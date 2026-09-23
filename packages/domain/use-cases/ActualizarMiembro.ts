@@ -69,6 +69,13 @@ export async function actualizarMiembro(
         const nuevoFin = prorratearVencimiento(activa.inicio, ahora, planViejo.frecuencia, planNuevo.frecuencia);
         await deps.suscripciones.extenderFin(activa.id, nuevoFin);
       }
+
+      // Sin esto, la Suscripcion activa seguía apuntando al plan viejo por
+      // dentro (aunque Miembro.planId ya mostrara el nuevo) — cualquier
+      // pago posterior que buscara "la suscripción activa DE ESTE plan"
+      // no la encontraba y arrancaba un ciclo nuevo en vez de extender el
+      // que ya existía (ver diseño acordado, bug real reportado).
+      await deps.suscripciones.cambiarPlan(activa.id, input.cambios.planId as string);
     }
   }
 

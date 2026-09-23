@@ -17,7 +17,8 @@ import { MiembroFueraDeSucursal } from "./MiembroFueraDeSucursal";
 import { FormularioMiembro } from "../FormularioMiembro";
 import { actualizarMiembroAction } from "../actions";
 import { FormularioPago } from "../../pagos/FormularioPago";
-import { registrarPagoAction } from "../../pagos/actions";
+import { FormularioCambiarPlan } from "../FormularioCambiarPlan";
+import { registrarPagoAction, cambiarPlanAction } from "../../pagos/actions";
 import { Card } from "@gym-app/ui/components/Card";
 import { PageHeader } from "@gym-app/ui/components/PageHeader";
 import { obtenerTurnoAbiertoParaUsuario } from "../../caja/obtenerTurnoAbiertoParaUsuario";
@@ -66,6 +67,10 @@ export default async function PaginaEditarMiembro({ params }: { params: Promise<
   const entrenadoresPorSucursal = await obtenerEntrenadoresPorSucursal(usuario.organizacionId, sucursales);
 
   const planesActivos = planes.filter((plan) => plan.activo);
+  // Solo tiene sentido cobrar "la diferencia" cuando el ciclo actual todavía
+  // no venció — vencido, el próximo pago ya es el precio completo del plan
+  // que sea (ver diseño acordado).
+  const tieneCicloVigente = miembro.fechaVencimiento !== null && miembro.fechaVencimiento > new Date();
 
   // Últimos 5 ciclos con datos de rango — listarPagos ya devuelve los
   // pagos ordenados por fechaPago desc (ver PrismaPagoRepository), así
@@ -136,7 +141,29 @@ export default async function PaginaEditarMiembro({ params }: { params: Promise<
                   origen="miembro"
                 />
               </Card>
-            ) : (
+            ) : null}
+
+            {turnoAbierto?.esPropio && tieneCicloVigente && (
+              <Card>
+                <h2 className="mb-1 text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--gx-muted)" }}>
+                  Cambiar de plan
+                </h2>
+                <p className="mb-4 text-xs" style={{ color: "var(--gx-muted)" }}>
+                  Para subir o bajar de plan sin esperar a que venza el ciclo actual — cobra solo la diferencia de
+                  precio, si la hay.
+                </p>
+                <FormularioCambiarPlan
+                  accion={cambiarPlanAction}
+                  miembroId={id}
+                  planes={planesActivos}
+                  planActualId={miembro.planId}
+                  precioActual={miembro.precioPlan}
+                  metodosPago={metodosPago}
+                />
+              </Card>
+            )}
+
+            {!turnoAbierto?.esPropio && (
               // Cobrar una mensualidad es una operación de caja — no se
               // puede sin turno abierto (ver diseño acordado). Editar los
               // datos del miembro (el formulario principal) sí sigue

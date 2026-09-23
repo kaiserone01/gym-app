@@ -74,6 +74,15 @@ export class PrismaSuscripcionRepository implements ISuscripcionRepository {
     return mapear(suscripcion);
   }
 
+  async cambiarPlan(id: string, planId: string): Promise<Suscripcion> {
+    const suscripcion = await this.prisma.suscripcion.update({
+      where: { id },
+      data: { planId },
+    });
+
+    return mapear(suscripcion);
+  }
+
   async crear(datos: { miembroId: string; planId: string; inicio: Date; fin: Date }): Promise<Suscripcion> {
     const suscripcion = await this.prisma.suscripcion.create({
       data: {

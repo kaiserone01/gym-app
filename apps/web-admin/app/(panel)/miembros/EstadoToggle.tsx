@@ -49,7 +49,7 @@ export function EstadoToggle({ id, activo }: { id: string; activo: boolean }) {
       role="switch"
       aria-checked={activoLocal}
       title={activoLocal ? "Activo — clic para dar de baja" : "Inactivo — clic para reactivar"}
-      className="inline-flex h-7 w-12 shrink-0 items-center rounded-full border-0 p-0.5 shadow-inner outline-none transition-colors duration-150 disabled:opacity-50"
+      className="inline-flex h-7 w-12 shrink-0 cursor-pointer items-center rounded-full border-0 p-0.5 shadow-inner outline-none transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50"
       style={{ background: activoLocal ? "var(--gx-good)" : "var(--gx-bad)" }}
     >
       <span

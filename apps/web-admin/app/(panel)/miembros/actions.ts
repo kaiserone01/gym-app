@@ -282,6 +282,11 @@ export async function actualizarMiembroAction(
   }
 
   revalidatePath("/miembros");
+  // Sin esto, el redirect de abajo puede servir la versión en caché de esta
+  // misma página (Router Cache) — el formulario de "Registrar pago" de al
+  // lado seguiría mostrando el plan/monto viejos aunque el cambio ya esté
+  // guardado en la base (ver diseño acordado, bug real reportado).
+  revalidatePath(`/miembros/${id}`);
   redirect(conMensajeOk(`/miembros/${id}`, "Cambios guardados."));
 }
 

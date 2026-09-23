@@ -21,6 +21,15 @@ import {
   PlanInactivoError,
   RolNoAutorizadoError,
 } from "@gym-app/domain/use-cases/RegistrarPago";
+import {
+  cambiarPlanConPago,
+  MiembroNoEncontradoError as MiembroNoEncontradoErrorCambio,
+  PlanNoEncontradoError as PlanNoEncontradoErrorCambio,
+  PlanInactivoError as PlanInactivoErrorCambio,
+  RolNoAutorizadoError as RolNoAutorizadoErrorCambio,
+  SinCicloVigenteError,
+  MetodoPagoRequeridoError,
+} from "@gym-app/domain/use-cases/CambiarPlanConPago";
 
 export interface EstadoFormularioPago {
   error?: string;
@@ -111,4 +120,86 @@ export async function registrarPagoAction(
   }
 
   return { ok: "Pago registrado.", fechaFinCiclo: pago.fechaFinCiclo?.toISOString() };
+}
+
+export interface EstadoCambioPlan {
+  error?: string;
+  ok?: string;
+}
+
+export async function cambiarPlanAction(
+  _estadoPrevio: EstadoCambioPlan,
+  formData: FormData
+): Promise<EstadoCambioPlan> {
+  const sesion = await obtenerUsuarioDeSesionActual();
+  if (!sesion) redirect("/login");
+  const { usuario, sucursalActivaId } = sesion;
+
+  const miembroId = formData.get("miembroId")?.toString();
+  const planNuevoId = formData.get("planNuevoId")?.toString();
+  const metodo = formData.get("metodo")?.toString() || null;
+  const metodoPagoId = formData.get("metodoPagoId")?.toString() || null;
+  const tasaCambioRaw = formData.get("tasaCambio")?.toString();
+  const numeroOperacion = formData.get("numeroOperacion")?.toString().trim() || null;
+  const sucursalIdPago = formData.get("sucursalIdPago")?.toString() || sucursalActivaId;
+
+  if (!miembroId || !planNuevoId) {
+    return { error: "Miembro y plan nuevo son requeridos." };
+  }
+  if (!sucursalIdPago) {
+    return { error: "No se pudo determinar en qué sucursal se registra el cambio." };
+  }
+
+  let resultado;
+  try {
+    resultado = await cambiarPlanConPago(
+      {
+        pagos: new PrismaPagoRepository(prisma),
+        suscripciones: new PrismaSuscripcionRepository(prisma),
+        miembros: new PrismaMemberRepository(prisma),
+        planes: new PrismaPlanRepository(prisma),
+        turnos: new PrismaTurnoRepository(prisma),
+        sucursales: new PrismaSucursalRepository(prisma),
+        autorizacion: new AuthorizationService(new PrismaPermisoRepository(prisma)),
+      },
+      {
+        organizacionId: usuario.organizacionId,
+        miembroId,
+        planNuevoId,
+        metodo,
+        metodoPagoId,
+        numeroOperacion,
+        tasaCambio: tasaCambioRaw ? Number(tasaCambioRaw) : null,
+        sucursalId: sucursalIdPago,
+        registradoPorId: usuario.id,
+        rolUsuario: usuario.rol,
+      }
+    );
+  } catch (error) {
+    if (
+      error instanceof MiembroNoEncontradoErrorCambio ||
+      error instanceof MiembroFueraDeSucursalError ||
+      error instanceof PlanNoEncontradoErrorCambio ||
+      error instanceof PlanInactivoErrorCambio ||
+      error instanceof RolNoAutorizadoErrorCambio ||
+      error instanceof SinCicloVigenteError ||
+      error instanceof MetodoPagoRequeridoError
+    ) {
+      return { error: error.message };
+    }
+    throw error;
+  }
+
+  revalidatePath("/pagos");
+  revalidatePath("/miembros");
+  revalidatePath(`/miembros/${miembroId}`);
+  revalidatePath(`/miembros/${miembroId}/pagos`);
+  revalidatePath("/caja");
+
+  return {
+    ok:
+      resultado.diferencia > 0
+        ? `Plan cambiado — se cobró la diferencia de $${resultado.diferencia.toFixed(2)}.`
+        : "Plan cambiado, sin costo adicional.",
+  };
 }

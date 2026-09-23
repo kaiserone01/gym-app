@@ -21,8 +21,8 @@ import {
   actualizarUsuarioAdmin,
   RolNoAutorizadoError as RolNoAutorizadoActualizar,
   UsuarioNoEncontradoError as UsuarioNoEncontradoActualizar,
-  AutoDesactivacionError,
 } from "@gym-app/domain/use-cases/ActualizarUsuarioAdmin";
+import { eliminarUsuarioAdmin } from "@gym-app/domain/use-cases/EliminarUsuarioAdmin";
 import {
   asignarSucursalesAUsuario,
   RolNoAutorizadoError as RolNoAutorizadoSucursales,
@@ -33,6 +33,7 @@ import {
   actualizarPermisosUsuario,
   RolNoAutorizadoError as RolNoAutorizadoPermisos,
   UsuarioNoEncontradoError as UsuarioNoEncontradoPermisos,
+  RolSinPermisosError,
 } from "@gym-app/domain/use-cases/ActualizarPermisosUsuario";
 import type { ModuloPermiso, AccionPermiso } from "@gym-app/domain/entities/Permiso";
 import type { RolUsuario } from "@gym-app/domain/entities/UsuarioAdmin";
@@ -247,7 +248,11 @@ export async function actualizarPermisosUsuarioAction(id: string, formData: Form
       { organizacionId: usuario.organizacionId, rolSolicitante: usuario.rol, usuarioId: id, permisos }
     );
   } catch (error) {
-    if (error instanceof RolNoAutorizadoPermisos || error instanceof UsuarioNoEncontradoPermisos) {
+    if (
+      error instanceof RolNoAutorizadoPermisos ||
+      error instanceof UsuarioNoEncontradoPermisos ||
+      error instanceof RolSinPermisosError
+    ) {
       console.error("No se pudieron actualizar los permisos:", error);
       redirigirConError(`/usuarios/${id}`, error.message);
     }
@@ -258,44 +263,24 @@ export async function actualizarPermisosUsuarioAction(id: string, formData: Form
   redirigirConOk(`/usuarios/${id}`, "Permisos actualizados.");
 }
 
-async function cambiarEstadoUsuario(id: string, activo: boolean): Promise<void> {
+// Sin redirect adentro a propósito: se llama desde un botón en el cliente
+// (papelera en la tarjeta del usuario), no desde un <form action>, así que
+// el error de dominio (mensaje en español, ya legible) se deja propagar
+// para que el cliente lo muestre con useFeedback en vez de navegar.
+export async function eliminarUsuarioAction(id: string): Promise<void> {
   const sesion = await obtenerUsuarioDeSesionActual();
   if (!sesion) redirect("/login");
   const { usuario } = sesion;
-  if (usuario.rol !== "SOCIO") redirigirConError("/usuarios", SOLO_SOCIO);
 
-  try {
-    await actualizarUsuarioAdmin(
-      { usuarios: new PrismaUsuarioAdminRepository(prisma) },
-      {
-        organizacionId: usuario.organizacionId,
-        rolSolicitante: usuario.rol,
-        usuarioIdSolicitante: usuario.id,
-        id,
-        cambios: { activo },
-      }
-    );
-  } catch (error) {
-    if (
-      error instanceof RolNoAutorizadoActualizar ||
-      error instanceof UsuarioNoEncontradoActualizar ||
-      error instanceof AutoDesactivacionError
-    ) {
-      console.error("No se pudo cambiar el estado del usuario:", error);
-      redirigirConError(`/usuarios/${id}`, error.message);
+  await eliminarUsuarioAdmin(
+    { usuarios: new PrismaUsuarioAdminRepository(prisma) },
+    {
+      organizacionId: usuario.organizacionId,
+      rolSolicitante: usuario.rol,
+      usuarioIdSolicitante: usuario.id,
+      id,
     }
-    throw error;
-  }
+  );
 
   revalidatePath("/usuarios");
-}
-
-export async function darDeBajaUsuarioAction(id: string): Promise<void> {
-  await cambiarEstadoUsuario(id, false);
-  redirigirConOk("/usuarios", "Usuario dado de baja.");
-}
-
-export async function reactivarUsuarioAction(id: string): Promise<void> {
-  await cambiarEstadoUsuario(id, true);
-  redirigirConOk("/usuarios", "Usuario reactivado.");
 }

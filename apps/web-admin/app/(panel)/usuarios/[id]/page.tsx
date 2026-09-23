@@ -13,8 +13,6 @@ import {
   actualizarUsuarioAction,
   actualizarSucursalesUsuarioAction,
   actualizarPermisosUsuarioAction,
-  darDeBajaUsuarioAction,
-  reactivarUsuarioAction,
 } from "../actions";
 import { Button } from "@gym-app/ui/components/Button";
 import { PageHeader } from "@gym-app/ui/components/PageHeader";
@@ -102,18 +100,19 @@ export default async function PaginaEditarUsuario({
         <Button type="submit">Guardar sucursales</Button>
       </form>
 
-      <div>
-        <h2 className="mb-3 text-lg font-semibold" style={{ color: "var(--gx-ink)" }}>
-          Permisos
-        </h2>
-        <FormularioPermisos accion={accionPermisos} permisosActuales={detalle.permisos} />
-      </div>
-
-      <form action={detalle.usuario.activo ? darDeBajaUsuarioAction.bind(null, id) : reactivarUsuarioAction.bind(null, id)}>
-        <Button variant={detalle.usuario.activo ? "peligro" : "primario"} type="submit">
-          {detalle.usuario.activo ? "Dar de baja" : "Reactivar"}
-        </Button>
-      </form>
+      {detalle.usuario.rol === "ENTRENADOR" ? (
+        <p className="text-sm" style={{ color: "var(--gx-muted)" }}>
+          Los entrenadores no reciben permisos del panel — solo son seleccionables como entrenador en la ficha de un
+          miembro.
+        </p>
+      ) : (
+        <div>
+          <h2 className="mb-3 text-lg font-semibold" style={{ color: "var(--gx-ink)" }}>
+            Permisos
+          </h2>
+          <FormularioPermisos accion={accionPermisos} permisosActuales={detalle.permisos} />
+        </div>
+      )}
     </div>
   );
 }

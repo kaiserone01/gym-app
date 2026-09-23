@@ -67,11 +67,10 @@ const PERMISOS_POR_ROL: Record<RolUsuario, Permiso[]> = {
     { modulo: "CAJA", accion: "VER" },
     { modulo: "CAJA", accion: "CREAR" },
   ],
-  ENTRENADOR: [
-    { modulo: "MIEMBROS", accion: "VER" },
-    { modulo: "PAGOS", accion: "VER" },
-    { modulo: "PLANES", accion: "VER" },
-  ],
+  // Los entrenadores son un UsuarioAdmin solo para poder seleccionarse como
+  // entrenador en Miembro (ver seed.ts) — no operan el panel, así que no
+  // reciben ningún permiso.
+  ENTRENADOR: [],
 };
 
 export async function crearUsuarioAdmin(

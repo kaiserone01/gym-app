@@ -15,6 +15,12 @@ export class UsuarioNoEncontradoError extends Error {
   }
 }
 
+export class RolSinPermisosError extends Error {
+  constructor() {
+    super("Los entrenadores no reciben permisos del panel.");
+  }
+}
+
 export async function actualizarPermisosUsuario(
   deps: { usuarios: IUsuarioAdminRepository; permisos: IPermisoRepository },
   input: { organizacionId: string; rolSolicitante: RolUsuario; usuarioId: string; permisos: Permiso[] }
@@ -26,6 +32,10 @@ export async function actualizarPermisosUsuario(
   const existente = await deps.usuarios.buscarPorId(input.organizacionId, input.usuarioId);
   if (!existente) {
     throw new UsuarioNoEncontradoError();
+  }
+
+  if (existente.rol === "ENTRENADOR") {
+    throw new RolSinPermisosError();
   }
 
   await deps.permisos.reemplazarTodos(input.usuarioId, input.permisos);

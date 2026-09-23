@@ -34,11 +34,9 @@ const PERMISOS_POR_ROL: Record<string, Array<{ modulo: string; accion: string }>
     { modulo: "CAJA", accion: "VER" },
     { modulo: "CAJA", accion: "CREAR" },
   ],
-  ENTRENADOR: [
-    { modulo: "MIEMBROS", accion: "VER" },
-    { modulo: "PAGOS", accion: "VER" },
-    { modulo: "PLANES", accion: "VER" },
-  ],
+  // Los entrenadores no operan el panel — sin permisos (ver CrearUsuarioAdmin.ts,
+  // debe mantenerse igual acá).
+  ENTRENADOR: [],
 };
 
 async function main() {

@@ -415,7 +415,7 @@ export function FormularioMiembro({
               Plan de membresía
             </h2>
             <div className="flex gap-2">
-              {esEdicion && !editandoEntrenador && (
+              {esEdicion && !editandoEntrenador && requiereEntrenador && (
                 <Button type="button" variant="secundario" onClick={() => setEditandoEntrenador(true)}>
                   Cambiar entrenador
                 </Button>

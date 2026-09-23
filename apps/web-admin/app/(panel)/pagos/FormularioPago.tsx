@@ -23,6 +23,7 @@ export interface PlanParaSelector {
   precioUSD: number;
   multisede: boolean;
   frecuencia: FrecuenciaPago;
+  incluyeEntrenador: boolean;
 }
 
 export interface PlanFijo {

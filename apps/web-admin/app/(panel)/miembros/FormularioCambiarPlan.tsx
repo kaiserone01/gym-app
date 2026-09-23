@@ -14,6 +14,12 @@ export interface PlanParaCambio {
   nombre: string;
   precioUSD: number;
   frecuencia: FrecuenciaPago;
+  incluyeEntrenador: boolean;
+}
+
+export interface EntrenadorParaCambio {
+  id: string;
+  nombre: string;
 }
 
 export function FormularioCambiarPlan({
@@ -24,6 +30,8 @@ export function FormularioCambiarPlan({
   precioActual,
   frecuenciaActual,
   metodosPago,
+  entrenadores,
+  entrenadorActualId,
 }: {
   accion: (estado: EstadoCambioPlan, formData: FormData) => Promise<EstadoCambioPlan>;
   miembroId: string;
@@ -37,6 +45,11 @@ export function FormularioCambiarPlan({
   // acordado).
   frecuenciaActual: FrecuenciaPago;
   metodosPago: MetodoPago[];
+  // Entrenadores elegibles para la sede del miembro — se muestra el
+  // selector solo si el plan nuevo elegido incluye entrenador (único plan
+  // con entrenador: $30 mensual, ver diseño acordado).
+  entrenadores: EntrenadorParaCambio[];
+  entrenadorActualId: string | null;
 }) {
   const [estado, enviar, enviando] = useActionState(accion, {});
   const { mostrarError } = useFeedback();
@@ -48,6 +61,7 @@ export function FormularioCambiarPlan({
   }, [estado.error]);
 
   const [planNuevoId, setPlanNuevoId] = useState("");
+  const [entrenadorId, setEntrenadorId] = useState(entrenadorActualId ?? "");
   const [seleccionMetodo, setSeleccionMetodo] = useState<{
     metodoPagoId: string | null;
     metodo: string;
@@ -59,7 +73,12 @@ export function FormularioCambiarPlan({
   const planNuevo = planesMismaFrecuencia.find((p) => p.id === planNuevoId) ?? null;
   const diferencia = planNuevo ? Math.round(Math.max(0, planNuevo.precioUSD - precioActual) * 100) / 100 : 0;
   const requierePago = diferencia > 0;
-  const puedeEnviar = !!planNuevo && planNuevo.id !== planActualId && (!requierePago || !!seleccionMetodo.metodoPagoId);
+  const requiereEntrenador = planNuevo?.incluyeEntrenador ?? false;
+  const puedeEnviar =
+    !!planNuevo &&
+    planNuevo.id !== planActualId &&
+    (!requierePago || !!seleccionMetodo.metodoPagoId) &&
+    (!requiereEntrenador || !!entrenadorId);
 
   return (
     <form
@@ -89,6 +108,7 @@ export function FormularioCambiarPlan({
 
       <input type="hidden" name="miembroId" value={miembroId} />
       <input type="hidden" name="planNuevoId" value={planNuevoId} />
+      <input type="hidden" name="entrenadorId" value={entrenadorId} />
       <input type="hidden" name="metodo" value={seleccionMetodo.metodo} />
       <input type="hidden" name="metodoPagoId" value={seleccionMetodo.metodoPagoId ?? ""} />
       <input type="hidden" name="tasaCambio" value={seleccionMetodo.tasaCambio ?? ""} />
@@ -137,6 +157,28 @@ export function FormularioCambiarPlan({
             El vencimiento actual no cambia — el ciclo ya pagado sigue igual.
           </p>
         </div>
+      )}
+
+      {requiereEntrenador && (
+        <label className="flex flex-col gap-1.5 text-sm" style={{ color: "var(--gx-muted)" }}>
+          Entrenador
+          <select
+            value={entrenadorId}
+            onChange={(e) => setEntrenadorId(e.target.value)}
+            className="min-h-11 rounded-lg border px-3 outline-none focus:border-[var(--gx-accent)]"
+            style={{ background: "var(--gx-surface-2)", borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }}
+          >
+            <option value="">Seleccioná un entrenador</option>
+            {entrenadores.map((entrenador) => (
+              <option key={entrenador.id} value={entrenador.id}>
+                {entrenador.nombre}
+              </option>
+            ))}
+          </select>
+          <span className="text-xs" style={{ color: "var(--gx-muted-dim)" }}>
+            Este plan incluye entrenador — hace falta elegir uno para poder cambiar.
+          </span>
+        </label>
       )}
 
       {requierePago && <SelectorMetodoPago metodos={metodosPago} monto={diferencia} onCambio={setSeleccionMetodo} />}

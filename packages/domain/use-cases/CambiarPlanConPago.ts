@@ -50,6 +50,12 @@ export class MetodoPagoRequeridoError extends Error {
   }
 }
 
+export class EntrenadorRequeridoError extends Error {
+  constructor() {
+    super("El plan nuevo incluye entrenador — elegí cuál antes de cambiar de plan.");
+  }
+}
+
 // Cobrar "solo la diferencia" solo tiene sentido entre planes de la MISMA
 // frecuencia (ambos mensuales, ambos semanales...) — el vencimiento no se
 // toca, así que mezclar frecuencias dejaría a alguien pagando precio de
@@ -84,6 +90,10 @@ export interface DatosCambiarPlanConPago {
   sucursalId: string;
   registradoPorId: string;
   rolUsuario: RolUsuario;
+  // Solo se aplica cuando el plan nuevo requiere entrenador (ver diseño
+  // acordado) — si no lo requiere, se ignora y el entrenador que el
+  // miembro ya tenía asignado (si tenía) queda sin tocar.
+  entrenadorId: string | null;
 }
 
 export interface ResultadoCambioPlan {
@@ -121,6 +131,9 @@ export async function cambiarPlanConPago(
   }
   if (!planNuevo.activo) {
     throw new PlanInactivoError();
+  }
+  if (planNuevo.incluyeEntrenador && !input.entrenadorId) {
+    throw new EntrenadorRequeridoError();
   }
 
   const ahora = new Date();
@@ -168,6 +181,7 @@ export async function cambiarPlanConPago(
   await deps.miembros.actualizar(input.organizacionId, input.miembroId, {
     planId: input.planNuevoId,
     precioPlan: planNuevo.precioUSD,
+    ...(planNuevo.incluyeEntrenador ? { entrenadorId: input.entrenadorId } : {}),
   });
 
   return { pago, diferencia };

@@ -336,19 +336,16 @@ export function FormularioMiembro({
                 )}
               </div>
 
-              <label className="flex flex-col gap-1 text-sm" style={{ color: "var(--gx-muted)" }}>
+              <label className="flex min-w-0 flex-col gap-1 text-sm" style={{ color: "var(--gx-muted)" }}>
                 Foto de perfil
                 <input
                   type="file"
                   name="foto"
                   accept="image/*"
                   onChange={(e) => manejarCambioFoto(e.target.files?.[0])}
-                  className="text-sm file:mr-3 file:min-h-9 file:rounded-lg file:border-0 file:px-3 file:py-1.5 file:text-sm file:font-medium"
+                  className="w-full text-sm file:mr-3 file:min-h-9 file:rounded-lg file:border-0 file:px-3 file:py-1.5 file:text-sm file:font-medium"
                   style={{ color: "var(--gx-muted)" }}
                 />
-                <span className="text-xs" style={{ color: "var(--gx-muted-dim)" }}>
-                  Es la foto que va a aparecer en la ficha al ingresar su cédula.
-                </span>
               </label>
             </div>
 
@@ -387,7 +384,7 @@ export function FormularioMiembro({
             />
           </div>
 
-          <Button type="button" className="mt-6" onClick={manejarClickGuardar} disabled={enviando}>
+          <Button type="button" className="mt-6 w-full" onClick={manejarClickGuardar} disabled={enviando}>
             Guardar
           </Button>
           <span className="mt-2 block text-xs" style={{ color: "var(--gx-muted-dim)" }}>

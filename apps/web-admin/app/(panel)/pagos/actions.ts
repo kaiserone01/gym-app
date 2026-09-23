@@ -30,6 +30,7 @@ import {
   SinCicloVigenteError,
   MetodoPagoRequeridoError,
   FrecuenciaDistintaError,
+  EntrenadorRequeridoError,
 } from "@gym-app/domain/use-cases/CambiarPlanConPago";
 
 export interface EstadoFormularioPago {
@@ -142,6 +143,7 @@ export async function cambiarPlanAction(
   const tasaCambioRaw = formData.get("tasaCambio")?.toString();
   const numeroOperacion = formData.get("numeroOperacion")?.toString().trim() || null;
   const sucursalIdPago = formData.get("sucursalIdPago")?.toString() || sucursalActivaId;
+  const entrenadorId = formData.get("entrenadorId")?.toString() || null;
 
   if (!miembroId || !planNuevoId) {
     return { error: "Miembro y plan nuevo son requeridos." };
@@ -173,6 +175,7 @@ export async function cambiarPlanAction(
         sucursalId: sucursalIdPago,
         registradoPorId: usuario.id,
         rolUsuario: usuario.rol,
+        entrenadorId,
       }
     );
   } catch (error) {
@@ -184,7 +187,8 @@ export async function cambiarPlanAction(
       error instanceof RolNoAutorizadoErrorCambio ||
       error instanceof SinCicloVigenteError ||
       error instanceof MetodoPagoRequeridoError ||
-      error instanceof FrecuenciaDistintaError
+      error instanceof FrecuenciaDistintaError ||
+      error instanceof EntrenadorRequeridoError
     ) {
       return { error: error.message };
     }

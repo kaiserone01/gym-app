@@ -53,8 +53,8 @@ export default async function PaginaNuevoMiembro() {
   const sucursalActiva = sucursales.find((s) => s.id === sucursalActivaId);
 
   return (
-    <div className="max-w-7xl p-6 lg:p-8">
-      <div className="mb-6">
+    <div className="max-w-7xl p-6 lg:px-8 lg:py-6">
+      <div className="mb-4">
         <PageHeader>Nuevo miembro</PageHeader>
       </div>
       <FormularioMiembro

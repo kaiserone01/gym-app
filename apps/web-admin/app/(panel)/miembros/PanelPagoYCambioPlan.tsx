@@ -6,7 +6,7 @@ import { Card } from "@gym-app/ui/components/Card";
 import type { MetodoPago } from "@gym-app/domain/entities/MetodoPago";
 import type { FrecuenciaPago } from "@gym-app/domain/entities/Plan";
 import { FormularioPago, type PlanParaSelector, type PlanFijo } from "../pagos/FormularioPago";
-import { FormularioCambiarPlan, type PlanParaCambio } from "./FormularioCambiarPlan";
+import { FormularioCambiarPlan, type PlanParaCambio, type EntrenadorParaCambio } from "./FormularioCambiarPlan";
 import type { EstadoFormularioPago, EstadoCambioPlan } from "../pagos/actions";
 
 type Tab = "pago" | "cambiarPlan";
@@ -26,6 +26,8 @@ export function PanelPagoYCambioPlan({
   planActualId,
   precioActual,
   frecuenciaActual,
+  entrenadores,
+  entrenadorActualId,
 }: {
   miembroId: string;
   accionRegistrarPago: (estado: EstadoFormularioPago, formData: FormData) => Promise<EstadoFormularioPago>;
@@ -37,6 +39,8 @@ export function PanelPagoYCambioPlan({
   planActualId: string | null;
   precioActual: number;
   frecuenciaActual: FrecuenciaPago;
+  entrenadores: EntrenadorParaCambio[];
+  entrenadorActualId: string | null;
 }) {
   const [tab, setTab] = useState<Tab>("pago");
   const planesParaCambio: PlanParaCambio[] = planes;
@@ -95,6 +99,8 @@ export function PanelPagoYCambioPlan({
             precioActual={precioActual}
             frecuenciaActual={frecuenciaActual}
             metodosPago={metodosPago}
+            entrenadores={entrenadores}
+            entrenadorActualId={entrenadorActualId}
           />
         </>
       )}

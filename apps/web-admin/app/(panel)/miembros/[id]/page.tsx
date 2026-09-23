@@ -79,9 +79,18 @@ export default async function PaginaEditarMiembro({ params }: { params: Promise<
     .slice(0, 5)
     .map((pago) => ({ id: pago.id, fechaInicioCiclo: pago.fechaInicioCiclo, fechaFinCiclo: pago.fechaFinCiclo }));
 
+  // Entrenadores elegibles para "Cambiar de plan" (panel de pago) — mismo
+  // criterio que FormularioMiembro: si el miembro es de una sede fija, solo
+  // los de esa sede; si es "Ambas" (sucursalId null), los de todas.
+  const entrenadoresDelMiembro = miembro.sucursalId
+    ? entrenadoresPorSucursal[miembro.sucursalId] ?? []
+    : Object.values(entrenadoresPorSucursal)
+        .flat()
+        .filter((e, i, lista) => lista.findIndex((otro) => otro.id === e.id) === i);
+
   return (
-    <div className="max-w-7xl p-6 lg:p-8">
-      <div className="mb-6">
+    <div className="max-w-7xl p-6 lg:px-8 lg:py-6">
+      <div className="mb-4">
         <PageHeader>Editar miembro</PageHeader>
       </div>
 
@@ -143,6 +152,8 @@ export default async function PaginaEditarMiembro({ params }: { params: Promise<
                 planActualId={miembro.planId}
                 precioActual={miembro.precioPlan}
                 frecuenciaActual={frecuenciaActual}
+                entrenadores={entrenadoresDelMiembro}
+                entrenadorActualId={miembro.entrenadorId}
               />
             )}
 

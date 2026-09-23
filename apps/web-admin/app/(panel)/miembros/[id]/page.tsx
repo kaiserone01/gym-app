@@ -80,7 +80,7 @@ export default async function PaginaEditarMiembro({ params }: { params: Promise<
     .map((pago) => ({ id: pago.id, fechaInicioCiclo: pago.fechaInicioCiclo, fechaFinCiclo: pago.fechaFinCiclo }));
 
   return (
-    <div className="max-w-4xl p-6 lg:p-8">
+    <div className="max-w-7xl p-6 lg:p-8">
       <div className="mb-6">
         <PageHeader>Editar miembro</PageHeader>
       </div>

@@ -4,8 +4,7 @@ import { obtenerUsuarioDeSesionActual } from "@/lib/sesion";
 import { PrismaPlanRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaPlanRepository";
 import { contarImpactoCambioPlan } from "@gym-app/domain/use-cases/ContarImpactoCambioPlan";
 import { FormularioPlan } from "../FormularioPlan";
-import { actualizarPlanAction, actualizarFrecuenciaPlanAction, darDeBajaPlanAction, reactivarPlanAction } from "../actions";
-import { Button } from "@gym-app/ui/components/Button";
+import { actualizarPlanAction, actualizarFrecuenciaPlanAction } from "../actions";
 import { PageHeader } from "@gym-app/ui/components/PageHeader";
 
 export default async function PaginaEditarPlan({ params }: { params: Promise<{ id: string }> }) {
@@ -42,20 +41,6 @@ export default async function PaginaEditarPlan({ params }: { params: Promise<{ i
           cantidadSuscripcionesActivas,
         }}
       />
-
-      {plan.activo ? (
-        <form action={darDeBajaPlanAction.bind(null, id)} className="mt-6">
-          <Button variant="peligro" type="submit">
-            Dar de baja
-          </Button>
-        </form>
-      ) : (
-        <form action={reactivarPlanAction.bind(null, id)} className="mt-6">
-          <Button variant="secundario" type="submit">
-            Reactivar
-          </Button>
-        </form>
-      )}
     </div>
   );
 }

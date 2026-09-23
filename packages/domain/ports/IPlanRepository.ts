@@ -13,4 +13,10 @@ export interface IPlanRepository {
     frecuencia: FrecuenciaPago,
     incluyeEntrenador: boolean
   ): Promise<Plan>;
+  /**
+   * Borrado físico. Sin onDelete: Cascade en Miembro.planId/Suscripcion.planId
+   * — falla si algún miembro o suscripción sigue usando este plan; ver
+   * EliminarPlan.ts, que traduce eso a un error de dominio legible.
+   */
+  eliminar(id: string): Promise<void>;
 }

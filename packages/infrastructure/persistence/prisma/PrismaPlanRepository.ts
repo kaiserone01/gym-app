@@ -91,4 +91,8 @@ export class PrismaPlanRepository implements IPlanRepository {
 
     return mapear(plan);
   }
+
+  async eliminar(id: string): Promise<void> {
+    await this.prisma.plan.delete({ where: { id } });
+  }
 }

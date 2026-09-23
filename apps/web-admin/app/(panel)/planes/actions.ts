@@ -6,6 +6,8 @@ import { prisma } from "@/lib/prisma";
 import { obtenerUsuarioDeSesionActual } from "@/lib/sesion";
 import { PrismaPlanRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaPlanRepository";
 import { PrismaSuscripcionRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaSuscripcionRepository";
+import { PrismaPermisoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaPermisoRepository";
+import { AuthorizationService } from "@gym-app/domain/services/AuthorizationService";
 import { crearPlan } from "@gym-app/domain/use-cases/CrearPlan";
 import { actualizarPlan, PlanNoEncontradoError } from "@gym-app/domain/use-cases/ActualizarPlan";
 import {
@@ -14,6 +16,7 @@ import {
   PlanNoEncontradoError as ActualizarFrecuenciaPlanNoEncontradoError,
   ConfirmacionInvalidaError,
 } from "@gym-app/domain/use-cases/ActualizarFrecuenciaPlan";
+import { eliminarPlan } from "@gym-app/domain/use-cases/EliminarPlan";
 import type { FrecuenciaPago } from "@gym-app/domain/entities/Plan";
 import { conMensajeOk } from "../redirectConMensaje";
 
@@ -134,30 +137,19 @@ export async function actualizarFrecuenciaPlanAction(
   redirect(conMensajeOk(`/planes/${id}`, "Frecuencia del plan actualizada."));
 }
 
-export async function darDeBajaPlanAction(id: string): Promise<void> {
+// Sin redirect adentro a propósito: se llama desde la papelera en la
+// lista de planes (cliente), no desde un <form action>, así que el error
+// de dominio (mensaje en español, ya legible) se deja propagar para que
+// el cliente lo muestre con useFeedback en vez de navegar.
+export async function eliminarPlanAction(id: string): Promise<void> {
   const sesion = await obtenerUsuarioDeSesionActual();
   if (!sesion) redirect("/login");
   const { usuario } = sesion;
 
-  await actualizarPlan(
-    { planes: new PrismaPlanRepository(prisma) },
-    { organizacionId: usuario.organizacionId, id, cambios: { activo: false } }
+  await eliminarPlan(
+    { planes: new PrismaPlanRepository(prisma), autorizacion: new AuthorizationService(new PrismaPermisoRepository(prisma)) },
+    { organizacionId: usuario.organizacionId, id, usuarioIdSolicitante: usuario.id }
   );
 
   revalidatePath("/planes");
-  redirect(conMensajeOk(`/planes/${id}`, "Plan dado de baja."));
-}
-
-export async function reactivarPlanAction(id: string): Promise<void> {
-  const sesion = await obtenerUsuarioDeSesionActual();
-  if (!sesion) redirect("/login");
-  const { usuario } = sesion;
-
-  await actualizarPlan(
-    { planes: new PrismaPlanRepository(prisma) },
-    { organizacionId: usuario.organizacionId, id, cambios: { activo: true } }
-  );
-
-  revalidatePath("/planes");
-  redirect(conMensajeOk(`/planes/${id}`, "Plan reactivado."));
 }

@@ -8,6 +8,7 @@ import { Button } from "@gym-app/ui/components/Button";
 import { Badge } from "@gym-app/ui/components/Badge";
 import { Card } from "@gym-app/ui/components/Card";
 import { PageHeader } from "@gym-app/ui/components/PageHeader";
+import { BotonEliminarPlan } from "./BotonEliminarPlan";
 import type { FrecuenciaPago } from "@gym-app/domain/entities/Plan";
 
 const ETIQUETA_FRECUENCIA: Record<FrecuenciaPago, string> = {
@@ -43,6 +44,7 @@ export default async function PaginaPlanes() {
                 <th className="py-2">Precio (USD)</th>
                 <th className="py-2">Estado</th>
                 <th className="py-2"></th>
+                <th className="py-2"></th>
               </tr>
             </thead>
             <tbody>
@@ -72,12 +74,15 @@ export default async function PaginaPlanes() {
                       Editar
                     </Link>
                   </td>
+                  <td className="py-2">
+                    <BotonEliminarPlan id={plan.id} nombre={plan.nombre} />
+                  </td>
                 </tr>
               ))}
 
               {planes.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="py-8 text-center" style={{ color: "var(--gx-muted)" }}>
+                  <td colSpan={7} className="py-8 text-center" style={{ color: "var(--gx-muted)" }}>
                     Todavía no hay planes. Creá el primero.
                   </td>
                 </tr>
@@ -91,11 +96,14 @@ export default async function PaginaPlanes() {
         {planes.map((plan) => (
           <Link key={plan.id} href={`/planes/${plan.id}`}>
             <Card className="transition-transform active:scale-[0.98]">
-              <div className="flex items-center justify-between">
-                <span className="font-medium" style={{ color: "var(--gx-ink)" }}>
+              <div className="flex items-center justify-between gap-2">
+                <span className="min-w-0 truncate font-medium" style={{ color: "var(--gx-ink)" }}>
                   {plan.nombre}
                 </span>
-                <Badge tono={plan.activo ? "verde" : "gris"}>{plan.activo ? "Activo" : "Inactivo"}</Badge>
+                <div className="flex shrink-0 items-center gap-1">
+                  <Badge tono={plan.activo ? "verde" : "gris"}>{plan.activo ? "Activo" : "Inactivo"}</Badge>
+                  <BotonEliminarPlan id={plan.id} nombre={plan.nombre} />
+                </div>
               </div>
               <div className="mt-2 flex justify-between text-sm" style={{ color: "var(--gx-muted)" }}>
                 <span>

@@ -50,6 +50,19 @@ export class MetodoPagoRequeridoError extends Error {
   }
 }
 
+// Cobrar "solo la diferencia" solo tiene sentido entre planes de la MISMA
+// frecuencia (ambos mensuales, ambos semanales...) — el vencimiento no se
+// toca, así que mezclar frecuencias dejaría a alguien pagando precio de
+// mensual con vencimiento de semanal (o viceversa). Un cambio de
+// frecuencia es un pago normal por el precio completo del plan nuevo.
+export class FrecuenciaDistintaError extends Error {
+  constructor() {
+    super(
+      "El plan nuevo tiene una frecuencia distinta (semanal/mensual) — no se puede cobrar solo la diferencia sin mover el vencimiento. Registrá un pago normal por el precio completo."
+    );
+  }
+}
+
 export interface CambiarPlanConPagoDeps {
   pagos: IPagoRepository;
   suscripciones: ISuscripcionRepository;
@@ -117,6 +130,10 @@ export async function cambiarPlanConPago(
   }
 
   const planViejo = await deps.planes.buscarPorId(input.organizacionId, activa.planId);
+  if (planViejo && planViejo.frecuencia !== planNuevo.frecuencia) {
+    throw new FrecuenciaDistintaError();
+  }
+
   const precioViejo = planViejo?.precioUSD ?? miembro.precioPlan;
   const diferencia = Math.round(Math.max(0, planNuevo.precioUSD - precioViejo) * 100) / 100;
 

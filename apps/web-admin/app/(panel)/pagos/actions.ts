@@ -29,6 +29,7 @@ import {
   RolNoAutorizadoError as RolNoAutorizadoErrorCambio,
   SinCicloVigenteError,
   MetodoPagoRequeridoError,
+  FrecuenciaDistintaError,
 } from "@gym-app/domain/use-cases/CambiarPlanConPago";
 
 export interface EstadoFormularioPago {
@@ -183,7 +184,8 @@ export async function cambiarPlanAction(
       error instanceof PlanInactivoErrorCambio ||
       error instanceof RolNoAutorizadoErrorCambio ||
       error instanceof SinCicloVigenteError ||
-      error instanceof MetodoPagoRequeridoError
+      error instanceof MetodoPagoRequeridoError ||
+      error instanceof FrecuenciaDistintaError
     ) {
       return { error: error.message };
     }

@@ -71,6 +71,7 @@ export default async function PaginaEditarMiembro({ params }: { params: Promise<
   // no venció — vencido, el próximo pago ya es el precio completo del plan
   // que sea (ver diseño acordado).
   const tieneCicloVigente = miembro.fechaVencimiento !== null && miembro.fechaVencimiento > new Date();
+  const frecuenciaActual = planes.find((p) => p.id === miembro.planId)?.frecuencia ?? "MENSUAL";
 
   // Últimos 5 ciclos con datos de rango — listarPagos ya devuelve los
   // pagos ordenados por fechaPago desc (ver PrismaPagoRepository), así
@@ -164,6 +165,7 @@ export default async function PaginaEditarMiembro({ params }: { params: Promise<
                   planes={planesActivos}
                   planActualId={miembro.planId}
                   precioActual={miembro.precioPlan}
+                  frecuenciaActual={frecuenciaActual}
                   metodosPago={metodosPago}
                 />
               </Card>

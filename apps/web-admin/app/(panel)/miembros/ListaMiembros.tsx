@@ -5,8 +5,9 @@ import Link from "next/link";
 import { Input } from "@gym-app/ui/components/Input";
 import { Button } from "@gym-app/ui/components/Button";
 import { Card } from "@gym-app/ui/components/Card";
+import { Badge } from "@gym-app/ui/components/Badge";
 import { EstadoToggle } from "./EstadoToggle";
-import { DiasDisponibles } from "./vencimiento";
+import { DiasDisponibles, diasHastaVencimiento } from "./vencimiento";
 import type { Miembro } from "@gym-app/domain/entities/Miembro";
 import type { Plan } from "@gym-app/domain/entities/Plan";
 import type { SucursalResumen } from "@gym-app/domain/entities/SucursalResumen";
@@ -26,6 +27,10 @@ function iniciales(nombre: string): string {
 
 function formatearFecha(fecha: Date): string {
   return new Date(fecha).toLocaleDateString("es-VE");
+}
+
+function estaVencido(fechaVencimiento: Date | null): boolean {
+  return fechaVencimiento !== null && diasHastaVencimiento(fechaVencimiento) < 0;
 }
 
 function Avatar({ fotoUrl, nombre, tamano }: { fotoUrl: string | null; nombre: string; tamano: number }) {
@@ -227,6 +232,7 @@ function VistaCards({ miembros }: { miembros: FilaMiembro[] }) {
     <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
       {miembros.map((miembro) => {
         const muestraEntrenador = miembro.plan?.incluyeEntrenador === true;
+        const vencido = estaVencido(miembro.fechaVencimiento);
 
         return (
           <Link key={miembro.id} href={`/miembros/${miembro.id}`}>
@@ -241,7 +247,10 @@ function VistaCards({ miembros }: { miembros: FilaMiembro[] }) {
                     {miembro.cedula}
                   </p>
                 </div>
-                <EstadoToggle id={miembro.id} activo={miembro.activo} />
+                <div className="flex flex-col items-end gap-1">
+                  <EstadoToggle id={miembro.id} activo={miembro.activo} />
+                  {vencido && <Badge tono="rojo">VENCIDO</Badge>}
+                </div>
               </div>
 
               <dl className="flex flex-col gap-1.5 text-sm">
@@ -330,7 +339,10 @@ function VistaLista({ miembros }: { miembros: FilaMiembro[] }) {
                   <DiasDisponibles fechaVencimiento={miembro.fechaVencimiento} />
                 </td>
                 <td className="py-2">
-                  <EstadoToggle id={miembro.id} activo={miembro.activo} />
+                  <div className="flex items-center gap-2">
+                    <EstadoToggle id={miembro.id} activo={miembro.activo} />
+                    {estaVencido(miembro.fechaVencimiento) && <Badge tono="rojo">VENCIDO</Badge>}
+                  </div>
                 </td>
                 <td className="py-2">
                   <Link

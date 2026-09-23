@@ -16,10 +16,8 @@ import { obtenerEntrenadoresPorSucursal } from "../obtenerEntrenadoresPorSucursa
 import { MiembroFueraDeSucursal } from "./MiembroFueraDeSucursal";
 import { FormularioMiembro } from "../FormularioMiembro";
 import { actualizarMiembroAction } from "../actions";
-import { FormularioPago } from "../../pagos/FormularioPago";
-import { FormularioCambiarPlan } from "../FormularioCambiarPlan";
+import { PanelPagoYCambioPlan } from "../PanelPagoYCambioPlan";
 import { registrarPagoAction, cambiarPlanAction } from "../../pagos/actions";
-import { Card } from "@gym-app/ui/components/Card";
 import { PageHeader } from "@gym-app/ui/components/PageHeader";
 import { obtenerTurnoAbiertoParaUsuario } from "../../caja/obtenerTurnoAbiertoParaUsuario";
 import { AvisoCajaCerrada } from "../../caja/AvisoCajaCerrada";
@@ -124,51 +122,28 @@ export default async function PaginaEditarMiembro({ params }: { params: Promise<
               Ver historial de pagos ({pagos.length})
             </Link>
 
-            {turnoAbierto?.esPropio ? (
-              <Card>
-                <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--gx-muted)" }}>
-                  Registrar pago
-                </h2>
-                <FormularioPago
-                  accion={registrarPagoAction}
-                  miembros={[]}
-                  planes={planesActivos}
-                  metodosPago={metodosPago}
-                  miembroIdFijo={id}
-                  planFijo={
-                    miembro.planId
-                      ? {
-                          id: miembro.planId,
-                          nombre: planes.find((p) => p.id === miembro.planId)?.nombre ?? "Plan actual",
-                          precioUSD: miembro.precioPlan,
-                          multisede: planes.find((p) => p.id === miembro.planId)?.multisede ?? false,
-                        }
-                      : undefined
-                  }
-                  origen="miembro"
-                />
-              </Card>
-            ) : null}
-
-            {turnoAbierto?.esPropio && tieneCicloVigente && (
-              <Card>
-                <h2 className="mb-1 text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--gx-muted)" }}>
-                  Cambiar de plan
-                </h2>
-                <p className="mb-4 text-xs" style={{ color: "var(--gx-muted)" }}>
-                  Para subir o bajar de plan sin esperar a que venza el ciclo actual — cobra solo la diferencia de
-                  precio, si la hay.
-                </p>
-                <FormularioCambiarPlan
-                  accion={cambiarPlanAction}
-                  miembroId={id}
-                  planes={planesActivos}
-                  planActualId={miembro.planId}
-                  precioActual={miembro.precioPlan}
-                  frecuenciaActual={frecuenciaActual}
-                  metodosPago={metodosPago}
-                />
-              </Card>
+            {turnoAbierto?.esPropio && (
+              <PanelPagoYCambioPlan
+                miembroId={id}
+                accionRegistrarPago={registrarPagoAction}
+                accionCambiarPlan={cambiarPlanAction}
+                planes={planesActivos}
+                planFijo={
+                  miembro.planId
+                    ? {
+                        id: miembro.planId,
+                        nombre: planes.find((p) => p.id === miembro.planId)?.nombre ?? "Plan actual",
+                        precioUSD: miembro.precioPlan,
+                        multisede: planes.find((p) => p.id === miembro.planId)?.multisede ?? false,
+                      }
+                    : undefined
+                }
+                metodosPago={metodosPago}
+                tieneCicloVigente={tieneCicloVigente}
+                planActualId={miembro.planId}
+                precioActual={miembro.precioPlan}
+                frecuenciaActual={frecuenciaActual}
+              />
             )}
 
             {!turnoAbierto?.esPropio && (

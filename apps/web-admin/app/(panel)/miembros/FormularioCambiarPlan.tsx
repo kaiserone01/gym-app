@@ -7,6 +7,7 @@ import type { MetodoPago } from "@gym-app/domain/entities/MetodoPago";
 import type { FrecuenciaPago } from "@gym-app/domain/entities/Plan";
 import type { EstadoCambioPlan } from "../pagos/actions";
 import { SelectorMetodoPago } from "../pagos/SelectorMetodoPago";
+import { useHayCambiosSinGuardar } from "./ContextoCambiosSinGuardar";
 
 export interface PlanParaCambio {
   id: string;
@@ -38,17 +39,13 @@ export function FormularioCambiarPlan({
   metodosPago: MetodoPago[];
 }) {
   const [estado, enviar, enviando] = useActionState(accion, {});
-  const { mostrarExito, mostrarError } = useFeedback();
+  const { mostrarError } = useFeedback();
+  const hayCambiosSinGuardar = useHayCambiosSinGuardar();
 
   useEffect(() => {
     if (estado.error) mostrarError(estado.error);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- solo debe reaccionar a un nuevo estado.error, no a mostrarError
   }, [estado.error]);
-
-  useEffect(() => {
-    if (estado.ok) mostrarExito(estado.ok);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- solo debe reaccionar a un nuevo estado.ok, no a mostrarExito
-  }, [estado.ok]);
 
   const [planNuevoId, setPlanNuevoId] = useState("");
   const [seleccionMetodo, setSeleccionMetodo] = useState<{
@@ -65,7 +62,22 @@ export function FormularioCambiarPlan({
   const puedeEnviar = !!planNuevo && planNuevo.id !== planActualId && (!requierePago || !!seleccionMetodo.metodoPagoId);
 
   return (
-    <form action={enviar} className="flex flex-col gap-4">
+    <form
+      action={enviar}
+      className="flex flex-col gap-4"
+      onSubmit={(e) => {
+        // Al confirmar, esta acción redirige a /miembros — si hay cambios de
+        // Datos personales sin guardar, se perderían sin este aviso.
+        if (
+          hayCambiosSinGuardar &&
+          !window.confirm(
+            "Tenés cambios sin guardar en Datos personales — se van a perder si cambiás de plan ahora. ¿Continuar de todas formas?"
+          )
+        ) {
+          e.preventDefault();
+        }
+      }}
+    >
       {estado.error && (
         <p
           className="rounded-lg px-3 py-2 text-sm"

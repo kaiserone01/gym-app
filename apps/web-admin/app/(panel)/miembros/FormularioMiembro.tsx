@@ -11,6 +11,7 @@ import { useFeedback } from "@gym-app/ui/components/FeedbackOverlay";
 import type { EstadoFormularioMiembro } from "./actions";
 import { SelectorMetodoPago } from "../pagos/SelectorMetodoPago";
 import { formatearBs } from "../tasaBcvFija";
+import { ProveedorCambiosSinGuardar } from "./ContextoCambiosSinGuardar";
 import type { EntrenadorResumen } from "@gym-app/domain/entities/EntrenadorResumen";
 import type { SucursalResumen } from "@gym-app/domain/entities/SucursalResumen";
 import type { Plan, FrecuenciaPago } from "@gym-app/domain/entities/Plan";
@@ -234,6 +235,22 @@ export function FormularioMiembro({
   }, [sucursalId]);
   const montoBsActual = seleccionMetodo.tasaCambio !== null ? precioActual * seleccionMetodo.tasaCambio : null;
 
+  // "Cambiar de plan" (panelLateral) redirige a /miembros al confirmar —
+  // si hay cambios de Datos personales sin guardar en este momento, se
+  // perderían sin aviso. FormularioCambiarPlan lee esto por contexto
+  // (vive en otro árbol de React, dentro de panelLateral) para preguntar
+  // antes de mandarte para afuera de esta pantalla.
+  const hayCambiosSinGuardar =
+    esEdicion &&
+    !!valoresIniciales &&
+    (nombre !== valoresIniciales.nombre ||
+      celular !== valoresIniciales.celular ||
+      fechaInscripcion !== valoresIniciales.fechaInscripcion ||
+      sucursalId !== (valoresIniciales.sucursalId ?? ID_AMBAS_SEDES) ||
+      entrenadorId !== (valoresIniciales.entrenadorId ?? "") ||
+      fotoPreview !== (valoresIniciales.fotoUrl ?? null) ||
+      (editandoPlan && planId !== planIdOriginal));
+
   function manejarCambioPlan(nuevoId: string) {
     setPlanId(nuevoId);
     const plan = planesActivos.find((p) => p.id === nuevoId);
@@ -271,17 +288,23 @@ export function FormularioMiembro({
   const idFormulario = "formulario-miembro";
 
   return (
-    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_320px]">
-      <form ref={formRef} id={idFormulario} action={enviar} className="flex flex-col gap-6">
-        {estado.error && (
-          <p
-            className="rounded-lg px-3 py-2 text-sm"
-            style={{ background: "color-mix(in srgb, var(--gx-bad) 15%, transparent)", color: "var(--gx-bad)" }}
-          >
-            {estado.error}
-          </p>
-        )}
+    <ProveedorCambiosSinGuardar value={hayCambiosSinGuardar}>
+    {estado.error && (
+      <p
+        className="mb-6 rounded-lg px-3 py-2 text-sm"
+        style={{ background: "color-mix(in srgb, var(--gx-bad) 15%, transparent)", color: "var(--gx-bad)" }}
+      >
+        {estado.error}
+      </p>
+    )}
 
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+      {/* display: contents — Datos personales y Plan de membresía quedan como
+          celdas independientes de la grilla de 3 columnas, pero sus campos
+          (incluidos los de la card de Plan) siguen siendo hijos reales de
+          este <form> en el DOM, nunca se desmontan aparte (a diferencia del
+          intento anterior con form={idFormulario}, que sí se rompía). */}
+      <form ref={formRef} id={idFormulario} action={enviar} style={{ display: "contents" }}>
         <input type="hidden" name="planId" value={planId} />
         <input type="hidden" name="precioPlan" value={precioActual} />
         <input type="hidden" name="planNombre" value={nombrePlanActual} />
@@ -294,7 +317,7 @@ export function FormularioMiembro({
           </>
         )}
 
-        <Card>
+        <Card className="lg:col-start-1 lg:row-start-1">
           <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--gx-muted)" }}>
             Datos personales
           </h2>
@@ -363,53 +386,17 @@ export function FormularioMiembro({
               onChange={(e) => setFechaInscripcion(e.target.value)}
             />
           </div>
+
+          <Button type="button" className="mt-6" onClick={manejarClickGuardar} disabled={enviando}>
+            Guardar
+          </Button>
+          <span className="mt-2 block text-xs" style={{ color: "var(--gx-muted-dim)" }}>
+            Guarda estos datos junto con la sede, el entrenador y el plan del cuadro de al lado — &quot;Registrar
+            pago&quot; y &quot;Cambiar de plan&quot; (más a la derecha) se aplican al instante, sin pasar por acá.
+          </span>
         </Card>
 
-        {esEdicion && ultimosCiclos.length > 0 && (
-          <Card>
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--gx-muted)" }}>
-                Ciclos
-              </h2>
-              {diasHastaProximoCobro !== null && (
-                <Badge tono={diasHastaProximoCobro < 0 ? "rojo" : diasHastaProximoCobro <= 3 ? "ambar" : "verde"}>
-                  {diasHastaProximoCobro < 0
-                    ? `Vencido hace ${Math.abs(diasHastaProximoCobro)} día${Math.abs(diasHastaProximoCobro) === 1 ? "" : "s"}`
-                    : diasHastaProximoCobro === 0
-                      ? "Vence hoy"
-                      : `${diasHastaProximoCobro} día${diasHastaProximoCobro === 1 ? "" : "s"} para el próximo cobro`}
-                </Badge>
-              )}
-            </div>
-            <div className="flex flex-col gap-2">
-              {ultimosCiclos.map((ciclo, indice) => (
-                <div
-                  key={ciclo.id}
-                  className="flex items-center justify-between rounded-lg border p-3 text-sm"
-                  style={{ borderColor: "var(--gx-edge)" }}
-                >
-                  <span style={{ color: "var(--gx-ink)" }}>
-                    {ciclo.fechaInicioCiclo && ciclo.fechaFinCiclo
-                      ? `${formatearFechaCorta(ciclo.fechaInicioCiclo)} → ${formatearFechaCorta(ciclo.fechaFinCiclo)}`
-                      : "—"}
-                  </span>
-                  <Badge tono={indice === 0 ? "verde" : "gris"}>{indice === 0 ? "VIGENTE" : "VENCIDO"}</Badge>
-                </div>
-              ))}
-            </div>
-            {miembroId && (
-              <Link
-                href={`/miembros/${miembroId}/pagos`}
-                className="mt-3 inline-block text-sm font-medium hover:underline"
-                style={{ color: "var(--gx-accent)" }}
-              >
-                Ver todos los ciclos
-              </Link>
-            )}
-          </Card>
-        )}
-
-        <Card>
+        <Card className="lg:col-start-2 lg:row-start-1">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--gx-muted)" }}>
               Plan de membresía
@@ -417,7 +404,7 @@ export function FormularioMiembro({
             <div className="flex gap-2">
               {esEdicion && !editandoEntrenador && requiereEntrenador && (
                 <Button type="button" variant="secundario" onClick={() => setEditandoEntrenador(true)}>
-                  Cambiar entrenador
+                  Asignar entrenador
                 </Button>
               )}
               {esEdicion && !editandoPlan && puedeCambiarPlanGratis && (
@@ -483,7 +470,7 @@ export function FormularioMiembro({
               {!puedeCambiarPlanGratis && (
                 <p className="mt-2 text-xs" style={{ color: "var(--gx-muted)" }}>
                   Este ciclo ya está pagado — para subir o bajar de plan usá &quot;Cambiar de plan&quot; en el panel
-                  de la derecha.
+                  de al lado.
                 </p>
               )}
             </div>
@@ -652,13 +639,11 @@ export function FormularioMiembro({
             </Button>
           )}
         </Card>
-
-        <Button type="button" onClick={manejarClickGuardar} disabled={enviando}>
-          Guardar
-        </Button>
       </form>
 
-      <aside className="lg:sticky lg:top-8 lg:self-start">
+      {/* Registrar pago / Cambiar de plan (panelLateral) — formularios propios,
+          fuera de "formulario-miembro" a propósito (no se pueden anidar <form>). */}
+      <div className="lg:col-start-3 lg:row-start-1">
         {!mostrarTicket ? (
           esEdicion ? (
             panelLateral
@@ -762,7 +747,52 @@ export function FormularioMiembro({
             </div>
           </div>
         )}
-      </aside>
+      </div>
+
+      {esEdicion && ultimosCiclos.length > 0 && (
+        <Card className="lg:col-start-1 lg:col-span-3 lg:row-start-2">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--gx-muted)" }}>
+              Ciclos
+            </h2>
+            {diasHastaProximoCobro !== null && (
+              <Badge tono={diasHastaProximoCobro < 0 ? "rojo" : diasHastaProximoCobro <= 3 ? "ambar" : "verde"}>
+                {diasHastaProximoCobro < 0
+                  ? `Vencido hace ${Math.abs(diasHastaProximoCobro)} día${Math.abs(diasHastaProximoCobro) === 1 ? "" : "s"}`
+                  : diasHastaProximoCobro === 0
+                    ? "Vence hoy"
+                    : `${diasHastaProximoCobro} día${diasHastaProximoCobro === 1 ? "" : "s"} para el próximo cobro`}
+              </Badge>
+            )}
+          </div>
+          <div className="flex flex-col">
+            {ultimosCiclos.map((ciclo, indice) => (
+              <div
+                key={ciclo.id}
+                className="flex items-center justify-between border-b py-2 text-sm last:border-b-0"
+                style={{ borderColor: "var(--gx-edge)" }}
+              >
+                <span style={{ color: "var(--gx-ink)" }}>
+                  {ciclo.fechaInicioCiclo && ciclo.fechaFinCiclo
+                    ? `${formatearFechaCorta(ciclo.fechaInicioCiclo)} → ${formatearFechaCorta(ciclo.fechaFinCiclo)}`
+                    : "—"}
+                </span>
+                <Badge tono={indice === 0 ? "verde" : "gris"}>{indice === 0 ? "VIGENTE" : "VENCIDO"}</Badge>
+              </div>
+            ))}
+          </div>
+          {miembroId && (
+            <Link
+              href={`/miembros/${miembroId}/pagos`}
+              className="mt-3 inline-block text-sm font-medium hover:underline"
+              style={{ color: "var(--gx-accent)" }}
+            >
+              Ver todos los ciclos
+            </Link>
+          )}
+        </Card>
+      )}
     </div>
+    </ProveedorCambiosSinGuardar>
   );
 }

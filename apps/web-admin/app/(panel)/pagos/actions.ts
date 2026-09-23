@@ -125,7 +125,6 @@ export async function registrarPagoAction(
 
 export interface EstadoCambioPlan {
   error?: string;
-  ok?: string;
 }
 
 export async function cambiarPlanAction(
@@ -198,10 +197,16 @@ export async function cambiarPlanAction(
   revalidatePath(`/miembros/${miembroId}/pagos`);
   revalidatePath("/caja");
 
-  return {
-    ok:
+  // A diferencia de registrarPagoAction (que se queda en la misma pantalla
+  // cuando origen es "miembro"/"caja"), acá siempre se redirige a la lista
+  // — evita el "¿para qué es Guardar si ya cambié el plan?" de tener que
+  // volver a tocar otro botón en la misma pantalla (ver diseño acordado).
+  redirect(
+    conMensajeOk(
+      "/miembros",
       resultado.diferencia > 0
         ? `Plan cambiado — se cobró la diferencia de $${resultado.diferencia.toFixed(2)}.`
-        : "Plan cambiado, sin costo adicional.",
-  };
+        : "Plan cambiado, sin costo adicional."
+    )
+  );
 }

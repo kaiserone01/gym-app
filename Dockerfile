@@ -50,8 +50,23 @@ COPY --from=builder --chown=nextjs:nodejs /repo/apps/web-admin/.next/standalone 
 COPY --from=builder --chown=nextjs:nodejs /repo/apps/web-admin/.next/static ./apps/web-admin/.next/static
 COPY --from=builder --chown=nextjs:nodejs /repo/apps/web-admin/public ./apps/web-admin/public
 
+# "Toolkit" de migraciones — el standalone de arriba NO sirve para esto:
+# le falta el Prisma CLI, dotenv, tsx, etc. (nada de eso lo importa el
+# código de la app en runtime, así que el tracing automático de Next.js no
+# los arrastra). En vez de reinstalar/descargar nada en cada arranque
+# (probado y descartado: falla por resolución de módulos de
+# prisma7.config.ts, que a su vez importa "prisma/config" y "dotenv"),
+# se copia el node_modules COMPLETO del build — pesa más, pero es
+# exactamente el mismo árbol ya resuelto por `npm ci`, sin sorpresas.
+# Así docker-entrypoint.sh puede correr `prisma migrate deploy` solo, sin
+# que nadie tenga que entrar a la consola del contenedor a mano.
+COPY --from=builder --chown=nextjs:nodejs /repo/node_modules ./migrate-toolkit/node_modules
+COPY --from=builder --chown=nextjs:nodejs /repo/packages/db ./migrate-toolkit/packages/db
+COPY --chown=nextjs:nodejs docker-entrypoint.sh ./docker-entrypoint.sh
+RUN chmod +x ./docker-entrypoint.sh
+
 USER nextjs
 
 EXPOSE 3000
 
-CMD ["node", "apps/web-admin/server.js"]
+ENTRYPOINT ["./docker-entrypoint.sh"]

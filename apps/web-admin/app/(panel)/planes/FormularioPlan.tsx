@@ -17,6 +17,7 @@ export interface ValoresFormularioPlan {
 }
 
 const ETIQUETA_FRECUENCIA: Record<FrecuenciaPago, string> = {
+  DIARIO: "Diario",
   SEMANAL: "Semanal",
   QUINCENAL: "Quincenal",
   MENSUAL: "Mensual",
@@ -71,6 +72,7 @@ export function FormularioPlan({
                 className="min-h-11 rounded-lg border px-3 outline-none focus:border-[var(--gx-accent)]"
                 style={{ background: "var(--gx-surface-2)", borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }}
               >
+                <option value="DIARIO">Diario</option>
                 <option value="SEMANAL">Semanal</option>
                 <option value="QUINCENAL">Quincenal</option>
                 <option value="MENSUAL">Mensual</option>
@@ -183,6 +185,7 @@ function CambiarFrecuenciaSection({
             className="min-h-11 rounded-lg border px-3 outline-none focus:border-[var(--gx-accent)]"
             style={{ background: "var(--gx-surface-2)", borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }}
           >
+            <option value="DIARIO">Diario</option>
             <option value="SEMANAL">Semanal</option>
             <option value="QUINCENAL">Quincenal</option>
             <option value="MENSUAL">Mensual</option>

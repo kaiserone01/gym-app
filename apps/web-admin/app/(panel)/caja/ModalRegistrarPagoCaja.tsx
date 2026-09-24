@@ -23,6 +23,7 @@ const TITULOS_PASO: Record<Paso, string> = {
 };
 
 const ETIQUETA_FRECUENCIA: Record<FrecuenciaPago, string> = {
+  DIARIO: "diario",
   SEMANAL: "semanal",
   QUINCENAL: "quincenal",
   MENSUAL: "mensual",

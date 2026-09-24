@@ -146,6 +146,7 @@ model Miembro {
 }
 
 enum FrecuenciaPago {
+  DIARIO // 1 día
   SEMANAL // 7 días
   QUINCENAL // 15 días
   MENSUAL // 30 días

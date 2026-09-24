@@ -12,6 +12,7 @@ import { BotonEliminarPlan } from "./BotonEliminarPlan";
 import type { FrecuenciaPago } from "@gym-app/domain/entities/Plan";
 
 const ETIQUETA_FRECUENCIA: Record<FrecuenciaPago, string> = {
+  DIARIO: "Diario",
   SEMANAL: "Semanal",
   QUINCENAL: "Quincenal",
   MENSUAL: "Mensual",

@@ -32,6 +32,7 @@ export interface ValoresFormularioMiembro {
 const ID_AMBAS_SEDES = "__ambas__";
 
 const ETIQUETA_FRECUENCIA: Record<FrecuenciaPago, string> = {
+  DIARIO: "Diario",
   SEMANAL: "Semanal",
   QUINCENAL: "Quincenal",
   MENSUAL: "Mensual",

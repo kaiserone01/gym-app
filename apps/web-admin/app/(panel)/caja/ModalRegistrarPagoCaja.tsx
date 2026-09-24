@@ -258,7 +258,13 @@ function ContenidoPaso3({
       <input type="hidden" name="tasaCambio" value={seleccionMetodo.tasaCambio ?? ""} />
       <input type="hidden" name="numeroOperacion" value={seleccionMetodo.numeroOperacion} />
 
-      <SelectorMetodoPago metodos={metodosPago} monto={monto} onCambio={setSeleccionMetodo} grande />
+      {monto > 0 ? (
+        <SelectorMetodoPago metodos={metodosPago} monto={monto} onCambio={setSeleccionMetodo} grande />
+      ) : (
+        <p className="text-sm" style={{ color: "var(--gx-muted)" }}>
+          Este plan no tiene costo — no hace falta elegir método de pago.
+        </p>
+      )}
 
       <div className="mt-2 flex gap-3">
         <Button
@@ -273,7 +279,7 @@ function ContenidoPaso3({
         <Button
           type="submit"
           className="min-h-12 flex-1 text-base"
-          disabled={enviando || !seleccionMetodo.metodoPagoId}
+          disabled={enviando || (monto > 0 && !seleccionMetodo.metodoPagoId)}
         >
           {enviando ? "Registrando..." : "Registrar pago"}
         </Button>

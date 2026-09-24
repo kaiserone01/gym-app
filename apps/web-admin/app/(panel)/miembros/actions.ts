@@ -97,8 +97,14 @@ export async function crearMiembroAction(
   // si no vino, se cae a la sede activa de la sesión.
   const sucursalIdPago = formData.get("sucursalIdPago")?.toString() || sucursalActivaId;
 
-  if (!nombre || !cedula || !fechaInscripcionTexto || !sucursalId || !metodo || !metodoPagoId || Number.isNaN(precioPlan)) {
-    return { error: "Nombre, cédula, fecha de inscripción, sede y método de pago son requeridos." };
+  if (!nombre || !cedula || !fechaInscripcionTexto || !sucursalId || Number.isNaN(precioPlan)) {
+    return { error: "Nombre, cédula, fecha de inscripción y sede son requeridos." };
+  }
+  // Un plan de cortesía ($0) no tiene nada que cobrar — el método de pago
+  // solo es obligatorio cuando hay un monto real de por medio (ver diseño
+  // acordado, membresías con beneficio que no pagan en el gym).
+  if (precioPlan > 0 && (!metodo || !metodoPagoId)) {
+    return { error: "Elegí un método de pago." };
   }
 
   const planId = resolverPlanId(formData);
@@ -159,7 +165,7 @@ export async function crearMiembroAction(
         miembroId: miembro.id,
         planId,
         monto: precioPlan,
-        metodo,
+        metodo: metodo || "Cortesía",
         metodoPagoId,
         numeroOperacion,
         tasaCambio: tasaCambioRaw ? Number(tasaCambioRaw) : null,

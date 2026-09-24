@@ -100,6 +100,9 @@ export function FormularioPago({
       : undefined);
 
   const montoNumero = planFijoEfectivo ? planFijoEfectivo.precioUSD : Number(monto) || 0;
+  // Un plan de cortesía ($0) no tiene nada que cobrar — no tiene sentido
+  // pedir método de pago (ver diseño acordado, membresías con beneficio).
+  const requierePago = montoNumero > 0;
 
   function manejarCambioPlan(id: string) {
     setPlanId(id);
@@ -242,13 +245,19 @@ export function FormularioPago({
       <input type="hidden" name="tasaCambio" value={seleccionMetodo.tasaCambio ?? ""} />
       <input type="hidden" name="numeroOperacion" value={seleccionMetodo.numeroOperacion} />
 
-      <SelectorMetodoPago
-        metodos={metodosPago}
-        monto={montoNumero}
-        onCambio={setSeleccionMetodo}
-      />
+      {requierePago ? (
+        <SelectorMetodoPago
+          metodos={metodosPago}
+          monto={montoNumero}
+          onCambio={setSeleccionMetodo}
+        />
+      ) : (
+        <p className="text-sm" style={{ color: "var(--gx-muted)" }}>
+          Este plan no tiene costo — no hace falta elegir método de pago.
+        </p>
+      )}
 
-      <Button type="submit" disabled={enviando || !seleccionMetodo.metodoPagoId}>
+      <Button type="submit" disabled={enviando || (requierePago && !seleccionMetodo.metodoPagoId)}>
         {enviando ? "Registrando..." : "Registrar pago"}
       </Button>
     </form>

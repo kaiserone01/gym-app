@@ -655,12 +655,18 @@ export function FormularioMiembro({
                 tener que entrar después a &quot;Registrar pago&quot;.
               </p>
 
-              <SelectorMetodoPago
-                metodos={metodosPago}
-                monto={precioActual}
-                onCambio={setSeleccionMetodo}
-                idFormulario={idFormulario}
-              />
+              {precioActual > 0 ? (
+                <SelectorMetodoPago
+                  metodos={metodosPago}
+                  monto={precioActual}
+                  onCambio={setSeleccionMetodo}
+                  idFormulario={idFormulario}
+                />
+              ) : (
+                <p className="text-sm" style={{ color: "var(--gx-muted)" }}>
+                  Este plan no tiene costo — no hace falta elegir método de pago.
+                </p>
+              )}
             </Card>
           )
         ) : (

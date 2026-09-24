@@ -66,8 +66,14 @@ export async function registrarPagoAction(
   // sede activa de la sesión.
   const sucursalIdPago = formData.get("sucursalIdPago")?.toString() || sucursalActivaId;
 
-  if (!miembroId || !planId || !metodo || !metodoPagoId || Number.isNaN(monto)) {
-    return { error: "Miembro, plan, método y monto son requeridos." };
+  if (!miembroId || !planId || Number.isNaN(monto)) {
+    return { error: "Miembro, plan y monto son requeridos." };
+  }
+  // Un plan de cortesía ($0) no tiene nada que cobrar — el método de pago
+  // solo es obligatorio cuando hay un monto real de por medio (ver diseño
+  // acordado, membresías con beneficio que no pagan en el gym).
+  if (monto > 0 && (!metodo || !metodoPagoId)) {
+    return { error: "Elegí un método de pago." };
   }
   if (!sucursalIdPago) {
     return { error: "No se pudo determinar en qué sucursal se registra el pago." };
@@ -90,7 +96,7 @@ export async function registrarPagoAction(
         miembroId,
         planId,
         monto,
-        metodo,
+        metodo: metodo || "Cortesía",
         metodoPagoId,
         numeroOperacion,
         tasaCambio: tasaCambioRaw ? Number(tasaCambioRaw) : null,

@@ -60,6 +60,11 @@ export function FormularioUsuario({
 }) {
   const [estado, enviar, enviando] = useActionState(accion, {});
   const { mostrarError } = useFeedback();
+  const [rol, setRol] = useState("");
+  // Un entrenador no tiene acceso al sistema administrativo (ver diseño
+  // acordado) — el formulario deja de pedirle email/contraseña; el Server
+  // Action genera credenciales internas inutilizables en su lugar.
+  const esEntrenador = rol === "ENTRENADOR";
 
   useEffect(() => {
     if (estado.error) mostrarError(estado.error);
@@ -79,15 +84,22 @@ export function FormularioUsuario({
 
       <CampoFoto nombreActual="" />
       <Input name="nombre" label="Nombre" required />
-      <Input name="email" label="Email" type="email" required />
       <Input name="telefono" label="Teléfono (opcional)" type="tel" />
-      <Input name="password" label="Contraseña" type="password" required />
+
+      {!esEntrenador && (
+        <>
+          <Input name="email" label="Email" type="email" required />
+          <Input name="password" label="Contraseña" type="password" required />
+        </>
+      )}
 
       <label className="flex flex-col gap-1.5 text-sm" style={{ color: "var(--gx-muted)" }}>
         Rol
         <select
           name="rol"
           required
+          value={rol}
+          onChange={(e) => setRol(e.target.value)}
           className="min-h-11 rounded-lg border px-3 outline-none focus:border-[var(--gx-accent)]"
           style={{ background: "var(--gx-surface-2)", borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }}
         >
@@ -98,6 +110,12 @@ export function FormularioUsuario({
           <option value="ENTRENADOR">Entrenador</option>
         </select>
       </label>
+
+      {esEntrenador && (
+        <p className="text-xs" style={{ color: "var(--gx-muted)" }}>
+          Los entrenadores no tienen acceso al sistema administrativo — no hace falta email ni contraseña.
+        </p>
+      )}
 
       <fieldset className="flex flex-col gap-2 rounded-lg border p-3" style={{ borderColor: "var(--gx-edge)" }}>
         <legend className="px-1 text-sm" style={{ color: "var(--gx-muted)" }}>
@@ -164,7 +182,7 @@ export function FormularioEditarUsuario({
       <Input name="nombre" label="Nombre" required defaultValue={nombreInicial} />
       <Input name="telefono" label="Teléfono (opcional)" type="tel" defaultValue={telefonoInicial ?? ""} />
       <p className="text-sm" style={{ color: "var(--gx-muted)" }}>
-        Email: {email} · Rol: {rol}
+        {rol === "ENTRENADOR" ? `Rol: ${rol} (sin acceso al sistema)` : `Email: ${email} · Rol: ${rol}`}
       </p>
       <Button type="submit" disabled={enviando}>
         {enviando ? "Guardando..." : "Guardar"}

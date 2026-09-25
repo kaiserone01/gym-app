@@ -106,9 +106,19 @@ export async function crearUsuarioAction(
   if (usuario.rol !== "SOCIO") return { error: SOLO_SOCIO };
 
   const nombre = formData.get("nombre")?.toString().trim();
-  const email = formData.get("email")?.toString().trim();
-  const password = formData.get("password")?.toString();
   const rol = formData.get("rol")?.toString() as RolUsuario | undefined;
+  // Un entrenador no tiene acceso al sistema administrativo (ver diseño
+  // acordado) — el formulario no le pide email/contraseña, así que acá se
+  // generan credenciales internas únicas e inutilizables: el email no es
+  // uno real (nadie lo conoce) y la contraseña aleatoria se hashea y se
+  // descarta sin guardarla en texto plano ni mostrarla en ningún lado —
+  // la cuenta existe (sigue siendo un UsuarioAdmin, requerido por el
+  // esquema) pero nadie puede loguearse con ella.
+  const email =
+    rol === "ENTRENADOR"
+      ? `entrenador-${randomUUID()}@sinacceso.interno`
+      : formData.get("email")?.toString().trim();
+  const password = rol === "ENTRENADOR" ? randomUUID() : formData.get("password")?.toString();
   const sucursalIds = formData.getAll("sucursalIds").map((v) => v.toString());
 
   if (!nombre || !email || !password || !rol) {

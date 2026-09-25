@@ -3,6 +3,7 @@
 import { useActionState, useEffect, useState } from "react";
 import { Button } from "@gym-app/ui/components/Button";
 import { Input } from "@gym-app/ui/components/Input";
+import { Card } from "@gym-app/ui/components/Card";
 import { useFeedback } from "@gym-app/ui/components/FeedbackOverlay";
 import type { EstadoFormularioUsuario } from "./actions";
 import type { SucursalResumen } from "@gym-app/domain/entities/SucursalResumen";
@@ -72,7 +73,7 @@ export function FormularioUsuario({
   }, [estado.error]);
 
   return (
-    <form action={enviar} className="flex flex-col gap-4">
+    <div className="flex max-w-md flex-col gap-4">
       {estado.error && (
         <p
           className="rounded-lg px-3 py-2 text-sm"
@@ -82,61 +83,76 @@ export function FormularioUsuario({
         </p>
       )}
 
-      <CampoFoto nombreActual="" />
-      <Input name="nombre" label="Nombre" required />
-      <Input name="telefono" label="Teléfono (opcional)" type="tel" />
+      <Card>
+        <form action={enviar} className="flex flex-col gap-4">
+          <h2 className="text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--gx-muted)" }}>
+            Datos del usuario
+          </h2>
 
-      {!esEntrenador && (
-        <>
-          <Input name="email" label="Email" type="email" required />
-          <Input name="password" label="Contraseña" type="password" required />
-        </>
-      )}
+          <CampoFoto nombreActual="" />
+          <Input name="nombre" label="Nombre" required />
+          <Input name="telefono" label="Teléfono (opcional)" type="tel" />
 
-      <label className="flex flex-col gap-1.5 text-sm" style={{ color: "var(--gx-muted)" }}>
-        Rol
-        <select
-          name="rol"
-          required
-          value={rol}
-          onChange={(e) => setRol(e.target.value)}
-          className="min-h-11 rounded-lg border px-3 outline-none focus:border-[var(--gx-accent)]"
-          style={{ background: "var(--gx-surface-2)", borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }}
-        >
-          <option value="">Seleccioná un rol</option>
-          <option value="SOCIO">Socio</option>
-          <option value="GERENTE">Gerente</option>
-          <option value="RECEPCION">Recepción</option>
-          <option value="ENTRENADOR">Entrenador</option>
-        </select>
-      </label>
+          {!esEntrenador && (
+            <div className="grid grid-cols-2 gap-4">
+              <Input name="email" label="Email" type="email" required />
+              <Input name="password" label="Contraseña" type="password" required />
+            </div>
+          )}
 
-      {esEntrenador && (
-        <p className="text-xs" style={{ color: "var(--gx-muted)" }}>
-          Los entrenadores no tienen acceso al sistema administrativo — no hace falta email ni contraseña.
-        </p>
-      )}
-
-      <fieldset className="flex flex-col gap-2 rounded-lg border p-3" style={{ borderColor: "var(--gx-edge)" }}>
-        <legend className="px-1 text-sm" style={{ color: "var(--gx-muted)" }}>
-          Sucursales asignadas (vacío = toda la organización)
-        </legend>
-        {sucursales.map((sucursal) => (
-          <label
-            key={sucursal.id}
-            className="flex min-h-11 items-center gap-2 text-sm"
-            style={{ color: "var(--gx-muted)" }}
-          >
-            <input type="checkbox" name="sucursalIds" value={sucursal.id} className="h-5 w-5 accent-[var(--gx-accent)]" />
-            {sucursal.nombre}
+          <label className="flex flex-col gap-1.5 text-sm" style={{ color: "var(--gx-muted)" }}>
+            Rol
+            <select
+              name="rol"
+              required
+              value={rol}
+              onChange={(e) => setRol(e.target.value)}
+              className="min-h-11 rounded-lg border px-3 outline-none focus:border-[var(--gx-accent)]"
+              style={{ background: "var(--gx-surface-2)", borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }}
+            >
+              <option value="">Seleccioná un rol</option>
+              <option value="SOCIO">Socio</option>
+              <option value="GERENTE">Gerente</option>
+              <option value="RECEPCION">Recepción</option>
+              <option value="ENTRENADOR">Entrenador</option>
+            </select>
           </label>
-        ))}
-      </fieldset>
 
-      <Button type="submit" disabled={enviando}>
-        {enviando ? "Creando..." : "Crear usuario"}
-      </Button>
-    </form>
+          {esEntrenador && (
+            <p className="text-xs" style={{ color: "var(--gx-muted)" }}>
+              Los entrenadores no tienen acceso al sistema administrativo — no hace falta email ni contraseña.
+            </p>
+          )}
+
+          <fieldset className="flex flex-col gap-2 rounded-lg border p-3" style={{ borderColor: "var(--gx-edge)" }}>
+            <legend className="px-1 text-sm" style={{ color: "var(--gx-muted)" }}>
+              Sucursales asignadas (vacío = toda la organización)
+            </legend>
+            <div className="grid grid-cols-2 gap-1">
+              {sucursales.map((sucursal) => (
+                <label
+                  key={sucursal.id}
+                  className="flex min-h-11 items-center gap-2 text-sm"
+                  style={{ color: "var(--gx-muted)" }}
+                >
+                  <input
+                    type="checkbox"
+                    name="sucursalIds"
+                    value={sucursal.id}
+                    className="h-5 w-5 accent-[var(--gx-accent)]"
+                  />
+                  {sucursal.nombre}
+                </label>
+              ))}
+            </div>
+          </fieldset>
+
+          <Button type="submit" disabled={enviando}>
+            {enviando ? "Creando..." : "Crear usuario"}
+          </Button>
+        </form>
+      </Card>
+    </div>
   );
 }
 

@@ -21,6 +21,7 @@ export function PanelPagoYCambioPlan({
   accionCambiarPlan,
   planes,
   planFijo,
+  saldoPendiente,
   metodosPago,
   tieneCicloVigente,
   planActualId,
@@ -34,6 +35,10 @@ export function PanelPagoYCambioPlan({
   accionCambiarPlan: (estado: EstadoCambioPlan, formData: FormData) => Promise<EstadoCambioPlan>;
   planes: PlanParaSelector[];
   planFijo?: PlanFijo;
+  // Cuánto falta para completar el ciclo vigente — viene de la página del
+  // miembro (ver diseño acordado, pagos fraccionados/mixtos). Undefined o
+  // 0 significa que no hay ningún ciclo a medio pagar.
+  saldoPendiente?: number;
   metodosPago: MetodoPago[];
   tieneCicloVigente: boolean;
   planActualId: string | null;
@@ -47,6 +52,15 @@ export function PanelPagoYCambioPlan({
 
   return (
     <Card>
+      {saldoPendiente !== undefined && saldoPendiente > 0 && (
+        <p
+          className="mb-4 rounded-lg px-3 py-2 text-sm font-medium"
+          style={{ background: "color-mix(in srgb, var(--gx-accent) 15%, transparent)", color: "var(--gx-accent)" }}
+        >
+          Saldo pendiente de este ciclo: ${saldoPendiente.toFixed(2)}
+        </p>
+      )}
+
       {tieneCicloVigente && (
         <div className="mb-4 flex gap-1 rounded-lg border p-1" style={{ borderColor: "var(--gx-edge)" }}>
           <Button
@@ -80,6 +94,7 @@ export function PanelPagoYCambioPlan({
             metodosPago={metodosPago}
             miembroIdFijo={miembroId}
             planFijo={planFijo}
+            saldoPendiente={saldoPendiente}
             origen="miembro"
           />
         </>

@@ -40,6 +40,7 @@ export function FormularioPago({
   metodosPago,
   miembroIdFijo,
   planFijo,
+  saldoPendiente,
   origen,
   miembrosConPlan,
 }: {
@@ -52,6 +53,10 @@ export function FormularioPago({
   // vigente en la ficha del miembro) sin selector — ver diseño acordado:
   // "el valor de esa membresía es lo que se toma en cuenta".
   planFijo?: PlanFijo;
+  // Cuánto falta para completar el ciclo vigente (pagos fraccionados) —
+  // cuando viene, precarga el monto con ese saldo en vez del precio
+  // completo del plan, y muestra el contexto de "abono" debajo del campo.
+  saldoPendiente?: number;
   /** Marca el origen del formulario para que la Server Action decida si redirige o no al terminar. */
   origen?: string;
   // Cuando se pasa (uso en Caja): reemplaza el <select miembroId> por un
@@ -77,6 +82,10 @@ export function FormularioPago({
 
   const [planId, setPlanId] = useState("");
   const [monto, setMonto] = useState("");
+  // Monto del abono cuando el plan viene fijo (ficha del miembro) — se
+  // precarga con el saldo pendiente si hay un ciclo a medio pagar, o con
+  // el precio completo si no. Editable: así se puede fraccionar el pago.
+  const [montoPlanFijo, setMontoPlanFijo] = useState(() => String(saldoPendiente ?? planFijo?.precioUSD ?? ""));
   const [modalAbierto, setModalAbierto] = useState(false);
   const [miembroElegido, setMiembroElegido] = useState<MiembroConPlan | null>(null);
   const [seleccionMetodo, setSeleccionMetodo] = useState<{
@@ -99,7 +108,7 @@ export function FormularioPago({
         }
       : undefined);
 
-  const montoNumero = planFijoEfectivo ? planFijoEfectivo.precioUSD : Number(monto) || 0;
+  const montoNumero = planFijoEfectivo ? Number(montoPlanFijo) || 0 : Number(monto) || 0;
   // Un plan de cortesía ($0) no tiene nada que cobrar — no tiene sentido
   // pedir método de pago (ver diseño acordado, membresías con beneficio).
   const requierePago = montoNumero > 0;
@@ -186,21 +195,31 @@ export function FormularioPago({
       )}
 
       {planFijoEfectivo ? (
-        <div className="rounded-lg border p-3 text-sm" style={{ borderColor: "var(--gx-edge)", background: "var(--gx-surface-2)" }}>
+        <div className="flex flex-col gap-3 rounded-lg border p-3 text-sm" style={{ borderColor: "var(--gx-edge)", background: "var(--gx-surface-2)" }}>
           <div className="flex justify-between">
             <span style={{ color: "var(--gx-muted)" }}>Plan</span>
             <span className="font-medium" style={{ color: "var(--gx-ink)" }}>
-              {planFijoEfectivo.nombre}
+              {planFijoEfectivo.nombre} (${planFijoEfectivo.precioUSD.toFixed(2)})
             </span>
           </div>
-          <div className="mt-1 flex justify-between">
-            <span style={{ color: "var(--gx-muted)" }}>Monto</span>
-            <span className="font-semibold" style={{ color: "var(--gx-ink)" }}>
-              ${planFijoEfectivo.precioUSD.toFixed(2)}
-            </span>
-          </div>
+          <CurrencyInput
+            name="monto"
+            label={
+              saldoPendiente !== undefined && saldoPendiente > 0
+                ? `Monto de este abono (saldo pendiente: $${saldoPendiente.toFixed(2)})`
+                : "Monto"
+            }
+            moneda="USD"
+            required
+            value={montoPlanFijo}
+            onChange={setMontoPlanFijo}
+          />
+          {montoNumero > 0 && montoNumero < planFijoEfectivo.precioUSD && (
+            <p className="text-xs" style={{ color: "var(--gx-muted)" }}>
+              Es menos que el precio del plan — queda como abono y podés registrar otro después para completarlo.
+            </p>
+          )}
           <input type="hidden" name="planId" value={planFijoEfectivo.id} />
-          <input type="hidden" name="monto" value={planFijoEfectivo.precioUSD} />
         </div>
       ) : miembrosConPlan ? (
         !miembroElegido && (

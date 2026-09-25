@@ -5,6 +5,7 @@ import type { Miembro } from "@gym-app/domain/entities/Miembro";
 import type { MetodoPago } from "@gym-app/domain/entities/MetodoPago";
 import type { FrecuenciaPago } from "@gym-app/domain/entities/Plan";
 import { Button } from "@gym-app/ui/components/Button";
+import { CurrencyInput } from "@gym-app/ui/components/CurrencyInput";
 import { useFeedback, DURACION_MS } from "@gym-app/ui/components/FeedbackOverlay";
 import { BuscadorMiembro, type MiembroConPlan, type PlanParaModal } from "./SelectorMiembroModal";
 import { calcularProyeccionRenovacion } from "./proyeccionRenovacion";
@@ -213,13 +214,18 @@ function ContenidoPaso2({
 function ContenidoPaso3({
   miembroId,
   planId,
-  monto,
+  monto: montoSugerido,
   metodosPago,
   onVolver,
   onPagoRegistrado,
 }: {
   miembroId: string;
   planId: string;
+  // Precio de lista del plan — es el punto de partida del campo "Monto",
+  // que queda editable para poder registrar un abono parcial (pagos
+  // fraccionados/mixtos, ver diseño acordado). Acá no se conoce el saldo
+  // pendiente real del miembro (ese cálculo vive en su ficha) — quien
+  // cobra tiene que saber cuánto pedir si es un abono, no el precio completo.
   monto: number;
   metodosPago: MetodoPago[];
   onVolver: () => void;
@@ -227,6 +233,8 @@ function ContenidoPaso3({
 }) {
   const [estado, enviar, enviando] = useActionState(registrarPagoAction, {});
   const { mostrarExito, mostrarError } = useFeedback();
+  const [montoTexto, setMontoTexto] = useState(String(montoSugerido));
+  const monto = Number(montoTexto) || 0;
   const [seleccionMetodo, setSeleccionMetodo] = useState<{
     metodoPagoId: string | null;
     metodo: string;
@@ -251,12 +259,22 @@ function ContenidoPaso3({
     <form action={enviar} className="flex flex-col gap-4 text-base">
       <input type="hidden" name="miembroId" value={miembroId} />
       <input type="hidden" name="planId" value={planId} />
-      <input type="hidden" name="monto" value={monto} />
       <input type="hidden" name="origen" value="caja" />
       <input type="hidden" name="metodo" value={seleccionMetodo.metodo} />
       <input type="hidden" name="metodoPagoId" value={seleccionMetodo.metodoPagoId ?? ""} />
       <input type="hidden" name="tasaCambio" value={seleccionMetodo.tasaCambio ?? ""} />
       <input type="hidden" name="numeroOperacion" value={seleccionMetodo.numeroOperacion} />
+
+      {montoSugerido > 0 && (
+        <CurrencyInput name="monto" label="Monto a cobrar" moneda="USD" required value={montoTexto} onChange={setMontoTexto} />
+      )}
+      {montoSugerido > 0 && monto > 0 && monto < montoSugerido && (
+        <p className="text-sm" style={{ color: "var(--gx-muted)" }}>
+          Es menos que el precio del plan (${montoSugerido.toFixed(2)}) — queda como abono, se puede completar
+          después desde la ficha del miembro.
+        </p>
+      )}
+      {montoSugerido === 0 && <input type="hidden" name="monto" value={0} />}
 
       {monto > 0 ? (
         <SelectorMetodoPago metodos={metodosPago} monto={monto} onCambio={setSeleccionMetodo} grande />

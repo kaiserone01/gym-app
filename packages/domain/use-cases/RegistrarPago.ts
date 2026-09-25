@@ -4,7 +4,7 @@ import { IMemberRepository } from "../ports/IMemberRepository";
 import { IPlanRepository } from "../ports/IPlanRepository";
 import { ITurnoRepository } from "../ports/ITurnoRepository";
 import { ISucursalRepository } from "../ports/ISucursalRepository";
-import { Pago } from "../entities/Pago";
+import { Pago, pagosVigentesDelCiclo, totalPagado } from "../entities/Pago";
 import { RolUsuario } from "../entities/UsuarioAdmin";
 import { IAuthorizationService } from "../ports/IAuthorizationService";
 import { DURACION_DIAS_POR_FRECUENCIA } from "../entities/Plan";
@@ -86,18 +86,41 @@ export async function registrarPago(deps: RegistrarPagoDeps, input: DatosRegistr
   const ahora = new Date();
   const activa = await deps.suscripciones.buscarActivaVigentePorMiembroYPlan(input.miembroId, input.planId, ahora);
 
-  const base = activa && activa.fin > ahora ? activa.fin : ahora;
-  const fin = new Date(base);
-  fin.setDate(fin.getDate() + DURACION_DIAS_POR_FRECUENCIA[plan.frecuencia]);
-
-  if (activa) {
-    await deps.suscripciones.extenderFin(activa.id, fin);
-  } else {
-    await deps.suscripciones.crear({ miembroId: input.miembroId, planId: input.planId, inicio: ahora, fin });
+  // Pagos fraccionados/mixtos ("abonos"): un ciclo puede juntar varios
+  // Pago (distinto método/moneda cada uno) hasta llegar al precio
+  // acordado con el miembro. El acceso ya se habilita con el primer
+  // abono (el vencimiento se adelanta ahí abajo, como siempre) — lo único
+  // que cambia es que, mientras el ciclo vigente no esté saldado, un pago
+  // nuevo se suma al MISMO ciclo en vez de abrir uno adicional (ver
+  // diseño acordado con el usuario, roadmap punto d).
+  let pagosDelCicloAbierto: Pago[] = [];
+  if (activa && activa.fin > ahora) {
+    const pagosDelMiembro = await deps.pagos.listarPorMiembro(input.miembroId);
+    pagosDelCicloAbierto = pagosVigentesDelCiclo(pagosDelMiembro, activa.fin);
   }
+  const esAbonoDeCicloAbierto =
+    pagosDelCicloAbierto.length > 0 && totalPagado(pagosDelCicloAbierto) < miembro.precioPlan;
 
-  await deps.miembros.actualizar(input.organizacionId, input.miembroId, { planId: input.planId });
-  await deps.miembros.actualizarFechasPago(input.miembroId, ahora, fin);
+  let base: Date;
+  let fin: Date;
+
+  if (esAbonoDeCicloAbierto) {
+    fin = activa!.fin;
+    base = pagosDelCicloAbierto[0].fechaInicioCiclo ?? activa!.inicio;
+  } else {
+    base = activa && activa.fin > ahora ? activa.fin : ahora;
+    fin = new Date(base);
+    fin.setDate(fin.getDate() + DURACION_DIAS_POR_FRECUENCIA[plan.frecuencia]);
+
+    if (activa) {
+      await deps.suscripciones.extenderFin(activa.id, fin);
+    } else {
+      await deps.suscripciones.crear({ miembroId: input.miembroId, planId: input.planId, inicio: ahora, fin });
+    }
+
+    await deps.miembros.actualizar(input.organizacionId, input.miembroId, { planId: input.planId });
+    await deps.miembros.actualizarFechasPago(input.miembroId, ahora, fin);
+  }
 
   const turnoAbierto = await deps.turnos.buscarAbiertoPorSucursal(input.sucursalId);
 

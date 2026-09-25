@@ -8,6 +8,7 @@ import { PrismaPlanRepository } from "@gym-app/infrastructure/persistence/prisma
 import { PrismaMetodoPagoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaMetodoPagoRepository";
 import { obtenerMiembro, MiembroNoEncontradoError, MiembroFueraDeSucursalError } from "@gym-app/domain/use-cases/ObtenerMiembro";
 import { listarPagos } from "@gym-app/domain/use-cases/ListarPagos";
+import { pagosVigentesDelCiclo, totalPagado } from "@gym-app/domain/entities/Pago";
 import { PrismaSucursalRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaSucursalRepository";
 import { listarPlanes } from "@gym-app/domain/use-cases/ListarPlanes";
 import { listarMetodosPagoActivos } from "@gym-app/domain/use-cases/ListarMetodosPago";
@@ -70,6 +71,15 @@ export default async function PaginaEditarMiembro({ params }: { params: Promise<
   // que sea (ver diseño acordado).
   const tieneCicloVigente = miembro.fechaVencimiento !== null && miembro.fechaVencimiento > new Date();
   const frecuenciaActual = planes.find((p) => p.id === miembro.planId)?.frecuencia ?? "MENSUAL";
+
+  // Pagos fraccionados/mixtos: si el ciclo vigente todavía no juntó el
+  // precio acordado con el miembro, esto es lo que falta — se le pasa al
+  // panel de pago para precargar el monto del próximo abono y mostrar el
+  // aviso (ver diseño acordado, roadmap punto d).
+  const pagosDelCicloVigente = miembro.fechaVencimiento ? pagosVigentesDelCiclo(pagos, miembro.fechaVencimiento) : [];
+  const saldoPendiente = tieneCicloVigente
+    ? Math.max(0, miembro.precioPlan - totalPagado(pagosDelCicloVigente))
+    : 0;
 
   // Últimos 5 ciclos con datos de rango — listarPagos ya devuelve los
   // pagos ordenados por fechaPago desc (ver PrismaPagoRepository), así
@@ -148,6 +158,7 @@ export default async function PaginaEditarMiembro({ params }: { params: Promise<
                     : undefined
                 }
                 metodosPago={metodosPago}
+                saldoPendiente={saldoPendiente}
                 tieneCicloVigente={tieneCicloVigente}
                 planActualId={miembro.planId}
                 precioActual={miembro.precioPlan}

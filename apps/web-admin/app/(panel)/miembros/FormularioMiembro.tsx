@@ -209,6 +209,10 @@ export function FormularioMiembro({
   const planSeleccionado = planesActivos.find((p) => p.id === planId);
 
   const requiereEntrenador = planSeleccionado?.incluyeEntrenador ?? false;
+  // Un plan de cortesía ($0 oficial en Configuración → Planes) fija el
+  // precio en $0 y no se deja editar — no tiene sentido "negociar" el
+  // precio de algo que ya se definió como gratuito.
+  const planEsCortesia = planSeleccionado?.precioUSD === 0;
   const precioActual = Number(precio) || 0;
   const nombrePlanActual = planSeleccionado?.nombre ?? "—";
   const nombreEntrenadorActual = entrenadores.find((e) => e.id === entrenadorId)?.nombre ?? null;
@@ -272,7 +276,7 @@ export function FormularioMiembro({
     if (!form) return;
     if (!form.reportValidity()) return;
 
-    if (!precio || Number(precio) <= 0) {
+    if (!planEsCortesia && (!precio || Number(precio) <= 0)) {
       setErrorPrecio("Ingresá un precio válido.");
       return;
     }
@@ -555,16 +559,28 @@ export function FormularioMiembro({
 
           {editandoPlan && (
           <div className="mt-4 flex flex-col gap-3 rounded-lg border p-4" style={{ borderColor: "var(--gx-edge)" }}>
-            <CurrencyInput
-              name="precioPlanEditado"
-              label="Precio"
-              moneda="USD"
-              value={precio}
-              onChange={(valor) => {
-                setPrecio(valor);
-                setErrorPrecio(null);
-              }}
-            />
+            {planEsCortesia ? (
+              <label className="flex flex-col gap-1.5 text-sm" style={{ color: "var(--gx-muted)" }}>
+                Precio
+                <div
+                  className="flex min-h-11 items-center rounded-lg border px-3"
+                  style={{ background: "var(--gx-surface-2)", borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }}
+                >
+                  $0 — plan de cortesía (no editable)
+                </div>
+              </label>
+            ) : (
+              <CurrencyInput
+                name="precioPlanEditado"
+                label="Precio"
+                moneda="USD"
+                value={precio}
+                onChange={(valor) => {
+                  setPrecio(valor);
+                  setErrorPrecio(null);
+                }}
+              />
+            )}
             {errorPrecio && (
               <p className="text-sm" style={{ color: "var(--gx-bad)" }}>
                 {errorPrecio}

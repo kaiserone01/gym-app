@@ -36,6 +36,17 @@ export class RolNoAutorizadoError extends Error {
   }
 }
 
+// Un monto en $0 (o negativo) contra un plan que SÍ cuesta algo no es un
+// abono válido — sin este chequeo, un $0 tipeado por error (ej. campo
+// vaciado sin querer) igual adelantaba el vencimiento y daba acceso
+// gratis. Un plan de cortesía real (miembro.precioPlan === 0) sigue
+// pudiendo registrar su pago en $0 sin problema.
+export class MontoInvalidoError extends Error {
+  constructor() {
+    super("El monto tiene que ser mayor a $0 — este plan no es de cortesía.");
+  }
+}
+
 export interface RegistrarPagoDeps {
   pagos: IPagoRepository;
   suscripciones: ISuscripcionRepository;
@@ -73,6 +84,10 @@ export async function registrarPago(deps: RegistrarPagoDeps, input: DatosRegistr
   if (miembro.sucursalId !== null && miembro.sucursalId !== input.sucursalId) {
     const sucursal = await deps.sucursales.buscarPorId(input.organizacionId, miembro.sucursalId);
     throw new MiembroFueraDeSucursalError(sucursal?.nombre ?? "otra sucursal");
+  }
+
+  if (miembro.precioPlan > 0 && input.monto <= 0) {
+    throw new MontoInvalidoError();
   }
 
   const plan = await deps.planes.buscarPorId(input.organizacionId, input.planId);

@@ -20,6 +20,7 @@ import {
   PlanNoEncontradoError,
   PlanInactivoError,
   RolNoAutorizadoError,
+  MontoInvalidoError,
 } from "@gym-app/domain/use-cases/RegistrarPago";
 import {
   cambiarPlanConPago,
@@ -111,7 +112,8 @@ export async function registrarPagoAction(
       error instanceof MiembroFueraDeSucursalError ||
       error instanceof PlanNoEncontradoError ||
       error instanceof PlanInactivoError ||
-      error instanceof RolNoAutorizadoError
+      error instanceof RolNoAutorizadoError ||
+      error instanceof MontoInvalidoError
     ) {
       return { error: error.message };
     }

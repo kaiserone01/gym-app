@@ -28,6 +28,7 @@ import {
   PlanNoEncontradoError,
   PlanInactivoError,
   RolNoAutorizadoError as PagoRolNoAutorizadoError,
+  MontoInvalidoError,
 } from "@gym-app/domain/use-cases/RegistrarPago";
 import { conMensajeOk } from "../redirectConMensaje";
 
@@ -180,7 +181,8 @@ export async function crearMiembroAction(
       error instanceof PagoMiembroFueraDeSucursalError ||
       error instanceof PlanNoEncontradoError ||
       error instanceof PlanInactivoError ||
-      error instanceof PagoRolNoAutorizadoError
+      error instanceof PagoRolNoAutorizadoError ||
+      error instanceof MontoInvalidoError
     ) {
       return { error: `El miembro se creó, pero no se pudo registrar el pago inicial: ${error.message}` };
     }

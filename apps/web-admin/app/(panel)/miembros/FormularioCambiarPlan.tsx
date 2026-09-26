@@ -181,7 +181,14 @@ export function FormularioCambiarPlan({
         </label>
       )}
 
-      {requierePago && <SelectorMetodoPago metodos={metodosPago} monto={diferencia} onCambio={setSeleccionMetodo} />}
+      {requierePago && (
+        <SelectorMetodoPago
+          metodos={metodosPago}
+          monto={diferencia}
+          onCambio={setSeleccionMetodo}
+          avisoServidor={{ tasaNueva: estado.tasaNueva, fallaTemporal: estado.fallaTemporal, tasaGuardada: estado.tasaGuardada }}
+        />
+      )}
 
       <Button type="submit" disabled={enviando || !puedeEnviar}>
         {enviando ? "Guardando..." : requierePago ? "Cobrar diferencia y cambiar plan" : "Cambiar plan"}

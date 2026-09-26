@@ -55,12 +55,21 @@ export interface EstadoFormularioPago {
   tasaGuardada?: number;
 }
 
+// Estado de error compartido entre EstadoFormularioPago y EstadoCambioPlan
+// (misma forma: error + el aviso de tasa de la Etapa 3).
+interface EstadoErrorTasa {
+  error: string;
+  tasaNueva?: number;
+  fallaTemporal?: boolean;
+  tasaGuardada?: number;
+}
+
 // Valida que la tasa del formulario sea la última publicada, cuando la
 // operación es en Bs (Etapa 3 del plan de tasa BCV). Nunca se registra con
 // la tasa del formulario: si coincide, se usa la del servidor.
 async function validarTasaSiEsEnBs(
   tasaCambioRaw: string | undefined
-): Promise<{ ok: true; tasaCambio: number | null } | { ok: false; estado: EstadoFormularioPago }> {
+): Promise<{ ok: true; tasaCambio: number | null } | { ok: false; estado: EstadoErrorTasa }> {
   if (!tasaCambioRaw) return { ok: true, tasaCambio: null };
 
   const tasaFormulario = Number(tasaCambioRaw);
@@ -167,6 +176,11 @@ export async function registrarPagoAction(
 
 export interface EstadoCambioPlan {
   error?: string;
+  // Ver EstadoFormularioPago — mismo criterio de reconfirmación/aviso de
+  // fallo temporal (Etapa 3 del plan de tasa BCV).
+  tasaNueva?: number;
+  fallaTemporal?: boolean;
+  tasaGuardada?: number;
 }
 
 export async function cambiarPlanAction(
@@ -193,6 +207,9 @@ export async function cambiarPlanAction(
     return { error: "No se pudo determinar en qué sucursal se registra el cambio." };
   }
 
+  const validacionTasa = await validarTasaSiEsEnBs(tasaCambioRaw);
+  if (!validacionTasa.ok) return validacionTasa.estado;
+
   let resultado;
   try {
     resultado = await cambiarPlanConPago(
@@ -212,7 +229,7 @@ export async function cambiarPlanAction(
         metodo,
         metodoPagoId,
         numeroOperacion,
-        tasaCambio: tasaCambioRaw ? Number(tasaCambioRaw) : null,
+        tasaCambio: validacionTasa.tasaCambio,
         sucursalId: sucursalIdPago,
         registradoPorId: usuario.id,
         rolUsuario: usuario.rol,

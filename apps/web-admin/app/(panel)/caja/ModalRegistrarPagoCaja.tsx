@@ -774,10 +774,11 @@ function ContenidoPaso3({
           // remanente $0. En Total/Abono también es el precio del plan.
           montoObjetivo={montoSugerido}
           tasaReferencia={lineasActivas.find((l) => l.seleccion.tasaCambio !== null)?.seleccion.tasaCambio ?? null}
-          // Proyección + detalle de ciclos, siempre visible (ver diseño
+          // Proyección + detalle de períodos, siempre visible (ver diseño
           // acordado: "que el cliente vea que cubre su pago"), calculada
           // sobre la SUMA de todas las líneas activas — se actualiza en vivo.
           proyeccion={sumaLineas > 0 ? proyeccionAbono : null}
+          modalidad={modalidad}
         />
       )}
 

@@ -13,23 +13,25 @@ export function formatearFechaCorta(fecha: Date): string {
   return new Date(fecha).toLocaleDateString("es-VE", { day: "2-digit", month: "2-digit", year: "numeric" });
 }
 
-// Lista de ciclos que cubre un pago, sin límite de cantidad (ver diseño
+// Lista de períodos que cubre un pago, sin límite de cantidad (ver diseño
 // acordado) — el tramo ya vigente antes de este pago se marca en un color
-// distinto (acento suave) del resto, que son ciclos NUEVOS que este pago
+// distinto (acento suave) del resto, que son períodos NUEVOS que este pago
 // agrega (acento fuerte) o el remanente parcial final (mutado, sin
-// completar un ciclo). Se usa igual en Total, Abono y Fraccionado.
+// completar un período). Se usa igual en Total, Abono y Fraccionado. Solo
+// se muestra con 2+ elementos — un pago de un único período completo no
+// necesita detalle, ya lo dice el monto (ver copy simplificado).
 export function DetalleCiclosPago({ ciclos }: { ciclos: CicloProyectado[] }) {
   if (ciclos.length < 2) return null;
 
   return (
     <div className="flex flex-col gap-1.5 rounded-lg border p-3 text-xs" style={{ borderColor: "var(--gx-edge)" }}>
       <p className="mb-1 font-medium" style={{ color: "var(--gx-muted)" }}>
-        Detalle de ciclos que cubre este pago
+        Detalle de períodos que cubre este pago
       </p>
       {(() => {
-        let numeroCiclo = 0;
+        let numeroPeriodo = 0;
         return ciclos.map((ciclo, indice) => {
-          if (ciclo.tipo !== "vigente") numeroCiclo++;
+          if (ciclo.tipo !== "vigente") numeroPeriodo++;
           return (
             <div
               key={indice}
@@ -44,8 +46,8 @@ export function DetalleCiclosPago({ ciclos }: { ciclos: CicloProyectado[] }) {
                 {ciclo.tipo === "vigente"
                   ? "Ya vigente"
                   : ciclo.tipo === "parcial"
-                    ? `Ciclo ${numeroCiclo} parcial (${ciclo.porcentajeCubierto.toFixed(0)}%)`
-                    : `Ciclo ${numeroCiclo}`}
+                    ? `Período ${numeroPeriodo} parcial (${ciclo.porcentajeCubierto.toFixed(0)}%)`
+                    : `Período ${numeroPeriodo}`}
               </span>
               <span style={{ color: "var(--gx-muted)" }}>
                 {formatearFechaCorta(ciclo.inicio)} – {formatearFechaCorta(ciclo.fin)}
@@ -58,55 +60,75 @@ export function DetalleCiclosPago({ ciclos }: { ciclos: CicloProyectado[] }) {
   );
 }
 
-// Mensaje completo de proyección (monto abonado, saldo remanente + fecha
-// destacados, % recibido) — mismo texto en Abono y en el panel flotante de
-// Fraccionado (ver diseño acordado). Devuelve null si no hay nada que
-// proyectar.
+// Mensaje de proyección — el copy cambia según la modalidad y el contexto,
+// para no repetir lo que el detalle de períodos o el monto ya visible
+// arriba comunican (ver diseño acordado: "simple, minimalista, curva de
+// aprendizaje mínima").
+//
+// - Pago Total: nunca es un abono parcial — o paga el período completo, o
+//   adelanta N períodos completos. El detalle de períodos (DetalleCiclosPago)
+//   ya dice cuáles cubre; acá no hace falta ningún párrafo. Devuelve null
+//   siempre en esta modalidad.
+// - Abono parcial: solo el dato que cambia en cada caso —
+//   · Por debajo del mínimo: cuánto falta abonar como mínimo.
+//   · Abono parcial normal (no cumple el período): monto abonado + saldo
+//     remanente y fecha tope, destacados. Sin repetir el precio del plan
+//     (ya está arriba) ni el % / días (el saldo y la fecha ya bastan).
+//   · Cubre el período exacto: una confirmación simple.
+//   · Adelanta el próximo período: aviso breve de qué período se está
+//     adelantando, con el mismo saldo+fecha si ese adelanto quedó parcial.
+// - Fraccionado: mismo criterio que Abono, ya que el panel flotante lo
+//   calcula sobre la suma de fracciones.
+//
+// Devuelve null si no hay nada que proyectar.
 export function MensajeProyeccionAbono({
   proyeccionAbono,
-  montoSugerido,
   montoObjetivo,
   tasaActual,
+  modalidad,
 }: {
   proyeccionAbono: ProyeccionAbono;
   montoSugerido: number;
   montoObjetivo: number;
   tasaActual: number | null;
+  modalidad: "total" | "abono" | "combinado";
 }) {
   if (montoObjetivo <= 0) return null;
+  // Pago Total: nunca es un abono — el detalle de períodos ya es
+  // autoexplicativo, no se agrega ningún párrafo extra.
+  if (modalidad === "total") return null;
+
+  if (!proyeccionAbono.cumpleMinimo) {
+    return (
+      <p className="text-sm" style={{ color: "var(--gx-bad)" }}>
+        El abono mínimo para este plan es ${proyeccionAbono.montoMinimo.toFixed(2)}.
+      </p>
+    );
+  }
+
+  // Cubre el período (actual o, si ya estaba saldado, el siguiente que se
+  // adelanta) sin dejar remanente — confirmación simple, sin cifras
+  // repetidas.
+  if (!proyeccionAbono.fechaTope) {
+    return (
+      <p className="text-sm" style={{ color: "var(--gx-muted)" }}>
+        {proyeccionAbono.esAdelantoCicloSiguiente
+          ? "Este pago adelanta el próximo período completo."
+          : "Este monto cubre el período completo."}
+      </p>
+    );
+  }
 
   return (
-    <p className="text-sm" style={{ color: proyeccionAbono.cumpleMinimo ? "var(--gx-muted)" : "var(--gx-bad)" }}>
-      {proyeccionAbono.cumpleMinimo ? (
-        proyeccionAbono.fechaTope ? (
-          <>
-            {proyeccionAbono.esAdelantoCicloSiguiente ? (
-              <>Este pago salda el ciclo actual y adelanta el próximo — </>
-            ) : (
-              <>
-                Es menos que el precio del plan (${montoSugerido.toFixed(2)}) — abonó ${montoObjetivo.toFixed(2)}
-                {tasaActual !== null && ` (Bs. ${formatearBs(montoObjetivo * tasaActual)})`}.{" "}
-              </>
-            )}
-            Tiene que cancelar el{" "}
-            <strong style={{ color: "var(--gx-accent)" }}>
-              saldo remanente de ${proyeccionAbono.saldoRemanente.toFixed(2)}
-              {tasaActual !== null && ` (Bs. ${formatearBs(proyeccionAbono.saldoRemanente * tasaActual)})`} antes del{" "}
-              {proyeccionAbono.fechaTope.toLocaleDateString("es-VE")}
-            </strong>
-            . Pago parcial: {proyeccionAbono.porcentajeCubierto.toFixed(0)}% recibido
-            {proyeccionAbono.esAdelantoCicloSiguiente ? " del próximo ciclo" : ""} (cubre{" "}
-            {proyeccionAbono.diasCubiertos} día(s) {proyeccionAbono.esAdelantoCicloSiguiente ? "del próximo ciclo" : "del ciclo"}
-            ).
-          </>
-        ) : (
-          proyeccionAbono.esAdelantoCicloSiguiente
-            ? "Este pago cubre el ciclo actual y el próximo ciclo completo."
-            : "Este monto cubre el plan completo."
-        )
-      ) : (
-        `El abono mínimo para este plan es $${proyeccionAbono.montoMinimo.toFixed(2)}.`
-      )}
+    <p className="text-sm" style={{ color: "var(--gx-muted)" }}>
+      {proyeccionAbono.esAdelantoCicloSiguiente && <>Adelanta el próximo período — </>}
+      Queda como abono. Tiene que cancelar el{" "}
+      <strong style={{ color: "var(--gx-accent)" }}>
+        saldo remanente de ${proyeccionAbono.saldoRemanente.toFixed(2)}
+        {tasaActual !== null && ` (Bs. ${formatearBs(proyeccionAbono.saldoRemanente * tasaActual)})`} antes del{" "}
+        {proyeccionAbono.fechaTope.toLocaleDateString("es-VE")}
+      </strong>
+      .
     </p>
   );
 }

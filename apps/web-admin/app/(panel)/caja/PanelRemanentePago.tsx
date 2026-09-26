@@ -13,6 +13,7 @@ export function PanelRemanentePago({
   montoObjetivo,
   tasaReferencia,
   proyeccion,
+  modalidad,
 }: {
   lineas: LineaMostrada[];
   montoObjetivo: number;
@@ -20,15 +21,28 @@ export function PanelRemanentePago({
   // primera línea que ya tenga una tasa elegida, o null si ninguna la
   // tiene todavía (en ese caso solo se muestra el remanente en USD).
   tasaReferencia: number | null;
-  // Proyección + detalle de ciclos que cubre el pago, calculada sobre la
+  // Proyección + detalle de períodos que cubre el pago, calculada sobre la
   // suma de fracciones ya cargadas — siempre visible mientras exista (ver
   // diseño acordado: "que el cliente vea que cubre su pago"), arriba del
-  // título "Distribución del pago". null mientras no hay nada cargado
-  // todavía.
+  // título "Canal de pago". null mientras no hay nada cargado todavía.
   proyeccion: ProyeccionAbono | null;
+  // Determina el copy del mensaje y el título de la lista (ver diseño
+  // acordado: en Total/Abono no se "distribuye" nada, es un solo canal).
+  modalidad: "total" | "abono" | "combinado";
 }) {
   const sumaLineas = lineas.reduce((suma, l) => suma + l.monto, 0);
   const remanente = Math.max(0, montoObjetivo - sumaLineas);
+  // Cuánto sobra por encima de lo necesario para este pago. En Abono, un
+  // exceso intencional adelanta el próximo período (esAdelantoCicloSiguiente
+  // ya lo comunica en el mensaje) — el excedente real es lo que sobra por
+  // encima del último período completo que ese monto alcanza a cubrir, es
+  // decir, el propio saldoRemanente cuando ya no queda nada por cobrar. En
+  // Total/Fraccionado, sumaLineas nunca debería superar montoObjetivo salvo
+  // error de tipeo, así que cualquier exceso ahí ya es "a favor".
+  const excedente =
+    remanente === 0 && proyeccion && proyeccion.esAdelantoCicloSiguiente
+      ? 0
+      : Math.max(0, sumaLineas - montoObjetivo);
 
   return (
     <div
@@ -42,13 +56,14 @@ export function PanelRemanentePago({
             montoSugerido={montoObjetivo}
             montoObjetivo={sumaLineas}
             tasaActual={tasaReferencia}
+            modalidad={modalidad}
           />
           {proyeccion.cumpleMinimo && <DetalleCiclosPago ciclos={proyeccion.ciclos} />}
         </div>
       )}
 
       <p className="text-xs font-semibold uppercase" style={{ color: "var(--gx-muted)" }}>
-        Distribución del pago
+        {modalidad === "combinado" ? "Distribución del pago" : "Canal de pago"}
       </p>
       <div className="mt-2 flex flex-col gap-1">
         {lineas
@@ -64,11 +79,22 @@ export function PanelRemanentePago({
         {remanente > 0 ? (
           <>
             <p className="text-sm font-semibold" style={{ color: "var(--gx-bad)" }}>
-              Faltan ${remanente.toFixed(2)}
+              Próximo giro de ${remanente.toFixed(2)}
             </p>
             {tasaReferencia !== null && (
               <p className="text-xs" style={{ color: "var(--gx-muted)" }}>
                 ≈ Bs. {(remanente * tasaReferencia).toFixed(2)}
+              </p>
+            )}
+          </>
+        ) : excedente > 0 ? (
+          <>
+            <p className="text-sm font-semibold" style={{ color: "var(--gx-accent)" }}>
+              Excedente: ${excedente.toFixed(2)} a favor
+            </p>
+            {tasaReferencia !== null && (
+              <p className="text-xs" style={{ color: "var(--gx-muted)" }}>
+                ≈ Bs. {(excedente * tasaReferencia).toFixed(2)}
               </p>
             )}
           </>

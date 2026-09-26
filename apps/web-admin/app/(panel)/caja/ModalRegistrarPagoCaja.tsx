@@ -16,7 +16,7 @@ import { SelectorMetodoPago } from "../pagos/SelectorMetodoPago";
 import { registrarPagoAction } from "../pagos/actions";
 import { calcularProyeccionAbono } from "./proyeccionAbono";
 import { PanelRemanentePago } from "./PanelRemanentePago";
-import { formatearFechaCorta, DetalleCiclosPago, MensajeProyeccionAbono } from "./ProyeccionCiclosUI";
+import { formatearFechaCorta } from "./ProyeccionCiclosUI";
 import type { ReglaAbonoPorFrecuencia } from "@gym-app/domain/entities/ReglaAbono";
 
 type Paso = 1 | 2 | 3 | 4;
@@ -475,13 +475,6 @@ function ContenidoPaso3({
           <span className="font-semibold" style={{ color: "var(--gx-ink)" }}>${montoSugerido.toFixed(2)}</span>
         </div>
       )}
-      {/* Pago total: el monto es fijo a 1 ciclo, así que normalmente no hay
-          nada que desglosar — pero si el miembro ya tenía días vigentes,
-          este pago igual adelanta un ciclo nuevo por encima de eso (ver
-          diseño acordado). */}
-      {montoSugerido > 0 && !esAbono && modalidad === "total" && (
-        <DetalleCiclosPago ciclos={proyeccionAbono.ciclos} />
-      )}
       {/* Fraccionado, plan que sí admite abono: precio del plan fijo como
           referencia del total a cubrir (mismo patrón que Abono, ver diseño
           acordado) — nunca es el monto que se registra, cada fracción
@@ -593,27 +586,10 @@ function ContenidoPaso3({
         />
       )}
 
-      {/* Proyección del abono — un solo bloque, sin repetir el precio del
-          plan dos veces (ver diseño acordado): monto abonado (USD/Bs de
-          referencia), saldo remanente + fecha tope destacados en negrita
-          con el color de acento, y el % del plan cubierto. Si no alcanza
-          el mínimo exigido, se reemplaza por ese único aviso.
-          Si el ciclo vigente ya está saldado (montoObjetivo cubre el
-          100%) y el monto sigue sumando, es un ADELANTO del ciclo
-          siguiente — el mismo esquema se recalcula sobre ese remanente y
-          esa fecha base (ver proyeccionAbono.ts, esAdelantoCicloSiguiente),
-          en vez de cortar con "Este monto cubre el plan completo". */}
-      {esAbono && metodoAbonoElegido && (
-        <MensajeProyeccionAbono
-          proyeccionAbono={proyeccionAbono}
-          montoSugerido={montoSugerido}
-          montoObjetivo={montoObjetivo}
-          tasaActual={tasaActual}
-        />
-      )}
-      {esAbono && metodoAbonoElegido && montoObjetivo > 0 && proyeccionAbono.cumpleMinimo && (
-        <DetalleCiclosPago ciclos={proyeccionAbono.ciclos} />
-      )}
+      {/* La proyección + detalle de ciclos del abono ya NO se muestra acá
+          dentro del modal — se desacopló al panel flotante (PanelRemanentePago),
+          visible para las 3 modalidades sin saturar/refrescar el modal
+          (ver diseño acordado). */}
 
       {montoObjetivo > 0 && !esAbono && modalidad !== "combinado" && (
         <SelectorMetodoPago
@@ -643,12 +619,13 @@ function ContenidoPaso3({
                   <span className="text-sm font-medium" style={{ color: "var(--gx-ink)" }}>
                     Fracción {indice + 1}
                   </span>
-                  {!expandida && (
-                    <span className="flex-1 truncate text-sm" style={{ color: "var(--gx-muted)" }}>
-                      {montoLinea > 0 ? `$${montoLinea.toFixed(2)}` : "Sin monto"}
-                      {linea.seleccion.metodo && ` · ${linea.seleccion.metodo}`}
-                    </span>
-                  )}
+                  {/* Resumen (monto + método) visible siempre, colapsada o
+                      expandida (ver diseño acordado) — deja de ocultarse
+                      al expandir. */}
+                  <span className="flex-1 truncate text-sm" style={{ color: "var(--gx-muted)" }}>
+                    {montoLinea > 0 ? `$${montoLinea.toFixed(2)}` : "Sin monto"}
+                    {linea.seleccion.metodo && ` · ${linea.seleccion.metodo}`}
+                  </span>
                   <span style={{ color: "var(--gx-muted)" }}>{expandida ? "▲" : "▼"}</span>
                 </button>
                 {/* Siempre montado (nunca desmontado con {expandida && ...})
@@ -657,11 +634,8 @@ function ContenidoPaso3({
                     vez que se colapsaba la fracción. Colapsar ahora es
                     puramente visual (`hidden`), preserva ese estado. */}
                 <div className={`flex flex-col gap-3 border-t p-3 ${expandida ? "" : "hidden"}`} style={{ borderColor: "var(--gx-edge)" }}>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium" style={{ color: "var(--gx-muted)" }}>
-                        Fracción {indice + 1}
-                      </span>
-                      {lineasCombinadas.length > 2 && (
+                    {lineasCombinadas.length > 2 && (
+                      <div className="flex justify-end">
                         <button
                           type="button"
                           onClick={() => {
@@ -675,10 +649,10 @@ function ContenidoPaso3({
                           className="text-sm"
                           style={{ color: "var(--gx-bad)" }}
                         >
-                          Quitar
+                          Quitar esta fracción
                         </button>
-                      )}
-                    </div>
+                      </div>
+                    )}
 
                     {/* Método primero (igual que Abono, ver diseño acordado)
                         — antes de tener un monto propio, se le pasa el
@@ -787,17 +761,22 @@ function ContenidoPaso3({
         </div>
       )}
 
-      {modalidad === "combinado" && (
+      {/* Panel flotante — desacoplado del modal para las 3 modalidades (ver
+          diseño acordado: evita saturar/refrescar el modal). En Total y
+          Abono, lineasActivas ya resuelve a una sola línea equivalente
+          (ver definición arriba); en Fraccionado, a las N fracciones. */}
+      {montoSugerido > 0 && (
         <PanelRemanentePago
-          lineas={lineasCombinadas.map((l) => ({ metodo: l.seleccion.metodo, monto: Number(l.monto) || 0 }))}
+          lineas={lineasActivas.map((l) => ({ metodo: l.seleccion.metodo, monto: Number(l.monto) || 0 }))}
           // El objetivo real a cubrir es el precio del plan — montoObjetivo
-          // ya ES la suma de las fracciones (ver diseño acordado), así que
-          // compararlo contra sí mismo siempre daría remanente $0.
+          // ya ES la suma de las fracciones en Fraccionado (ver diseño
+          // acordado), así que compararlo contra sí mismo siempre daría
+          // remanente $0. En Total/Abono también es el precio del plan.
           montoObjetivo={montoSugerido}
-          tasaReferencia={lineasCombinadas.find((l) => l.seleccion.tasaCambio !== null)?.seleccion.tasaCambio ?? null}
+          tasaReferencia={lineasActivas.find((l) => l.seleccion.tasaCambio !== null)?.seleccion.tasaCambio ?? null}
           // Proyección + detalle de ciclos, siempre visible (ver diseño
           // acordado: "que el cliente vea que cubre su pago"), calculada
-          // sobre la SUMA de todas las fracciones — se actualiza en vivo.
+          // sobre la SUMA de todas las líneas activas — se actualiza en vivo.
           proyeccion={sumaLineas > 0 ? proyeccionAbono : null}
         />
       )}

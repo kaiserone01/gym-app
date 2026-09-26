@@ -136,7 +136,16 @@ export async function registrarPago(deps: RegistrarPagoDeps, input: DatosRegistr
 
   const montoTotal = input.lineas.reduce((suma, linea) => suma + linea.monto, 0);
 
-  if (miembro.precioPlan > 0 && montoTotal <= 0) {
+  // Saldo a favor (generado por un cambio de plan a la baja, ver
+  // CambiarPlanConPago) — se descuenta automáticamente del monto que este
+  // pago necesita cubrir, sin importar el plan de este pago. Nunca deja
+  // el saldo negativo; el consumo se persiste junto con el resto de los
+  // cambios de este pago (más abajo), no antes, para no gastarlo si el
+  // pago falla por otra validación.
+  const saldoDisponible = miembro.saldoAFavorUSD;
+  const saldoAConsumir = Math.min(saldoDisponible, montoTotal > 0 ? montoTotal : miembro.precioPlan);
+
+  if (miembro.precioPlan > 0 && montoTotal <= 0 && saldoAConsumir < miembro.precioPlan) {
     throw new MontoInvalidoError();
   }
 
@@ -183,9 +192,8 @@ export async function registrarPago(deps: RegistrarPagoDeps, input: DatosRegistr
   // Motor de reglas de abono: solo aplica cuando el pago resultante deja
   // el ciclo sin saldar (es decir, es un abono real, no un pago total).
   // montoTotal ya viene calculado más arriba como suma de input.lineas.
-  const montoAcumuladoDelCiclo = esAbonoDeCicloAbierto
-    ? totalPagado(pagosDelCicloAbierto) + montoTotal
-    : montoTotal;
+  const montoAcumuladoDelCiclo =
+    (esAbonoDeCicloAbierto ? totalPagado(pagosDelCicloAbierto) : 0) + montoTotal + saldoAConsumir;
   const esAbonoParcial = montoAcumuladoDelCiclo < miembro.precioPlan;
 
   let fechaLimiteAbonoCalculada: Date | null = null;
@@ -237,6 +245,12 @@ export async function registrarPago(deps: RegistrarPagoDeps, input: DatosRegistr
 
     await deps.miembros.actualizar(input.organizacionId, input.miembroId, { planId: input.planId });
     await deps.miembros.actualizarFechasPago(input.miembroId, ahora, fin);
+  }
+
+  if (saldoAConsumir > 0) {
+    await deps.miembros.actualizar(input.organizacionId, input.miembroId, {
+      saldoAFavorUSD: saldoDisponible - saldoAConsumir,
+    });
   }
 
   const turnoAbierto = await deps.turnos.buscarAbiertoPorSucursal(input.sucursalId);

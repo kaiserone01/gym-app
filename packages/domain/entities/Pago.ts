@@ -19,6 +19,9 @@ export interface Pago {
   anuladoEn: Date | null;
   anuladoPorId: string | null;
   motivoAnulacion: string | null;
+  // Correlaciona las N filas de un mismo pago combinado (ver
+  // registrarPago) — null en pagos de una sola línea.
+  grupoPagoId: string | null;
 }
 
 export interface DatosNuevoPago {
@@ -34,6 +37,7 @@ export interface DatosNuevoPago {
   montoBs: number | null;
   fechaInicioCiclo: Date;
   fechaFinCiclo: Date;
+  grupoPagoId: string | null;
 }
 
 // Pagos de fondos fraccionados/mixtos ("abonos") — varios Pago pueden

@@ -20,6 +20,7 @@ type FilaPago = {
   anuladoEn: Date | null;
   anuladoPorId: string | null;
   motivoAnulacion: string | null;
+  grupoPagoId: string | null;
 };
 
 function mapear(pago: FilaPago): Pago {
@@ -41,6 +42,7 @@ function mapear(pago: FilaPago): Pago {
     anuladoEn: pago.anuladoEn,
     anuladoPorId: pago.anuladoPorId,
     motivoAnulacion: pago.motivoAnulacion,
+    grupoPagoId: pago.grupoPagoId,
   };
 }
 
@@ -62,6 +64,7 @@ export class PrismaPagoRepository implements IPagoRepository {
         montoBs: datos.montoBs,
         fechaInicioCiclo: datos.fechaInicioCiclo,
         fechaFinCiclo: datos.fechaFinCiclo,
+        grupoPagoId: datos.grupoPagoId,
       },
     });
     return mapear(pago);

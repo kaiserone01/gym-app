@@ -184,33 +184,6 @@ export function FormularioCambiarPlan({
         </select>
       </label>
 
-      {planNuevo && planNuevo.id !== planActualId && prorrateoAjustar && prorrateoCicloCompleto && (
-        <div className="flex flex-col gap-3">
-          <div className="rounded-lg border p-3 text-sm" style={{ borderColor: "var(--gx-edge)", background: "var(--gx-surface-2)" }}>
-            <p className="font-semibold" style={{ color: "var(--gx-ink)" }}>
-              Solo ajustar vencimiento
-            </p>
-            <p className="mt-1 text-xs" style={{ color: "var(--gx-muted)" }}>
-              Nuevo vencimiento: {prorrateoAjustar.nuevoVencimiento.toLocaleDateString("es-VE")} — sin costo
-              adicional.
-            </p>
-          </div>
-          <div className="rounded-lg border p-3 text-sm" style={{ borderColor: "var(--gx-edge)", background: "var(--gx-surface-2)" }}>
-            <p className="font-semibold" style={{ color: "var(--gx-ink)" }}>
-              Pagar ciclo completo del nuevo
-            </p>
-            <p className="mt-1 text-xs" style={{ color: "var(--gx-muted)" }}>
-              Nuevo vencimiento: {prorrateoCicloCompleto.nuevoVencimiento.toLocaleDateString("es-VE")} —{" "}
-              {diferenciaCicloCompleto > 0
-                ? `se cobra $${diferenciaCicloCompleto.toFixed(2)}.`
-                : diferenciaCicloCompleto < 0
-                  ? `se acreditan $${Math.abs(diferenciaCicloCompleto).toFixed(2)} de saldo a favor.`
-                  : "sin costo adicional."}
-            </p>
-          </div>
-        </div>
-      )}
-
       {requiereEntrenador && (
         <label className="flex flex-col gap-1.5 text-sm" style={{ color: "var(--gx-muted)" }}>
           Entrenador
@@ -242,8 +215,11 @@ export function FormularioCambiarPlan({
         />
       )}
 
-      {planNuevo && planNuevo.id !== planActualId && (
+      {planNuevo && planNuevo.id !== planActualId && prorrateoAjustar && prorrateoCicloCompleto && (
         <div className="flex flex-col gap-2">
+          {/* Cada botón integra su propio detalle (antes eran una card
+              informativa separada arriba de un botón de solo texto — daba
+              la sensación de 4 opciones cuando son solo 2, ver feedback). */}
           <Button
             type="submit"
             name="modo"
@@ -251,8 +227,15 @@ export function FormularioCambiarPlan({
             variant="secundario"
             disabled={enviando || (requiereEntrenador && !entrenadorId)}
             onClick={() => setModoElegido("AJUSTAR_VENCIMIENTO")}
+            className="flex min-h-fit flex-col items-start gap-1 py-3 text-left"
           >
-            {enviando && modoElegido === "AJUSTAR_VENCIMIENTO" ? "Guardando..." : "Solo ajustar vencimiento"}
+            <span className="font-semibold">
+              {enviando && modoElegido === "AJUSTAR_VENCIMIENTO" ? "Guardando..." : "Solo ajustar vencimiento"}
+            </span>
+            <span className="text-xs font-normal" style={{ color: "var(--gx-muted)" }}>
+              Nuevo vencimiento: {prorrateoAjustar.nuevoVencimiento.toLocaleDateString("es-VE")} — sin costo
+              adicional.
+            </span>
           </Button>
           <Button
             type="submit"
@@ -260,14 +243,20 @@ export function FormularioCambiarPlan({
             value="CICLO_COMPLETO"
             disabled={enviando || (requiereEntrenador && !entrenadorId) || (diferenciaCicloCompleto > 0 && !seleccionMetodo.metodoPagoId)}
             onClick={() => setModoElegido("CICLO_COMPLETO")}
+            className="flex min-h-fit flex-col items-start gap-1 py-3 text-left"
           >
-            {enviando && modoElegido === "CICLO_COMPLETO"
-              ? "Guardando..."
-              : diferenciaCicloCompleto > 0
-                ? `Pagar ciclo completo — cobrar $${diferenciaCicloCompleto.toFixed(2)}`
-                : diferenciaCicloCompleto < 0
-                  ? `Pagar ciclo completo — acreditar $${Math.abs(diferenciaCicloCompleto).toFixed(2)}`
-                  : "Pagar ciclo completo"}
+            <span className="font-semibold">
+              {enviando && modoElegido === "CICLO_COMPLETO"
+                ? "Guardando..."
+                : diferenciaCicloCompleto > 0
+                  ? `Pagar ciclo completo — cobrar $${diferenciaCicloCompleto.toFixed(2)}`
+                  : diferenciaCicloCompleto < 0
+                    ? `Pagar ciclo completo — acreditar $${Math.abs(diferenciaCicloCompleto).toFixed(2)}`
+                    : "Pagar ciclo completo"}
+            </span>
+            <span className="text-xs font-normal" style={{ color: "var(--gx-accent-ink)", opacity: 0.85 }}>
+              Nuevo vencimiento: {prorrateoCicloCompleto.nuevoVencimiento.toLocaleDateString("es-VE")}
+            </span>
           </Button>
         </div>
       )}

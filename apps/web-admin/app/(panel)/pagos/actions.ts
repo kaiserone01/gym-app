@@ -35,7 +35,6 @@ import {
   RolNoAutorizadoError as RolNoAutorizadoErrorCambio,
   SinCicloVigenteError,
   MetodoPagoRequeridoError,
-  FrecuenciaDistintaError,
   EntrenadorRequeridoError,
 } from "@gym-app/domain/use-cases/CambiarPlanConPago";
 
@@ -237,6 +236,7 @@ export interface EstadoCambioPlan {
   // /miembros que usa el origen por defecto (ficha del miembro).
   ok?: string;
   diferencia?: number;
+  saldoAFavorGenerado?: number;
 }
 
 export async function cambiarPlanAction(
@@ -259,6 +259,10 @@ export async function cambiarPlanAction(
   // queda en /caja en vez de navegar a /miembros (ver diseño acordado, igual
   // criterio que origen en registrarPagoAction).
   const origen = formData.get("origen")?.toString();
+  // "AJUSTAR_VENCIMIENTO" (default) o "CICLO_COMPLETO" — cuál de los dos
+  // botones de FormularioCambiarPlan disparó el envío (ver diseño acordado).
+  const modoRaw = formData.get("modo")?.toString();
+  const modo = modoRaw === "CICLO_COMPLETO" ? "CICLO_COMPLETO" : "AJUSTAR_VENCIMIENTO";
 
   if (!miembroId || !planNuevoId) {
     return { error: "Miembro y plan nuevo son requeridos." };
@@ -286,6 +290,7 @@ export async function cambiarPlanAction(
         organizacionId: usuario.organizacionId,
         miembroId,
         planNuevoId,
+        modo,
         metodo,
         metodoPagoId,
         numeroOperacion,
@@ -305,7 +310,6 @@ export async function cambiarPlanAction(
       error instanceof RolNoAutorizadoErrorCambio ||
       error instanceof SinCicloVigenteError ||
       error instanceof MetodoPagoRequeridoError ||
-      error instanceof FrecuenciaDistintaError ||
       error instanceof EntrenadorRequeridoError
     ) {
       return { error: error.message };
@@ -322,7 +326,9 @@ export async function cambiarPlanAction(
   const mensaje =
     resultado.diferencia > 0
       ? `Plan cambiado — se cobró la diferencia de $${resultado.diferencia.toFixed(2)}.`
-      : "Plan cambiado, sin costo adicional.";
+      : resultado.saldoAFavorGenerado > 0
+        ? `Plan cambiado — se acreditaron $${resultado.saldoAFavorGenerado.toFixed(2)} de saldo a favor.`
+        : "Plan cambiado, sin costo adicional.";
 
   // Desde el wizard de Caja: se queda en /caja y cierra el modal (ver
   // diseño acordado), igual criterio que registrarPagoAction con
@@ -331,7 +337,7 @@ export async function cambiarPlanAction(
   // lista — evita el "¿para qué es Guardar?" de volver a tocar otro botón
   // en la misma pantalla.
   if (origen === "caja") {
-    return { ok: mensaje, diferencia: resultado.diferencia };
+    return { ok: mensaje, diferencia: resultado.diferencia, saldoAFavorGenerado: resultado.saldoAFavorGenerado };
   }
 
   redirect(conMensajeOk("/miembros", mensaje));

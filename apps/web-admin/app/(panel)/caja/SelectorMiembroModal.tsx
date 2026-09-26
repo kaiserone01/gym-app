@@ -62,6 +62,10 @@ export interface MiembroConPlan {
   // vigente, y el selector de entrenador se filtra por sucursal.
   sucursalId: string | null;
   entrenadorId: string | null;
+  // Crédito generado por un cambio de plan a la baja (ver
+  // CambiarPlanConPago) — se muestra como aviso informativo antes de
+  // pagar, ya que se descuenta automáticamente del monto a cobrar.
+  saldoAFavorUSD: number;
 }
 
 /**
@@ -103,6 +107,7 @@ export function BuscadorMiembro({
         plan: m.planId ? planesPorId.get(m.planId) : undefined,
         sucursalId: m.sucursalId,
         entrenadorId: m.entrenadorId,
+        saldoAFavorUSD: m.saldoAFavorUSD,
       }));
   }, [miembros, busquedaAplicada, planesPorId]);
 

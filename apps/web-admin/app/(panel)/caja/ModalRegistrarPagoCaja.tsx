@@ -183,6 +183,15 @@ function ContenidoPaso2({
         <DiasDisponibles fechaVencimiento={miembro.fechaVencimiento} />
       </div>
 
+      {miembro.saldoAFavorUSD > 0 && (
+        <p
+          className="rounded-lg px-3 py-2 text-sm font-medium"
+          style={{ background: "color-mix(in srgb, var(--gx-accent) 15%, transparent)", color: "var(--gx-accent)" }}
+        >
+          Saldo a favor: ${miembro.saldoAFavorUSD.toFixed(2)} — se descuenta automáticamente del pago.
+        </p>
+      )}
+
       {cambiandoPlan && tieneCicloVigente && miembro.plan ? (
         <div className="flex flex-col gap-3 rounded-lg border p-4" style={{ borderColor: "var(--gx-accent)" }}>
           <p className="text-xs" style={{ color: "var(--gx-muted)" }}>

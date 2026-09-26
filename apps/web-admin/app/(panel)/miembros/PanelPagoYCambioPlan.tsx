@@ -22,6 +22,7 @@ export function PanelPagoYCambioPlan({
   planes,
   planFijo,
   saldoPendiente,
+  saldoAFavorUSD,
   metodosPago,
   tieneCicloVigente,
   planActualId,
@@ -40,6 +41,10 @@ export function PanelPagoYCambioPlan({
   // miembro (ver diseño acordado, pagos fraccionados/mixtos). Undefined o
   // 0 significa que no hay ningún ciclo a medio pagar.
   saldoPendiente?: number;
+  // Crédito a favor del miembro (generado por un cambio de plan a la
+  // baja) — se descuenta automáticamente del próximo pago (ver
+  // RegistrarPago), se muestra como aviso informativo.
+  saldoAFavorUSD?: number;
   metodosPago: MetodoPago[];
   tieneCicloVigente: boolean;
   planActualId: string | null;
@@ -100,6 +105,7 @@ export function PanelPagoYCambioPlan({
             miembroIdFijo={miembroId}
             planFijo={planFijo}
             saldoPendiente={saldoPendiente}
+            saldoAFavorUSD={saldoAFavorUSD}
             origen="miembro"
           />
         </>
@@ -108,8 +114,9 @@ export function PanelPagoYCambioPlan({
       {tieneCicloVigente && tab === "cambiarPlan" && (
         <>
           <p className="mb-4 text-xs" style={{ color: "var(--gx-muted)" }}>
-            Para subir o bajar de plan sin esperar a que venza el ciclo actual — cobra solo la diferencia de precio,
-            si la hay. El vencimiento no cambia.
+            Para subir o bajar de plan sin esperar a que venza el ciclo actual — el sistema prorratea el valor no
+            consumido del ciclo. Elegí si solo ajustar el vencimiento (sin costo) o pagar un ciclo completo del plan
+            nuevo (cobra o acredita la diferencia).
           </p>
           <FormularioCambiarPlan
             accion={accionCambiarPlan}

@@ -159,6 +159,7 @@ export default async function PaginaEditarMiembro({ params }: { params: Promise<
                 }
                 metodosPago={metodosPago}
                 saldoPendiente={saldoPendiente}
+                saldoAFavorUSD={miembro.saldoAFavorUSD}
                 tieneCicloVigente={tieneCicloVigente}
                 planActualId={miembro.planId}
                 precioActual={miembro.precioPlan}

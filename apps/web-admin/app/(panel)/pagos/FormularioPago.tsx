@@ -44,6 +44,7 @@ export function FormularioPago({
   miembroIdFijo,
   planFijo,
   saldoPendiente,
+  saldoAFavorUSD,
   origen,
   miembrosConPlan,
 }: {
@@ -60,6 +61,11 @@ export function FormularioPago({
   // cuando viene, precarga el monto con ese saldo en vez del precio
   // completo del plan, y muestra el contexto de "abono" debajo del campo.
   saldoPendiente?: number;
+  // Crédito a favor del miembro (generado por un cambio de plan a la
+  // baja) — solo aplica con miembroIdFijo, donde este componente no tiene
+  // acceso al objeto Miembro completo (ver diseño acordado). Con
+  // miembrosConPlan, se lee directo de miembroElegido.saldoAFavorUSD.
+  saldoAFavorUSD?: number;
   /** Marca el origen del formulario para que la Server Action decida si redirige o no al terminar. */
   origen?: string;
   // Cuando se pasa (uso en Caja): reemplaza el <select miembroId> por un
@@ -195,6 +201,16 @@ export function FormularioPago({
           }}
           onCerrar={() => setModalAbierto(false)}
         />
+      )}
+
+      {(miembroElegido?.saldoAFavorUSD ?? saldoAFavorUSD ?? 0) > 0 && (
+        <p
+          className="rounded-lg px-3 py-2 text-sm font-medium"
+          style={{ background: "color-mix(in srgb, var(--gx-accent) 15%, transparent)", color: "var(--gx-accent)" }}
+        >
+          Saldo a favor: ${(miembroElegido?.saldoAFavorUSD ?? saldoAFavorUSD ?? 0).toFixed(2)} — se descuenta
+          automáticamente de este pago.
+        </p>
       )}
 
       {planFijoEfectivo ? (

@@ -137,6 +137,7 @@ export default async function PaginaCaja() {
                   planes={planesActivos}
                   metodosPago={metodosPago}
                   tasaActual={tasaActual}
+                  lineasResumenTurno={resumen.lineas}
                 />
                 <BotonRegistrarEgreso accion={registrarEgresoAction} turnoId={resumen.turno.id} />
               </div>

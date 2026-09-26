@@ -13,6 +13,8 @@ import { DiasDisponibles } from "../miembros/vencimiento";
 import { formatearBs } from "../tasaBcvFija";
 import { SelectorMetodoPago } from "../pagos/SelectorMetodoPago";
 import { registrarPagoAction } from "../pagos/actions";
+import { proyectarResumenTurno } from "./proyeccionArqueo";
+import type { LineaResumenMetodo } from "@gym-app/domain/use-cases/ObtenerResumenTurno";
 
 type Paso = 1 | 2 | 3 | 4;
 
@@ -211,36 +213,58 @@ function ContenidoPaso2({
   );
 }
 
+type Modalidad = "total" | "abono" | "combinado";
+
+interface LineaFormulario {
+  clave: string;
+  monto: string;
+  seleccion: { metodoPagoId: string | null; metodo: string; tasaCambio: number | null; numeroOperacion: string };
+}
+
+function nuevaLineaVacia(): LineaFormulario {
+  return {
+    clave: crypto.randomUUID(),
+    monto: "",
+    seleccion: { metodoPagoId: null, metodo: "", tasaCambio: null, numeroOperacion: "" },
+  };
+}
+
 function ContenidoPaso3({
   miembroId,
   planId,
   monto: montoSugerido,
   metodosPago,
+  lineasResumenTurno,
   onVolver,
   onPagoRegistrado,
 }: {
   miembroId: string;
   planId: string;
-  // Precio de lista del plan — es el punto de partida del campo "Monto",
-  // que queda editable para poder registrar un abono parcial (pagos
+  // Precio de lista del plan — punto de partida del monto objetivo, que
+  // queda editable para poder registrar un abono parcial (pagos
   // fraccionados/mixtos, ver diseño acordado). Acá no se conoce el saldo
   // pendiente real del miembro (ese cálculo vive en su ficha) — quien
   // cobra tiene que saber cuánto pedir si es un abono, no el precio completo.
   monto: number;
   metodosPago: MetodoPago[];
+  lineasResumenTurno: LineaResumenMetodo[];
   onVolver: () => void;
   onPagoRegistrado: (fechaFinCicloISO: string | undefined) => void;
 }) {
   const [estado, enviar, enviando] = useActionState(registrarPagoAction, {});
   const { mostrarExito, mostrarError } = useFeedback();
-  const [montoTexto, setMontoTexto] = useState(String(montoSugerido));
-  const monto = Number(montoTexto) || 0;
-  const [seleccionMetodo, setSeleccionMetodo] = useState<{
-    metodoPagoId: string | null;
-    metodo: string;
-    tasaCambio: number | null;
-    numeroOperacion: string;
-  }>({ metodoPagoId: null, metodo: "", tasaCambio: null, numeroOperacion: "" });
+
+  const [modalidad, setModalidad] = useState<Modalidad>("total");
+  const [montoObjetivoTexto, setMontoObjetivoTexto] = useState(String(montoSugerido));
+  const montoObjetivo = Number(montoObjetivoTexto) || 0;
+
+  // Total y abono usan una sola línea; combinado usa el array completo.
+  const [lineaUnica, setLineaUnica] = useState<LineaFormulario>(nuevaLineaVacia());
+  const [lineasCombinadas, setLineasCombinadas] = useState<LineaFormulario[]>([nuevaLineaVacia(), nuevaLineaVacia()]);
+
+  const lineasActivas = modalidad === "combinado" ? lineasCombinadas : [lineaUnica];
+  const sumaLineas = lineasActivas.reduce((suma, l) => suma + (Number(l.monto) || 0), 0);
+  const sumaCoincide = modalidad !== "combinado" || Math.abs(sumaLineas - montoObjetivo) < 0.01;
 
   useEffect(() => {
     if (estado.error) mostrarError(estado.error);
@@ -255,39 +279,176 @@ function ContenidoPaso3({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- solo debe reaccionar a un nuevo estado.ok, no a las funciones
   }, [estado.ok]);
 
+  const lineasParaEnviar = lineasActivas
+    .filter((l) => Number(l.monto) > 0)
+    .map((l) => ({
+      monto: Number(l.monto),
+      metodo: l.seleccion.metodo,
+      metodoPagoId: l.seleccion.metodoPagoId,
+      numeroOperacion: l.seleccion.numeroOperacion || null,
+      tasaCambio: l.seleccion.tasaCambio,
+    }));
+
+  const lineasEnProgreso = lineasActivas
+    .filter((l) => Number(l.monto) > 0 && l.seleccion.metodo)
+    .map((l) => ({ metodo: l.seleccion.metodo, monto: Number(l.monto), enBs: l.seleccion.tasaCambio !== null }));
+
+  const proyeccion = proyectarResumenTurno(lineasResumenTurno, lineasEnProgreso);
+  const proyeccionConMovimiento = proyeccion.filter((l) => l.proyectado !== l.actual);
+
+  const puedeEnviar =
+    montoObjetivo === 0 ||
+    (sumaCoincide && lineasParaEnviar.length > 0 && lineasParaEnviar.every((l) => l.metodoPagoId));
+
   return (
     <form action={enviar} className="flex flex-col gap-4 text-base">
       <input type="hidden" name="miembroId" value={miembroId} />
       <input type="hidden" name="planId" value={planId} />
       <input type="hidden" name="origen" value="caja" />
-      <input type="hidden" name="metodo" value={seleccionMetodo.metodo} />
-      <input type="hidden" name="metodoPagoId" value={seleccionMetodo.metodoPagoId ?? ""} />
-      <input type="hidden" name="tasaCambio" value={seleccionMetodo.tasaCambio ?? ""} />
-      <input type="hidden" name="numeroOperacion" value={seleccionMetodo.numeroOperacion} />
+      <input
+        type="hidden"
+        name="lineas"
+        value={JSON.stringify(
+          montoObjetivo === 0
+            ? [{ monto: 0, metodo: "Cortesía", metodoPagoId: null, numeroOperacion: null, tasaCambio: null }]
+            : lineasParaEnviar
+        )}
+      />
 
       {montoSugerido > 0 && (
-        <CurrencyInput name="monto" label="Monto a cobrar" moneda="USD" required value={montoTexto} onChange={setMontoTexto} />
+        <div className="flex gap-2">
+          {(
+            [
+              { valor: "total" as const, etiqueta: "Pago total" },
+              { valor: "abono" as const, etiqueta: "Abono parcial" },
+              { valor: "combinado" as const, etiqueta: "Pago combinado" },
+            ]
+          ).map((opcion) => (
+            <button
+              key={opcion.valor}
+              type="button"
+              onClick={() => {
+                setModalidad(opcion.valor);
+                if (opcion.valor === "total") setMontoObjetivoTexto(String(montoSugerido));
+              }}
+              className="min-h-11 flex-1 rounded-lg border px-3 text-sm font-medium transition-colors duration-150"
+              style={
+                modalidad === opcion.valor
+                  ? { borderColor: "var(--gx-accent)", background: "var(--gx-accent)", color: "var(--gx-accent-ink)" }
+                  : { borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }
+              }
+            >
+              {opcion.etiqueta}
+            </button>
+          ))}
+        </div>
       )}
-      {montoSugerido > 0 && monto > 0 && monto < montoSugerido && (
+
+      {montoSugerido > 0 && (
+        <CurrencyInput
+          name="montoObjetivo"
+          label={modalidad === "combinado" ? "Total a pagar" : "Monto a cobrar"}
+          moneda="USD"
+          required
+          value={montoObjetivoTexto}
+          onChange={setMontoObjetivoTexto}
+        />
+      )}
+      {montoSugerido > 0 && montoObjetivo > 0 && montoObjetivo < montoSugerido && (
         <p className="text-sm" style={{ color: "var(--gx-muted)" }}>
           Es menos que el precio del plan (${montoSugerido.toFixed(2)}) — queda como abono, se puede completar
           después desde la ficha del miembro.
         </p>
       )}
-      {montoSugerido === 0 && <input type="hidden" name="monto" value={0} />}
 
-      {monto > 0 ? (
+      {montoObjetivo > 0 && modalidad !== "combinado" && (
         <SelectorMetodoPago
           metodos={metodosPago}
-          monto={monto}
-          onCambio={setSeleccionMetodo}
+          monto={montoObjetivo}
+          onCambio={(seleccion) => setLineaUnica((prev) => ({ ...prev, monto: String(montoObjetivo), seleccion }))}
           grande
           avisoServidor={{ tasaNueva: estado.tasaNueva, fallaTemporal: estado.fallaTemporal, tasaGuardada: estado.tasaGuardada }}
         />
-      ) : (
+      )}
+
+      {montoObjetivo > 0 && modalidad === "combinado" && (
+        <div className="flex flex-col gap-4">
+          {lineasCombinadas.map((linea, indice) => (
+            <div key={linea.clave} className="flex flex-col gap-2 rounded-lg border p-3" style={{ borderColor: "var(--gx-edge)" }}>
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium" style={{ color: "var(--gx-muted)" }}>
+                  Línea {indice + 1}
+                </span>
+                {lineasCombinadas.length > 2 && (
+                  <button
+                    type="button"
+                    onClick={() => setLineasCombinadas((prev) => prev.filter((_, i) => i !== indice))}
+                    className="text-sm"
+                    style={{ color: "var(--gx-bad)" }}
+                  >
+                    Quitar
+                  </button>
+                )}
+              </div>
+              <CurrencyInput
+                name={`monto-linea-${indice}`}
+                label="Monto de esta línea"
+                moneda="USD"
+                value={linea.monto}
+                onChange={(valor) =>
+                  setLineasCombinadas((prev) => prev.map((l, i) => (i === indice ? { ...l, monto: valor } : l)))
+                }
+              />
+              <SelectorMetodoPago
+                metodos={metodosPago}
+                monto={Number(linea.monto) || 0}
+                onCambio={(seleccion) =>
+                  setLineasCombinadas((prev) => prev.map((l, i) => (i === indice ? { ...l, seleccion } : l)))
+                }
+              />
+            </div>
+          ))}
+          <button
+            type="button"
+            onClick={() => setLineasCombinadas((prev) => [...prev, nuevaLineaVacia()])}
+            className="min-h-11 rounded-lg border px-3 text-sm font-medium"
+            style={{ borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }}
+          >
+            + Agregar línea
+          </button>
+          <div
+            className="flex justify-between rounded-lg px-3 py-2 text-sm"
+            style={{ background: sumaCoincide ? "var(--gx-surface-2)" : "var(--gx-bad)" }}
+          >
+            <span>Total ingresado</span>
+            <span className="font-semibold">
+              ${sumaLineas.toFixed(2)} / ${montoObjetivo.toFixed(2)}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {montoObjetivo === 0 && (
         <p className="text-sm" style={{ color: "var(--gx-muted)" }}>
           Este plan no tiene costo — no hace falta elegir método de pago.
         </p>
+      )}
+
+      {proyeccionConMovimiento.length > 0 && (
+        <div className="rounded-lg border p-3 text-sm" style={{ borderColor: "var(--gx-edge)" }}>
+          <p className="mb-2 font-medium" style={{ color: "var(--gx-muted)" }}>
+            Así quedaría el resumen del turno
+          </p>
+          {proyeccionConMovimiento.map((linea) => (
+            <div key={linea.metodo} className="flex justify-between">
+              <span style={{ color: "var(--gx-muted)" }}>{linea.metodo}</span>
+              <span style={{ color: "var(--gx-ink)" }}>
+                {linea.enBs ? `Bs. ${linea.actual.toFixed(2)}` : `$${linea.actual.toFixed(2)}`} →{" "}
+                {linea.enBs ? `Bs. ${linea.proyectado.toFixed(2)}` : `$${linea.proyectado.toFixed(2)}`}
+              </span>
+            </div>
+          ))}
+        </div>
       )}
 
       <div className="mt-2 flex gap-3">
@@ -300,11 +461,7 @@ function ContenidoPaso3({
         >
           Volver
         </Button>
-        <Button
-          type="submit"
-          className="min-h-12 flex-1 text-base"
-          disabled={enviando || (monto > 0 && !seleccionMetodo.metodoPagoId)}
-        >
+        <Button type="submit" className="min-h-12 flex-1 text-base" disabled={enviando || !puedeEnviar}>
           {enviando ? "Registrando..." : "Registrar pago"}
         </Button>
       </div>
@@ -365,12 +522,14 @@ export function ModalRegistrarPagoCaja({
   planes,
   metodosPago,
   tasaActual,
+  lineasResumenTurno,
   onCerrar,
 }: {
   miembros: Miembro[];
   planes: PlanParaModal[];
   metodosPago: MetodoPago[];
   tasaActual: number | null;
+  lineasResumenTurno: LineaResumenMetodo[];
   onCerrar: () => void;
 }) {
   const [paso, setPaso] = useState<Paso>(1);
@@ -477,6 +636,7 @@ export function ModalRegistrarPagoCaja({
               (miembroElegido.plan ?? planes.find((p) => p.id === planElegidoId))?.precioUSD ?? 0
             }
             metodosPago={metodosPago}
+            lineasResumenTurno={lineasResumenTurno}
             onVolver={() => setPaso(2)}
             onPagoRegistrado={(fechaFinCicloISO) => {
               setFechaFinCicloFinal(fechaFinCicloISO ? new Date(fechaFinCicloISO) : null);

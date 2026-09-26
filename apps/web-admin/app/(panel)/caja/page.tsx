@@ -19,10 +19,13 @@ import { PrismaMetodoPagoRepository } from "@gym-app/infrastructure/persistence/
 import { listarMetodosPagoActivos } from "@gym-app/domain/use-cases/ListarMetodosPago";
 import { PrismaReglaAbonoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaReglaAbonoRepository";
 import { listarReglasAbono } from "@gym-app/domain/use-cases/ListarReglasAbono";
+import { listarEntrenadores } from "@gym-app/domain/use-cases/ListarEntrenadores";
+import { PrismaEntrenadorRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaEntrenadorRepository";
 import { obtenerTurnoAbiertoParaUsuario } from "./obtenerTurnoAbiertoParaUsuario";
 import { AvisoCajaAjena } from "./AvisoCajaAjena";
 import { BotonRegistrarPagoCaja } from "./BotonRegistrarPagoCaja";
 import { BotonRegistrarEgreso } from "./BotonRegistrarEgreso";
+import { cambiarPlanAction } from "../pagos/actions";
 
 // El método ahora se guarda como snapshot legible ("Pago Móvil - Banesco")
 // directo en Pago.metodo, ya no como código a traducir contra un catálogo
@@ -72,7 +75,7 @@ export default async function PaginaCaja() {
 
   if (turnoAbierto) {
     const esPropio = turnoAbierto.esPropio;
-    const [resumen, miembros, planes, metodosPago, tasaCambio, reglasAbono] = await Promise.all([
+    const [resumen, miembros, planes, metodosPago, tasaCambio, reglasAbono, entrenadores] = await Promise.all([
       obtenerResumenTurno(
         {
           turnos: turnoRepo,
@@ -92,6 +95,11 @@ export default async function PaginaCaja() {
         throw error;
       }),
       listarReglasAbono({ reglasAbono: new PrismaReglaAbonoRepository(prisma) }, usuario.organizacionId),
+      // Solo para "Cambiar plan" en el Paso 2 del wizard — el selector de
+      // entrenador se filtra por la sucursal del miembro elegido, pero
+      // Caja opera dentro de una única sucursal activa (no hay selector de
+      // sede como en la ficha del miembro).
+      listarEntrenadores({ entrenadores: new PrismaEntrenadorRepository(prisma) }, usuario.organizacionId, sucursalActivaId),
     ]);
     const tasaActual = tasaCambio?.tasa.valor ?? null;
 
@@ -141,6 +149,8 @@ export default async function PaginaCaja() {
                   metodosPago={metodosPago}
                   tasaActual={tasaActual}
                   reglasAbono={reglasAbono}
+                  entrenadores={entrenadores}
+                  accionCambiarPlan={cambiarPlanAction}
                 />
                 <BotonRegistrarEgreso accion={registrarEgresoAction} turnoId={resumen.turno.id} />
               </div>

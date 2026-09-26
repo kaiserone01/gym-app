@@ -232,6 +232,11 @@ export interface EstadoCambioPlan {
   tasaNueva?: number;
   fallaTemporal?: boolean;
   tasaGuardada?: number;
+  // Presente solo cuando origen === "caja" (ver más abajo) — el wizard de
+  // Caja usa esto para cerrar el modal sin navegar, en vez del redirect a
+  // /miembros que usa el origen por defecto (ficha del miembro).
+  ok?: string;
+  diferencia?: number;
 }
 
 export async function cambiarPlanAction(
@@ -250,6 +255,10 @@ export async function cambiarPlanAction(
   const numeroOperacion = formData.get("numeroOperacion")?.toString().trim() || null;
   const sucursalIdPago = formData.get("sucursalIdPago")?.toString() || sucursalActivaId;
   const entrenadorId = formData.get("entrenadorId")?.toString() || null;
+  // "caja": viene del wizard de Caja (Paso 2), dentro de un modal — se
+  // queda en /caja en vez de navegar a /miembros (ver diseño acordado, igual
+  // criterio que origen en registrarPagoAction).
+  const origen = formData.get("origen")?.toString();
 
   if (!miembroId || !planNuevoId) {
     return { error: "Miembro y plan nuevo son requeridos." };
@@ -310,16 +319,20 @@ export async function cambiarPlanAction(
   revalidatePath(`/miembros/${miembroId}/pagos`);
   revalidatePath("/caja");
 
-  // A diferencia de registrarPagoAction (que se queda en la misma pantalla
-  // cuando origen es "miembro"/"caja"), acá siempre se redirige a la lista
-  // — evita el "¿para qué es Guardar si ya cambié el plan?" de tener que
-  // volver a tocar otro botón en la misma pantalla (ver diseño acordado).
-  redirect(
-    conMensajeOk(
-      "/miembros",
-      resultado.diferencia > 0
-        ? `Plan cambiado — se cobró la diferencia de $${resultado.diferencia.toFixed(2)}.`
-        : "Plan cambiado, sin costo adicional."
-    )
-  );
+  const mensaje =
+    resultado.diferencia > 0
+      ? `Plan cambiado — se cobró la diferencia de $${resultado.diferencia.toFixed(2)}.`
+      : "Plan cambiado, sin costo adicional.";
+
+  // Desde el wizard de Caja: se queda en /caja y cierra el modal (ver
+  // diseño acordado), igual criterio que registrarPagoAction con
+  // origen "caja" — no tiene sentido navegar afuera del modal que sigue
+  // abierto. Desde la ficha del miembro (sin origen), se redirige a la
+  // lista — evita el "¿para qué es Guardar?" de volver a tocar otro botón
+  // en la misma pantalla.
+  if (origen === "caja") {
+    return { ok: mensaje, diferencia: resultado.diferencia };
+  }
+
+  redirect(conMensajeOk("/miembros", mensaje));
 }

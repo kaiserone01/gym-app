@@ -13,11 +13,12 @@ import { calcularProyeccionRenovacion } from "./proyeccionRenovacion";
 import { DiasDisponibles } from "../miembros/vencimiento";
 import { formatearBs } from "../tasaBcvFija";
 import { SelectorMetodoPago } from "../pagos/SelectorMetodoPago";
-import { registrarPagoAction } from "../pagos/actions";
+import { registrarPagoAction, type EstadoCambioPlan } from "../pagos/actions";
 import { calcularProyeccionAbono } from "./proyeccionAbono";
 import { PanelRemanentePago } from "./PanelRemanentePago";
 import { formatearFechaCorta } from "./ProyeccionCiclosUI";
 import type { ReglaAbonoPorFrecuencia } from "@gym-app/domain/entities/ReglaAbono";
+import { FormularioCambiarPlan, type EntrenadorParaCambio } from "../miembros/FormularioCambiarPlan";
 
 type Paso = 1 | 2 | 3 | 4;
 
@@ -115,8 +116,12 @@ function ContenidoPaso2({
   tasaActual,
   modalidadElegida,
   onCambiarModalidad,
+  entrenadores,
+  metodosPago,
+  accionCambiarPlan,
   onVolver,
   onContinuar,
+  onCerrar,
 }: {
   miembro: MiembroConPlan;
   planes: PlanParaModal[];
@@ -125,25 +130,52 @@ function ContenidoPaso2({
   tasaActual: number | null;
   modalidadElegida: Modalidad;
   onCambiarModalidad: (modalidad: Modalidad) => void;
+  entrenadores: EntrenadorParaCambio[];
+  metodosPago: MetodoPago[];
+  accionCambiarPlan: (estado: EstadoCambioPlan, formData: FormData) => Promise<EstadoCambioPlan>;
   onVolver: () => void;
   onContinuar: (plan: PlanParaModal) => void;
+  onCerrar: () => void;
 }) {
-  const planEfectivo = miembro.plan ?? planes.find((p) => p.id === planElegidoId);
+  // planElegidoId gana sobre miembro.plan cuando el cajero cambió el plan
+  // explícitamente en este paso (ver diseño acordado, botón "Cambiar
+  // plan") — antes miembro.plan siempre ganaba, así que un miembro que ya
+  // tenía plan asignado no podía cambiarlo desde acá.
+  const planEfectivo = (planElegidoId ? planes.find((p) => p.id === planElegidoId) : undefined) ?? miembro.plan;
 
   const proyeccion = planEfectivo
     ? calcularProyeccionRenovacion(miembro.fechaVencimiento, planEfectivo.frecuencia)
     : null;
 
+  // Con ciclo vigente ya pagado, cambiar el plan cobra la diferencia (ver
+  // diseño acordado — reusa el mismo flujo que la ficha del miembro,
+  // FormularioCambiarPlan) en vez de solo reasignarlo para este pago.
+  const tieneCicloVigente = miembro.fechaVencimiento !== null && miembro.fechaVencimiento > new Date();
+  const [cambiandoPlan, setCambiandoPlan] = useState(false);
+
   return (
     <div className="flex flex-col gap-5 text-base">
       <div className="flex items-center gap-4">
         <Avatar fotoUrl={miembro.fotoUrl} nombre={miembro.nombre} />
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <p className="truncate text-lg font-semibold" style={{ color: "var(--gx-ink)" }}>
             {miembro.nombre}
           </p>
           <p style={{ color: "var(--gx-muted)" }}>{miembro.cedula}</p>
         </div>
+        {/* Aprovecha el espacio vacío del bloque de identidad — permite
+            cambiar el plan de cualquier miembro desde acá (ver diseño
+            acordado), no solo asignar uno a quien no tiene ninguno. */}
+        {miembro.plan && !cambiandoPlan && (
+          <button
+            type="button"
+            onClick={() => setCambiandoPlan(true)}
+            className="min-h-9 shrink-0 rounded-lg border px-3 text-sm font-medium"
+            style={{ borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }}
+          >
+            Cambiar plan
+          </button>
+        )}
       </div>
 
       <div className="flex justify-between">
@@ -151,7 +183,30 @@ function ContenidoPaso2({
         <DiasDisponibles fechaVencimiento={miembro.fechaVencimiento} />
       </div>
 
-      {planEfectivo ? (
+      {cambiandoPlan && tieneCicloVigente && miembro.plan ? (
+        <div className="flex flex-col gap-3 rounded-lg border p-4" style={{ borderColor: "var(--gx-accent)" }}>
+          <p className="text-xs" style={{ color: "var(--gx-muted)" }}>
+            Para subir o bajar de plan sin esperar a que venza el ciclo actual — cobra solo la diferencia de precio,
+            si la hay. El vencimiento no cambia.
+          </p>
+          <FormularioCambiarPlan
+            accion={accionCambiarPlan}
+            miembroId={miembro.id}
+            planes={planes}
+            planActualId={miembro.plan.id}
+            precioActual={miembro.plan.precioUSD}
+            frecuenciaActual={miembro.plan.frecuencia}
+            metodosPago={metodosPago}
+            entrenadores={entrenadores}
+            entrenadorActualId={miembro.entrenadorId}
+            origen="caja"
+            onCambiado={onCerrar}
+          />
+          <Button type="button" variant="secundario" onClick={() => setCambiandoPlan(false)}>
+            Cancelar
+          </Button>
+        </div>
+      ) : planEfectivo && !cambiandoPlan ? (
         <div className="rounded-lg border p-4" style={{ borderColor: "var(--gx-edge)", background: "var(--gx-surface-2)" }}>
           <div className="flex justify-between">
             <span style={{ color: "var(--gx-muted)" }}>Plan</span>
@@ -169,20 +224,34 @@ function ContenidoPaso2({
         </div>
       ) : (
         <label className="flex flex-col gap-2" style={{ color: "var(--gx-muted)" }}>
-          Este miembro no tiene un plan asignado — elegí uno para continuar
-          <select
-            value={planElegidoId ?? ""}
-            onChange={(e) => onElegirPlan(e.target.value)}
-            className="min-h-12 rounded-lg border px-3 text-base outline-none focus:border-[var(--gx-accent)]"
-            style={{ background: "var(--gx-surface-2)", borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }}
-          >
-            <option value="">Seleccioná un plan</option>
-            {planes.map((plan) => (
-              <option key={plan.id} value={plan.id}>
-                {plan.nombre} — ${plan.precioUSD.toFixed(2)}
-              </option>
-            ))}
-          </select>
+          {miembro.plan ? "Elegí el nuevo plan para este pago" : "Este miembro no tiene un plan asignado — elegí uno para continuar"}
+          <div className="flex gap-2">
+            <select
+              value={planElegidoId ?? ""}
+              onChange={(e) => onElegirPlan(e.target.value)}
+              className="min-h-12 flex-1 rounded-lg border px-3 text-base outline-none focus:border-[var(--gx-accent)]"
+              style={{ background: "var(--gx-surface-2)", borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }}
+            >
+              <option value="">Seleccioná un plan</option>
+              {planes.map((plan) => (
+                <option key={plan.id} value={plan.id}>
+                  {plan.nombre} — ${plan.precioUSD.toFixed(2)}
+                </option>
+              ))}
+            </select>
+            {miembro.plan && (
+              <Button
+                type="button"
+                variant="secundario"
+                onClick={() => {
+                  onElegirPlan("");
+                  setCambiandoPlan(false);
+                }}
+              >
+                Cancelar
+              </Button>
+            )}
+          </div>
         </label>
       )}
 
@@ -860,6 +929,8 @@ export function ModalRegistrarPagoCaja({
   metodosPago,
   tasaActual,
   reglasAbono,
+  entrenadores,
+  accionCambiarPlan,
   onCerrar,
 }: {
   miembros: Miembro[];
@@ -867,6 +938,8 @@ export function ModalRegistrarPagoCaja({
   metodosPago: MetodoPago[];
   tasaActual: number | null;
   reglasAbono: ReglaAbonoPorFrecuencia[];
+  entrenadores: EntrenadorParaCambio[];
+  accionCambiarPlan: (estado: EstadoCambioPlan, formData: FormData) => Promise<EstadoCambioPlan>;
   onCerrar: () => void;
 }) {
   const [paso, setPaso] = useState<Paso>(1);
@@ -960,6 +1033,10 @@ export function ModalRegistrarPagoCaja({
             tasaActual={tasaActual}
             modalidadElegida={modalidadElegida}
             onCambiarModalidad={setModalidadElegida}
+            entrenadores={entrenadores}
+            metodosPago={metodosPago}
+            accionCambiarPlan={accionCambiarPlan}
+            onCerrar={onCerrar}
             onVolver={() => setPaso(1)}
             onContinuar={(plan) => {
               setPlanElegidoId(plan.id);

@@ -32,6 +32,8 @@ export function FormularioCambiarPlan({
   metodosPago,
   entrenadores,
   entrenadorActualId,
+  origen,
+  onCambiado,
 }: {
   accion: (estado: EstadoCambioPlan, formData: FormData) => Promise<EstadoCambioPlan>;
   miembroId: string;
@@ -50,15 +52,33 @@ export function FormularioCambiarPlan({
   // con entrenador: $30 mensual, ver diseño acordado).
   entrenadores: EntrenadorParaCambio[];
   entrenadorActualId: string | null;
+  // "caja" cuando se usa dentro del wizard de Caja — cambia el
+  // comportamiento post-envío del lado del servidor (ver cambiarPlanAction):
+  // no navega afuera del modal, solo confirma y dispara onCambiado.
+  origen?: "caja";
+  // Solo relevante con origen "caja" — se llama tras confirmar el cambio,
+  // para que el wizard cierre el modal (ver diseño acordado).
+  onCambiado?: () => void;
 }) {
   const [estado, enviar, enviando] = useActionState(accion, {});
-  const { mostrarError } = useFeedback();
+  const { mostrarError, mostrarExito } = useFeedback();
   const hayCambiosSinGuardar = useHayCambiosSinGuardar();
 
   useEffect(() => {
     if (estado.error) mostrarError(estado.error);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- solo debe reaccionar a un nuevo estado.error, no a mostrarError
   }, [estado.error]);
+
+  // Con origen "caja", cambiarPlanAction no redirige — confirma acá mismo
+  // y avisa al wizard que ya terminó (ver diseño acordado: cierra el modal
+  // en vez de navegar afuera).
+  useEffect(() => {
+    if (origen === "caja" && estado.ok) {
+      mostrarExito(estado.ok);
+      onCambiado?.();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- solo debe reaccionar a un nuevo estado.ok
+  }, [estado.ok]);
 
   const [planNuevoId, setPlanNuevoId] = useState("");
   const [entrenadorId, setEntrenadorId] = useState(entrenadorActualId ?? "");
@@ -113,6 +133,7 @@ export function FormularioCambiarPlan({
       <input type="hidden" name="metodoPagoId" value={seleccionMetodo.metodoPagoId ?? ""} />
       <input type="hidden" name="tasaCambio" value={seleccionMetodo.tasaCambio ?? ""} />
       <input type="hidden" name="numeroOperacion" value={seleccionMetodo.numeroOperacion} />
+      {origen && <input type="hidden" name="origen" value={origen} />}
 
       <label className="flex flex-col gap-1.5 text-sm" style={{ color: "var(--gx-muted)" }}>
         Plan nuevo

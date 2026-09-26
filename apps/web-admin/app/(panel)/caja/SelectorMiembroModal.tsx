@@ -17,6 +17,10 @@ export interface PlanParaModal {
   permitePagoParcial: boolean;
   minimoAbonoTipo: TipoMinimoAbono | null;
   minimoAbonoValor: number | null;
+  // Necesario para "Cambiar plan" en el Paso 2 del wizard de Caja — el
+  // formulario de cambio de plan (FormularioCambiarPlan) exige elegir
+  // entrenador cuando el plan nuevo lo incluye.
+  incluyeEntrenador: boolean;
 }
 
 const MINIMO_CARACTERES_BUSQUEDA = 3;
@@ -53,6 +57,11 @@ export interface MiembroConPlan {
   fotoUrl: string | null;
   fechaVencimiento: Date | null;
   plan: PlanParaModal | undefined;
+  // Necesarios para "Cambiar plan" en el Paso 2 del wizard de Caja — el
+  // cobro de diferencia (FormularioCambiarPlan) solo aplica con ciclo
+  // vigente, y el selector de entrenador se filtra por sucursal.
+  sucursalId: string | null;
+  entrenadorId: string | null;
 }
 
 /**
@@ -92,6 +101,8 @@ export function BuscadorMiembro({
         fotoUrl: m.fotoUrl,
         fechaVencimiento: m.fechaVencimiento,
         plan: m.planId ? planesPorId.get(m.planId) : undefined,
+        sucursalId: m.sucursalId,
+        entrenadorId: m.entrenadorId,
       }));
   }, [miembros, busquedaAplicada, planesPorId]);
 

@@ -8,6 +8,14 @@ import type { FrecuenciaPago } from "@gym-app/domain/entities/Plan";
 import type { EstadoCambioPlan } from "../pagos/actions";
 import { SelectorMetodoPago } from "../pagos/SelectorMetodoPago";
 import { useHayCambiosSinGuardar } from "./ContextoCambiosSinGuardar";
+import { calcularProrrateoPlanCliente } from "../caja/calcularProrrateoPlan";
+
+const ETIQUETA_FRECUENCIA: Record<FrecuenciaPago, string> = {
+  DIARIO: "diario",
+  SEMANAL: "semanal",
+  QUINCENAL: "quincenal",
+  MENSUAL: "mensual",
+};
 
 export interface PlanParaCambio {
   id: string;
@@ -29,6 +37,7 @@ export function FormularioCambiarPlan({
   planActualId,
   precioActual,
   frecuenciaActual,
+  fechaVencimientoActual,
   metodosPago,
   entrenadores,
   entrenadorActualId,
@@ -39,13 +48,13 @@ export function FormularioCambiarPlan({
   miembroId: string;
   planes: PlanParaCambio[];
   planActualId: string | null;
+  // Precio y vencimiento vigentes del plan actual — la fórmula de
+  // prorrateo (calcularProrrateoPlanCliente) los usa para calcular el
+  // valor no consumido del ciclo, sin importar la frecuencia del plan
+  // nuevo (ver diseño acordado, ya no se restringe a la misma frecuencia).
   precioActual: number;
-  // Cobrar "solo la diferencia" no mueve el vencimiento — solo tiene
-  // sentido entre planes de la misma frecuencia (ambos mensuales, ambos
-  // semanales...). Un cambio de frecuencia se filtra del selector; para
-  // eso corresponde un pago normal por el precio completo (ver diseño
-  // acordado).
   frecuenciaActual: FrecuenciaPago;
+  fechaVencimientoActual: Date;
   metodosPago: MetodoPago[];
   // Entrenadores elegibles para la sede del miembro — se muestra el
   // selector solo si el plan nuevo elegido incluye entrenador (único plan
@@ -89,16 +98,35 @@ export function FormularioCambiarPlan({
     numeroOperacion: string;
   }>({ metodoPagoId: null, metodo: "", tasaCambio: null, numeroOperacion: "" });
 
-  const planesMismaFrecuencia = planes.filter((p) => p.frecuencia === frecuenciaActual);
-  const planNuevo = planesMismaFrecuencia.find((p) => p.id === planNuevoId) ?? null;
-  const diferencia = planNuevo ? Math.round(Math.max(0, planNuevo.precioUSD - precioActual) * 100) / 100 : 0;
-  const requierePago = diferencia > 0;
+  const planNuevo = planes.find((p) => p.id === planNuevoId) ?? null;
+
+  const ahora = new Date();
+  const prorrateoAjustar = planNuevo
+    ? calcularProrrateoPlanCliente({
+        precioViejo: precioActual,
+        frecuenciaVieja: frecuenciaActual,
+        precioNuevo: planNuevo.precioUSD,
+        frecuenciaNueva: planNuevo.frecuencia,
+        fechaVencimientoActual,
+        ahora,
+        modo: "AJUSTAR_VENCIMIENTO",
+      })
+    : null;
+  const prorrateoCicloCompleto = planNuevo
+    ? calcularProrrateoPlanCliente({
+        precioViejo: precioActual,
+        frecuenciaVieja: frecuenciaActual,
+        precioNuevo: planNuevo.precioUSD,
+        frecuenciaNueva: planNuevo.frecuencia,
+        fechaVencimientoActual,
+        ahora,
+        modo: "CICLO_COMPLETO",
+      })
+    : null;
+
+  const [modoElegido, setModoElegido] = useState<"AJUSTAR_VENCIMIENTO" | "CICLO_COMPLETO" | null>(null);
   const requiereEntrenador = planNuevo?.incluyeEntrenador ?? false;
-  const puedeEnviar =
-    !!planNuevo &&
-    planNuevo.id !== planActualId &&
-    (!requierePago || !!seleccionMetodo.metodoPagoId) &&
-    (!requiereEntrenador || !!entrenadorId);
+  const diferenciaCicloCompleto = prorrateoCicloCompleto?.diferencia ?? 0;
 
   return (
     <form
@@ -139,44 +167,47 @@ export function FormularioCambiarPlan({
         Plan nuevo
         <select
           value={planNuevoId}
-          onChange={(e) => setPlanNuevoId(e.target.value)}
+          onChange={(e) => {
+            setPlanNuevoId(e.target.value);
+            setModoElegido(null);
+          }}
           className="min-h-11 rounded-lg border px-3 outline-none focus:border-[var(--gx-accent)]"
           style={{ background: "var(--gx-surface-2)", borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }}
         >
           <option value="">Seleccioná un plan</option>
-          {planesMismaFrecuencia.map((plan) => (
+          {planes.map((plan) => (
             <option key={plan.id} value={plan.id} disabled={plan.id === planActualId}>
-              {plan.nombre} (${plan.precioUSD.toFixed(2)}){plan.id === planActualId ? " — plan actual" : ""}
+              {plan.nombre} — ${plan.precioUSD.toFixed(2)} ({ETIQUETA_FRECUENCIA[plan.frecuencia]})
+              {plan.id === planActualId ? " — plan actual" : ""}
             </option>
           ))}
         </select>
       </label>
 
-      {planes.length > planesMismaFrecuencia.length && (
-        <p className="text-xs" style={{ color: "var(--gx-muted)" }}>
-          Solo se muestran planes de la misma frecuencia que el actual — cobrar la diferencia no mueve el
-          vencimiento, así que no aplica entre semanal, quincenal y mensual. Para cambiar a otra frecuencia, usá
-          &quot;Registrar pago&quot; por el precio completo.
-        </p>
-      )}
-
-      {planNuevo && planNuevo.id !== planActualId && (
-        <div className="rounded-lg border p-3 text-sm" style={{ borderColor: "var(--gx-edge)", background: "var(--gx-surface-2)" }}>
-          <div className="flex justify-between">
-            <span style={{ color: "var(--gx-muted)" }}>Plan actual</span>
-            <span style={{ color: "var(--gx-ink)" }}>${precioActual.toFixed(2)}</span>
+      {planNuevo && planNuevo.id !== planActualId && prorrateoAjustar && prorrateoCicloCompleto && (
+        <div className="flex flex-col gap-3">
+          <div className="rounded-lg border p-3 text-sm" style={{ borderColor: "var(--gx-edge)", background: "var(--gx-surface-2)" }}>
+            <p className="font-semibold" style={{ color: "var(--gx-ink)" }}>
+              Solo ajustar vencimiento
+            </p>
+            <p className="mt-1 text-xs" style={{ color: "var(--gx-muted)" }}>
+              Nuevo vencimiento: {prorrateoAjustar.nuevoVencimiento.toLocaleDateString("es-VE")} — sin costo
+              adicional.
+            </p>
           </div>
-          <div className="mt-1 flex justify-between">
-            <span style={{ color: "var(--gx-muted)" }}>Plan nuevo</span>
-            <span style={{ color: "var(--gx-ink)" }}>${planNuevo.precioUSD.toFixed(2)}</span>
+          <div className="rounded-lg border p-3 text-sm" style={{ borderColor: "var(--gx-edge)", background: "var(--gx-surface-2)" }}>
+            <p className="font-semibold" style={{ color: "var(--gx-ink)" }}>
+              Pagar ciclo completo del nuevo
+            </p>
+            <p className="mt-1 text-xs" style={{ color: "var(--gx-muted)" }}>
+              Nuevo vencimiento: {prorrateoCicloCompleto.nuevoVencimiento.toLocaleDateString("es-VE")} —{" "}
+              {diferenciaCicloCompleto > 0
+                ? `se cobra $${diferenciaCicloCompleto.toFixed(2)}.`
+                : diferenciaCicloCompleto < 0
+                  ? `se acreditan $${Math.abs(diferenciaCicloCompleto).toFixed(2)} de saldo a favor.`
+                  : "sin costo adicional."}
+            </p>
           </div>
-          <div className="mt-1 flex justify-between font-semibold">
-            <span style={{ color: "var(--gx-ink)" }}>{requierePago ? "Diferencia a cobrar" : "Sin costo adicional"}</span>
-            <span style={{ color: "var(--gx-ink)" }}>{requierePago ? `$${diferencia.toFixed(2)}` : "$0.00"}</span>
-          </div>
-          <p className="mt-2 text-xs" style={{ color: "var(--gx-muted)" }}>
-            El vencimiento actual no cambia — el ciclo ya pagado sigue igual.
-          </p>
         </div>
       )}
 
@@ -202,18 +233,44 @@ export function FormularioCambiarPlan({
         </label>
       )}
 
-      {requierePago && (
+      {planNuevo && diferenciaCicloCompleto > 0 && (
         <SelectorMetodoPago
           metodos={metodosPago}
-          monto={diferencia}
+          monto={diferenciaCicloCompleto}
           onCambio={setSeleccionMetodo}
           avisoServidor={{ tasaNueva: estado.tasaNueva, fallaTemporal: estado.fallaTemporal, tasaGuardada: estado.tasaGuardada }}
         />
       )}
 
-      <Button type="submit" disabled={enviando || !puedeEnviar}>
-        {enviando ? "Guardando..." : requierePago ? "Cobrar diferencia y cambiar plan" : "Cambiar plan"}
-      </Button>
+      {planNuevo && planNuevo.id !== planActualId && (
+        <div className="flex flex-col gap-2">
+          <Button
+            type="submit"
+            name="modo"
+            value="AJUSTAR_VENCIMIENTO"
+            variant="secundario"
+            disabled={enviando || (requiereEntrenador && !entrenadorId)}
+            onClick={() => setModoElegido("AJUSTAR_VENCIMIENTO")}
+          >
+            {enviando && modoElegido === "AJUSTAR_VENCIMIENTO" ? "Guardando..." : "Solo ajustar vencimiento"}
+          </Button>
+          <Button
+            type="submit"
+            name="modo"
+            value="CICLO_COMPLETO"
+            disabled={enviando || (requiereEntrenador && !entrenadorId) || (diferenciaCicloCompleto > 0 && !seleccionMetodo.metodoPagoId)}
+            onClick={() => setModoElegido("CICLO_COMPLETO")}
+          >
+            {enviando && modoElegido === "CICLO_COMPLETO"
+              ? "Guardando..."
+              : diferenciaCicloCompleto > 0
+                ? `Pagar ciclo completo — cobrar $${diferenciaCicloCompleto.toFixed(2)}`
+                : diferenciaCicloCompleto < 0
+                  ? `Pagar ciclo completo — acreditar $${Math.abs(diferenciaCicloCompleto).toFixed(2)}`
+                  : "Pagar ciclo completo"}
+          </Button>
+        </div>
+      )}
     </form>
   );
 }

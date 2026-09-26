@@ -6,8 +6,10 @@ import {
   resolverReglaAbono,
   calcularMontoMinimoAbono,
   calcularProrrateoAbono,
+  calcularCiclosCubiertos,
   type ReglaAbonoPorFrecuencia,
   type TipoMinimoAbono,
+  type CicloProyectado,
 } from "@gym-app/domain/entities/ReglaAbono";
 import { DURACION_DIAS_POR_FRECUENCIA, type FrecuenciaPago } from "@gym-app/domain/entities/Plan";
 
@@ -33,13 +35,27 @@ export interface ProyeccionAbono {
   // aclarar que la proyección de abajo es sobre ese ciclo siguiente, no
   // sobre el actual (ver diseño acordado).
   esAdelantoCicloSiguiente: boolean;
+  // Detalle completo de ciclos que cubre el monto, SIN límite de cantidad
+  // (ver diseño acordado) — el tramo ya vigente antes de este pago, más
+  // cada ciclo nuevo que el monto alcanza a cubrir, más un ciclo parcial
+  // final si sobra un remanente que no llega a completar uno. Se muestra
+  // solo cuando hay más de 1 elemento (un solo ciclo "vigente" o un solo
+  // "parcial" ya lo dicen los demás campos de esta proyección).
+  ciclos: CicloProyectado[];
 }
 
 export function calcularProyeccionAbono(
   plan: { minimoAbonoTipo: TipoMinimoAbono | null; minimoAbonoValor: number | null; frecuencia: FrecuenciaPago; precioUSD: number },
   reglasAbono: ReglaAbonoPorFrecuencia[],
   montoAcumulado: number,
-  fechaInicioCiclo: Date
+  fechaInicioCiclo: Date,
+  // Fecha de vencimiento REAL del miembro (antes de este pago) y "ahora" —
+  // necesarias para calcularCiclosCubiertos, que distingue el tramo ya
+  // vigente del resto. fechaInicioCiclo puede ya ser fechaVencimiento (si
+  // hay vigencia) o "ahora" (si no) — se pasan por separado para no perder
+  // la distinción.
+  fechaVencimiento: Date | null,
+  ahora: Date
 ): ProyeccionAbono {
   const reglaFrecuencia = reglasAbono.find((r) => r.frecuencia === plan.frecuencia) ?? null;
   const reglaEfectiva = resolverReglaAbono(
@@ -56,12 +72,16 @@ export function calcularProyeccionAbono(
   // termina el vigente (fechaInicioCiclo + diasDelCiclo) — mismo criterio
   // de "base" que usa calcularProyeccionRenovacion en el Paso 2.
   const esAdelantoCicloSiguiente = plan.precioUSD > 0 && montoAcumulado >= plan.precioUSD;
-  const montoParaProrratear = esAdelantoCicloSiguiente ? montoAcumulado - plan.precioUSD : montoAcumulado;
+  const montoParaProrratear = esAdelantoCicloSiguiente
+    ? montoAcumulado - plan.precioUSD * Math.floor(montoAcumulado / plan.precioUSD)
+    : montoAcumulado;
+  const ciclosCompletosCubiertos = esAdelantoCicloSiguiente ? Math.floor(montoAcumulado / plan.precioUSD) : 0;
   const fechaBaseProrrateo = esAdelantoCicloSiguiente
-    ? new Date(fechaInicioCiclo.getTime() + diasDelCiclo * 24 * 60 * 60 * 1000)
+    ? new Date(fechaInicioCiclo.getTime() + diasDelCiclo * ciclosCompletosCubiertos * 24 * 60 * 60 * 1000)
     : fechaInicioCiclo;
 
   const prorrateo = calcularProrrateoAbono(montoParaProrratear, plan.precioUSD, fechaBaseProrrateo, diasDelCiclo);
+  const ciclos = calcularCiclosCubiertos(montoAcumulado, plan.precioUSD, fechaVencimiento, diasDelCiclo, ahora);
 
   return {
     montoMinimo,
@@ -71,5 +91,6 @@ export function calcularProyeccionAbono(
     saldoRemanente: plan.precioUSD > 0 ? Math.max(0, plan.precioUSD - montoParaProrratear) : 0,
     porcentajeCubierto: plan.precioUSD > 0 ? Math.min(100, (montoParaProrratear / plan.precioUSD) * 100) : 100,
     esAdelantoCicloSiguiente,
+    ciclos,
   };
 }

@@ -117,3 +117,78 @@ export function calcularProrrateoAbono(
   fechaTope.setDate(fechaTope.getDate() + diasCubiertos);
   return { diasCubiertos, fechaTope };
 }
+
+export interface CicloProyectado {
+  inicio: Date;
+  fin: Date;
+  // "vigente": tramo que ya estaba pagado ANTES de este pago (el tiempo
+  // que le quedaba al miembro, si tenía). "completo": ciclo entero nuevo
+  // que este pago cubre de punta a punta. "parcial": remanente que no
+  // alcanza a completar un ciclo entero (el último de la lista, si sobra
+  // algo). Nunca hay más de un "vigente" (el primero, si existe) ni más
+  // de un "parcial" (el último, si existe) — el resto son "completo".
+  tipo: "vigente" | "completo" | "parcial";
+  // Solo relevante en tipo "parcial": qué fracción del ciclo cubre ese
+  // remanente (0-100), para poder mostrarlo igual que un abono normal.
+  porcentajeCubierto: number;
+}
+
+// Genera el detalle completo de ciclos que cubre un monto pagado, SIN
+// límite de cantidad (ver diseño acordado: "no deben tener límites, pero
+// sí levantar un detalle de los ciclos"). Encadena, en orden:
+// 1. El tramo ya vigente antes de este pago (fechaVencimiento > ahora),
+//    si existe — marcado "vigente", para diferenciarlo visualmente de lo
+//    que este pago agrega.
+// 2. Tantos ciclos "completo" como el monto alcance a pagar de punta a
+//    punta, sucesivos a partir de ahí.
+// 3. Un ciclo final "parcial" con el remanente, si sobra algo que no
+//    llega a cubrir un ciclo entero.
+// Ejemplo: plan $30/mes, sin vigencia previa, monto $120 → 4 ciclos
+// "completo", sin remanente. Con 1 día ya vigente y $120, el primer
+// elemento es ese día ("vigente") y los 4 ciclos de $120 se encadenan
+// después de esa fecha, no desde hoy.
+export function calcularCiclosCubiertos(
+  montoAcumulado: number,
+  precioPlan: number,
+  fechaVencimiento: Date | null,
+  diasDelCiclo: number,
+  ahora: Date
+): CicloProyectado[] {
+  if (precioPlan <= 0 || diasDelCiclo <= 0 || montoAcumulado <= 0) return [];
+
+  const ciclos: CicloProyectado[] = [];
+  const vigente = fechaVencimiento !== null && fechaVencimiento > ahora;
+
+  if (vigente) {
+    ciclos.push({ inicio: ahora, fin: fechaVencimiento, tipo: "vigente", porcentajeCubierto: 100 });
+  }
+
+  let cursor = vigente ? new Date(fechaVencimiento!) : new Date(ahora);
+  let restante = montoAcumulado;
+
+  while (restante >= precioPlan) {
+    const fin = new Date(cursor);
+    fin.setDate(fin.getDate() + diasDelCiclo);
+    ciclos.push({ inicio: new Date(cursor), fin, tipo: "completo", porcentajeCubierto: 100 });
+    cursor = fin;
+    restante -= precioPlan;
+  }
+
+  // Remanente que no llega a un ciclo completo — se muestra igual que un
+  // abono normal (prorrateo + % cubierto), para que el cajero vea cuánto
+  // le falta para saldar ESE ciclo puntual.
+  if (restante > 0) {
+    const precioPorDia = precioPlan / diasDelCiclo;
+    const diasCubiertos = Math.floor(restante / precioPorDia);
+    const fin = new Date(cursor);
+    fin.setDate(fin.getDate() + diasCubiertos);
+    ciclos.push({
+      inicio: new Date(cursor),
+      fin,
+      tipo: "parcial",
+      porcentajeCubierto: Math.min(100, (restante / precioPlan) * 100),
+    });
+  }
+
+  return ciclos;
+}

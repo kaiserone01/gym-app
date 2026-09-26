@@ -14,11 +14,9 @@ import { DiasDisponibles } from "../miembros/vencimiento";
 import { formatearBs } from "../tasaBcvFija";
 import { SelectorMetodoPago } from "../pagos/SelectorMetodoPago";
 import { registrarPagoAction } from "../pagos/actions";
-import { proyectarResumenTurno } from "./proyeccionArqueo";
 import { calcularProyeccionAbono } from "./proyeccionAbono";
 import { PanelRemanentePago } from "./PanelRemanentePago";
-import type { LineaResumenMetodo } from "@gym-app/domain/use-cases/ObtenerResumenTurno";
-import type { ReglaAbonoPorFrecuencia } from "@gym-app/domain/entities/ReglaAbono";
+import type { ReglaAbonoPorFrecuencia, CicloProyectado } from "@gym-app/domain/entities/ReglaAbono";
 
 type Paso = 1 | 2 | 3 | 4;
 
@@ -213,19 +211,13 @@ function ContenidoPaso2({
               [
                 { valor: "total" as const, etiqueta: "Pago total" },
                 { valor: "abono" as const, etiqueta: "Abono parcial", deshabilitado: !planEfectivo.permitePagoParcial },
-                {
-                  valor: "combinado" as const,
-                  etiqueta: "Pago parcial",
-                  titulo:
-                    "Divide el monto total entre varios métodos de pago — por ejemplo, una parte en efectivo y otra en punto de venta, incluso con dos tarjetas distintas.",
-                },
+                { valor: "combinado" as const, etiqueta: "Pago fraccionado" },
               ]
             ).map((opcion) => (
               <button
                 key={opcion.valor}
                 type="button"
                 disabled={opcion.deshabilitado}
-                title={opcion.titulo}
                 onClick={() => !opcion.deshabilitado && onCambiarModalidad(opcion.valor)}
                 className="min-h-11 flex-1 rounded-lg border px-3 text-sm font-medium transition-colors duration-150 disabled:opacity-40"
                 style={
@@ -238,9 +230,27 @@ function ContenidoPaso2({
               </button>
             ))}
           </div>
+          {/* Tarjeta de ayuda con el acento de marca — reemplaza el tooltip
+              nativo del navegador (ver diseño acordado: debe destacar y
+              seguir el branding, no un title del sistema). Cambia su texto
+              según la modalidad elegida, siempre visible, sin interacción. */}
+          <div
+            className="rounded-lg border-l-4 px-3 py-2 text-xs"
+            style={{ borderColor: "var(--gx-accent)", background: "color-mix(in srgb, var(--gx-accent) 10%, transparent)", color: "var(--gx-ink)" }}
+          >
+            {(
+              {
+                total: "Cobra el precio completo del plan en un solo método de pago.",
+                abono:
+                  "Recibe un monto menor al precio del plan — el sistema calcula cuánto queda pendiente y hasta cuándo tiene acceso.",
+                combinado:
+                  "Divide el monto total entre varios métodos de pago — por ejemplo, una parte en efectivo y otra en punto de venta, incluso con dos tarjetas distintas.",
+              } satisfies Record<Modalidad, string>
+            )[modalidadElegida]}
+          </div>
           {!planEfectivo.permitePagoParcial && (
             <p className="text-xs" style={{ color: "var(--gx-muted)" }}>
-              Este plan no admite abonos — solo pago total o pago parcial.
+              Este plan no admite abonos — solo pago total o pago fraccionado.
             </p>
           )}
         </div>
@@ -283,6 +293,51 @@ function nuevaLineaVacia(): LineaFormulario {
   };
 }
 
+// Lista de ciclos que cubre un pago, sin límite de cantidad (ver diseño
+// acordado) — el tramo ya vigente antes de este pago se marca en un color
+// distinto (acento suave) del resto, que son ciclos NUEVOS que este pago
+// agrega (acento fuerte) o el remanente parcial final (mutado, sin
+// completar un ciclo). Se usa igual en Total, Abono y Fraccionado.
+function DetalleCiclosPago({ ciclos }: { ciclos: CicloProyectado[] }) {
+  if (ciclos.length < 2) return null;
+
+  return (
+    <div className="flex flex-col gap-1.5 rounded-lg border p-3 text-xs" style={{ borderColor: "var(--gx-edge)" }}>
+      <p className="mb-1 font-medium" style={{ color: "var(--gx-muted)" }}>
+        Detalle de ciclos que cubre este pago
+      </p>
+      {(() => {
+        let numeroCiclo = 0;
+        return ciclos.map((ciclo, indice) => {
+          if (ciclo.tipo !== "vigente") numeroCiclo++;
+          return (
+            <div
+              key={indice}
+              className="flex items-center justify-between rounded-md px-2 py-1"
+              style={
+                ciclo.tipo === "vigente"
+                  ? { background: "color-mix(in srgb, var(--gx-muted) 12%, transparent)" }
+                  : { background: "color-mix(in srgb, var(--gx-accent) 10%, transparent)" }
+              }
+            >
+              <span style={{ color: "var(--gx-ink)" }}>
+                {ciclo.tipo === "vigente"
+                  ? "Ya vigente"
+                  : ciclo.tipo === "parcial"
+                    ? `Ciclo ${numeroCiclo} parcial (${ciclo.porcentajeCubierto.toFixed(0)}%)`
+                    : `Ciclo ${numeroCiclo}`}
+              </span>
+              <span style={{ color: "var(--gx-muted)" }}>
+                {formatearFechaCorta(ciclo.inicio)} – {formatearFechaCorta(ciclo.fin)}
+              </span>
+            </div>
+          );
+        });
+      })()}
+    </div>
+  );
+}
+
 function ContenidoPaso3({
   miembroId,
   planId,
@@ -296,7 +351,6 @@ function ContenidoPaso3({
   modalidad,
   metodosPago,
   tasaActual,
-  lineasResumenTurno,
   onVolver,
   onPagoRegistrado,
 }: {
@@ -327,7 +381,6 @@ function ContenidoPaso3({
   // modalidad Abono (referencia) — el método elegido trae su propia tasa
   // para el campo de monto a abonar.
   tasaActual: number | null;
-  lineasResumenTurno: LineaResumenMetodo[];
   onVolver: () => void;
   onPagoRegistrado: (fechaFinCicloISO: string | undefined) => void;
 }) {
@@ -393,7 +446,9 @@ function ContenidoPaso3({
     { minimoAbonoTipo, minimoAbonoValor, frecuencia, precioUSD: montoSugerido },
     reglasAbono,
     montoObjetivo,
-    fechaInicioCicloEstimada
+    fechaInicioCicloEstimada,
+    fechaVencimiento,
+    ahora
   );
 
   useEffect(() => {
@@ -418,17 +473,6 @@ function ContenidoPaso3({
       numeroOperacion: l.seleccion.numeroOperacion || null,
       tasaCambio: l.seleccion.tasaCambio,
     }));
-
-  const lineasEnProgreso = lineasActivas
-    .filter((l) => Number(l.monto) > 0 && l.seleccion.metodo)
-    .map((l) => ({
-      metodo: l.seleccion.metodo,
-      monto: l.seleccion.tasaCambio !== null ? Number(l.monto) * l.seleccion.tasaCambio : Number(l.monto),
-      enBs: l.seleccion.tasaCambio !== null,
-    }));
-
-  const proyeccion = proyectarResumenTurno(lineasResumenTurno, lineasEnProgreso);
-  const proyeccionConMovimiento = proyeccion.filter((l) => l.proyectado !== l.actual);
 
   // El gate del mínimo de abono NO se aplica acá a propósito (hallazgo de
   // la revisión final): esta proyección es una réplica del cliente que no
@@ -464,6 +508,13 @@ function ContenidoPaso3({
           <span style={{ color: "var(--gx-muted)" }}>{modalidad === "combinado" ? "Total a pagar" : "Monto a cobrar"}</span>
           <span className="font-semibold" style={{ color: "var(--gx-ink)" }}>${montoSugerido.toFixed(2)}</span>
         </div>
+      )}
+      {/* Pago total: el monto es fijo a 1 ciclo, así que normalmente no hay
+          nada que desglosar — pero si el miembro ya tenía días vigentes,
+          este pago igual adelanta un ciclo nuevo por encima de eso (ver
+          diseño acordado). */}
+      {montoSugerido > 0 && !esAbono && modalidad === "total" && (
+        <DetalleCiclosPago ciclos={proyeccionAbono.ciclos} />
       )}
       {/* Combinado, plan que sí admite abono: monto total editable (como hoy). */}
       {montoSugerido > 0 && modalidad === "combinado" && !montoObjetivoBloqueado && (
@@ -618,6 +669,9 @@ function ContenidoPaso3({
           )}
         </p>
       )}
+      {esAbono && metodoAbonoElegido && montoObjetivo > 0 && proyeccionAbono.cumpleMinimo && (
+        <DetalleCiclosPago ciclos={proyeccionAbono.ciclos} />
+      )}
 
       {montoObjetivo > 0 && !esAbono && modalidad !== "combinado" && (
         <SelectorMetodoPago
@@ -683,6 +737,10 @@ function ContenidoPaso3({
               ${sumaLineas.toFixed(2)} / ${montoObjetivo.toFixed(2)}
             </span>
           </div>
+          {/* Fraccionado: mismo detalle de ciclos que Total/Abono si el
+              monto total a pagar excede el precio del plan (ver diseño
+              acordado: consistente en las 3 modalidades). */}
+          <DetalleCiclosPago ciclos={proyeccionAbono.ciclos} />
         </div>
       )}
 
@@ -698,23 +756,6 @@ function ContenidoPaso3({
         <p className="text-sm" style={{ color: "var(--gx-muted)" }}>
           Este plan no tiene costo — no hace falta elegir método de pago.
         </p>
-      )}
-
-      {proyeccionConMovimiento.length > 0 && (
-        <div className="rounded-lg border p-3 text-sm" style={{ borderColor: "var(--gx-edge)" }}>
-          <p className="mb-2 font-medium" style={{ color: "var(--gx-muted)" }}>
-            Así quedaría el resumen del turno
-          </p>
-          {proyeccionConMovimiento.map((linea) => (
-            <div key={linea.metodo} className="flex justify-between">
-              <span style={{ color: "var(--gx-muted)" }}>{linea.metodo}</span>
-              <span style={{ color: "var(--gx-ink)" }}>
-                {linea.enBs ? `Bs. ${linea.actual.toFixed(2)}` : `$${linea.actual.toFixed(2)}`} →{" "}
-                {linea.enBs ? `Bs. ${linea.proyectado.toFixed(2)}` : `$${linea.proyectado.toFixed(2)}`}
-              </span>
-            </div>
-          ))}
-        </div>
       )}
 
       <div className="mt-2 flex gap-3">
@@ -788,7 +829,6 @@ export function ModalRegistrarPagoCaja({
   planes,
   metodosPago,
   tasaActual,
-  lineasResumenTurno,
   reglasAbono,
   onCerrar,
 }: {
@@ -796,7 +836,6 @@ export function ModalRegistrarPagoCaja({
   planes: PlanParaModal[];
   metodosPago: MetodoPago[];
   tasaActual: number | null;
-  lineasResumenTurno: LineaResumenMetodo[];
   reglasAbono: ReglaAbonoPorFrecuencia[];
   onCerrar: () => void;
 }) {
@@ -923,7 +962,6 @@ export function ModalRegistrarPagoCaja({
             modalidad={modalidadElegida}
             metodosPago={metodosPago}
             tasaActual={tasaActual}
-            lineasResumenTurno={lineasResumenTurno}
             onVolver={() => setPaso(2)}
             onPagoRegistrado={(fechaFinCicloISO) => {
               setFechaFinCicloFinal(fechaFinCicloISO ? new Date(fechaFinCicloISO) : null);

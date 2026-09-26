@@ -15,6 +15,7 @@ import { SelectorMetodoPago } from "../pagos/SelectorMetodoPago";
 import { registrarPagoAction } from "../pagos/actions";
 import { proyectarResumenTurno } from "./proyeccionArqueo";
 import { calcularProyeccionAbono } from "./proyeccionAbono";
+import { PanelRemanentePago } from "./PanelRemanentePago";
 import type { LineaResumenMetodo } from "@gym-app/domain/use-cases/ObtenerResumenTurno";
 import type { ReglaAbonoPorFrecuencia } from "@gym-app/domain/entities/ReglaAbono";
 
@@ -495,6 +496,14 @@ function ContenidoPaso3({
             </span>
           </div>
         </div>
+      )}
+
+      {modalidad === "combinado" && (
+        <PanelRemanentePago
+          lineas={lineasCombinadas.map((l) => ({ metodo: l.seleccion.metodo, monto: Number(l.monto) || 0 }))}
+          montoObjetivo={montoObjetivo}
+          tasaReferencia={lineasCombinadas.find((l) => l.seleccion.tasaCambio !== null)?.seleccion.tasaCambio ?? null}
+        />
       )}
 
       {montoObjetivo === 0 && (

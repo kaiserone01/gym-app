@@ -8,6 +8,7 @@ import { IAuthorizationService } from "../ports/IAuthorizationService";
 import { Pago } from "../entities/Pago";
 import { RolUsuario } from "../entities/UsuarioAdmin";
 import { MiembroFueraDeSucursalError } from "./ObtenerMiembro";
+import { calcularProrrateoPlan, type ModoCambioPlan } from "../entities/CambioPlan";
 
 export { MiembroFueraDeSucursalError };
 
@@ -56,19 +57,6 @@ export class EntrenadorRequeridoError extends Error {
   }
 }
 
-// Cobrar "solo la diferencia" solo tiene sentido entre planes de la MISMA
-// frecuencia (ambos mensuales, ambos semanales...) — el vencimiento no se
-// toca, así que mezclar frecuencias dejaría a alguien pagando precio de
-// mensual con vencimiento de semanal (o viceversa). Un cambio de
-// frecuencia es un pago normal por el precio completo del plan nuevo.
-export class FrecuenciaDistintaError extends Error {
-  constructor() {
-    super(
-      "El plan nuevo tiene una frecuencia distinta (semanal/mensual) — no se puede cobrar solo la diferencia sin mover el vencimiento. Registrá un pago normal por el precio completo."
-    );
-  }
-}
-
 export interface CambiarPlanConPagoDeps {
   pagos: IPagoRepository;
   suscripciones: ISuscripcionRepository;
@@ -83,6 +71,11 @@ export interface DatosCambiarPlanConPago {
   organizacionId: string;
   miembroId: string;
   planNuevoId: string;
+  // "AJUSTAR_VENCIMIENTO" (Modo A: convierte el valor no consumido a días
+  // del plan nuevo, sin cobrar) o "CICLO_COMPLETO" (Modo B: deja un ciclo
+  // completo del plan nuevo, cobrando o acreditando la diferencia) — ver
+  // diseño en docs/superpowers/specs/2026-09-26-cambio-plan-con-prorrateo-design.md.
+  modo: ModoCambioPlan;
   metodo: string | null;
   metodoPagoId: string | null;
   numeroOperacion: string | null;
@@ -98,7 +91,12 @@ export interface DatosCambiarPlanConPago {
 
 export interface ResultadoCambioPlan {
   pago: Pago | null;
+  // Positiva = se cobró; negativa = se acreditó como saldo a favor; 0 =
+  // ninguna de las dos (incluye siempre el caso Modo A).
   diferencia: number;
+  nuevoVencimiento: Date;
+  // 0 salvo Modo B con diferencia negativa.
+  saldoAFavorGenerado: number;
 }
 
 // Sube (o cambia) de plan A MITAD DE CICLO cobrando solo la diferencia de
@@ -143,14 +141,26 @@ export async function cambiarPlanConPago(
   }
 
   const planViejo = await deps.planes.buscarPorId(input.organizacionId, activa.planId);
-  if (planViejo && planViejo.frecuencia !== planNuevo.frecuencia) {
-    throw new FrecuenciaDistintaError();
-  }
 
   const precioViejo = planViejo?.precioUSD ?? miembro.precioPlan;
-  const diferencia = Math.round(Math.max(0, planNuevo.precioUSD - precioViejo) * 100) / 100;
+  // Sin plan viejo resoluble, no hay ciclo previo del que partir en una
+  // frecuencia distinta — se asume la misma que el plan nuevo para no
+  // dividir por una frecuencia inexistente (caso extremo: el plan viejo
+  // fue borrado del catálogo).
+  const frecuenciaVieja = planViejo?.frecuencia ?? planNuevo.frecuencia;
+  const prorrateo = calcularProrrateoPlan({
+    precioViejo,
+    frecuenciaVieja,
+    precioNuevo: planNuevo.precioUSD,
+    frecuenciaNueva: planNuevo.frecuencia,
+    fechaVencimientoActual: activa.fin,
+    ahora,
+    modo: input.modo,
+  });
+  const diferencia = prorrateo.diferencia;
 
   let pago: Pago | null = null;
+  let saldoAFavorGenerado = 0;
 
   if (diferencia > 0) {
     if (!input.metodo || !input.metodoPagoId) {
@@ -171,19 +181,29 @@ export async function cambiarPlanConPago(
       tasaCambio: input.tasaCambio,
       montoBs: input.tasaCambio !== null ? diferencia * input.tasaCambio : null,
       fechaInicioCiclo: activa.inicio,
-      fechaFinCiclo: activa.fin,
+      fechaFinCiclo: prorrateo.nuevoVencimiento,
       grupoPagoId: null,
     });
 
-    await deps.miembros.actualizarFechasPago(input.miembroId, ahora, activa.fin);
+    await deps.miembros.actualizarFechasPago(input.miembroId, ahora, prorrateo.nuevoVencimiento);
+  } else if (diferencia < 0) {
+    saldoAFavorGenerado = Math.abs(diferencia);
+    await deps.miembros.actualizar(input.organizacionId, input.miembroId, {
+      saldoAFavorUSD: miembro.saldoAFavorUSD + saldoAFavorGenerado,
+    });
   }
 
   await deps.suscripciones.cambiarPlan(activa.id, input.planNuevoId);
+  await deps.suscripciones.extenderFin(activa.id, prorrateo.nuevoVencimiento);
   await deps.miembros.actualizar(input.organizacionId, input.miembroId, {
     planId: input.planNuevoId,
     precioPlan: planNuevo.precioUSD,
     ...(planNuevo.incluyeEntrenador ? { entrenadorId: input.entrenadorId } : {}),
   });
+  // Si diferencia > 0, actualizarFechasPago (arriba) ya dejó
+  // fechaVencimiento en prorrateo.nuevoVencimiento — este update de
+  // miembros no toca ese campo (no está en CambiosMiembro con ese
+  // propósito), así que no hay doble escritura conflictiva.
 
-  return { pago, diferencia };
+  return { pago, diferencia, nuevoVencimiento: prorrateo.nuevoVencimiento, saldoAFavorGenerado };
 }

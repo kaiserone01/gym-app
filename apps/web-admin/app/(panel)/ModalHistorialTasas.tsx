@@ -236,7 +236,14 @@ export function ModalHistorialTasas({ onCerrar }: { onCerrar: () => void }) {
                 {resultadoFecha.masCercanaAnterior ? (
                   <button
                     type="button"
-                    onClick={() => setResultadoFecha({ tipo: "ENCONTRADA", tasa: resultadoFecha.masCercanaAnterior! })}
+                    onClick={() => {
+                      const tasa = resultadoFecha.masCercanaAnterior!;
+                      // Sincroniza el selector con la fecha realmente mostrada
+                      // — si no, el input queda en la fecha original buscada
+                      // mientras la fila visible es de otra fecha distinta.
+                      setFechaElegida(tasa.fecha.slice(0, 10));
+                      setResultadoFecha({ tipo: "ENCONTRADA", tasa });
+                    }}
                     className="self-start rounded-lg border px-3 py-1.5 text-sm font-medium"
                     style={{ borderColor: "var(--gx-accent)", color: "var(--gx-accent)" }}
                   >

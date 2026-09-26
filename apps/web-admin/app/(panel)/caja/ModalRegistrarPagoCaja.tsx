@@ -16,7 +16,8 @@ import { SelectorMetodoPago } from "../pagos/SelectorMetodoPago";
 import { registrarPagoAction } from "../pagos/actions";
 import { calcularProyeccionAbono } from "./proyeccionAbono";
 import { PanelRemanentePago } from "./PanelRemanentePago";
-import type { ReglaAbonoPorFrecuencia, CicloProyectado } from "@gym-app/domain/entities/ReglaAbono";
+import { formatearFechaCorta, DetalleCiclosPago, MensajeProyeccionAbono } from "./ProyeccionCiclosUI";
+import type { ReglaAbonoPorFrecuencia } from "@gym-app/domain/entities/ReglaAbono";
 
 type Paso = 1 | 2 | 3 | 4;
 
@@ -33,10 +34,6 @@ const ETIQUETA_FRECUENCIA: Record<FrecuenciaPago, string> = {
   QUINCENAL: "quincenal",
   MENSUAL: "mensual",
 };
-
-function formatearFechaCorta(fecha: Date): string {
-  return new Date(fecha).toLocaleDateString("es-VE", { day: "2-digit", month: "2-digit", year: "numeric" });
-}
 
 function iniciales(nombre: string): string {
   return nombre
@@ -291,51 +288,6 @@ function nuevaLineaVacia(): LineaFormulario {
     monto: "",
     seleccion: { metodoPagoId: null, metodo: "", tasaCambio: null, numeroOperacion: "", requiereNumeroOperacion: false },
   };
-}
-
-// Lista de ciclos que cubre un pago, sin límite de cantidad (ver diseño
-// acordado) — el tramo ya vigente antes de este pago se marca en un color
-// distinto (acento suave) del resto, que son ciclos NUEVOS que este pago
-// agrega (acento fuerte) o el remanente parcial final (mutado, sin
-// completar un ciclo). Se usa igual en Total, Abono y Fraccionado.
-function DetalleCiclosPago({ ciclos }: { ciclos: CicloProyectado[] }) {
-  if (ciclos.length < 2) return null;
-
-  return (
-    <div className="flex flex-col gap-1.5 rounded-lg border p-3 text-xs" style={{ borderColor: "var(--gx-edge)" }}>
-      <p className="mb-1 font-medium" style={{ color: "var(--gx-muted)" }}>
-        Detalle de ciclos que cubre este pago
-      </p>
-      {(() => {
-        let numeroCiclo = 0;
-        return ciclos.map((ciclo, indice) => {
-          if (ciclo.tipo !== "vigente") numeroCiclo++;
-          return (
-            <div
-              key={indice}
-              className="flex items-center justify-between rounded-md px-2 py-1"
-              style={
-                ciclo.tipo === "vigente"
-                  ? { background: "color-mix(in srgb, var(--gx-muted) 12%, transparent)" }
-                  : { background: "color-mix(in srgb, var(--gx-accent) 10%, transparent)" }
-              }
-            >
-              <span style={{ color: "var(--gx-ink)" }}>
-                {ciclo.tipo === "vigente"
-                  ? "Ya vigente"
-                  : ciclo.tipo === "parcial"
-                    ? `Ciclo ${numeroCiclo} parcial (${ciclo.porcentajeCubierto.toFixed(0)}%)`
-                    : `Ciclo ${numeroCiclo}`}
-              </span>
-              <span style={{ color: "var(--gx-muted)" }}>
-                {formatearFechaCorta(ciclo.inicio)} – {formatearFechaCorta(ciclo.fin)}
-              </span>
-            </div>
-          );
-        });
-      })()}
-    </div>
-  );
 }
 
 function ContenidoPaso3({
@@ -651,39 +603,13 @@ function ContenidoPaso3({
           siguiente — el mismo esquema se recalcula sobre ese remanente y
           esa fecha base (ver proyeccionAbono.ts, esAdelantoCicloSiguiente),
           en vez de cortar con "Este monto cubre el plan completo". */}
-      {esAbono && metodoAbonoElegido && montoObjetivo > 0 && (
-        <p className="text-sm" style={{ color: proyeccionAbono.cumpleMinimo ? "var(--gx-muted)" : "var(--gx-bad)" }}>
-          {proyeccionAbono.cumpleMinimo ? (
-            proyeccionAbono.fechaTope ? (
-              <>
-                {proyeccionAbono.esAdelantoCicloSiguiente ? (
-                  <>Este pago salda el ciclo actual y adelanta el próximo — </>
-                ) : (
-                  <>
-                    Es menos que el precio del plan (${montoSugerido.toFixed(2)}) — abonó ${montoObjetivo.toFixed(2)}
-                    {tasaActual !== null && ` (Bs. ${formatearBs(montoObjetivo * tasaActual)})`}.{" "}
-                  </>
-                )}
-                Tiene que cancelar el{" "}
-                <strong style={{ color: "var(--gx-accent)" }}>
-                  saldo remanente de ${proyeccionAbono.saldoRemanente.toFixed(2)}
-                  {tasaActual !== null && ` (Bs. ${formatearBs(proyeccionAbono.saldoRemanente * tasaActual)})`} antes del{" "}
-                  {proyeccionAbono.fechaTope.toLocaleDateString("es-VE")}
-                </strong>
-                . Pago parcial: {proyeccionAbono.porcentajeCubierto.toFixed(0)}% recibido
-                {proyeccionAbono.esAdelantoCicloSiguiente ? " del próximo ciclo" : ""} (cubre{" "}
-                {proyeccionAbono.diasCubiertos} día(s) {proyeccionAbono.esAdelantoCicloSiguiente ? "del próximo ciclo" : "del ciclo"}
-                ).
-              </>
-            ) : (
-              proyeccionAbono.esAdelantoCicloSiguiente
-                ? "Este pago cubre el ciclo actual y el próximo ciclo completo."
-                : "Este monto cubre el plan completo."
-            )
-          ) : (
-            `El abono mínimo para este plan es $${proyeccionAbono.montoMinimo.toFixed(2)}.`
-          )}
-        </p>
+      {esAbono && metodoAbonoElegido && (
+        <MensajeProyeccionAbono
+          proyeccionAbono={proyeccionAbono}
+          montoSugerido={montoSugerido}
+          montoObjetivo={montoObjetivo}
+          tasaActual={tasaActual}
+        />
       )}
       {esAbono && metodoAbonoElegido && montoObjetivo > 0 && proyeccionAbono.cumpleMinimo && (
         <DetalleCiclosPago ciclos={proyeccionAbono.ciclos} />
@@ -725,8 +651,12 @@ function ContenidoPaso3({
                   )}
                   <span style={{ color: "var(--gx-muted)" }}>{expandida ? "▲" : "▼"}</span>
                 </button>
-                {expandida && (
-                  <div className="flex flex-col gap-3 border-t p-3" style={{ borderColor: "var(--gx-edge)" }}>
+                {/* Siempre montado (nunca desmontado con {expandida && ...})
+                    — SelectorMetodoPago guarda su propio estado interno
+                    (tipo/instancia elegida) que se perdía al remontar cada
+                    vez que se colapsaba la fracción. Colapsar ahora es
+                    puramente visual (`hidden`), preserva ese estado. */}
+                <div className={`flex flex-col gap-3 border-t p-3 ${expandida ? "" : "hidden"}`} style={{ borderColor: "var(--gx-edge)" }}>
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-medium" style={{ color: "var(--gx-muted)" }}>
                         Fracción {indice + 1}
@@ -831,8 +761,7 @@ function ContenidoPaso3({
                         }
                       />
                     )}
-                  </div>
-                )}
+                </div>
               </div>
             );
           })}
@@ -855,21 +784,6 @@ function ContenidoPaso3({
               {tasaActual !== null && ` · Bs. ${formatearBs(sumaLineas * tasaActual)}`}
             </span>
           </div>
-
-          {/* Proyección + detalle de ciclos calculados sobre la SUMA de
-              todas las fracciones (ver diseño acordado) — se actualiza en
-              vivo a medida que se completan fracciones, mismo criterio que
-              Total/Abono. */}
-          {sumaLineas > 0 && proyeccionAbono.ciclos.length > 1 && (
-            <div className="flex flex-col gap-2 rounded-lg border-2 p-3" style={{ borderColor: "var(--gx-accent)" }}>
-              <p className="text-sm" style={{ color: "var(--gx-ink)" }}>
-                {proyeccionAbono.fechaTope
-                  ? `Este pago cubre hasta el ${proyeccionAbono.fechaTope.toLocaleDateString("es-VE")}.`
-                  : "Este pago cubre uno o más ciclos completos."}
-              </p>
-              <DetalleCiclosPago ciclos={proyeccionAbono.ciclos} />
-            </div>
-          )}
         </div>
       )}
 
@@ -881,6 +795,10 @@ function ContenidoPaso3({
           // compararlo contra sí mismo siempre daría remanente $0.
           montoObjetivo={montoSugerido}
           tasaReferencia={lineasCombinadas.find((l) => l.seleccion.tasaCambio !== null)?.seleccion.tasaCambio ?? null}
+          // Proyección + detalle de ciclos, siempre visible (ver diseño
+          // acordado: "que el cliente vea que cubre su pago"), calculada
+          // sobre la SUMA de todas las fracciones — se actualiza en vivo.
+          proyeccion={sumaLineas > 0 ? proyeccionAbono : null}
         />
       )}
 

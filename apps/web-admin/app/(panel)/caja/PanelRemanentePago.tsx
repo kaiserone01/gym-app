@@ -1,5 +1,8 @@
 "use client";
 
+import { DetalleCiclosPago, MensajeProyeccionAbono } from "./ProyeccionCiclosUI";
+import type { ProyeccionAbono } from "./proyeccionAbono";
+
 interface LineaMostrada {
   metodo: string;
   monto: number;
@@ -9,6 +12,7 @@ export function PanelRemanentePago({
   lineas,
   montoObjetivo,
   tasaReferencia,
+  proyeccion,
 }: {
   lineas: LineaMostrada[];
   montoObjetivo: number;
@@ -16,6 +20,12 @@ export function PanelRemanentePago({
   // primera línea que ya tenga una tasa elegida, o null si ninguna la
   // tiene todavía (en ese caso solo se muestra el remanente en USD).
   tasaReferencia: number | null;
+  // Proyección + detalle de ciclos que cubre el pago, calculada sobre la
+  // suma de fracciones ya cargadas — siempre visible mientras exista (ver
+  // diseño acordado: "que el cliente vea que cubre su pago"), arriba del
+  // título "Distribución del pago". null mientras no hay nada cargado
+  // todavía.
+  proyeccion: ProyeccionAbono | null;
 }) {
   const sumaLineas = lineas.reduce((suma, l) => suma + l.monto, 0);
   const remanente = Math.max(0, montoObjetivo - sumaLineas);
@@ -25,6 +35,18 @@ export function PanelRemanentePago({
       className="fixed bottom-6 right-6 z-[60] w-72 rounded-xl border-2 p-4 shadow-2xl"
       style={{ borderColor: "var(--gx-accent)", background: "var(--gx-surface)" }}
     >
+      {proyeccion && (
+        <div className="mb-3 flex flex-col gap-2 border-b pb-3" style={{ borderColor: "var(--gx-edge)" }}>
+          <MensajeProyeccionAbono
+            proyeccionAbono={proyeccion}
+            montoSugerido={montoObjetivo}
+            montoObjetivo={sumaLineas}
+            tasaActual={tasaReferencia}
+          />
+          {proyeccion.cumpleMinimo && <DetalleCiclosPago ciclos={proyeccion.ciclos} />}
+        </div>
+      )}
+
       <p className="text-xs font-semibold uppercase" style={{ color: "var(--gx-muted)" }}>
         Distribución del pago
       </p>

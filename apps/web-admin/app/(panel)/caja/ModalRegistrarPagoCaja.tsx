@@ -275,6 +275,7 @@ function ContenidoPaso3({
   planId,
   monto: montoSugerido,
   frecuencia,
+  permitePagoParcial,
   minimoAbonoTipo,
   minimoAbonoValor,
   fechaVencimiento,
@@ -294,6 +295,12 @@ function ContenidoPaso3({
   // cobra tiene que saber cuánto pedir si es un abono, no el precio completo.
   monto: number;
   frecuencia: FrecuenciaPago;
+  // Si el plan no admite abono, el monto objetivo tampoco puede quedar
+  // editable en modalidad Combinado — el pago combinado siempre debe
+  // sumar el precio completo del plan en ese caso (nunca se restringe la
+  // modalidad combinado en sí, pero sí el monto que puede cubrir, ver
+  // diseño acordado y AbonoNoPermitidoError en RegistrarPago.ts).
+  permitePagoParcial: boolean;
   minimoAbonoTipo: PlanParaModal["minimoAbonoTipo"];
   minimoAbonoValor: PlanParaModal["minimoAbonoValor"];
   fechaVencimiento: Date | null;
@@ -309,8 +316,15 @@ function ContenidoPaso3({
   const [estado, enviar, enviando] = useActionState(registrarPagoAction, {});
   const { mostrarExito, mostrarError } = useFeedback();
 
+  // El monto objetivo queda fijo al precio del plan siempre que la
+  // modalidad NO admita variar el total: en "total" siempre, y en
+  // "combinado" cuando el plan no permite abono (el pago combinado nunca
+  // se restringe como modalidad, pero si el plan exige el 100%, el total
+  // a distribuir entre métodos tampoco puede bajar de ahí — ver
+  // AbonoNoPermitidoError en RegistrarPago.ts, hallazgo de la revisión final).
+  const montoObjetivoBloqueado = modalidad === "total" || (modalidad === "combinado" && !permitePagoParcial);
   const [montoObjetivoTexto, setMontoObjetivoTexto] = useState(String(montoSugerido));
-  const montoObjetivo = Number(montoObjetivoTexto) || 0;
+  const montoObjetivo = montoObjetivoBloqueado ? montoSugerido : Number(montoObjetivoTexto) || 0;
 
   // Total y abono usan una sola línea; combinado usa el array completo.
   const [lineaUnica, setLineaUnica] = useState<LineaFormulario>(nuevaLineaVacia());
@@ -377,12 +391,17 @@ function ContenidoPaso3({
   const proyeccion = proyectarResumenTurno(lineasResumenTurno, lineasEnProgreso);
   const proyeccionConMovimiento = proyeccion.filter((l) => l.proyectado !== l.actual);
 
+  // El gate del mínimo de abono NO se aplica acá a propósito (hallazgo de
+  // la revisión final): esta proyección es una réplica del cliente que no
+  // conoce el monto ya abonado del ciclo abierto ni el precio acordado del
+  // miembro (Miembro.precioPlan), así que en un abono sucesivo puede
+  // calcular un mínimo mayor al real y bloquear un cobro que el servidor
+  // aceptaría. El texto informativo sigue mostrándose (ver más abajo); la
+  // validación real y su mensaje de error quedan en RegistrarPago.ts
+  // (AbonoMenorAlMinimoError), que sí conoce el estado real del ciclo.
   const puedeEnviar =
     montoObjetivo === 0 ||
-    (sumaCoincide &&
-      lineasParaEnviar.length > 0 &&
-      lineasParaEnviar.every((l) => l.metodoPagoId) &&
-      (modalidad !== "abono" || proyeccionAbono.cumpleMinimo));
+    (sumaCoincide && lineasParaEnviar.length > 0 && lineasParaEnviar.every((l) => l.metodoPagoId));
 
   return (
     <form action={enviar} className="flex flex-col gap-4 text-base">
@@ -399,7 +418,7 @@ function ContenidoPaso3({
         )}
       />
 
-      {montoSugerido > 0 && modalidad !== "total" && (
+      {montoSugerido > 0 && modalidad !== "total" && !montoObjetivoBloqueado && (
         <CurrencyInput
           name="montoObjetivo"
           label={modalidad === "combinado" ? "Total a pagar" : "Monto a cobrar"}
@@ -409,9 +428,9 @@ function ContenidoPaso3({
           onChange={setMontoObjetivoTexto}
         />
       )}
-      {montoSugerido > 0 && modalidad === "total" && (
+      {montoSugerido > 0 && (modalidad === "total" || montoObjetivoBloqueado) && (
         <div className="flex justify-between rounded-lg px-3 py-2 text-sm" style={{ background: "var(--gx-surface-2)" }}>
-          <span style={{ color: "var(--gx-muted)" }}>Monto a cobrar</span>
+          <span style={{ color: "var(--gx-muted)" }}>{modalidad === "combinado" ? "Total a pagar" : "Monto a cobrar"}</span>
           <span className="font-semibold" style={{ color: "var(--gx-ink)" }}>${montoSugerido.toFixed(2)}</span>
         </div>
       )}
@@ -720,6 +739,9 @@ export function ModalRegistrarPagoCaja({
             }
             frecuencia={
               (miembroElegido.plan ?? planes.find((p) => p.id === planElegidoId))?.frecuencia ?? "MENSUAL"
+            }
+            permitePagoParcial={
+              (miembroElegido.plan ?? planes.find((p) => p.id === planElegidoId))?.permitePagoParcial ?? true
             }
             minimoAbonoTipo={
               (miembroElegido.plan ?? planes.find((p) => p.id === planElegidoId))?.minimoAbonoTipo ?? null

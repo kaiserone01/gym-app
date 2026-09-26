@@ -172,6 +172,7 @@ export async function cambiarPlanConPago(
       montoBs: input.tasaCambio !== null ? diferencia * input.tasaCambio : null,
       fechaInicioCiclo: activa.inicio,
       fechaFinCiclo: activa.fin,
+      grupoPagoId: null,
     });
 
     await deps.miembros.actualizarFechasPago(input.miembroId, ahora, activa.fin);

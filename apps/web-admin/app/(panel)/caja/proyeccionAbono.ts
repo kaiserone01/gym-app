@@ -5,7 +5,7 @@
 import {
   resolverReglaAbono,
   calcularMontoMinimoAbono,
-  calcularFechaLimiteAbono,
+  calcularProrrateoAbono,
   type ReglaAbonoPorFrecuencia,
   type TipoMinimoAbono,
 } from "@gym-app/domain/entities/ReglaAbono";
@@ -13,7 +13,12 @@ import { DURACION_DIAS_POR_FRECUENCIA, type FrecuenciaPago } from "@gym-app/doma
 
 export interface ProyeccionAbono {
   montoMinimo: number;
-  fechaLimite: Date | null;
+  // Días que cubre el monto tipeado y la fecha hasta la que alcanza — puro
+  // prorrateo, siempre calculado (no depende de que haya una regla de
+  // abono configurada, a diferencia de fechaLimiteAbono que sí se
+  // persiste/bloquea acceso). null si el monto ya cubre el plan completo.
+  diasCubiertos: number | null;
+  fechaTope: Date | null;
   cumpleMinimo: boolean;
 }
 
@@ -30,7 +35,12 @@ export function calcularProyeccionAbono(
   );
   const diasDelCiclo = DURACION_DIAS_POR_FRECUENCIA[plan.frecuencia];
   const montoMinimo = calcularMontoMinimoAbono(reglaEfectiva, plan.precioUSD, diasDelCiclo);
-  const fechaLimite = calcularFechaLimiteAbono(reglaEfectiva, montoAcumulado, plan.precioUSD, fechaInicioCiclo, diasDelCiclo);
+  const prorrateo = calcularProrrateoAbono(montoAcumulado, plan.precioUSD, fechaInicioCiclo, diasDelCiclo);
 
-  return { montoMinimo, fechaLimite, cumpleMinimo: montoAcumulado >= montoMinimo };
+  return {
+    montoMinimo,
+    diasCubiertos: prorrateo?.diasCubiertos ?? null,
+    fechaTope: prorrateo?.fechaTope ?? null,
+    cumpleMinimo: montoAcumulado >= montoMinimo,
+  };
 }

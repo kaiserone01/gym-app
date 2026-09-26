@@ -111,6 +111,9 @@ export function SelectorMetodoPago({
   idFormulario,
   grande = false,
   avisoServidor,
+  ocultarNumeroOperacion = false,
+  numeroOperacion: numeroOperacionProp,
+  onCambioNumeroOperacion: onCambioNumeroOperacionProp,
 }: {
   metodos: MetodoPago[];
   monto: number;
@@ -119,6 +122,10 @@ export function SelectorMetodoPago({
     metodo: string;
     tasaCambio: number | null;
     numeroOperacion: string;
+    // Si el método elegido pide número de operación (todos menos
+    // Efectivo) — expuesto para que un padre con ocultarNumeroOperacion=true
+    // sepa si debe pedir ese campo por su cuenta.
+    requiereNumeroOperacion: boolean;
   }) => void;
   // El <Input> de "número de operación" vive dentro de este selector pero
   // el submit final es el <form> del padre — se enlaza con el atributo form=.
@@ -130,10 +137,26 @@ export function SelectorMetodoPago({
   // trae tasaNueva o fallaTemporal, se muestra el aviso correspondiente sin
   // cerrar el formulario ni perder los datos ya cargados.
   avisoServidor?: AvisoTasaServidor;
+  // El wizard de Caja en modalidad Abono necesita el campo "Número de
+  // operación" DESPUÉS del monto a abonar (ver diseño acordado). Con esto
+  // en true, este componente deja de renderizarlo y de guardar su propio
+  // estado — el padre pasa numeroOperacion/onCambioNumeroOperacion y
+  // renderiza su propio <Input>, en el lugar que le convenga.
+  ocultarNumeroOperacion?: boolean;
+  numeroOperacion?: string;
+  onCambioNumeroOperacion?: (valor: string) => void;
 }) {
   const [tipoAbierto, setTipoAbierto] = useState<TipoMetodoPago | null>(null);
   const [metodoId, setMetodoId] = useState<string | null>(null);
-  const [numeroOperacion, setNumeroOperacion] = useState("");
+  const [numeroOperacionInterno, setNumeroOperacionInterno] = useState("");
+  // Controlado solo cuando el padre oculta el campo propio y toma el
+  // control (ver ocultarNumeroOperacion) — el resto de los usos (Caja en
+  // Total/Combinado, /miembros, /pagos/nuevo) siguen con el estado interno
+  // de siempre, sin cambios de comportamiento.
+  const numeroOperacion = ocultarNumeroOperacion ? (numeroOperacionProp ?? "") : numeroOperacionInterno;
+  const setNumeroOperacion = ocultarNumeroOperacion
+    ? (valor: string) => onCambioNumeroOperacionProp?.(valor)
+    : setNumeroOperacionInterno;
   const [mostrarDatos, setMostrarDatos] = useState(false);
 
   const [tasa, setTasa] = useState<number | null>(null);
@@ -207,6 +230,7 @@ export function SelectorMetodoPago({
     onCambio({
       metodoPagoId: metodo?.id ?? null,
       metodo: metodo ? construirNombreMetodo(metodo) : "",
+      requiereNumeroOperacion,
       tasaCambio,
       numeroOperacion,
     });
@@ -313,7 +337,7 @@ export function SelectorMetodoPago({
         </Button>
       )}
 
-      {requiereNumeroOperacion && (
+      {requiereNumeroOperacion && !ocultarNumeroOperacion && (
         <Input
           form={idFormulario}
           label="Número de operación (últimos 4 dígitos)"

@@ -73,7 +73,11 @@ export function calcularMontoMinimoAbono(
 
 // Fecha límite de acceso que otorga el monto ACUMULADO del ciclo (no solo
 // el abono más reciente) — null si no hay regla activa, o si el monto ya
-// alcanza/supera el precio del plan (ciclo saldado, sin restricción).
+// alcanza/supera el precio del plan (ciclo saldado, sin restricción). Esta
+// fecha es la que se PERSISTE (Suscripcion.fechaLimiteAbono) y la que
+// bloquea el acceso físico en el kiosco — solo aplica cuando hay una regla
+// configurada (ver diseño acordado: sin regla, el acceso es el mismo
+// comportamiento previo a este motor, sin plazo).
 export function calcularFechaLimiteAbono(
   regla: ReglaAbonoEfectiva | null,
   montoAcumulado: number,
@@ -88,4 +92,28 @@ export function calcularFechaLimiteAbono(
   const limite = new Date(fechaInicioCiclo);
   limite.setDate(limite.getDate() + diasCubiertos);
   return limite;
+}
+
+// Días que cubre un monto acumulado dentro del ciclo, y la fecha hasta la
+// que alcanza — puro prorrateo (precioPlan / diasDelCiclo), SIN depender de
+// que exista una regla de abono configurada. A diferencia de
+// calcularFechaLimiteAbono (que decide el plazo que se PERSISTE y bloquea
+// el acceso, solo si hay una regla activa), esto es la proyección
+// informativa que se le muestra al cajero mientras tipea el monto a
+// abonar — siempre calculable, igual que la proyección de renovación del
+// Paso 2 (ver proyeccionRenovacion.ts). null si el monto ya cubre el
+// precio completo del plan (no queda remanente que prorratear).
+export function calcularProrrateoAbono(
+  montoAcumulado: number,
+  precioPlan: number,
+  fechaInicioCiclo: Date,
+  diasDelCiclo: number
+): { diasCubiertos: number; fechaTope: Date } | null {
+  if (precioPlan <= 0 || diasDelCiclo <= 0) return null;
+  if (montoAcumulado >= precioPlan) return null;
+  const precioPorDia = precioPlan / diasDelCiclo;
+  const diasCubiertos = Math.floor(montoAcumulado / precioPorDia);
+  const fechaTope = new Date(fechaInicioCiclo);
+  fechaTope.setDate(fechaTope.getDate() + diasCubiertos);
+  return { diasCubiertos, fechaTope };
 }

@@ -5,6 +5,7 @@ import type { Miembro } from "@gym-app/domain/entities/Miembro";
 import type { MetodoPago } from "@gym-app/domain/entities/MetodoPago";
 import type { FrecuenciaPago } from "@gym-app/domain/entities/Plan";
 import { Button } from "@gym-app/ui/components/Button";
+import { Input } from "@gym-app/ui/components/Input";
 import { CurrencyInput } from "@gym-app/ui/components/CurrencyInput";
 import { useFeedback, DURACION_MS } from "@gym-app/ui/components/FeedbackOverlay";
 import { BuscadorMiembro, type MiembroConPlan, type PlanParaModal } from "./SelectorMiembroModal";
@@ -265,14 +266,20 @@ function ContenidoPaso2({
 interface LineaFormulario {
   clave: string;
   monto: string;
-  seleccion: { metodoPagoId: string | null; metodo: string; tasaCambio: number | null; numeroOperacion: string };
+  seleccion: {
+    metodoPagoId: string | null;
+    metodo: string;
+    tasaCambio: number | null;
+    numeroOperacion: string;
+    requiereNumeroOperacion: boolean;
+  };
 }
 
 function nuevaLineaVacia(): LineaFormulario {
   return {
     clave: crypto.randomUUID(),
     monto: "",
-    seleccion: { metodoPagoId: null, metodo: "", tasaCambio: null, numeroOperacion: "" },
+    seleccion: { metodoPagoId: null, metodo: "", tasaCambio: null, numeroOperacion: "", requiereNumeroOperacion: false },
   };
 }
 
@@ -348,6 +355,7 @@ function ContenidoPaso3({
   // convierte visualmente, ver montoAbonoBsTexto más abajo.
   const esAbono = modalidad === "abono";
   const metodoAbonoElegido = esAbono && lineaUnica.seleccion.metodoPagoId !== null;
+  const requiereNumeroOperacionAbono = lineaUnica.seleccion.requiereNumeroOperacion;
   const [montoAbonoBsTexto, setMontoAbonoBsTexto] = useState("");
 
   const montoObjetivo = montoObjetivoBloqueado
@@ -499,12 +507,23 @@ function ContenidoPaso3({
           }
           grande
           avisoServidor={{ tasaNueva: estado.tasaNueva, fallaTemporal: estado.fallaTemporal, tasaGuardada: estado.tasaGuardada }}
+          // El campo de número de operación se pide DESPUÉS del monto a
+          // abonar (ver diseño acordado) — se renderiza más abajo, con el
+          // mismo estado que este selector reporta vía onCambio.
+          ocultarNumeroOperacion
+          numeroOperacion={lineaUnica.seleccion.numeroOperacion}
+          onCambioNumeroOperacion={(valor) =>
+            setLineaUnica((prev) => ({ ...prev, seleccion: { ...prev.seleccion, numeroOperacion: valor } }))
+          }
         />
       )}
 
-      {/* Abono: campo de monto a abonar, recién visible con método elegido. */}
+      {/* Abono: monto a abonar, recién visible con método elegido. Cuando
+          el método es en Bs, USD y Bs van en dos columnas (una sola
+          "línea" visual, no dos campos apilados) — el USD sigue siendo la
+          fuente de verdad, escribir en Bs solo recalcula el de arriba. */}
       {esAbono && metodoAbonoElegido && (
-        <div className="flex flex-col gap-3">
+        <div className={lineaUnica.seleccion.tasaCambio !== null ? "grid grid-cols-2 gap-3" : ""}>
           <CurrencyInput
             name="montoAbonoUSD"
             label="Monto a abonar"
@@ -519,9 +538,6 @@ function ContenidoPaso3({
               }
             }}
           />
-          {/* Solo si el método es en Bs — segunda casilla de conversión
-              bidireccional (ver diseño acordado). El USD sigue siendo la
-              fuente de verdad: escribir acá recalcula el campo USD de arriba. */}
           {lineaUnica.seleccion.tasaCambio !== null && (
             <CurrencyInput
               name="montoAbonoBs"
@@ -541,6 +557,23 @@ function ContenidoPaso3({
           )}
         </div>
       )}
+
+      {/* Número de operación — recién después del monto (ver diseño
+          acordado), solo cuando el método elegido lo pide (todos menos
+          Efectivo, ver SelectorMetodoPago/requiereNumeroOperacion). */}
+      {esAbono && metodoAbonoElegido && requiereNumeroOperacionAbono && (
+        <Input
+          label="Número de operación (últimos 4 dígitos)"
+          required
+          maxLength={4}
+          pattern="[0-9]{4}"
+          value={lineaUnica.seleccion.numeroOperacion}
+          onChange={(e) =>
+            setLineaUnica((prev) => ({ ...prev, seleccion: { ...prev.seleccion, numeroOperacion: e.target.value } }))
+          }
+        />
+      )}
+
       {esAbono && metodoAbonoElegido && montoObjetivo > 0 && montoObjetivo < montoSugerido && (
         <p className="text-sm" style={{ color: "var(--gx-muted)" }}>
           Es menos que el precio del plan (${montoSugerido.toFixed(2)}) — queda como abono, se puede completar
@@ -550,8 +583,8 @@ function ContenidoPaso3({
       {esAbono && metodoAbonoElegido && montoObjetivo > 0 && (
         <p className="text-sm" style={{ color: proyeccionAbono.cumpleMinimo ? "var(--gx-muted)" : "var(--gx-bad)" }}>
           {proyeccionAbono.cumpleMinimo
-            ? proyeccionAbono.fechaLimite
-              ? `Este abono da acceso hasta el ${proyeccionAbono.fechaLimite.toLocaleDateString("es-VE")}.`
+            ? proyeccionAbono.fechaTope
+              ? `Paga el parcial remanente antes del ${proyeccionAbono.fechaTope.toLocaleDateString("es-VE")} (cubre ${proyeccionAbono.diasCubiertos} día(s) del ciclo).`
               : "Este monto cubre el plan completo."
             : `El abono mínimo para este plan es $${proyeccionAbono.montoMinimo.toFixed(2)}.`}
         </p>

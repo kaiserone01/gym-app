@@ -184,6 +184,7 @@ export async function registrarTasaManualAction(
 ): Promise<EstadoTasaManual> {
   const sesion = await obtenerUsuarioDeSesionActual();
   if (!sesion) redirect("/login");
+  const { usuario } = sesion;
 
   const valorTexto = formData.get("valor")?.toString().trim();
   const valor = Number(valorTexto);
@@ -192,7 +193,10 @@ export async function registrarTasaManualAction(
     return { error: "Ingresá un valor de tasa válido." };
   }
 
-  await registrarTasaManual({ tasas: new PrismaTasaCambioRepository(prisma) }, { valor });
+  await registrarTasaManual(
+    { tasas: new PrismaTasaCambioRepository(prisma) },
+    { valor, registradoPorId: usuario.id }
+  );
 
   revalidatePath("/pagos/nuevo");
   revalidatePath("/miembros");

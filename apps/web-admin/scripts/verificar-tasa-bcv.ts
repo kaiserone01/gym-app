@@ -37,17 +37,25 @@ class RepositorioEnMemoria implements ITasaCambioRepository {
   filas: TasaCambio[] = [];
 
   constructor(iniciales: Array<{ fecha: Date; valor: number }> = []) {
-    this.filas = iniciales.map((t, i) => ({ id: `fake-${i}`, fecha: t.fecha, valor: t.valor, fuente: "BCV" }));
+    this.filas = iniciales.map((t, i) => ({
+      id: `fake-${i}`,
+      fecha: t.fecha,
+      valor: t.valor,
+      fuente: "BCV",
+      registradoPorId: null,
+      createdAt: new Date(),
+    }));
   }
 
-  async guardar(fecha: Date, valor: number, fuente: string): Promise<TasaCambio> {
+  async guardar(fecha: Date, valor: number, fuente: string, registradoPorId: string | null = null): Promise<TasaCambio> {
     const existente = this.filas.find((f) => f.fecha.getTime() === fecha.getTime());
     if (existente) {
       existente.valor = valor;
       existente.fuente = fuente;
+      existente.registradoPorId = registradoPorId;
       return existente;
     }
-    const nueva: TasaCambio = { id: `fake-${this.filas.length}`, fecha, valor, fuente };
+    const nueva: TasaCambio = { id: `fake-${this.filas.length}`, fecha, valor, fuente, registradoPorId, createdAt: new Date() };
     this.filas.push(nueva);
     return nueva;
   }
@@ -345,7 +353,7 @@ async function main() {
   // --- Casos de validarTasaCobro (Tarea 3.1) ---
   function fresca(valor: number, sincronizacionFallida = false): TasaVigenteFresca {
     return {
-      tasa: { id: "fake", fecha: fecha("2026-09-26"), valor, fuente: "BCV" },
+      tasa: { id: "fake", fecha: fecha("2026-09-26"), valor, fuente: "BCV", registradoPorId: null, createdAt: new Date() },
       estado: "AL_DIA",
       sincronizacionFallida,
     };

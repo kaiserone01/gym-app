@@ -17,6 +17,8 @@ type FilaTasaCambio = {
   fecha: Date;
   valor: { toNumber(): number };
   fuente: string;
+  registradoPorId: string | null;
+  createdAt: Date;
 };
 
 function mapear(fila: FilaTasaCambio): TasaCambio {
@@ -25,19 +27,21 @@ function mapear(fila: FilaTasaCambio): TasaCambio {
     fecha: fila.fecha,
     valor: fila.valor.toNumber(),
     fuente: fila.fuente,
+    registradoPorId: fila.registradoPorId ?? null,
+    createdAt: fila.createdAt,
   };
 }
 
 export class PrismaTasaCambioRepository implements ITasaCambioRepository {
   constructor(private readonly prisma: PrismaClient) {}
 
-  async guardar(fecha: Date, valor: number, fuente: string): Promise<TasaCambio> {
+  async guardar(fecha: Date, valor: number, fuente: string, registradoPorId: string | null = null): Promise<TasaCambio> {
     const dia = inicioDelDia(fecha);
 
     const tasa = await this.prisma.tasaCambio.upsert({
       where: { fecha: dia },
-      create: { fecha: dia, valor, fuente },
-      update: { valor, fuente },
+      create: { fecha: dia, valor, fuente, registradoPorId },
+      update: { valor, fuente, registradoPorId },
     });
 
     return mapear(tasa);

@@ -11,6 +11,7 @@ import { PrismaPlanRepository } from "@gym-app/infrastructure/persistence/prisma
 import { PrismaTurnoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaTurnoRepository";
 import { PrismaPermisoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaPermisoRepository";
 import { PrismaSucursalRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaSucursalRepository";
+import { PrismaReglaAbonoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaReglaAbonoRepository";
 import { AuthorizationService } from "@gym-app/domain/services/AuthorizationService";
 import {
   registrarPago,
@@ -19,6 +20,8 @@ import {
   PlanNoEncontradoError as RegistrarPagoPlanNoEncontradoError,
   PlanInactivoError,
   RolNoAutorizadoError,
+  AbonoNoPermitidoError,
+  AbonoMenorAlMinimoError,
 } from "@gym-app/domain/use-cases/RegistrarPago";
 import {
   listarPagos,
@@ -93,6 +96,7 @@ export async function POST(req: NextRequest) {
         turnos: new PrismaTurnoRepository(prisma),
         sucursales: new PrismaSucursalRepository(prisma),
         autorizacion: new AuthorizationService(new PrismaPermisoRepository(prisma)),
+        reglasAbono: new PrismaReglaAbonoRepository(prisma),
       },
       {
         organizacionId: usuario.organizacionId,
@@ -126,6 +130,9 @@ export async function POST(req: NextRequest) {
     }
     if (error instanceof RolNoAutorizadoError) {
       return NextResponse.json({ error: error.message }, { status: 403 });
+    }
+    if (error instanceof AbonoNoPermitidoError || error instanceof AbonoMenorAlMinimoError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
     }
     console.error("Error al registrar pago:", error);
     return NextResponse.json({ error: "Error interno al registrar el pago." }, { status: 500 });

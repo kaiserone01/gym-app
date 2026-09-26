@@ -19,6 +19,7 @@ import {
 import { PrismaTurnoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaTurnoRepository";
 import { PrismaPermisoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaPermisoRepository";
 import { PrismaSucursalRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaSucursalRepository";
+import { PrismaReglaAbonoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaReglaAbonoRepository";
 import { AuthorizationService } from "@gym-app/domain/services/AuthorizationService";
 import { R2StorageService } from "@gym-app/infrastructure/storage/R2StorageService";
 import {
@@ -29,6 +30,8 @@ import {
   PlanInactivoError,
   RolNoAutorizadoError as PagoRolNoAutorizadoError,
   MontoInvalidoError,
+  AbonoNoPermitidoError,
+  AbonoMenorAlMinimoError,
 } from "@gym-app/domain/use-cases/RegistrarPago";
 import { conMensajeOk } from "../redirectConMensaje";
 
@@ -160,6 +163,7 @@ export async function crearMiembroAction(
         turnos: new PrismaTurnoRepository(prisma),
         sucursales: new PrismaSucursalRepository(prisma),
         autorizacion: new AuthorizationService(new PrismaPermisoRepository(prisma)),
+        reglasAbono: new PrismaReglaAbonoRepository(prisma),
       },
       {
         organizacionId: usuario.organizacionId,
@@ -186,7 +190,9 @@ export async function crearMiembroAction(
       error instanceof PlanNoEncontradoError ||
       error instanceof PlanInactivoError ||
       error instanceof PagoRolNoAutorizadoError ||
-      error instanceof MontoInvalidoError
+      error instanceof MontoInvalidoError ||
+      error instanceof AbonoNoPermitidoError ||
+      error instanceof AbonoMenorAlMinimoError
     ) {
       return { error: `El miembro se creó, pero no se pudo registrar el pago inicial: ${error.message}` };
     }

@@ -11,6 +11,7 @@ import { PrismaPlanRepository } from "@gym-app/infrastructure/persistence/prisma
 import { PrismaTurnoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaTurnoRepository";
 import { PrismaPermisoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaPermisoRepository";
 import { PrismaSucursalRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaSucursalRepository";
+import { PrismaReglaAbonoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaReglaAbonoRepository";
 import { AuthorizationService } from "@gym-app/domain/services/AuthorizationService";
 import { orquestadorTasa, validarTasaCobro } from "@/lib/tasaBcv";
 import { conMensajeOk } from "../redirectConMensaje";
@@ -23,6 +24,8 @@ import {
   RolNoAutorizadoError,
   MontoInvalidoError,
   LineasDePagoInvalidasError,
+  AbonoNoPermitidoError,
+  AbonoMenorAlMinimoError,
 } from "@gym-app/domain/use-cases/RegistrarPago";
 import {
   cambiarPlanConPago,
@@ -179,6 +182,7 @@ export async function registrarPagoAction(
         turnos: new PrismaTurnoRepository(prisma),
         sucursales: new PrismaSucursalRepository(prisma),
         autorizacion: new AuthorizationService(new PrismaPermisoRepository(prisma)),
+        reglasAbono: new PrismaReglaAbonoRepository(prisma),
       },
       {
         organizacionId: usuario.organizacionId,
@@ -198,7 +202,9 @@ export async function registrarPagoAction(
       error instanceof PlanInactivoError ||
       error instanceof RolNoAutorizadoError ||
       error instanceof MontoInvalidoError ||
-      error instanceof LineasDePagoInvalidasError
+      error instanceof LineasDePagoInvalidasError ||
+      error instanceof AbonoNoPermitidoError ||
+      error instanceof AbonoMenorAlMinimoError
     ) {
       return { error: error.message };
     }

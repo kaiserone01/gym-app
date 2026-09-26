@@ -499,7 +499,7 @@ function ContenidoPaso3({
   // (AbonoMenorAlMinimoError), que sí conoce el estado real del ciclo.
   const puedeEnviar = esAbono
     ? montoObjetivo > 0 && lineaUnica.seleccion.metodoPagoId !== null
-    : montoObjetivo === 0 || (lineasParaEnviar.length > 0 && lineasParaEnviar.every((l) => l.metodoPagoId));
+    : montoSugerido === 0 || (lineasParaEnviar.length > 0 && lineasParaEnviar.every((l) => l.metodoPagoId));
 
   return (
     <form action={enviar} className="flex flex-col gap-4 text-base">
@@ -510,7 +510,7 @@ function ContenidoPaso3({
         type="hidden"
         name="lineas"
         value={JSON.stringify(
-          montoObjetivo === 0
+          montoSugerido === 0
             ? [{ monto: 0, metodo: "Cortesía", metodoPagoId: null, numeroOperacion: null, tasaCambio: null }]
             : lineasParaEnviar
         )}
@@ -699,7 +699,7 @@ function ContenidoPaso3({
         />
       )}
 
-      {montoObjetivo > 0 && modalidad === "combinado" && (
+      {montoSugerido > 0 && modalidad === "combinado" && (
         <div className="flex flex-col gap-3">
           <p className="text-sm font-medium" style={{ color: "var(--gx-muted)" }}>
             Distribución del pago
@@ -876,7 +876,10 @@ function ContenidoPaso3({
       {modalidad === "combinado" && (
         <PanelRemanentePago
           lineas={lineasCombinadas.map((l) => ({ metodo: l.seleccion.metodo, monto: Number(l.monto) || 0 }))}
-          montoObjetivo={montoObjetivo}
+          // El objetivo real a cubrir es el precio del plan — montoObjetivo
+          // ya ES la suma de las fracciones (ver diseño acordado), así que
+          // compararlo contra sí mismo siempre daría remanente $0.
+          montoObjetivo={montoSugerido}
           tasaReferencia={lineasCombinadas.find((l) => l.seleccion.tasaCambio !== null)?.seleccion.tasaCambio ?? null}
         />
       )}

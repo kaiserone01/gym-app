@@ -16,6 +16,7 @@ type FilaMiembro = {
   entrenador?: { nombre: string } | null;
   planId: string | null;
   precioPlan: { toNumber(): number };
+  saldoAFavorUSD: { toNumber(): number };
   fechaUltimoPago: Date | null;
   fechaVencimiento: Date | null;
   activo: boolean;
@@ -37,6 +38,7 @@ function mapear(miembro: FilaMiembro): Miembro {
     entrenadorNombre: miembro.entrenador?.nombre ?? null,
     planId: miembro.planId,
     precioPlan: miembro.precioPlan.toNumber(),
+    saldoAFavorUSD: miembro.saldoAFavorUSD.toNumber(),
     fechaUltimoPago: miembro.fechaUltimoPago,
     fechaVencimiento: miembro.fechaVencimiento,
     activo: miembro.activo,

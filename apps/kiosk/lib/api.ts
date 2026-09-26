@@ -1,6 +1,6 @@
 const URL_API = process.env.NEXT_PUBLIC_API_URL;
 
-export type EstadoCheckIn = "activo" | "en_gracia" | "vencido" | "sucursal_incorrecta";
+export type EstadoCheckIn = "activo" | "en_gracia" | "vencido" | "abono_vencido" | "sucursal_incorrecta";
 
 export interface ResultadoCheckIn {
   nombre: string;

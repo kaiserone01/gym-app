@@ -102,6 +102,15 @@ export async function registrarCheckIn(
   }
 
   const ahora = new Date();
+  // validarAccesoSucursal ya busca la suscripción activa internamente para
+  // decidir el estado — esta consulta adicional es la única forma de leer
+  // fechaLimiteAbono antes de pasarlo como parámetro, sin cambiar el tipo
+  // de retorno de esa función. Es una consulta liviana duplicada, aceptada
+  // dado el alcance de este cambio (ver diseño acordado, motor de reglas
+  // de abono).
+  const suscripcionActiva = await deps.suscripciones.buscarActivaVigentePorMiembro(miembro.id, ahora);
+  const fechaLimiteAbono = suscripcionActiva?.fechaLimiteAbono ?? null;
+
   const estado = await validarAccesoSucursal(
     { suscripciones: deps.suscripciones },
     miembro.id,
@@ -109,6 +118,7 @@ export async function registrarCheckIn(
     input.sucursalId,
     miembro.fechaVencimiento,
     diasGracia,
+    fechaLimiteAbono,
     ahora
   );
 

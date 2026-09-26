@@ -21,6 +21,7 @@ export async function validarAccesoSucursal(
   sucursalIdDelCheckIn: string,
   fechaVencimientoMiembro: Date | null,
   diasGracia: number,
+  fechaLimiteAbono: Date | null,
   ahora: Date = new Date()
 ): Promise<EstadoCheckIn> {
   // sucursalIdDelMiembro === null significa "Ambas" (miembro con Plan
@@ -33,6 +34,14 @@ export async function validarAccesoSucursal(
   const suscripcion = await deps.suscripciones.buscarActivaVigentePorMiembro(miembroId, ahora);
 
   if (suscripcion) {
+    // Aunque haya una Suscripcion vigente (fin > ahora), si el ciclo tiene
+    // un plazo de abono activo y ya venció sin completarse el pago, el
+    // acceso se bloquea igual — el plazo de abono reemplaza la regla
+    // anterior de "acceso ilimitado desde el primer abono" (ver diseño
+    // acordado, motor de reglas de abono).
+    if (fechaLimiteAbono !== null && ahora.getTime() > fechaLimiteAbono.getTime()) {
+      return "abono_vencido";
+    }
     return "activo";
   }
 

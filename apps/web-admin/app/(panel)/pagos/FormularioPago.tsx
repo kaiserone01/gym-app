@@ -8,7 +8,7 @@ import { useFeedback } from "@gym-app/ui/components/FeedbackOverlay";
 import type { EstadoFormularioPago } from "./actions";
 import type { Miembro } from "@gym-app/domain/entities/Miembro";
 import type { MetodoPago } from "@gym-app/domain/entities/MetodoPago";
-import type { FrecuenciaPago } from "@gym-app/domain/entities/Plan";
+import type { FrecuenciaPago, TipoMinimoAbono } from "@gym-app/domain/entities/Plan";
 import { SelectorMetodoPago } from "./SelectorMetodoPago";
 import { SelectorMiembroModal, type MiembroConPlan } from "../caja/SelectorMiembroModal";
 
@@ -24,6 +24,9 @@ export interface PlanParaSelector {
   multisede: boolean;
   frecuencia: FrecuenciaPago;
   incluyeEntrenador: boolean;
+  permitePagoParcial: boolean;
+  minimoAbonoTipo: TipoMinimoAbono | null;
+  minimoAbonoValor: number | null;
 }
 
 export interface PlanFijo {

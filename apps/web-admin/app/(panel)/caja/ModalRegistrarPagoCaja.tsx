@@ -106,12 +106,16 @@ function ContenidoPaso1({
   );
 }
 
+type Modalidad = "total" | "abono" | "combinado";
+
 function ContenidoPaso2({
   miembro,
   planes,
   planElegidoId,
   onElegirPlan,
   tasaActual,
+  modalidadElegida,
+  onCambiarModalidad,
   onVolver,
   onContinuar,
 }: {
@@ -120,6 +124,8 @@ function ContenidoPaso2({
   planElegidoId: string | null;
   onElegirPlan: (id: string) => void;
   tasaActual: number | null;
+  modalidadElegida: Modalidad;
+  onCambiarModalidad: (modalidad: Modalidad) => void;
   onVolver: () => void;
   onContinuar: (plan: PlanParaModal) => void;
 }) {
@@ -196,6 +202,40 @@ function ContenidoPaso2({
         </div>
       )}
 
+      {planEfectivo && planEfectivo.precioUSD > 0 && (
+        <div className="flex flex-col gap-2">
+          <div className="flex gap-2">
+            {(
+              [
+                { valor: "total" as const, etiqueta: "Pago total" },
+                { valor: "abono" as const, etiqueta: "Abono parcial", deshabilitado: !planEfectivo.permitePagoParcial },
+                { valor: "combinado" as const, etiqueta: "Pago combinado" },
+              ]
+            ).map((opcion) => (
+              <button
+                key={opcion.valor}
+                type="button"
+                disabled={opcion.deshabilitado}
+                onClick={() => !opcion.deshabilitado && onCambiarModalidad(opcion.valor)}
+                className="min-h-11 flex-1 rounded-lg border px-3 text-sm font-medium transition-colors duration-150 disabled:opacity-40"
+                style={
+                  modalidadElegida === opcion.valor
+                    ? { borderColor: "var(--gx-accent)", background: "var(--gx-accent)", color: "var(--gx-accent-ink)" }
+                    : { borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }
+                }
+              >
+                {opcion.etiqueta}
+              </button>
+            ))}
+          </div>
+          {!planEfectivo.permitePagoParcial && (
+            <p className="text-xs" style={{ color: "var(--gx-muted)" }}>
+              Este plan no admite abonos — solo pago total o combinado.
+            </p>
+          )}
+        </div>
+      )}
+
       <div className="mt-2 flex gap-3">
         <Button type="button" variant="secundario" className="min-h-12 flex-1 text-base" onClick={onVolver}>
           Volver
@@ -212,8 +252,6 @@ function ContenidoPaso2({
     </div>
   );
 }
-
-type Modalidad = "total" | "abono" | "combinado";
 
 interface LineaFormulario {
   clave: string;
@@ -233,6 +271,7 @@ function ContenidoPaso3({
   miembroId,
   planId,
   monto: montoSugerido,
+  modalidad,
   metodosPago,
   lineasResumenTurno,
   onVolver,
@@ -246,6 +285,9 @@ function ContenidoPaso3({
   // pendiente real del miembro (ese cálculo vive en su ficha) — quien
   // cobra tiene que saber cuánto pedir si es un abono, no el precio completo.
   monto: number;
+  // Elegida en el Paso 2 — este paso ya no la vuelve a preguntar, solo
+  // ejecuta lo elegido (ver diseño acordado, motor de reglas de abono).
+  modalidad: Modalidad;
   metodosPago: MetodoPago[];
   lineasResumenTurno: LineaResumenMetodo[];
   onVolver: () => void;
@@ -254,7 +296,6 @@ function ContenidoPaso3({
   const [estado, enviar, enviando] = useActionState(registrarPagoAction, {});
   const { mostrarExito, mostrarError } = useFeedback();
 
-  const [modalidad, setModalidad] = useState<Modalidad>("total");
   const [montoObjetivoTexto, setMontoObjetivoTexto] = useState(String(montoSugerido));
   const montoObjetivo = Number(montoObjetivoTexto) || 0;
 
@@ -329,36 +370,7 @@ function ContenidoPaso3({
         )}
       />
 
-      {montoSugerido > 0 && (
-        <div className="flex gap-2">
-          {(
-            [
-              { valor: "total" as const, etiqueta: "Pago total" },
-              { valor: "abono" as const, etiqueta: "Abono parcial" },
-              { valor: "combinado" as const, etiqueta: "Pago combinado" },
-            ]
-          ).map((opcion) => (
-            <button
-              key={opcion.valor}
-              type="button"
-              onClick={() => {
-                setModalidad(opcion.valor);
-                if (opcion.valor === "total") setMontoObjetivoTexto(String(montoSugerido));
-              }}
-              className="min-h-11 flex-1 rounded-lg border px-3 text-sm font-medium transition-colors duration-150"
-              style={
-                modalidad === opcion.valor
-                  ? { borderColor: "var(--gx-accent)", background: "var(--gx-accent)", color: "var(--gx-accent-ink)" }
-                  : { borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }
-              }
-            >
-              {opcion.etiqueta}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {montoSugerido > 0 && (
+      {montoSugerido > 0 && modalidad !== "total" && (
         <CurrencyInput
           name="montoObjetivo"
           label={modalidad === "combinado" ? "Total a pagar" : "Monto a cobrar"}
@@ -367,6 +379,12 @@ function ContenidoPaso3({
           value={montoObjetivoTexto}
           onChange={setMontoObjetivoTexto}
         />
+      )}
+      {montoSugerido > 0 && modalidad === "total" && (
+        <div className="flex justify-between rounded-lg px-3 py-2 text-sm" style={{ background: "var(--gx-surface-2)" }}>
+          <span style={{ color: "var(--gx-muted)" }}>Monto a cobrar</span>
+          <span className="font-semibold" style={{ color: "var(--gx-ink)" }}>${montoSugerido.toFixed(2)}</span>
+        </div>
       )}
       {montoSugerido > 0 && montoObjetivo > 0 && montoObjetivo < montoSugerido && (
         <p className="text-sm" style={{ color: "var(--gx-muted)" }}>
@@ -549,6 +567,7 @@ export function ModalRegistrarPagoCaja({
   const [paso, setPaso] = useState<Paso>(1);
   const [miembroElegido, setMiembroElegido] = useState<MiembroConPlan | null>(null);
   const [planElegidoId, setPlanElegidoId] = useState<string | null>(null);
+  const [modalidadElegida, setModalidadElegida] = useState<Modalidad>("total");
   const [confirmandoCierre, setConfirmandoCierre] = useState(false);
   const [fechaFinCicloFinal, setFechaFinCicloFinal] = useState<Date | null>(null);
 
@@ -634,6 +653,8 @@ export function ModalRegistrarPagoCaja({
             planElegidoId={planElegidoId}
             onElegirPlan={setPlanElegidoId}
             tasaActual={tasaActual}
+            modalidadElegida={modalidadElegida}
+            onCambiarModalidad={setModalidadElegida}
             onVolver={() => setPaso(1)}
             onContinuar={(plan) => {
               setPlanElegidoId(plan.id);
@@ -649,6 +670,7 @@ export function ModalRegistrarPagoCaja({
             monto={
               (miembroElegido.plan ?? planes.find((p) => p.id === planElegidoId))?.precioUSD ?? 0
             }
+            modalidad={modalidadElegida}
             metodosPago={metodosPago}
             lineasResumenTurno={lineasResumenTurno}
             onVolver={() => setPaso(2)}

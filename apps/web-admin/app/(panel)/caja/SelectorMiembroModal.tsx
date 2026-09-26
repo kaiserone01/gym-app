@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { Miembro } from "@gym-app/domain/entities/Miembro";
-import type { FrecuenciaPago } from "@gym-app/domain/entities/Plan";
+import type { FrecuenciaPago, TipoMinimoAbono } from "@gym-app/domain/entities/Plan";
 
 // Solo los campos que este modal necesita mostrar del plan — evita atar
 // este componente al tipo Plan completo del dominio (activo, etc. no se
@@ -14,6 +14,9 @@ export interface PlanParaModal {
   precioUSD: number;
   multisede: boolean;
   frecuencia: FrecuenciaPago;
+  permitePagoParcial: boolean;
+  minimoAbonoTipo: TipoMinimoAbono | null;
+  minimoAbonoValor: number | null;
 }
 
 const MINIMO_CARACTERES_BUSQUEDA = 3;

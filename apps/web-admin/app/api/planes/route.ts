@@ -47,6 +47,9 @@ export async function POST(req: NextRequest) {
         incluyeEntrenador: body.incluyeEntrenador ?? false,
         precioUSD: body.precioUSD,
         multisede: body.multisede ?? false,
+        permitePagoParcial: body.permitePagoParcial ?? true,
+        minimoAbonoTipo: body.minimoAbonoTipo ?? null,
+        minimoAbonoValor: body.minimoAbonoValor ?? null,
       }
     );
 

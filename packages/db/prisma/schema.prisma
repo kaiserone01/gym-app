@@ -26,6 +26,7 @@ model Organizacion {
   metodosPago   MetodoPago[]
   tema          TemaOrganizacion?
   turnos        Turno[]
+  reglasAbono   ReglaAbonoPorFrecuencia[]
 }
 
 model Sucursal {
@@ -163,8 +164,38 @@ model Plan {
   multisede         Boolean        @default(false) // si es true, el Miembro con este plan puede asignarse a "Ambas" sedes (sucursalId = null)
   activo            Boolean        @default(true)
 
+  // Si este plan admite la modalidad de pago "Abono parcial". El pago
+  // combinado (múltiples métodos en un solo cobro) NUNCA se restringe por
+  // este campo — es universal para cualquier plan.
+  permitePagoParcial Boolean  @default(true)
+  // Mínimo de abono propio de este plan — sobreescribe la regla de su
+  // frecuencia (ReglaAbonoPorFrecuencia) cuando ambos están definidos.
+  // null = este plan no define un mínimo propio, hereda el de su
+  // frecuencia (si esa regla está activa).
+  minimoAbonoTipo    String?  // "DIAS" | "PORCENTAJE"
+  minimoAbonoValor   Decimal? @db.Decimal(10, 2) // días si tipo=DIAS, 0-100 si tipo=PORCENTAJE
+
   suscripciones Suscripcion[]
   miembros      Miembro[]
+}
+
+// Regla de abono por defecto para todos los planes de una frecuencia — un
+// Plan individual puede sobreescribirla definiendo su propio
+// minimoAbonoTipo/minimoAbonoValor (ver Plan). Una fila por cada una de
+// las 4 frecuencias, por organización.
+model ReglaAbonoPorFrecuencia {
+  id               String         @id @default(cuid())
+  organizacionId   String
+  organizacion     Organizacion   @relation(fields: [organizacionId], references: [id])
+  frecuencia       FrecuenciaPago
+  // Si esta regla aplica — una frecuencia sin activar se comporta como si
+  // no existiera (abono sin mínimo ni plazo, salvo que el plan mismo
+  // defina su propio mínimo).
+  activo           Boolean        @default(false)
+  minimoAbonoTipo  String         // "DIAS" | "PORCENTAJE"
+  minimoAbonoValor Decimal        @db.Decimal(10, 2)
+
+  @@unique([organizacionId, frecuencia])
 }
 
 enum EstadoSuscripcion {
@@ -182,6 +213,11 @@ model Suscripcion {
   plan      Plan              @relation(fields: [planId], references: [id])
   inicio    DateTime
   fin       DateTime
+  // Fecha límite de acceso que otorga el monto abonado hasta ahora en
+  // este ciclo — null si el ciclo está saldado al 100%, si el pago fue
+  // total, o si ninguna regla de abono aplica. Ver
+  // packages/domain/entities/ReglaAbono.ts.
+  fechaLimiteAbono DateTime?
   estado    EstadoSuscripcion @default(ACTIVA)
   createdAt DateTime          @default(now())
 }

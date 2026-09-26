@@ -12,8 +12,7 @@
     "build": "turbo run build",
     "lint": "turbo run lint",
     "start": "npm run start --workspace apps/web-admin",
-    "actualizar-tasa": "npm run actualizar-tasa --workspace apps/worker",
-    "worker:daemon": "npm run daemon --workspace apps/worker"
+    "actualizar-tasa": "npm run actualizar-tasa --workspace apps/worker"
   },
   "devDependencies": {
     "turbo": "^2.10.12"

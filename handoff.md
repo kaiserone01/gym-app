@@ -4,6 +4,7 @@
 Panel administrativo (`apps/web-admin`) de un sistema de gestión de gimnasio: miembros, pagos, y un módulo de Caja (apertura/cierre de turno con arqueo, en USD y bolívares).
 
 ## 2. Estado actual
+- **Daemon de la tasa BCV ELIMINADO del repo (a pedido del usuario, no solo pausado):** `apps/worker/src/daemon.ts`, el script `daemon`/dependencia `node-cron` en `apps/worker/package.json`, y el script `worker:daemon` en el `package.json` raíz ya no existen. Sigue existiendo `apps/worker/src/actualizar-tasa.ts` (script manual, `npm run actualizar-tasa`), que es el esquema previo y el único mecanismo soportado para actualizar la tasa. No hay ninguna automatización de tasa BCV corriendo ni planeada — si se pide de nuevo, hay que recrear el daemon desde cero (ver commit revertido `eff0bfc` en el historial de git para referencia).
 **Funciona (verificado con build + typecheck; parte de esto además confirmado en vivo por el usuario):**
 - Apertura y cierre de turno de caja, con registro de pagos y egresos durante el turno vía modales (`ModalRegistrarPagoCaja.tsx` wizard de 4 pasos, `ModalRegistrarEgreso.tsx`).
 - Cuadre de caja por método de pago (efectivo USD/Bs y métodos bancarios), mostrando el monto esperado y su referencia en USD cuando el monto es en bolívares (`Bs. X.XXX,XX (REF $Y.YY)`), detectando la moneda desde la transacción real (`Pago.montoBs`/`Egreso.moneda`), no desde el nombre del método.

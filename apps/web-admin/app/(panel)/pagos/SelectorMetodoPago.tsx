@@ -144,7 +144,11 @@ export function SelectorMetodoPago({
 
   const tiposDisponibles = Array.from(new Set(metodos.map((m) => m.tipo)));
   const metodo = metodos.find((m) => m.id === metodoId) ?? null;
-  const instanciasDelTipo = tipoAbierto ? metodos.filter((m) => m.tipo === tipoAbierto) : [];
+  // EFECTIVO nunca abre el grid de "instancias" genérico (2 tarjetas con
+  // nombre de banco) — su selección de moneda vive en su propia fila
+  // (ver más abajo), igual que siempre. El resto de los tipos con más de
+  // una instancia sí usa ese grid.
+  const instanciasDelTipo = tipoAbierto && tipoAbierto !== "EFECTIVO" ? metodos.filter((m) => m.tipo === tipoAbierto) : [];
   const requiereNumeroOperacion = metodo ? metodo.tipo !== "EFECTIVO" : false;
   const esEnBs = metodo ? TIPOS_QUE_PUEDEN_SER_EN_BS.includes(metodo.tipo) && metodo.moneda === "BS" : false;
 
@@ -281,7 +285,7 @@ export function SelectorMetodoPago({
         </div>
       )}
 
-      {metodo && metodo.tipo === "EFECTIVO" && (
+      {tipoAbierto === "EFECTIVO" && metodos.filter((m) => m.tipo === "EFECTIVO").length > 1 && (
         <div className="flex gap-2">
           {metodos
             .filter((m) => m.tipo === "EFECTIVO")

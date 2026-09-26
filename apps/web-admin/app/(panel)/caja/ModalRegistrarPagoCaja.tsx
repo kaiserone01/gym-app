@@ -212,13 +212,19 @@ function ContenidoPaso2({
               [
                 { valor: "total" as const, etiqueta: "Pago total" },
                 { valor: "abono" as const, etiqueta: "Abono parcial", deshabilitado: !planEfectivo.permitePagoParcial },
-                { valor: "combinado" as const, etiqueta: "Pago combinado" },
+                {
+                  valor: "combinado" as const,
+                  etiqueta: "Pago parcial",
+                  titulo:
+                    "Divide el monto total entre varios métodos de pago — por ejemplo, una parte en efectivo y otra en punto de venta, incluso con dos tarjetas distintas.",
+                },
               ]
             ).map((opcion) => (
               <button
                 key={opcion.valor}
                 type="button"
                 disabled={opcion.deshabilitado}
+                title={opcion.titulo}
                 onClick={() => !opcion.deshabilitado && onCambiarModalidad(opcion.valor)}
                 className="min-h-11 flex-1 rounded-lg border px-3 text-sm font-medium transition-colors duration-150 disabled:opacity-40"
                 style={
@@ -233,7 +239,7 @@ function ContenidoPaso2({
           </div>
           {!planEfectivo.permitePagoParcial && (
             <p className="text-xs" style={{ color: "var(--gx-muted)" }}>
-              Este plan no admite abonos — solo pago total o combinado.
+              Este plan no admite abonos — solo pago total o pago parcial.
             </p>
           )}
         </div>
@@ -282,6 +288,7 @@ function ContenidoPaso3({
   reglasAbono,
   modalidad,
   metodosPago,
+  tasaActual,
   lineasResumenTurno,
   onVolver,
   onPagoRegistrado,
@@ -309,6 +316,10 @@ function ContenidoPaso3({
   // ejecuta lo elegido (ver diseño acordado, motor de reglas de abono).
   modalidad: Modalidad;
   metodosPago: MetodoPago[];
+  // Solo para calcular el equivalente en Bs del precio fijo mostrado en
+  // modalidad Abono (referencia) — el método elegido trae su propia tasa
+  // para el campo de monto a abonar.
+  tasaActual: number | null;
   lineasResumenTurno: LineaResumenMetodo[];
   onVolver: () => void;
   onPagoRegistrado: (fechaFinCicloISO: string | undefined) => void;
@@ -324,23 +335,43 @@ function ContenidoPaso3({
   // AbonoNoPermitidoError en RegistrarPago.ts, hallazgo de la revisión final).
   const montoObjetivoBloqueado = modalidad === "total" || (modalidad === "combinado" && !permitePagoParcial);
   const [montoObjetivoTexto, setMontoObjetivoTexto] = useState(String(montoSugerido));
-  const montoObjetivo = montoObjetivoBloqueado ? montoSugerido : Number(montoObjetivoTexto) || 0;
 
   // Total y abono usan una sola línea; combinado usa el array completo.
   const [lineaUnica, setLineaUnica] = useState<LineaFormulario>(nuevaLineaVacia());
   const [lineasCombinadas, setLineasCombinadas] = useState<LineaFormulario[]>([nuevaLineaVacia(), nuevaLineaVacia()]);
 
-  // En modalidad no combinada, el monto real a enviar es siempre
-  // montoObjetivo, nunca lineaUnica.monto — ese campo solo se actualiza
-  // dentro del onCambio de SelectorMetodoPago (útil para la proyección en
-  // vivo), pero ese onCambio depende del useEffect interno del selector,
-  // que NO reacciona a cambios de monto/montoObjetivo (solo a
+  // Modalidad Abono: el método de pago se elige ANTES que el monto (ver
+  // diseño acordado) — el precio del plan se muestra fijo como referencia
+  // hasta que hay un método elegido, y recién ahí aparece el campo "Monto
+  // a abonar". El monto en USD (lineaUnica.monto) es la fuente de verdad;
+  // si el método es en Bs, se agrega una segunda casilla que solo
+  // convierte visualmente, ver montoAbonoBsTexto más abajo.
+  const esAbono = modalidad === "abono";
+  const metodoAbonoElegido = esAbono && lineaUnica.seleccion.metodoPagoId !== null;
+  const [montoAbonoBsTexto, setMontoAbonoBsTexto] = useState("");
+
+  const montoObjetivo = montoObjetivoBloqueado
+    ? montoSugerido
+    : esAbono
+      ? Number(lineaUnica.monto) || 0
+      : Number(montoObjetivoTexto) || 0;
+
+  // En modalidad total/combinado (no abono), el monto real a enviar es
+  // siempre montoObjetivo, nunca lineaUnica.monto — ese campo solo se
+  // actualiza dentro del onCambio de SelectorMetodoPago (útil para la
+  // proyección en vivo), pero ese onCambio depende del useEffect interno
+  // del selector, que NO reacciona a cambios de monto/montoObjetivo (solo a
   // metodo/esEnBs/tasa/numeroOperacion) — así que si el usuario elige
   // método y DESPUÉS edita el monto objetivo, lineaUnica.monto queda
   // desactualizado. Se fuerza acá para que lo enviado siempre coincida con
-  // lo que se ve en pantalla.
+  // lo que se ve en pantalla. En abono, en cambio, lineaUnica.monto ES el
+  // campo editable — no se pisa.
   const lineasActivas =
-    modalidad === "combinado" ? lineasCombinadas : [{ ...lineaUnica, monto: String(montoObjetivo) }];
+    modalidad === "combinado"
+      ? lineasCombinadas
+      : esAbono
+        ? [lineaUnica]
+        : [{ ...lineaUnica, monto: String(montoObjetivo) }];
   const sumaLineas = lineasActivas.reduce((suma, l) => suma + (Number(l.monto) || 0), 0);
   const sumaCoincide = modalidad !== "combinado" || Math.abs(sumaLineas - montoObjetivo) < 0.01;
 
@@ -399,9 +430,10 @@ function ContenidoPaso3({
   // aceptaría. El texto informativo sigue mostrándose (ver más abajo); la
   // validación real y su mensaje de error quedan en RegistrarPago.ts
   // (AbonoMenorAlMinimoError), que sí conoce el estado real del ciclo.
-  const puedeEnviar =
-    montoObjetivo === 0 ||
-    (sumaCoincide && lineasParaEnviar.length > 0 && lineasParaEnviar.every((l) => l.metodoPagoId));
+  const puedeEnviar = esAbono
+    ? montoObjetivo > 0 && lineaUnica.seleccion.metodoPagoId !== null
+    : montoObjetivo === 0 ||
+      (sumaCoincide && lineasParaEnviar.length > 0 && lineasParaEnviar.every((l) => l.metodoPagoId));
 
   return (
     <form action={enviar} className="flex flex-col gap-4 text-base">
@@ -418,29 +450,104 @@ function ContenidoPaso3({
         )}
       />
 
-      {montoSugerido > 0 && modalidad !== "total" && !montoObjetivoBloqueado && (
+      {/* Total, y Combinado cuando el plan no admite abono: monto fijo, sin campo editable. */}
+      {montoSugerido > 0 && !esAbono && (modalidad === "total" || montoObjetivoBloqueado) && (
+        <div className="flex justify-between rounded-lg px-3 py-2 text-sm" style={{ background: "var(--gx-surface-2)" }}>
+          <span style={{ color: "var(--gx-muted)" }}>{modalidad === "combinado" ? "Total a pagar" : "Monto a cobrar"}</span>
+          <span className="font-semibold" style={{ color: "var(--gx-ink)" }}>${montoSugerido.toFixed(2)}</span>
+        </div>
+      )}
+      {/* Combinado, plan que sí admite abono: monto total editable (como hoy). */}
+      {montoSugerido > 0 && modalidad === "combinado" && !montoObjetivoBloqueado && (
         <CurrencyInput
           name="montoObjetivo"
-          label={modalidad === "combinado" ? "Total a pagar" : "Monto a cobrar"}
+          label="Total a pagar"
           moneda="USD"
           required
           value={montoObjetivoTexto}
           onChange={setMontoObjetivoTexto}
         />
       )}
-      {montoSugerido > 0 && (modalidad === "total" || montoObjetivoBloqueado) && (
+
+      {/* Abono: precio del plan fijo en verde, referencia visible todo el
+          paso (ver diseño acordado) — nunca es el monto que se registra. */}
+      {esAbono && montoSugerido > 0 && (
         <div className="flex justify-between rounded-lg px-3 py-2 text-sm" style={{ background: "var(--gx-surface-2)" }}>
-          <span style={{ color: "var(--gx-muted)" }}>{modalidad === "combinado" ? "Total a pagar" : "Monto a cobrar"}</span>
-          <span className="font-semibold" style={{ color: "var(--gx-ink)" }}>${montoSugerido.toFixed(2)}</span>
+          <span style={{ color: "var(--gx-muted)" }}>Precio del plan</span>
+          <span className="font-semibold" style={{ color: "var(--gx-accent)" }}>
+            ${montoSugerido.toFixed(2)}
+            {tasaActual !== null && ` · Bs. ${formatearBs(montoSugerido * tasaActual)}`}
+          </span>
         </div>
       )}
-      {montoSugerido > 0 && montoObjetivo > 0 && montoObjetivo < montoSugerido && (
+
+      {/* Abono: el método se elige ANTES que el monto (ver diseño
+          acordado) — se le pasa el precio del plan como referencia de
+          monto para calcular la tasa en Bs, no como monto a cobrar. */}
+      {esAbono && montoSugerido > 0 && (
+        <SelectorMetodoPago
+          metodos={metodosPago}
+          monto={montoSugerido}
+          onCambio={(seleccion) =>
+            setLineaUnica((prev) => {
+              // Cambiar de método en Bs a uno en USD (o viceversa) invalida
+              // la casilla Bs auxiliar — se limpia para no arrastrar un
+              // valor que ya no corresponde a la tasa nueva.
+              if (seleccion.tasaCambio === null) setMontoAbonoBsTexto("");
+              return { ...prev, seleccion };
+            })
+          }
+          grande
+          avisoServidor={{ tasaNueva: estado.tasaNueva, fallaTemporal: estado.fallaTemporal, tasaGuardada: estado.tasaGuardada }}
+        />
+      )}
+
+      {/* Abono: campo de monto a abonar, recién visible con método elegido. */}
+      {esAbono && metodoAbonoElegido && (
+        <div className="flex flex-col gap-3">
+          <CurrencyInput
+            name="montoAbonoUSD"
+            label="Monto a abonar"
+            moneda="USD"
+            required
+            value={lineaUnica.monto}
+            onChange={(valorUSD) => {
+              setLineaUnica((prev) => ({ ...prev, monto: valorUSD }));
+              if (lineaUnica.seleccion.tasaCambio !== null) {
+                const numero = Number(valorUSD);
+                setMontoAbonoBsTexto(Number.isNaN(numero) || valorUSD === "" ? "" : String(numero * lineaUnica.seleccion.tasaCambio));
+              }
+            }}
+          />
+          {/* Solo si el método es en Bs — segunda casilla de conversión
+              bidireccional (ver diseño acordado). El USD sigue siendo la
+              fuente de verdad: escribir acá recalcula el campo USD de arriba. */}
+          {lineaUnica.seleccion.tasaCambio !== null && (
+            <CurrencyInput
+              name="montoAbonoBs"
+              label="Monto a abonar (Bs)"
+              moneda="Bs"
+              value={montoAbonoBsTexto}
+              onChange={(valorBs) => {
+                setMontoAbonoBsTexto(valorBs);
+                const numero = Number(valorBs);
+                const tasa = lineaUnica.seleccion.tasaCambio ?? 0;
+                setLineaUnica((prev) => ({
+                  ...prev,
+                  monto: Number.isNaN(numero) || valorBs === "" || tasa === 0 ? "" : String(numero / tasa),
+                }));
+              }}
+            />
+          )}
+        </div>
+      )}
+      {esAbono && metodoAbonoElegido && montoObjetivo > 0 && montoObjetivo < montoSugerido && (
         <p className="text-sm" style={{ color: "var(--gx-muted)" }}>
           Es menos que el precio del plan (${montoSugerido.toFixed(2)}) — queda como abono, se puede completar
           después desde la ficha del miembro.
         </p>
       )}
-      {modalidad === "abono" && montoObjetivo > 0 && (
+      {esAbono && metodoAbonoElegido && montoObjetivo > 0 && (
         <p className="text-sm" style={{ color: proyeccionAbono.cumpleMinimo ? "var(--gx-muted)" : "var(--gx-bad)" }}>
           {proyeccionAbono.cumpleMinimo
             ? proyeccionAbono.fechaLimite
@@ -450,7 +557,7 @@ function ContenidoPaso3({
         </p>
       )}
 
-      {montoObjetivo > 0 && modalidad !== "combinado" && (
+      {montoObjetivo > 0 && !esAbono && modalidad !== "combinado" && (
         <SelectorMetodoPago
           metodos={metodosPago}
           monto={montoObjetivo}
@@ -525,7 +632,7 @@ function ContenidoPaso3({
         />
       )}
 
-      {montoObjetivo === 0 && (
+      {montoSugerido === 0 && (
         <p className="text-sm" style={{ color: "var(--gx-muted)" }}>
           Este plan no tiene costo — no hace falta elegir método de pago.
         </p>
@@ -753,6 +860,7 @@ export function ModalRegistrarPagoCaja({
             reglasAbono={reglasAbono}
             modalidad={modalidadElegida}
             metodosPago={metodosPago}
+            tasaActual={tasaActual}
             lineasResumenTurno={lineasResumenTurno}
             onVolver={() => setPaso(2)}
             onPagoRegistrado={(fechaFinCicloISO) => {

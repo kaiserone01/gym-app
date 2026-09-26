@@ -71,6 +71,22 @@ class RepositorioEnMemoria implements ITasaCambioRepository {
     }
     return tasas.length;
   }
+
+  async listarHistorico(input: { antesDe: Date | null; limite: number }): Promise<TasaCambio[]> {
+    const ordenadas = [...this.filas].sort((a, b) => b.fecha.getTime() - a.fecha.getTime());
+    const filtradas = input.antesDe ? ordenadas.filter((f) => f.fecha.getTime() < input.antesDe!.getTime()) : ordenadas;
+    return filtradas.slice(0, input.limite);
+  }
+
+  async buscarPorFecha(fecha: Date): Promise<TasaCambio | null> {
+    return this.filas.find((f) => f.fecha.getTime() === fecha.getTime()) ?? null;
+  }
+
+  async buscarMasCercanaAnterior(fecha: Date): Promise<TasaCambio | null> {
+    const candidatas = this.filas.filter((f) => f.fecha.getTime() <= fecha.getTime());
+    if (candidatas.length === 0) return null;
+    return [...candidatas].sort((a, b) => b.fecha.getTime() - a.fecha.getTime())[0];
+  }
 }
 
 class ServicioFalso implements IExchangeRateService {

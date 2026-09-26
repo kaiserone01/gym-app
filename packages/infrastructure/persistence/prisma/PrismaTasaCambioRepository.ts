@@ -73,4 +73,26 @@ export class PrismaTasaCambioRepository implements ITasaCambioRepository {
 
     return tasas.length;
   }
+
+  async listarHistorico(input: { antesDe: Date | null; limite: number }): Promise<TasaCambio[]> {
+    const filas = await this.prisma.tasaCambio.findMany({
+      where: input.antesDe ? { fecha: { lt: inicioDelDia(input.antesDe) } } : undefined,
+      orderBy: { fecha: "desc" },
+      take: input.limite,
+    });
+    return filas.map(mapear);
+  }
+
+  async buscarPorFecha(fecha: Date): Promise<TasaCambio | null> {
+    const fila = await this.prisma.tasaCambio.findUnique({ where: { fecha: inicioDelDia(fecha) } });
+    return fila ? mapear(fila) : null;
+  }
+
+  async buscarMasCercanaAnterior(fecha: Date): Promise<TasaCambio | null> {
+    const fila = await this.prisma.tasaCambio.findFirst({
+      where: { fecha: { lte: inicioDelDia(fecha) } },
+      orderBy: { fecha: "desc" },
+    });
+    return fila ? mapear(fila) : null;
+  }
 }

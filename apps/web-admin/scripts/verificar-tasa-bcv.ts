@@ -11,6 +11,7 @@ import { sincronizarTasas } from "@gym-app/domain/use-cases/SincronizarTasas";
 import type { ITasaCambioRepository } from "@gym-app/domain/ports/ITasaCambioRepository";
 import type { IExchangeRateService, ResultadoPublicadas } from "@gym-app/domain/ports/IExchangeRateService";
 import type { TasaCambio } from "@gym-app/domain/entities/TasaCambio";
+import { crearOrquestadorTasa } from "../lib/tasaBcv";
 
 let pasadas = 0;
 let total = 0;
@@ -207,6 +208,126 @@ async function main() {
     });
     const r = await sincronizarTasas({ servicioTasa: servicio, tasas }, { versionConocida: null, hoy: fecha("2026-09-26") });
     assert.equal(r.guardadas, 2);
+  });
+
+  // --- Casos del orquestador (Tarea 2.4) ---
+  function crearFakes(opciones: {
+    hoy: Date;
+    tasaInicial: number;
+    fechaInicial: Date;
+    delaySincronizacionMs?: number;
+    fallaSincronizacion?: boolean;
+  }) {
+    const tasas = new RepositorioEnMemoria([{ fecha: opciones.fechaInicial, valor: opciones.tasaInicial }]);
+    let llamadasSincronizar = 0;
+    // Arranca ya por encima del throttle (45 min) — como el primer request
+    // del día, donde el throttle interno (ultimoIntento=0) siempre está vencido.
+    let relojMs = 60 * 60_000;
+    const tareasProgramadas: Array<() => Promise<void>> = [];
+
+    async function sincronizar(versionConocida: string | null): Promise<{ version: string | null }> {
+      llamadasSincronizar++;
+      if (opciones.delaySincronizacionMs) {
+        await new Promise((r) => setTimeout(r, opciones.delaySincronizacionMs));
+      }
+      if (opciones.fallaSincronizacion) {
+        throw new Error("dolarapi.com respondió 500");
+      }
+      // Simula que la sincronización trae la tasa del día "hoy" (recién publicada).
+      const r = await sincronizarTasas(
+        {
+          servicioTasa: new ServicioFalso({
+            tipo: "CAMBIOS",
+            version: "etag-x",
+            tasas: [{ fecha: opciones.hoy, valor: opciones.tasaInicial }],
+          }),
+          tasas,
+        },
+        { versionConocida, hoy: opciones.hoy }
+      );
+      return { version: r.version };
+    }
+
+    const orquestador = crearOrquestadorTasa({
+      sincronizar,
+      obtenerVigente: () => obtenerTasaVigente({ tasas }, opciones.hoy),
+      programar: (tarea) => tareasProgramadas.push(tarea),
+      ahoraMs: () => relojMs,
+    });
+
+    return {
+      orquestador,
+      tareasProgramadas,
+      avanzarReloj: (ms: number) => { relojMs += ms; },
+      get llamadasSincronizar() { return llamadasSincronizar; },
+      tasas,
+    };
+  }
+
+  await caso("12: dos llamadas dentro de 45 min → una sola sincronización", async () => {
+    const f = crearFakes({ hoy: fecha("2026-09-29"), tasaInicial: V28, fechaInicial: fecha("2026-09-28") });
+    // fecha valor 28, hoy 29 → DESACTUALIZADA, dispara sincronización bloqueante en la primera llamada.
+    await f.orquestador.obtenerTasaVigenteFresca();
+    await f.orquestador.obtenerTasaVigenteFresca();
+    assert.equal(f.llamadasSincronizar, 1);
+  });
+
+  await caso("13: DESACTUALIZADA → espera a la sincronización y devuelve la tasa nueva", async () => {
+    const f = crearFakes({ hoy: fecha("2026-09-29"), tasaInicial: V28, fechaInicial: fecha("2026-09-28") });
+    const r = await f.orquestador.obtenerTasaVigenteFresca();
+    assert.equal(f.llamadasSincronizar, 1);
+    assert.equal(r.estado, "AL_DIA");
+  });
+
+  await caso("14: sincronización lenta (> 2.5s) → devuelve la guardada sin esperar más", async () => {
+    const f = crearFakes({
+      hoy: fecha("2026-09-29"),
+      tasaInicial: V28,
+      fechaInicial: fecha("2026-09-28"),
+      delaySincronizacionMs: 3000,
+    });
+    const inicio = Date.now();
+    const r = await f.orquestador.obtenerTasaVigenteFresca();
+    const transcurrido = Date.now() - inicio;
+    assert.ok(transcurrido < 2900, `debía devolver antes de 2.9s, tardó ${transcurrido}ms`);
+    assert.equal(r.tasa.valor, V28);
+  });
+
+  await caso("15: cinco llamadas simultáneas con throttle vencido → una sola llamada al servicio (single-flight)", async () => {
+    const f = crearFakes({ hoy: fecha("2026-09-29"), tasaInicial: V28, fechaInicial: fecha("2026-09-28") });
+    await Promise.all([
+      f.orquestador.obtenerTasaVigenteFresca(),
+      f.orquestador.obtenerTasaVigenteFresca(),
+      f.orquestador.obtenerTasaVigenteFresca(),
+      f.orquestador.obtenerTasaVigenteFresca(),
+      f.orquestador.obtenerTasaVigenteFresca(),
+    ]);
+    assert.equal(f.llamadasSincronizar, 1);
+  });
+
+  await caso("16: sincronización fallida no actualiza la versión conocida", async () => {
+    const f = crearFakes({
+      hoy: fecha("2026-09-29"),
+      tasaInicial: V28,
+      fechaInicial: fecha("2026-09-28"),
+      fallaSincronizacion: true,
+    });
+    // No debe propagar el error (se atrapa y loguea) ni romper la lectura.
+    const r = await f.orquestador.obtenerTasaVigenteFresca();
+    assert.equal(r.tasa.valor, V28);
+    assert.equal(f.llamadasSincronizar, 1);
+    // Segunda llamada con throttle vencido (forzado) debe reintentar — la versión conocida sigue null.
+    await f.orquestador.obtenerTasaVigenteFresca({ forzar: true });
+    assert.equal(f.llamadasSincronizar, 2);
+  });
+
+  await caso("17: forzar:true ignora el throttle y espera a la sincronización", async () => {
+    const f = crearFakes({ hoy: fecha("2026-09-26"), tasaInicial: V28, fechaInicial: fecha("2026-09-28") });
+    // fecha valor 28, hoy 26 → AL_DIA (no dispararía por sí sola dentro del throttle).
+    await f.orquestador.obtenerTasaVigenteFresca({ forzar: true });
+    assert.equal(f.llamadasSincronizar, 1);
+    await f.orquestador.obtenerTasaVigenteFresca({ forzar: true });
+    assert.equal(f.llamadasSincronizar, 2);
   });
 
   console.log(`\n${pasadas === total ? "OK" : "FALLÓ"} (${pasadas}/${total})`);

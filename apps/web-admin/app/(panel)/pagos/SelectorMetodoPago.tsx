@@ -73,6 +73,12 @@ function IconoCripto() {
   );
 }
 
+// Refresco perezoso (Etapa 2 del plan de tasa BCV): si el modal queda
+// abierto más de 45 min (ETag → casi siempre 304), se vuelve a pedir la
+// tasa y se actualiza el monto en Bs mostrado — evita cobrar con una tasa
+// vencida en una operación larga.
+const INTERVALO_REVALIDACION_MS = 45 * 60_000;
+
 const ICONO_TIPO: Record<TipoMetodoPago, () => React.ReactElement> = {
   EFECTIVO: IconoBillete,
   PAGO_MOVIL: IconoTelefono,
@@ -119,6 +125,7 @@ export function SelectorMetodoPago({
   const [tasa, setTasa] = useState<number | null>(null);
   const [errorTasa, setErrorTasa] = useState(false);
   const [modalTasaAbierto, setModalTasaAbierto] = useState(false);
+  const [cargadaEnMs, setCargadaEnMs] = useState<number | null>(null);
 
   const tiposDisponibles = Array.from(new Set(metodos.map((m) => m.tipo)));
   const metodo = metodos.find((m) => m.id === metodoId) ?? null;
@@ -136,6 +143,7 @@ export function SelectorMetodoPago({
         return;
       }
       setTasa(datos.valor);
+      setCargadaEnMs(Date.now());
     } catch {
       setErrorTasa(true);
     }
@@ -147,6 +155,19 @@ export function SelectorMetodoPago({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- solo debe disparar cuando se elige un método en Bs
   }, [esEnBs]);
+
+  // Si el modal queda abierto más de 45 min con un método en Bs elegido,
+  // se revalida la tasa una vez pasado ese intervalo (mismo throttle que
+  // el orquestador del servidor).
+  useEffect(() => {
+    if (!esEnBs || cargadaEnMs === null) return;
+    const intervalo = setInterval(() => {
+      if (Date.now() - cargadaEnMs >= INTERVALO_REVALIDACION_MS) {
+        cargarTasa();
+      }
+    }, 60_000);
+    return () => clearInterval(intervalo);
+  }, [esEnBs, cargadaEnMs]);
 
   useEffect(() => {
     const tasaCambio = esEnBs ? tasa : null;

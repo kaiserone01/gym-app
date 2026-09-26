@@ -1,11 +1,9 @@
 // GET /api/tasa-cambio — devuelve la última tasa de cambio guardada
 // (la actualiza apps/worker, no esta ruta).
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
 import { obtenerUsuarioDeSesion } from "@/lib/sesion";
-import { PrismaTasaCambioRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaTasaCambioRepository";
-import { obtenerTasaVigente, SinTasaDisponibleError } from "@gym-app/domain/use-cases/ObtenerTasaVigente";
-import { diaCalendarioCaracas } from "@gym-app/domain/utils/fechaCaracas";
+import { orquestadorTasa } from "@/lib/tasaBcv";
+import { SinTasaDisponibleError } from "@gym-app/domain/use-cases/ObtenerTasaVigente";
 
 export async function GET(req: NextRequest) {
   const sesion = await obtenerUsuarioDeSesion(req);
@@ -15,10 +13,7 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const { tasa, estado } = await obtenerTasaVigente(
-      { tasas: new PrismaTasaCambioRepository(prisma) },
-      diaCalendarioCaracas(new Date())
-    );
+    const { tasa, estado } = await orquestadorTasa.obtenerTasaVigenteFresca();
 
     return NextResponse.json({ ...tasa, estado });
   } catch (error) {

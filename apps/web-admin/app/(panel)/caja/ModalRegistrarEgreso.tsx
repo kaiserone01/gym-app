@@ -17,6 +17,11 @@ const METODOS_EGRESO = [
   { value: "Efectivo (Bs)", label: "Efectivo (Bs)", moneda: "BS" as const },
 ];
 
+// Refresco perezoso (Etapa 2 del plan de tasa BCV): si el modal queda
+// abierto más de 45 min en Bs, se vuelve a pedir la tasa (mismo criterio
+// que SelectorMetodoPago).
+const INTERVALO_REVALIDACION_MS = 45 * 60_000;
+
 // Antes vivía siempre visible como un formulario grande en la pantalla de
 // Caja (ver diseño acordado: "Registrar egreso" ocupaba mucho espacio). Se
 // convierte en modal, mismo patrón que ModalRegistrarPagoCaja — un botón
@@ -56,19 +61,38 @@ export function ModalRegistrarEgreso({
   // USD del egreso (ver Egreso.tasaCambio/montoUSD).
   const [tasa, setTasa] = useState<number | null>(null);
   const [cargandoTasa, setCargandoTasa] = useState(false);
+  const [cargadaEnMs, setCargadaEnMs] = useState<number | null>(null);
 
-  useEffect(() => {
-    if (moneda !== "BS" || tasa !== null) return;
+  function cargarTasa() {
     setCargandoTasa(true);
     fetch("/api/tasa-cambio")
       .then((res) => res.json())
       .then((datos: { valor?: number }) => {
-        if (datos.valor !== undefined) setTasa(datos.valor);
+        if (datos.valor !== undefined) {
+          setTasa(datos.valor);
+          setCargadaEnMs(Date.now());
+        }
       })
       .catch(() => {})
       .finally(() => setCargandoTasa(false));
+  }
+
+  useEffect(() => {
+    if (moneda !== "BS" || tasa !== null) return;
+    cargarTasa();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- solo debe disparar al elegir un método en Bs
   }, [moneda]);
+
+  // Si el modal queda abierto más de 45 min con Bs elegido, revalida la tasa.
+  useEffect(() => {
+    if (moneda !== "BS" || cargadaEnMs === null) return;
+    const intervalo = setInterval(() => {
+      if (Date.now() - cargadaEnMs >= INTERVALO_REVALIDACION_MS) {
+        cargarTasa();
+      }
+    }, 60_000);
+    return () => clearInterval(intervalo);
+  }, [moneda, cargadaEnMs]);
 
   return (
     <div

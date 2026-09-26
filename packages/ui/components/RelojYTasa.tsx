@@ -2,6 +2,13 @@
 
 import { useEffect, useState } from "react";
 
+// Refresco perezoso (Etapa 2 del plan de tasa BCV): cada petición a
+// /api/tasa-cambio dispara también la verificación en el servidor (ver
+// apps/web-admin/lib/tasaBcv.ts). Se repite cada 45 min mientras la pestaña
+// esté visible, y también al volver a foco — así una cajera con la pestaña
+// abierta todo el turno igual ve la tasa nueva sin recargar la página.
+const INTERVALO_REFRESCO_MS = 45 * 60_000;
+
 interface TasaCambioRespuesta {
   valor: number;
   fuente: string;
@@ -24,16 +31,30 @@ export function RelojYTasa() {
 
   useEffect(() => {
     let cancelado = false;
-    fetch("/api/tasa-cambio")
-      .then((res) => (res.ok ? res.json() : null))
-      .then((datos: TasaCambioRespuesta | null) => {
-        if (!cancelado && datos) setTasa(datos);
-      })
-      .catch(() => {
-        // Sin tasa disponible o error de red — el bloque de tasa simplemente no se muestra.
-      });
+
+    function cargarTasa() {
+      fetch("/api/tasa-cambio")
+        .then((res) => (res.ok ? res.json() : null))
+        .then((datos: TasaCambioRespuesta | null) => {
+          if (!cancelado && datos) setTasa(datos);
+        })
+        .catch(() => {
+          // Sin tasa disponible o error de red — el bloque de tasa simplemente no se muestra.
+        });
+    }
+
+    cargarTasa();
+    const intervalo = setInterval(cargarTasa, INTERVALO_REFRESCO_MS);
+
+    function alVolverAFoco() {
+      if (document.visibilityState === "visible") cargarTasa();
+    }
+    document.addEventListener("visibilitychange", alVolverAFoco);
+
     return () => {
       cancelado = true;
+      clearInterval(intervalo);
+      document.removeEventListener("visibilitychange", alVolverAFoco);
     };
   }, []);
 

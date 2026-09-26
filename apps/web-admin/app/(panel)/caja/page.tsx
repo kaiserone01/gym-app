@@ -7,10 +7,9 @@ import { PrismaEgresoRepository } from "@gym-app/infrastructure/persistence/pris
 import { PrismaMemberRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaMemberRepository";
 import { PrismaPlanRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaPlanRepository";
 import { obtenerResumenTurno, METODO_EFECTIVO_BS } from "@gym-app/domain/use-cases/ObtenerResumenTurno";
-import { obtenerTasaVigente, SinTasaDisponibleError } from "@gym-app/domain/use-cases/ObtenerTasaVigente";
-import { diaCalendarioCaracas } from "@gym-app/domain/utils/fechaCaracas";
+import { SinTasaDisponibleError } from "@gym-app/domain/use-cases/ObtenerTasaVigente";
+import { orquestadorTasa } from "@/lib/tasaBcv";
 import { obtenerUltimoCierrePorSucursal } from "@gym-app/domain/use-cases/ObtenerUltimoCierrePorSucursal";
-import { PrismaTasaCambioRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaTasaCambioRepository";
 import { PrismaArqueoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaArqueoRepository";
 import { listarMiembros } from "@gym-app/domain/use-cases/ListarMiembros";
 import { listarPlanes } from "@gym-app/domain/use-cases/ListarPlanes";
@@ -86,7 +85,7 @@ export default async function PaginaCaja() {
       // Solo para mostrar la referencia en USD de la porción "fondo
       // inicial" de la línea en Bs (ver más abajo) — si no hay tasa
       // guardada todavía, simplemente se omite ese REF.
-      obtenerTasaVigente({ tasas: new PrismaTasaCambioRepository(prisma) }, diaCalendarioCaracas(new Date())).catch((error) => {
+      orquestadorTasa.obtenerTasaVigenteFresca().catch((error) => {
         if (error instanceof SinTasaDisponibleError) return null;
         throw error;
       }),

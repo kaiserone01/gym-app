@@ -578,24 +578,40 @@ function ContenidoPaso3({
           plan dos veces (ver diseño acordado): monto abonado (USD/Bs de
           referencia), saldo remanente + fecha tope destacados en negrita
           con el color de acento, y el % del plan cubierto. Si no alcanza
-          el mínimo exigido, se reemplaza por ese único aviso. */}
+          el mínimo exigido, se reemplaza por ese único aviso.
+          Si el ciclo vigente ya está saldado (montoObjetivo cubre el
+          100%) y el monto sigue sumando, es un ADELANTO del ciclo
+          siguiente — el mismo esquema se recalcula sobre ese remanente y
+          esa fecha base (ver proyeccionAbono.ts, esAdelantoCicloSiguiente),
+          en vez de cortar con "Este monto cubre el plan completo". */}
       {esAbono && metodoAbonoElegido && montoObjetivo > 0 && (
         <p className="text-sm" style={{ color: proyeccionAbono.cumpleMinimo ? "var(--gx-muted)" : "var(--gx-bad)" }}>
           {proyeccionAbono.cumpleMinimo ? (
             proyeccionAbono.fechaTope ? (
               <>
-                Es menos que el precio del plan (${montoSugerido.toFixed(2)}) — abonó ${montoObjetivo.toFixed(2)}
-                {tasaActual !== null && ` (Bs. ${formatearBs(montoObjetivo * tasaActual)})`}. Tiene que cancelar el{" "}
+                {proyeccionAbono.esAdelantoCicloSiguiente ? (
+                  <>Este pago salda el ciclo actual y adelanta el próximo — </>
+                ) : (
+                  <>
+                    Es menos que el precio del plan (${montoSugerido.toFixed(2)}) — abonó ${montoObjetivo.toFixed(2)}
+                    {tasaActual !== null && ` (Bs. ${formatearBs(montoObjetivo * tasaActual)})`}.{" "}
+                  </>
+                )}
+                Tiene que cancelar el{" "}
                 <strong style={{ color: "var(--gx-accent)" }}>
                   saldo remanente de ${proyeccionAbono.saldoRemanente.toFixed(2)}
                   {tasaActual !== null && ` (Bs. ${formatearBs(proyeccionAbono.saldoRemanente * tasaActual)})`} antes del{" "}
                   {proyeccionAbono.fechaTope.toLocaleDateString("es-VE")}
                 </strong>
-                . Pago parcial: {proyeccionAbono.porcentajeCubierto.toFixed(0)}% recibido (cubre{" "}
-                {proyeccionAbono.diasCubiertos} día(s) del ciclo).
+                . Pago parcial: {proyeccionAbono.porcentajeCubierto.toFixed(0)}% recibido
+                {proyeccionAbono.esAdelantoCicloSiguiente ? " del próximo ciclo" : ""} (cubre{" "}
+                {proyeccionAbono.diasCubiertos} día(s) {proyeccionAbono.esAdelantoCicloSiguiente ? "del próximo ciclo" : "del ciclo"}
+                ).
               </>
             ) : (
-              "Este monto cubre el plan completo."
+              proyeccionAbono.esAdelantoCicloSiguiente
+                ? "Este pago cubre el ciclo actual y el próximo ciclo completo."
+                : "Este monto cubre el plan completo."
             )
           ) : (
             `El abono mínimo para este plan es $${proyeccionAbono.montoMinimo.toFixed(2)}.`

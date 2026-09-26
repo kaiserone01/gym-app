@@ -134,6 +134,7 @@ model Miembro {
   planId           String? // plan vigente asignado (frecuencia y con/sin entrenador se leen de ahí)
   plan             Plan?        @relation(fields: [planId], references: [id])
   precioPlan       Decimal      @db.Decimal(10, 2) // precio vigente que paga (puede diferir del precio de catálogo del Plan, ej. "Personalizado")
+  saldoAFavorUSD   Decimal      @db.Decimal(10, 2) @default(0) // crédito generado al bajar de plan (ver CambiarPlanConPago) — se descuenta automáticamente del próximo pago (ver RegistrarPago), sin importar el plan de ese pago
   fechaUltimoPago  DateTime?
   fechaVencimiento DateTime?
   activo           Boolean      @default(true) // baja lógica del miembro

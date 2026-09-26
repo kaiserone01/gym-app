@@ -11,6 +11,9 @@ type FilaPlan = {
   precioUSD: { toNumber(): number };
   multisede: boolean;
   activo: boolean;
+  permitePagoParcial: boolean;
+  minimoAbonoTipo: string | null;
+  minimoAbonoValor: { toNumber(): number } | null;
 };
 
 function mapear(plan: FilaPlan): Plan {
@@ -23,6 +26,9 @@ function mapear(plan: FilaPlan): Plan {
     precioUSD: plan.precioUSD.toNumber(),
     multisede: plan.multisede,
     activo: plan.activo,
+    permitePagoParcial: plan.permitePagoParcial,
+    minimoAbonoTipo: plan.minimoAbonoTipo as Plan["minimoAbonoTipo"],
+    minimoAbonoValor: plan.minimoAbonoValor ? plan.minimoAbonoValor.toNumber() : null,
   };
 }
 
@@ -55,6 +61,9 @@ export class PrismaPlanRepository implements IPlanRepository {
         incluyeEntrenador: datos.incluyeEntrenador,
         precioUSD: datos.precioUSD,
         multisede: datos.multisede,
+        permitePagoParcial: datos.permitePagoParcial,
+        minimoAbonoTipo: datos.minimoAbonoTipo,
+        minimoAbonoValor: datos.minimoAbonoValor,
       },
     });
 

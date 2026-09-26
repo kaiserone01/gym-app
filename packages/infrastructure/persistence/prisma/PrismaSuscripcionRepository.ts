@@ -8,6 +8,7 @@ type FilaSuscripcion = {
   planId: string;
   inicio: Date;
   fin: Date;
+  fechaLimiteAbono: Date | null;
   estado: Suscripcion["estado"];
 };
 
@@ -18,6 +19,7 @@ function mapear(suscripcion: FilaSuscripcion): Suscripcion {
     planId: suscripcion.planId,
     inicio: suscripcion.inicio,
     fin: suscripcion.fin,
+    fechaLimiteAbono: suscripcion.fechaLimiteAbono,
     estado: suscripcion.estado,
   };
 }
@@ -83,15 +85,31 @@ export class PrismaSuscripcionRepository implements ISuscripcionRepository {
     return mapear(suscripcion);
   }
 
-  async crear(datos: { miembroId: string; planId: string; inicio: Date; fin: Date }): Promise<Suscripcion> {
+  async crear(datos: {
+    miembroId: string;
+    planId: string;
+    inicio: Date;
+    fin: Date;
+    fechaLimiteAbono: Date | null;
+  }): Promise<Suscripcion> {
     const suscripcion = await this.prisma.suscripcion.create({
       data: {
         miembroId: datos.miembroId,
         planId: datos.planId,
         inicio: datos.inicio,
         fin: datos.fin,
+        fechaLimiteAbono: datos.fechaLimiteAbono,
         estado: "ACTIVA",
       },
+    });
+
+    return mapear(suscripcion);
+  }
+
+  async actualizarFechaLimiteAbono(id: string, fechaLimiteAbono: Date | null): Promise<Suscripcion> {
+    const suscripcion = await this.prisma.suscripcion.update({
+      where: { id },
+      data: { fechaLimiteAbono },
     });
 
     return mapear(suscripcion);

@@ -20,6 +20,13 @@ export interface ProyeccionAbono {
   diasCubiertos: number | null;
   fechaTope: Date | null;
   cumpleMinimo: boolean;
+  // Cuánto falta para saldar el ciclo al 100% con este monto acumulado —
+  // 0 si ya lo cubre. Mismo criterio que "días cubiertos": sobre el monto
+  // ACUMULADO del ciclo, no solo este abono.
+  saldoRemanente: number;
+  // % del precio del plan que cubre el monto acumulado (0-100, sin techo
+  // artificial más allá de 100).
+  porcentajeCubierto: number;
 }
 
 export function calcularProyeccionAbono(
@@ -42,5 +49,7 @@ export function calcularProyeccionAbono(
     diasCubiertos: prorrateo?.diasCubiertos ?? null,
     fechaTope: prorrateo?.fechaTope ?? null,
     cumpleMinimo: montoAcumulado >= montoMinimo,
+    saldoRemanente: plan.precioUSD > 0 ? Math.max(0, plan.precioUSD - montoAcumulado) : 0,
+    porcentajeCubierto: plan.precioUSD > 0 ? Math.min(100, (montoAcumulado / plan.precioUSD) * 100) : 100,
   };
 }

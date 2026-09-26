@@ -574,19 +574,32 @@ function ContenidoPaso3({
         />
       )}
 
-      {esAbono && metodoAbonoElegido && montoObjetivo > 0 && montoObjetivo < montoSugerido && (
-        <p className="text-sm" style={{ color: "var(--gx-muted)" }}>
-          Es menos que el precio del plan (${montoSugerido.toFixed(2)}) — queda como abono, se puede completar
-          después desde la ficha del miembro.
-        </p>
-      )}
+      {/* Proyección del abono — un solo bloque, sin repetir el precio del
+          plan dos veces (ver diseño acordado): monto abonado (USD/Bs de
+          referencia), saldo remanente + fecha tope destacados en negrita
+          con el color de acento, y el % del plan cubierto. Si no alcanza
+          el mínimo exigido, se reemplaza por ese único aviso. */}
       {esAbono && metodoAbonoElegido && montoObjetivo > 0 && (
         <p className="text-sm" style={{ color: proyeccionAbono.cumpleMinimo ? "var(--gx-muted)" : "var(--gx-bad)" }}>
-          {proyeccionAbono.cumpleMinimo
-            ? proyeccionAbono.fechaTope
-              ? `Paga el parcial remanente antes del ${proyeccionAbono.fechaTope.toLocaleDateString("es-VE")} (cubre ${proyeccionAbono.diasCubiertos} día(s) del ciclo).`
-              : "Este monto cubre el plan completo."
-            : `El abono mínimo para este plan es $${proyeccionAbono.montoMinimo.toFixed(2)}.`}
+          {proyeccionAbono.cumpleMinimo ? (
+            proyeccionAbono.fechaTope ? (
+              <>
+                Es menos que el precio del plan (${montoSugerido.toFixed(2)}) — abonó ${montoObjetivo.toFixed(2)}
+                {tasaActual !== null && ` (Bs. ${formatearBs(montoObjetivo * tasaActual)})`}. Tiene que cancelar el{" "}
+                <strong style={{ color: "var(--gx-accent)" }}>
+                  saldo remanente de ${proyeccionAbono.saldoRemanente.toFixed(2)}
+                  {tasaActual !== null && ` (Bs. ${formatearBs(proyeccionAbono.saldoRemanente * tasaActual)})`} antes del{" "}
+                  {proyeccionAbono.fechaTope.toLocaleDateString("es-VE")}
+                </strong>
+                . Pago parcial: {proyeccionAbono.porcentajeCubierto.toFixed(0)}% recibido (cubre{" "}
+                {proyeccionAbono.diasCubiertos} día(s) del ciclo).
+              </>
+            ) : (
+              "Este monto cubre el plan completo."
+            )
+          ) : (
+            `El abono mínimo para este plan es $${proyeccionAbono.montoMinimo.toFixed(2)}.`
+          )}
         </p>
       )}
 

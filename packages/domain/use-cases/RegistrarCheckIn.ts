@@ -35,6 +35,12 @@ export interface RegistrarCheckInResultado {
   // hizo el check-in — solo tiene sentido cuando estado es "en_gracia"
   // (null en cualquier otro estado).
   diasGraciaRestantes: number | null;
+  // Si la sucursal FÍSICA donde ocurre el check-in tiene el concepto de
+  // "período de gracia" configurado (diasGracia > 0). Cuando es false, el
+  // concepto no aplica en absoluto para esta sucursal — la presentación
+  // (kiosco) no debe mencionar "período de gracia" en ningún mensaje,
+  // aunque el estado sea "vencido".
+  tieneGraciaConfigurada: boolean;
 }
 
 export class MiembroNoEncontradoError extends Error {
@@ -91,6 +97,7 @@ export async function registrarCheckIn(
       ...base,
       estado: existente.estadoAlMomento,
       diasGraciaRestantes: existente.estadoAlMomento === "en_gracia" ? calcularDiasGraciaRestantes(new Date()) : null,
+      tieneGraciaConfigurada: diasGracia > 0,
     };
   }
 
@@ -115,5 +122,6 @@ export async function registrarCheckIn(
     ...base,
     estado,
     diasGraciaRestantes: estado === "en_gracia" ? calcularDiasGraciaRestantes(ahora) : null,
+    tieneGraciaConfigurada: diasGracia > 0,
   };
 }

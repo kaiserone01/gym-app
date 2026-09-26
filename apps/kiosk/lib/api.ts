@@ -10,6 +10,10 @@ export interface ResultadoCheckIn {
   sucursalAsignadaNombre: string;
   sucursalAsignadaDireccion: string | null;
   diasGraciaRestantes: number | null;
+  // false cuando la sucursal donde ocurrió el check-in tiene "Días de
+  // gracia" en 0 — el concepto de período de gracia no aplica ahí, y la
+  // presentación no debe mencionarlo en ningún mensaje.
+  tieneGraciaConfigurada: boolean;
 }
 
 // Se lanza cuando el servidor SÍ respondió, pero con un error (401/400/404/500).

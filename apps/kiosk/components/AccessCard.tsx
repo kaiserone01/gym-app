@@ -106,7 +106,9 @@ export function AccessCard({ resultado, hora }: { resultado: ResultadoCheckIn; h
                 <p className="border-t pt-4 text-lg font-medium" style={{ borderColor: "var(--gx-edge)", color: "var(--gx-warn)" }}>
                   {resultado.estado === "en_gracia"
                     ? `Tenés ${resultado.diasGraciaRestantes ?? 0} día(s) de gracia — acercate a recepción a renovar tu plan.`
-                    : "Tu período de gracia terminó — acercate a recepción a renovar tu plan."}
+                    : resultado.tieneGraciaConfigurada
+                      ? "Tu período de gracia terminó — acercate a recepción a renovar tu plan."
+                      : "Acercate a recepción a renovar tu plan."}
                 </p>
               )}
               <div className="grid grid-cols-2 gap-4 border-t pt-4" style={{ borderColor: "var(--gx-edge)" }}>

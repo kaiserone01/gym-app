@@ -395,16 +395,15 @@ function ContenidoPaso3({
   // AbonoNoPermitidoError en RegistrarPago.ts, hallazgo de la revisión final).
   const montoObjetivoBloqueado = modalidad === "total" || (modalidad === "combinado" && !permitePagoParcial);
   const [montoObjetivoTexto, setMontoObjetivoTexto] = useState(String(montoSugerido));
-  // Fraccionado: casilla Bs del "Monto a fraccionar" (ver diseño acordado)
-  // — solo conversión visual con la tasa de referencia del sistema
-  // (tasaActual), cada fracción define después su propio método y su
-  // propia tasa real si corresponde. El USD sigue siendo la fuente de
-  // verdad, igual que en Abono.
-  const [montoObjetivoBsTexto, setMontoObjetivoBsTexto] = useState("");
 
   // Total y abono usan una sola línea; combinado usa el array completo.
   const [lineaUnica, setLineaUnica] = useState<LineaFormulario>(nuevaLineaVacia());
   const [lineasCombinadas, setLineasCombinadas] = useState<LineaFormulario[]>([nuevaLineaVacia(), nuevaLineaVacia()]);
+  // Fraccionado: montos en Bs auxiliares por fracción (una casilla Bs por
+  // cada línea, ver diseño acordado — cada fracción replica el patrón de
+  // Abono: método primero, luego monto, con split Bs solo si el método
+  // elegido para ESA fracción es en bolívares). Clave = LineaFormulario.clave.
+  const [montosBsCombinadas, setMontosBsCombinadas] = useState<Record<string, string>>({});
   // Fraccionado: qué fracción está expandida (acordeón) — nunca más de
   // una a la vez, puede no haber ninguna abierta. Colapsar NO borra nada,
   // es solo la vista (ver diseño acordado); arranca en la primera.
@@ -421,13 +420,20 @@ function ContenidoPaso3({
   const requiereNumeroOperacionAbono = lineaUnica.seleccion.requiereNumeroOperacion;
   const [montoAbonoBsTexto, setMontoAbonoBsTexto] = useState("");
 
+  // Fraccionado: ya no hay un campo de "total a pagar" separado — el
+  // monto objetivo es la SUMA de lo que se cargó en cada fracción (ver
+  // diseño acordado, corrige la interpretación anterior).
+  const sumaLineasCombinadas = lineasCombinadas.reduce((suma, l) => suma + (Number(l.monto) || 0), 0);
+
   const montoObjetivo = montoObjetivoBloqueado
     ? montoSugerido
     : esAbono
       ? Number(lineaUnica.monto) || 0
-      : Number(montoObjetivoTexto) || 0;
+      : modalidad === "combinado"
+        ? sumaLineasCombinadas
+        : Number(montoObjetivoTexto) || 0;
 
-  // En modalidad total/combinado (no abono), el monto real a enviar es
+  // En modalidad total (no abono, no combinado), el monto real a enviar es
   // siempre montoObjetivo, nunca lineaUnica.monto — ese campo solo se
   // actualiza dentro del onCambio de SelectorMetodoPago (útil para la
   // proyección en vivo), pero ese onCambio depende del useEffect interno
@@ -435,8 +441,8 @@ function ContenidoPaso3({
   // metodo/esEnBs/tasa/numeroOperacion) — así que si el usuario elige
   // método y DESPUÉS edita el monto objetivo, lineaUnica.monto queda
   // desactualizado. Se fuerza acá para que lo enviado siempre coincida con
-  // lo que se ve en pantalla. En abono, en cambio, lineaUnica.monto ES el
-  // campo editable — no se pisa.
+  // lo que se ve en pantalla. En abono y combinado, en cambio, el monto de
+  // cada línea ES el campo editable — no se pisa.
   const lineasActivas =
     modalidad === "combinado"
       ? lineasCombinadas
@@ -444,7 +450,6 @@ function ContenidoPaso3({
         ? [lineaUnica]
         : [{ ...lineaUnica, monto: String(montoObjetivo) }];
   const sumaLineas = lineasActivas.reduce((suma, l) => suma + (Number(l.monto) || 0), 0);
-  const sumaCoincide = modalidad !== "combinado" || Math.abs(sumaLineas - montoObjetivo) < 0.01;
 
   // Réplica cliente del motor de reglas de abono (proyeccionAbono.ts) —
   // misma fecha base que calcularProyeccionRenovacion (Paso 2): el ciclo
@@ -494,8 +499,7 @@ function ContenidoPaso3({
   // (AbonoMenorAlMinimoError), que sí conoce el estado real del ciclo.
   const puedeEnviar = esAbono
     ? montoObjetivo > 0 && lineaUnica.seleccion.metodoPagoId !== null
-    : montoObjetivo === 0 ||
-      (sumaCoincide && lineasParaEnviar.length > 0 && lineasParaEnviar.every((l) => l.metodoPagoId));
+    : montoObjetivo === 0 || (lineasParaEnviar.length > 0 && lineasParaEnviar.every((l) => l.metodoPagoId));
 
   return (
     <form action={enviar} className="flex flex-col gap-4 text-base">
@@ -527,49 +531,17 @@ function ContenidoPaso3({
         <DetalleCiclosPago ciclos={proyeccionAbono.ciclos} />
       )}
       {/* Fraccionado, plan que sí admite abono: precio del plan fijo como
-          referencia (mismo patrón que Abono, ver diseño acordado), y el
-          monto a fraccionar en USD/Bs con conversión bidireccional usando
-          la tasa de referencia del sistema (cada fracción define después
-          su propio método y, si es en Bs, su propia tasa real). */}
+          referencia del total a cubrir (mismo patrón que Abono, ver diseño
+          acordado) — nunca es el monto que se registra, cada fracción
+          define su propio monto más abajo. */}
       {montoSugerido > 0 && modalidad === "combinado" && !montoObjetivoBloqueado && (
-        <>
-          <div className="flex justify-between rounded-lg px-3 py-2 text-sm" style={{ background: "var(--gx-surface-2)" }}>
-            <span style={{ color: "var(--gx-muted)" }}>Precio del plan</span>
-            <span className="font-semibold" style={{ color: "var(--gx-accent)" }}>
-              ${montoSugerido.toFixed(2)}
-              {tasaActual !== null && ` · Bs. ${formatearBs(montoSugerido * tasaActual)}`}
-            </span>
-          </div>
-          <div className={tasaActual !== null ? "grid grid-cols-2 gap-3" : ""}>
-            <CurrencyInput
-              name="montoObjetivo"
-              label="Monto a fraccionar (USD)"
-              moneda="USD"
-              required
-              value={montoObjetivoTexto}
-              onChange={(valorUSD) => {
-                setMontoObjetivoTexto(valorUSD);
-                if (tasaActual !== null) {
-                  const numero = Number(valorUSD);
-                  setMontoObjetivoBsTexto(Number.isNaN(numero) || valorUSD === "" ? "" : String(numero * tasaActual));
-                }
-              }}
-            />
-            {tasaActual !== null && (
-              <CurrencyInput
-                name="montoObjetivoBsAuxiliar"
-                label="Monto a fraccionar (Bs)"
-                moneda="Bs"
-                value={montoObjetivoBsTexto}
-                onChange={(valorBs) => {
-                  setMontoObjetivoBsTexto(valorBs);
-                  const numero = Number(valorBs);
-                  setMontoObjetivoTexto(Number.isNaN(numero) || valorBs === "" || tasaActual === 0 ? "" : String(numero / tasaActual));
-                }}
-              />
-            )}
-          </div>
-        </>
+        <div className="flex justify-between rounded-lg px-3 py-2 text-sm" style={{ background: "var(--gx-surface-2)" }}>
+          <span style={{ color: "var(--gx-muted)" }}>Precio del plan</span>
+          <span className="font-semibold" style={{ color: "var(--gx-accent)" }}>
+            ${montoSugerido.toFixed(2)}
+            {tasaActual !== null && ` · Bs. ${formatearBs(montoSugerido * tasaActual)}`}
+          </span>
+        </div>
       )}
 
       {/* Abono: precio del plan fijo en verde, referencia visible todo el
@@ -727,20 +699,6 @@ function ContenidoPaso3({
         />
       )}
 
-      {/* Fraccionado: proyección + detalle de ciclos en su propia tarjeta,
-          separada de "Distribución del pago" (ver diseño acordado) —
-          mismo cálculo que Total/Abono, consistente en las 3 modalidades. */}
-      {montoObjetivo > 0 && modalidad === "combinado" && proyeccionAbono.ciclos.length > 1 && (
-        <div className="flex flex-col gap-2 rounded-lg border-2 p-3" style={{ borderColor: "var(--gx-accent)" }}>
-          <p className="text-sm" style={{ color: "var(--gx-ink)" }}>
-            {proyeccionAbono.fechaTope
-              ? `Este pago cubre hasta el ${proyeccionAbono.fechaTope.toLocaleDateString("es-VE")}.`
-              : "Este pago cubre uno o más ciclos completos."}
-          </p>
-          <DetalleCiclosPago ciclos={proyeccionAbono.ciclos} />
-        </div>
-      )}
-
       {montoObjetivo > 0 && modalidad === "combinado" && (
         <div className="flex flex-col gap-3">
           <p className="text-sm font-medium" style={{ color: "var(--gx-muted)" }}>
@@ -768,7 +726,7 @@ function ContenidoPaso3({
                   <span style={{ color: "var(--gx-muted)" }}>{expandida ? "▲" : "▼"}</span>
                 </button>
                 {expandida && (
-                  <div className="flex flex-col gap-2 border-t p-3" style={{ borderColor: "var(--gx-edge)" }}>
+                  <div className="flex flex-col gap-3 border-t p-3" style={{ borderColor: "var(--gx-edge)" }}>
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-medium" style={{ color: "var(--gx-muted)" }}>
                         Fracción {indice + 1}
@@ -778,6 +736,10 @@ function ContenidoPaso3({
                           type="button"
                           onClick={() => {
                             setLineasCombinadas((prev) => prev.filter((_, i) => i !== indice));
+                            setMontosBsCombinadas((prev) => {
+                              const { [linea.clave]: _quitada, ...resto } = prev;
+                              return resto;
+                            });
                             setFraccionAbiertaClave(null);
                           }}
                           className="text-sm"
@@ -787,22 +749,88 @@ function ContenidoPaso3({
                         </button>
                       )}
                     </div>
-                    <CurrencyInput
-                      name={`monto-linea-${indice}`}
-                      label="Monto de esta fracción"
-                      moneda="USD"
-                      value={linea.monto}
-                      onChange={(valor) =>
-                        setLineasCombinadas((prev) => prev.map((l, i) => (i === indice ? { ...l, monto: valor } : l)))
-                      }
-                    />
+
+                    {/* Método primero (igual que Abono, ver diseño acordado)
+                        — antes de tener un monto propio, se le pasa el
+                        precio del plan como referencia para calcular la
+                        tasa en Bs. */}
                     <SelectorMetodoPago
                       metodos={metodosPago}
-                      monto={montoLinea}
+                      monto={montoLinea > 0 ? montoLinea : montoSugerido}
                       onCambio={(seleccion) =>
                         setLineasCombinadas((prev) => prev.map((l, i) => (i === indice ? { ...l, seleccion } : l)))
                       }
+                      ocultarNumeroOperacion
+                      numeroOperacion={linea.seleccion.numeroOperacion}
+                      onCambioNumeroOperacion={(valor) =>
+                        setLineasCombinadas((prev) =>
+                          prev.map((l, i) => (i === indice ? { ...l, seleccion: { ...l.seleccion, numeroOperacion: valor } } : l))
+                        )
+                      }
                     />
+
+                    {/* Monto de esta fracción, recién visible con método
+                        elegido — split USD/Bs solo si el método de ESTA
+                        fracción es en bolívares (ver diseño acordado). */}
+                    {linea.seleccion.metodoPagoId !== null && (
+                      <div className={linea.seleccion.tasaCambio !== null ? "grid grid-cols-2 gap-3" : ""}>
+                        <CurrencyInput
+                          name={`monto-linea-${indice}`}
+                          label="Monto de esta fracción (USD)"
+                          moneda="USD"
+                          required
+                          value={linea.monto}
+                          onChange={(valorUSD) => {
+                            setLineasCombinadas((prev) => prev.map((l, i) => (i === indice ? { ...l, monto: valorUSD } : l)));
+                            if (linea.seleccion.tasaCambio !== null) {
+                              const numero = Number(valorUSD);
+                              setMontosBsCombinadas((prev) => ({
+                                ...prev,
+                                [linea.clave]:
+                                  Number.isNaN(numero) || valorUSD === "" ? "" : String(numero * linea.seleccion.tasaCambio!),
+                              }));
+                            }
+                          }}
+                        />
+                        {linea.seleccion.tasaCambio !== null && (
+                          <CurrencyInput
+                            name={`monto-linea-${indice}-bs`}
+                            label="Monto de esta fracción (Bs)"
+                            moneda="Bs"
+                            value={montosBsCombinadas[linea.clave] ?? ""}
+                            onChange={(valorBs) => {
+                              setMontosBsCombinadas((prev) => ({ ...prev, [linea.clave]: valorBs }));
+                              const numero = Number(valorBs);
+                              const tasa = linea.seleccion.tasaCambio ?? 0;
+                              setLineasCombinadas((prev) =>
+                                prev.map((l, i) =>
+                                  i === indice
+                                    ? { ...l, monto: Number.isNaN(numero) || valorBs === "" || tasa === 0 ? "" : String(numero / tasa) }
+                                    : l
+                                )
+                              );
+                            }}
+                          />
+                        )}
+                      </div>
+                    )}
+
+                    {/* Número de operación — recién después del monto,
+                        solo si el método elegido lo pide. */}
+                    {linea.seleccion.metodoPagoId !== null && linea.seleccion.requiereNumeroOperacion && (
+                      <Input
+                        label="Número de operación (últimos 4 dígitos)"
+                        required
+                        maxLength={4}
+                        pattern="[0-9]{4}"
+                        value={linea.seleccion.numeroOperacion}
+                        onChange={(e) =>
+                          setLineasCombinadas((prev) =>
+                            prev.map((l, i) => (i === indice ? { ...l, seleccion: { ...l.seleccion, numeroOperacion: e.target.value } } : l))
+                          )
+                        }
+                      />
+                    )}
                   </div>
                 )}
               </div>
@@ -820,15 +848,28 @@ function ContenidoPaso3({
           >
             + Agregar fracción
           </button>
-          <div
-            className="flex justify-between rounded-lg px-3 py-2 text-sm"
-            style={{ background: sumaCoincide ? "var(--gx-surface-2)" : "var(--gx-bad)" }}
-          >
-            <span>Total ingresado</span>
-            <span className="font-semibold">
-              ${sumaLineas.toFixed(2)} / ${montoObjetivo.toFixed(2)}
+          <div className="flex justify-between rounded-lg px-3 py-2 text-sm" style={{ background: "var(--gx-surface-2)" }}>
+            <span style={{ color: "var(--gx-muted)" }}>Total ingresado</span>
+            <span className="font-semibold" style={{ color: "var(--gx-ink)" }}>
+              ${sumaLineas.toFixed(2)}
+              {tasaActual !== null && ` · Bs. ${formatearBs(sumaLineas * tasaActual)}`}
             </span>
           </div>
+
+          {/* Proyección + detalle de ciclos calculados sobre la SUMA de
+              todas las fracciones (ver diseño acordado) — se actualiza en
+              vivo a medida que se completan fracciones, mismo criterio que
+              Total/Abono. */}
+          {sumaLineas > 0 && proyeccionAbono.ciclos.length > 1 && (
+            <div className="flex flex-col gap-2 rounded-lg border-2 p-3" style={{ borderColor: "var(--gx-accent)" }}>
+              <p className="text-sm" style={{ color: "var(--gx-ink)" }}>
+                {proyeccionAbono.fechaTope
+                  ? `Este pago cubre hasta el ${proyeccionAbono.fechaTope.toLocaleDateString("es-VE")}.`
+                  : "Este pago cubre uno o más ciclos completos."}
+              </p>
+              <DetalleCiclosPago ciclos={proyeccionAbono.ciclos} />
+            </div>
+          )}
         </div>
       )}
 

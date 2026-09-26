@@ -22,6 +22,7 @@ import {
   PlanInactivoError,
   RolNoAutorizadoError,
   MontoInvalidoError,
+  LineasDePagoInvalidasError,
 } from "@gym-app/domain/use-cases/RegistrarPago";
 import {
   cambiarPlanConPago,
@@ -95,36 +96,65 @@ export async function registrarPagoAction(
 
   const miembroId = formData.get("miembroId")?.toString();
   const planId = formData.get("planId")?.toString();
-  const monto = Number(formData.get("monto"));
-  const metodo = formData.get("metodo")?.toString();
-  const metodoPagoId = formData.get("metodoPagoId")?.toString() || null;
-  const tasaCambioRaw = formData.get("tasaCambio")?.toString();
+  const lineasRaw = formData.get("lineas")?.toString();
   const origen = formData.get("origen")?.toString();
-  const numeroOperacion = formData.get("numeroOperacion")?.toString().trim() || null;
   // Sede elegida en el selector "Sede del pago" (ver SelectorMetodoPago);
   // si no vino (formularios viejos o sin selector visible), se cae a la
   // sede activa de la sesión.
   const sucursalIdPago = formData.get("sucursalIdPago")?.toString() || sucursalActivaId;
 
-  if (!miembroId || !planId || Number.isNaN(monto)) {
-    return { error: "Miembro, plan y monto son requeridos." };
-  }
-  // Un plan de cortesía ($0) no tiene nada que cobrar — el método de pago
-  // solo es obligatorio cuando hay un monto real de por medio (ver diseño
-  // acordado, membresías con beneficio que no pagan en el gym).
-  if (monto > 0 && (!metodo || !metodoPagoId)) {
-    return { error: "Elegí un método de pago." };
+  if (!miembroId || !planId || !lineasRaw) {
+    return { error: "Miembro, plan y al menos un método de pago son requeridos." };
   }
   if (!sucursalIdPago) {
     return { error: "No se pudo determinar en qué sucursal se registra el pago." };
   }
 
-  const validacionTasa = await validarTasaSiEsEnBs(tasaCambioRaw);
-  if (!validacionTasa.ok) return validacionTasa.estado;
-
-  let pago;
+  let lineas: Array<{
+    monto: number;
+    metodo: string;
+    metodoPagoId: string | null;
+    numeroOperacion: string | null;
+    tasaCambio: number | null;
+  }>;
   try {
-    pago = await registrarPago(
+    lineas = JSON.parse(lineasRaw);
+  } catch {
+    return { error: "No se pudo interpretar la información del pago." };
+  }
+  if (!Array.isArray(lineas) || lineas.length === 0) {
+    return { error: "Agregá al menos una línea de pago." };
+  }
+  // Un plan de cortesía ($0) no tiene nada que cobrar — el método de pago
+  // solo es obligatorio cuando hay un monto real de por medio (ver diseño
+  // acordado, membresías con beneficio que no pagan en el gym). Se permite
+  // la única excepción de una sola línea en $0 (pago de cortesía); toda
+  // otra línea necesita monto > 0 y método elegido.
+  const esCortesia = lineas.length === 1 && lineas[0].monto === 0;
+  if (!esCortesia && lineas.some((linea) => linea.monto <= 0 || !linea.metodo || !linea.metodoPagoId)) {
+    return { error: "Cada línea del pago necesita un monto mayor a $0 y un método." };
+  }
+
+  // La tasa BCV se valida por línea que opere en Bs — cada línea puede
+  // usar un método distinto, así que cada una se revalida por separado
+  // contra el servidor (Etapa 3 del plan de tasa BCV, no se confía en la
+  // tasa que mandó el formulario).
+  const lineasValidadas: Array<{
+    monto: number;
+    metodo: string;
+    metodoPagoId: string | null;
+    numeroOperacion: string | null;
+    tasaCambio: number | null;
+  }> = [];
+  for (const linea of lineas) {
+    const validacionTasa = await validarTasaSiEsEnBs(linea.tasaCambio !== null ? String(linea.tasaCambio) : undefined);
+    if (!validacionTasa.ok) return validacionTasa.estado;
+    lineasValidadas.push({ ...linea, tasaCambio: validacionTasa.tasaCambio });
+  }
+
+  let pagos;
+  try {
+    pagos = await registrarPago(
       {
         pagos: new PrismaPagoRepository(prisma),
         suscripciones: new PrismaSuscripcionRepository(prisma),
@@ -138,11 +168,7 @@ export async function registrarPagoAction(
         organizacionId: usuario.organizacionId,
         miembroId,
         planId,
-        monto,
-        metodo: metodo || "Cortesía",
-        metodoPagoId,
-        numeroOperacion,
-        tasaCambio: validacionTasa.tasaCambio,
+        lineas: lineasValidadas.map((linea) => ({ ...linea, metodo: linea.metodo || "Cortesía" })),
         sucursalId: sucursalIdPago,
         registradoPorId: usuario.id,
         rolUsuario: usuario.rol,
@@ -155,7 +181,8 @@ export async function registrarPagoAction(
       error instanceof PlanNoEncontradoError ||
       error instanceof PlanInactivoError ||
       error instanceof RolNoAutorizadoError ||
-      error instanceof MontoInvalidoError
+      error instanceof MontoInvalidoError ||
+      error instanceof LineasDePagoInvalidasError
     ) {
       return { error: error.message };
     }
@@ -171,7 +198,9 @@ export async function registrarPagoAction(
     redirect(conMensajeOk(`/miembros/${miembroId}`, "Pago registrado."));
   }
 
-  return { ok: "Pago registrado.", fechaFinCiclo: pago.fechaFinCiclo?.toISOString() };
+  // Todas las líneas de un mismo envío comparten fechaFinCiclo — cualquiera
+  // sirve para mostrarla en el Paso 4 del wizard.
+  return { ok: "Pago registrado.", fechaFinCiclo: pagos[0]?.fechaFinCiclo?.toISOString() };
 }
 
 export interface EstadoCambioPlan {

@@ -80,7 +80,11 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const pago = await registrarPago(
+    // Esta ruta API sigue siendo de una sola línea (no soporta pago
+    // combinado desde afuera todavía) — se envuelve el monto/método plano
+    // en un array de una sola línea para calzar con la nueva firma de
+    // registrarPago.
+    const pagos = await registrarPago(
       {
         pagos: new PrismaPagoRepository(prisma),
         suscripciones: new PrismaSuscripcionRepository(prisma),
@@ -94,18 +98,22 @@ export async function POST(req: NextRequest) {
         organizacionId: usuario.organizacionId,
         miembroId: body.miembroId,
         planId: body.planId,
-        monto: body.monto,
-        metodo: body.metodo,
-        metodoPagoId: body.metodoPagoId ?? null,
-        numeroOperacion: body.numeroOperacion ?? null,
-        tasaCambio: body.tasaCambio ?? null,
+        lineas: [
+          {
+            monto: body.monto,
+            metodo: body.metodo,
+            metodoPagoId: body.metodoPagoId ?? null,
+            numeroOperacion: body.numeroOperacion ?? null,
+            tasaCambio: body.tasaCambio ?? null,
+          },
+        ],
         sucursalId: sucursalActivaId,
         registradoPorId: usuario.id,
         rolUsuario: usuario.rol,
       }
     );
 
-    return NextResponse.json(pago, { status: 201 });
+    return NextResponse.json(pagos[0], { status: 201 });
   } catch (error) {
     if (error instanceof RegistrarPagoMiembroNoEncontradoError || error instanceof RegistrarPagoPlanNoEncontradoError) {
       return NextResponse.json({ error: error.message }, { status: 404 });

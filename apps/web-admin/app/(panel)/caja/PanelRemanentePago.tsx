@@ -31,18 +31,20 @@ export function PanelRemanentePago({
   modalidad: "total" | "abono" | "combinado";
 }) {
   const sumaLineas = lineas.reduce((suma, l) => suma + l.monto, 0);
+  // Comparación simple y directa contra el precio del plan — nunca contra
+  // proyeccion.saldoRemanente, que en Abono puede referirse al PRÓXIMO
+  // período (un abono que adelanta ciclo siguiente es válido ahí). En
+  // Total/Fraccionado la intención siempre es pagar el período actual
+  // completo ahora mismo, así que lo único relevante es cuánto falta o
+  // sobra respecto al monto de ESTE pago.
   const remanente = Math.max(0, montoObjetivo - sumaLineas);
-  // Cuánto sobra por encima de lo necesario para este pago. En Abono, un
-  // exceso intencional adelanta el próximo período (esAdelantoCicloSiguiente
-  // ya lo comunica en el mensaje) — el excedente real es lo que sobra por
-  // encima del último período completo que ese monto alcanza a cubrir, es
-  // decir, el propio saldoRemanente cuando ya no queda nada por cobrar. En
-  // Total/Fraccionado, sumaLineas nunca debería superar montoObjetivo salvo
-  // error de tipeo, así que cualquier exceso ahí ya es "a favor".
-  const excedente =
-    remanente === 0 && proyeccion && proyeccion.esAdelantoCicloSiguiente
-      ? 0
-      : Math.max(0, sumaLineas - montoObjetivo);
+  const excedente = Math.max(0, sumaLineas - montoObjetivo);
+  // En Abono, un excedente puede ser un adelanto intencional del próximo
+  // período (ver mensaje "Adelanta el próximo período..."), así que no se
+  // marca como "excedente a favor" salvo que sobre más de lo que ese
+  // adelanto llega a cubrir.
+  const excedenteEsAdelantoValido =
+    modalidad === "abono" && proyeccion !== null && proyeccion.esAdelantoCicloSiguiente && proyeccion.saldoRemanente > 0;
 
   return (
     <div
@@ -79,7 +81,7 @@ export function PanelRemanentePago({
         {remanente > 0 ? (
           <>
             <p className="text-sm font-semibold" style={{ color: "var(--gx-bad)" }}>
-              Próximo giro de ${remanente.toFixed(2)}
+              {modalidad === "abono" ? `Próximo giro de $${remanente.toFixed(2)}` : `Falta $${remanente.toFixed(2)}`}
             </p>
             {tasaReferencia !== null && (
               <p className="text-xs" style={{ color: "var(--gx-muted)" }}>
@@ -87,10 +89,10 @@ export function PanelRemanentePago({
               </p>
             )}
           </>
-        ) : excedente > 0 ? (
+        ) : excedente > 0 && !excedenteEsAdelantoValido ? (
           <>
             <p className="text-sm font-semibold" style={{ color: "var(--gx-accent)" }}>
-              Excedente: ${excedente.toFixed(2)} a favor
+              Sobra ${excedente.toFixed(2)} — se excedió el monto
             </p>
             {tasaReferencia !== null && (
               <p className="text-xs" style={{ color: "var(--gx-muted)" }}>

@@ -69,26 +69,35 @@ export function DetalleCiclosPago({ ciclos }: { ciclos: CicloProyectado[] }) {
 //   adelanta N períodos completos. El detalle de períodos (DetalleCiclosPago)
 //   ya dice cuáles cubre; acá no hace falta ningún párrafo. Devuelve null
 //   siempre en esta modalidad.
-// - Abono parcial: solo el dato que cambia en cada caso —
+// - Abono parcial: la intención ES dejar un abono abierto, así que sí
+//   aplica el mensaje de "queda como abono" con plazo/fecha tope —
 //   · Por debajo del mínimo: cuánto falta abonar como mínimo.
-//   · Abono parcial normal (no cumple el período): monto abonado + saldo
-//     remanente y fecha tope, destacados. Sin repetir el precio del plan
-//     (ya está arriba) ni el % / días (el saldo y la fecha ya bastan).
+//   · Abono parcial normal (no cumple el período): saldo remanente y
+//     fecha tope, destacados. Sin repetir el precio del plan (ya está
+//     arriba) ni el % / días (el saldo y la fecha ya bastan).
 //   · Cubre el período exacto: una confirmación simple.
 //   · Adelanta el próximo período: aviso breve de qué período se está
 //     adelantando, con el mismo saldo+fecha si ese adelanto quedó parcial.
-// - Fraccionado: mismo criterio que Abono, ya que el panel flotante lo
-//   calcula sobre la suma de fracciones.
+// - Fraccionado: la intención es pagar el total AHORA repartido entre
+//   métodos — nunca es un abono con plazo. Si falta dinero es un error de
+//   conteo del cajero, no un abono válido: se avisa cuánto falta, sin
+//   mencionar plazos ni fechas límite. Si sobra, se avisa el excedente.
+//   Exacto: confirmación simple (o el mismo aviso de adelanto de Abono, si
+//   el excedente alcanza a cubrir el próximo período completo).
 //
 // Devuelve null si no hay nada que proyectar.
 export function MensajeProyeccionAbono({
   proyeccionAbono,
+  montoSugerido,
   montoObjetivo,
   tasaActual,
   modalidad,
 }: {
   proyeccionAbono: ProyeccionAbono;
+  // Precio del plan (período actual) a cubrir.
   montoSugerido: number;
+  // Monto realmente cargado hasta ahora (suma de fracciones, o el abono
+  // tipeado).
   montoObjetivo: number;
   tasaActual: number | null;
   modalidad: "total" | "abono" | "combinado";
@@ -98,6 +107,35 @@ export function MensajeProyeccionAbono({
   // autoexplicativo, no se agrega ningún párrafo extra.
   if (modalidad === "total") return null;
 
+  // Fraccionado: se está pagando el total ahora, repartido entre métodos —
+  // nunca se comunica como "abono con plazo" (proyeccionAbono.saldoRemanente
+  // /esAdelantoCicloSiguiente tienen semántica de PRÓXIMO período, que acá
+  // no aplica). Se compara directo lo cargado contra el precio del plan:
+  // falta, sobra, o exacto (el panel de abajo ya muestra la cifra con
+  // "Falta $X" / "Sobra $X"; acá solo el mensaje).
+  if (modalidad === "combinado") {
+    if (montoObjetivo < montoSugerido) {
+      return (
+        <p className="text-sm font-semibold" style={{ color: "var(--gx-bad)" }}>
+          Falta dinero para completar el pago.
+        </p>
+      );
+    }
+    if (montoObjetivo > montoSugerido) {
+      return (
+        <p className="text-sm font-semibold" style={{ color: "var(--gx-accent)" }}>
+          Se excedió el monto a pagar.
+        </p>
+      );
+    }
+    return (
+      <p className="text-sm" style={{ color: "var(--gx-muted)" }}>
+        Este monto cubre el período completo.
+      </p>
+    );
+  }
+
+  // Abono parcial: acá sí es un abono con plazo — misma lógica que antes.
   if (!proyeccionAbono.cumpleMinimo) {
     return (
       <p className="text-sm" style={{ color: "var(--gx-bad)" }}>

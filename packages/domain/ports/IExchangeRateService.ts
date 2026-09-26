@@ -1,10 +1,14 @@
 export interface TasaExterna {
   valor: number;
-  // Día calendario al que corresponde la tasa, según lo informa la fuente
-  // (no necesariamente "hoy" — ej. fin de semana, el BCV no publica).
+  // Fecha valor publicada por el BCV (medianoche UTC).
   fecha: Date;
 }
 
+export type ResultadoPublicadas =
+  | { tipo: "SIN_CAMBIOS" }
+  | { tipo: "CAMBIOS"; version: string | null; tasas: TasaExterna[] };
+
 export interface IExchangeRateService {
-  obtenerTasaOficial(): Promise<TasaExterna>;
+  // versionConocida = última versión (ETag) persistida con éxito; null = forzar descarga completa.
+  obtenerPublicadas(versionConocida: string | null): Promise<ResultadoPublicadas>;
 }

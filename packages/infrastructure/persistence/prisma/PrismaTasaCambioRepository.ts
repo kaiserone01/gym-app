@@ -52,4 +52,21 @@ export class PrismaTasaCambioRepository implements ITasaCambioRepository {
 
     return mapear(tasa);
   }
+
+  async guardarVarias(tasas: Array<{ fecha: Date; valor: number }>, fuente: string): Promise<number> {
+    if (tasas.length === 0) return 0;
+
+    await this.prisma.$transaction(
+      tasas.map((t) => {
+        const dia = inicioDelDia(t.fecha);
+        return this.prisma.tasaCambio.upsert({
+          where: { fecha: dia },
+          create: { fecha: dia, valor: t.valor, fuente },
+          update: { valor: t.valor, fuente },
+        });
+      })
+    );
+
+    return tasas.length;
+  }
 }

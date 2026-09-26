@@ -9,25 +9,38 @@ import { PrismaClient } from "@gym-app/db/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { BcvApiAdapter } from "@gym-app/infrastructure/exchange-rate/BcvApiAdapter";
 import { PrismaTasaCambioRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaTasaCambioRepository";
-import { actualizarTasaDiaria } from "@gym-app/domain/use-cases/ActualizarTasaDiaria";
+import { sincronizarTasas } from "@gym-app/domain/use-cases/SincronizarTasas";
+import { obtenerTasaVigente } from "@gym-app/domain/use-cases/ObtenerTasaVigente";
+import { diaCalendarioCaracas } from "@gym-app/domain/utils/fechaCaracas";
 
 async function main() {
   const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
   const prisma = new PrismaClient({ adapter });
 
   try {
-    const resultado = await actualizarTasaDiaria({
-      servicioTasa: new BcvApiAdapter(),
-      tasas: new PrismaTasaCambioRepository(prisma),
-    });
+    const tasas = new PrismaTasaCambioRepository(prisma);
+    const hoy = diaCalendarioCaracas(new Date());
 
-    if (resultado.fuenteReal === "BCV") {
-      console.log(
-        `✅ Tasa BCV actualizada: ${resultado.tasa.valor} VES/USD (${resultado.tasa.fecha.toISOString()})`
+    try {
+      const resultado = await sincronizarTasas(
+        { servicioTasa: new BcvApiAdapter(), tasas },
+        { versionConocida: null, hoy }
       );
-    } else {
+      const vigente = await obtenerTasaVigente({ tasas }, hoy);
+      const fechaValor = vigente.tasa.fecha.toISOString().slice(0, 10);
+      console.log(
+        `✅ Sincronizado: ${resultado.guardadas} filas. Tasa en curso: ${vigente.tasa.valor} (publicada con fecha valor ${fechaValor})`
+      );
+    } catch (error) {
+      const ultima = await tasas.obtenerUltima().catch(() => null);
+      if (!ultima) {
+        console.error(`⚠️ DolarAPI falló: ${(error as Error).message}. No hay ninguna tasa guardada.`);
+        process.exitCode = 1;
+        return;
+      }
+      const fechaValor = ultima.fecha.toISOString().slice(0, 10);
       console.warn(
-        `⚠️  La API del BCV falló. Se mantiene la última tasa guardada: ${resultado.tasa.valor} VES/USD (${resultado.tasa.fecha.toISOString()})`
+        `⚠️ DolarAPI falló: ${(error as Error).message}. Tasa guardada: ${ultima.valor} (publicada con fecha valor ${fechaValor})`
       );
     }
   } finally {

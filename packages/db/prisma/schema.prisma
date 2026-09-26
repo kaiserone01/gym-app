@@ -208,10 +208,20 @@ model Pago {
   fechaInicioCiclo DateTime? // inicio real del ciclo que este pago activó/extendió — null en pagos previos a esta migración
   fechaFinCiclo    DateTime? // fin real de ese ciclo (mismo valor que pasa a ser Suscripcion.fin/Miembro.fechaVencimiento tras este pago)
 
+  // Correlaciona las N filas Pago que se crean en un solo envío de "pago
+  // combinado" (múltiples métodos en una misma operación de cobro). Null
+  // en pagos de una sola línea (total o abono simple) — no cambia su
+  // comportamiento. No reemplaza fechaFinCiclo como mecanismo de
+  // agrupación por ciclo; es solo para mostrar/auditar "estas N filas
+  // fueron un mismo cobro".
+  grupoPagoId      String?
+
   anuladoEn       DateTime?
   anuladoPorId    String?
   anuladoPor      UsuarioAdmin? @relation("PagosAnulados", fields: [anuladoPorId], references: [id])
   motivoAnulacion String?
+
+  @@index([grupoPagoId])
 }
 
 enum EstadoTurno {

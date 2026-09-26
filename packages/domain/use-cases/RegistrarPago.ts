@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { IPagoRepository } from "../ports/IPagoRepository";
 import { ISuscripcionRepository } from "../ports/ISuscripcionRepository";
 import { IMemberRepository } from "../ports/IMemberRepository";
@@ -47,6 +48,16 @@ export class MontoInvalidoError extends Error {
   }
 }
 
+// Un pago combinado sin líneas, o con alguna línea en $0/negativo, no tiene
+// forma de saber a qué método imputar cada monto — se rechaza acá, no solo
+// en la UI, porque un FormData armado a mano podría saltarse la validación
+// del cliente.
+export class LineasDePagoInvalidasError extends Error {
+  constructor() {
+    super("Cada línea del pago combinado necesita un monto mayor a $0 y un método.");
+  }
+}
+
 export interface RegistrarPagoDeps {
   pagos: IPagoRepository;
   suscripciones: ISuscripcionRepository;
@@ -57,23 +68,40 @@ export interface RegistrarPagoDeps {
   autorizacion: IAuthorizationService;
 }
 
-export interface DatosRegistrarPago {
-  organizacionId: string;
-  miembroId: string;
-  planId: string;
+export interface DatosLineaPago {
   monto: number;
   metodo: string;
   metodoPagoId: string | null;
   numeroOperacion: string | null;
   tasaCambio: number | null;
+}
+
+export interface DatosRegistrarPago {
+  organizacionId: string;
+  miembroId: string;
+  planId: string;
+  // Una línea por método — un pago total o un abono simple siguen siendo
+  // un array de un solo elemento. Un pago combinado (varios métodos en un
+  // mismo cobro) trae 2+ líneas; ver diseño en
+  // docs/superpowers/specs/2026-09-26-pagos-combinados-caja-design.md.
+  lineas: DatosLineaPago[];
   sucursalId: string;
   registradoPorId: string;
   rolUsuario: RolUsuario;
 }
 
-export async function registrarPago(deps: RegistrarPagoDeps, input: DatosRegistrarPago): Promise<Pago> {
+export async function registrarPago(deps: RegistrarPagoDeps, input: DatosRegistrarPago): Promise<Pago[]> {
   if (!(await deps.autorizacion.tienePermiso(input.registradoPorId, "PAGOS", "CREAR"))) {
     throw new RolNoAutorizadoError();
+  }
+
+  if (input.lineas.length === 0 || input.lineas.some((linea) => linea.monto <= 0 || !linea.metodo)) {
+    // Excepción: una sola línea en $0 sigue siendo válida para planes de
+    // cortesía (precioPlan === 0) — se valida más abajo contra
+    // miembro.precioPlan, no acá.
+    if (!(input.lineas.length === 1 && input.lineas[0].monto <= 0)) {
+      throw new LineasDePagoInvalidasError();
+    }
   }
 
   const miembro = await deps.miembros.buscarPorId(input.organizacionId, input.miembroId);
@@ -86,7 +114,9 @@ export async function registrarPago(deps: RegistrarPagoDeps, input: DatosRegistr
     throw new MiembroFueraDeSucursalError(sucursal?.nombre ?? "otra sucursal");
   }
 
-  if (miembro.precioPlan > 0 && input.monto <= 0) {
+  const montoTotal = input.lineas.reduce((suma, linea) => suma + linea.monto, 0);
+
+  if (miembro.precioPlan > 0 && montoTotal <= 0) {
     throw new MontoInvalidoError();
   }
 
@@ -107,7 +137,9 @@ export async function registrarPago(deps: RegistrarPagoDeps, input: DatosRegistr
   // abono (el vencimiento se adelanta ahí abajo, como siempre) — lo único
   // que cambia es que, mientras el ciclo vigente no esté saldado, un pago
   // nuevo se suma al MISMO ciclo en vez de abrir uno adicional (ver
-  // diseño acordado con el usuario, roadmap punto d).
+  // diseño acordado con el usuario, roadmap punto d). Un pago combinado
+  // (2+ líneas en un mismo envío) se evalúa igual: la suma de sus líneas
+  // es el "monto" a los efectos de esta decisión.
   let pagosDelCicloAbierto: Pago[] = [];
   if (activa && activa.fin > ahora) {
     const pagosDelMiembro = await deps.pagos.listarPorMiembro(input.miembroId);
@@ -139,18 +171,29 @@ export async function registrarPago(deps: RegistrarPagoDeps, input: DatosRegistr
 
   const turnoAbierto = await deps.turnos.buscarAbiertoPorSucursal(input.sucursalId);
 
-  return deps.pagos.crear({
-    miembroId: input.miembroId,
-    sucursalId: input.sucursalId,
-    turnoId: turnoAbierto?.id ?? null,
-    registradoPorId: input.registradoPorId,
-    monto: input.monto,
-    metodo: input.metodo,
-    metodoPagoId: input.metodoPagoId,
-    numeroOperacion: input.numeroOperacion,
-    tasaCambio: input.tasaCambio,
-    montoBs: input.tasaCambio !== null ? input.monto * input.tasaCambio : null,
-    fechaInicioCiclo: base,
-    fechaFinCiclo: fin,
-  });
+  // grupoPagoId solo se genera para pagos combinados (2+ líneas) — un pago
+  // de una sola línea no necesita correlacionarse con nada.
+  const grupoPagoId = input.lineas.length > 1 ? randomUUID() : null;
+
+  const pagosCreados: Pago[] = [];
+  for (const linea of input.lineas) {
+    const pago = await deps.pagos.crear({
+      miembroId: input.miembroId,
+      sucursalId: input.sucursalId,
+      turnoId: turnoAbierto?.id ?? null,
+      registradoPorId: input.registradoPorId,
+      monto: linea.monto,
+      metodo: linea.metodo,
+      metodoPagoId: linea.metodoPagoId,
+      numeroOperacion: linea.numeroOperacion,
+      tasaCambio: linea.tasaCambio,
+      montoBs: linea.tasaCambio !== null ? linea.monto * linea.tasaCambio : null,
+      fechaInicioCiclo: base,
+      fechaFinCiclo: fin,
+      grupoPagoId,
+    });
+    pagosCreados.push(pago);
+  }
+
+  return pagosCreados;
 }

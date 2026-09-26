@@ -6,5 +6,6 @@ export interface Suscripcion {
   planId: string;
   inicio: Date;
   fin: Date;
+  fechaLimiteAbono: Date | null;
   estado: EstadoSuscripcion;
 }

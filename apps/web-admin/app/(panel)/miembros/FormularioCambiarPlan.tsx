@@ -43,6 +43,7 @@ export function FormularioCambiarPlan({
   entrenadorActualId,
   origen,
   onCambiado,
+  onPlanNuevoCambiado,
 }: {
   accion: (estado: EstadoCambioPlan, formData: FormData) => Promise<EstadoCambioPlan>;
   miembroId: string;
@@ -68,6 +69,11 @@ export function FormularioCambiarPlan({
   // Solo relevante con origen "caja" — se llama tras confirmar el cambio,
   // para que el wizard cierre el modal (ver diseño acordado).
   onCambiado?: () => void;
+  // Avisa al wizard de Caja qué plan quedó elegido en el <select> "Plan
+  // nuevo" (o null si no hay ninguno) — el padre lo usa para recalcular en
+  // vivo la proyección de días/vencimiento que muestra debajo (ver
+  // feedback: no reaccionaba porque planNuevoId es estado interno acá).
+  onPlanNuevoCambiado?: (plan: PlanParaCambio | null) => void;
 }) {
   const [estado, enviar, enviando] = useActionState(accion, {});
   const { mostrarError, mostrarExito } = useFeedback();
@@ -170,6 +176,7 @@ export function FormularioCambiarPlan({
           onChange={(e) => {
             setPlanNuevoId(e.target.value);
             setModoElegido(null);
+            onPlanNuevoCambiado?.(planes.find((p) => p.id === e.target.value) ?? null);
           }}
           className="min-h-11 rounded-lg border px-3 outline-none focus:border-[var(--gx-accent)]"
           style={{ background: "var(--gx-surface-2)", borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }}

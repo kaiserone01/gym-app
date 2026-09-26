@@ -143,15 +143,23 @@ function ContenidoPaso2({
   // tenía plan asignado no podía cambiarlo desde acá.
   const planEfectivo = (planElegidoId ? planes.find((p) => p.id === planElegidoId) : undefined) ?? miembro.plan;
 
-  const proyeccion = planEfectivo
-    ? calcularProyeccionRenovacion(miembro.fechaVencimiento, planEfectivo.frecuencia)
-    : null;
-
   // Con ciclo vigente ya pagado, cambiar el plan cobra la diferencia (ver
   // diseño acordado — reusa el mismo flujo que la ficha del miembro,
   // FormularioCambiarPlan) en vez de solo reasignarlo para este pago.
   const tieneCicloVigente = miembro.fechaVencimiento !== null && miembro.fechaVencimiento > new Date();
   const [cambiandoPlan, setCambiandoPlan] = useState(false);
+  // Plan elegido en el <select> "Plan nuevo" DENTRO de FormularioCambiarPlan
+  // — ese select vive en el estado interno de ese componente, así que sin
+  // este puente la proyección de días/vencimiento de abajo quedaba fija en
+  // el plan viejo del miembro y no reaccionaba al cambiar de plan nuevo acá
+  // (ver feedback: "no lo hace en este momento").
+  const [frecuenciaPlanEnCambio, setFrecuenciaPlanEnCambio] = useState<FrecuenciaPago | null>(null);
+  const frecuenciaParaProyeccion =
+    cambiandoPlan && tieneCicloVigente ? frecuenciaPlanEnCambio : (planEfectivo?.frecuencia ?? null);
+
+  const proyeccion = frecuenciaParaProyeccion
+    ? calcularProyeccionRenovacion(miembro.fechaVencimiento, frecuenciaParaProyeccion)
+    : null;
 
   return (
     <div className="flex flex-col gap-5 text-base">
@@ -169,7 +177,10 @@ function ContenidoPaso2({
         {miembro.plan && !cambiandoPlan && (
           <button
             type="button"
-            onClick={() => setCambiandoPlan(true)}
+            onClick={() => {
+              setCambiandoPlan(true);
+              setFrecuenciaPlanEnCambio(null);
+            }}
             className="min-h-9 shrink-0 rounded-lg border px-3 text-sm font-medium"
             style={{ borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }}
           >
@@ -212,8 +223,16 @@ function ContenidoPaso2({
             entrenadorActualId={miembro.entrenadorId}
             origen="caja"
             onCambiado={onCerrar}
+            onPlanNuevoCambiado={(plan) => setFrecuenciaPlanEnCambio(plan?.frecuencia ?? null)}
           />
-          <Button type="button" variant="secundario" onClick={() => setCambiandoPlan(false)}>
+          <Button
+            type="button"
+            variant="secundario"
+            onClick={() => {
+              setCambiandoPlan(false);
+              setFrecuenciaPlanEnCambio(null);
+            }}
+          >
             Cancelar
           </Button>
         </div>

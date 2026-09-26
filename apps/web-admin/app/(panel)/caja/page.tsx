@@ -17,6 +17,8 @@ import { Card } from "@gym-app/ui/components/Card";
 import { PageHeader } from "@gym-app/ui/components/PageHeader";
 import { PrismaMetodoPagoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaMetodoPagoRepository";
 import { listarMetodosPagoActivos } from "@gym-app/domain/use-cases/ListarMetodosPago";
+import { PrismaReglaAbonoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaReglaAbonoRepository";
+import { listarReglasAbono } from "@gym-app/domain/use-cases/ListarReglasAbono";
 import { obtenerTurnoAbiertoParaUsuario } from "./obtenerTurnoAbiertoParaUsuario";
 import { AvisoCajaAjena } from "./AvisoCajaAjena";
 import { BotonRegistrarPagoCaja } from "./BotonRegistrarPagoCaja";
@@ -70,7 +72,7 @@ export default async function PaginaCaja() {
 
   if (turnoAbierto) {
     const esPropio = turnoAbierto.esPropio;
-    const [resumen, miembros, planes, metodosPago, tasaCambio] = await Promise.all([
+    const [resumen, miembros, planes, metodosPago, tasaCambio, reglasAbono] = await Promise.all([
       obtenerResumenTurno(
         {
           turnos: turnoRepo,
@@ -89,6 +91,7 @@ export default async function PaginaCaja() {
         if (error instanceof SinTasaDisponibleError) return null;
         throw error;
       }),
+      listarReglasAbono({ reglasAbono: new PrismaReglaAbonoRepository(prisma) }, usuario.organizacionId),
     ]);
     const tasaActual = tasaCambio?.tasa.valor ?? null;
 
@@ -138,6 +141,7 @@ export default async function PaginaCaja() {
                   metodosPago={metodosPago}
                   tasaActual={tasaActual}
                   lineasResumenTurno={resumen.lineas}
+                  reglasAbono={reglasAbono}
                 />
                 <BotonRegistrarEgreso accion={registrarEgresoAction} turnoId={resumen.turno.id} />
               </div>

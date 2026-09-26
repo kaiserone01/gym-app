@@ -14,7 +14,9 @@ import { formatearBs } from "../tasaBcvFija";
 import { SelectorMetodoPago } from "../pagos/SelectorMetodoPago";
 import { registrarPagoAction } from "../pagos/actions";
 import { proyectarResumenTurno } from "./proyeccionArqueo";
+import { calcularProyeccionAbono } from "./proyeccionAbono";
 import type { LineaResumenMetodo } from "@gym-app/domain/use-cases/ObtenerResumenTurno";
+import type { ReglaAbonoPorFrecuencia } from "@gym-app/domain/entities/ReglaAbono";
 
 type Paso = 1 | 2 | 3 | 4;
 
@@ -271,6 +273,11 @@ function ContenidoPaso3({
   miembroId,
   planId,
   monto: montoSugerido,
+  frecuencia,
+  minimoAbonoTipo,
+  minimoAbonoValor,
+  fechaVencimiento,
+  reglasAbono,
   modalidad,
   metodosPago,
   lineasResumenTurno,
@@ -285,6 +292,11 @@ function ContenidoPaso3({
   // pendiente real del miembro (ese cálculo vive en su ficha) — quien
   // cobra tiene que saber cuánto pedir si es un abono, no el precio completo.
   monto: number;
+  frecuencia: FrecuenciaPago;
+  minimoAbonoTipo: PlanParaModal["minimoAbonoTipo"];
+  minimoAbonoValor: PlanParaModal["minimoAbonoValor"];
+  fechaVencimiento: Date | null;
+  reglasAbono: ReglaAbonoPorFrecuencia[];
   // Elegida en el Paso 2 — este paso ya no la vuelve a preguntar, solo
   // ejecuta lo elegido (ver diseño acordado, motor de reglas de abono).
   modalidad: Modalidad;
@@ -316,6 +328,19 @@ function ContenidoPaso3({
     modalidad === "combinado" ? lineasCombinadas : [{ ...lineaUnica, monto: String(montoObjetivo) }];
   const sumaLineas = lineasActivas.reduce((suma, l) => suma + (Number(l.monto) || 0), 0);
   const sumaCoincide = modalidad !== "combinado" || Math.abs(sumaLineas - montoObjetivo) < 0.01;
+
+  // Réplica cliente del motor de reglas de abono (proyeccionAbono.ts) —
+  // misma fecha base que calcularProyeccionRenovacion (Paso 2): el ciclo
+  // vigente si no venció, o ahora mismo si ya venció/nunca pagó.
+  const ahora = new Date();
+  const fechaInicioCicloEstimada =
+    fechaVencimiento !== null && fechaVencimiento > ahora ? fechaVencimiento : ahora;
+  const proyeccionAbono = calcularProyeccionAbono(
+    { minimoAbonoTipo, minimoAbonoValor, frecuencia, precioUSD: montoSugerido },
+    reglasAbono,
+    montoObjetivo,
+    fechaInicioCicloEstimada
+  );
 
   useEffect(() => {
     if (estado.error) mostrarError(estado.error);
@@ -353,7 +378,10 @@ function ContenidoPaso3({
 
   const puedeEnviar =
     montoObjetivo === 0 ||
-    (sumaCoincide && lineasParaEnviar.length > 0 && lineasParaEnviar.every((l) => l.metodoPagoId));
+    (sumaCoincide &&
+      lineasParaEnviar.length > 0 &&
+      lineasParaEnviar.every((l) => l.metodoPagoId) &&
+      (modalidad !== "abono" || proyeccionAbono.cumpleMinimo));
 
   return (
     <form action={enviar} className="flex flex-col gap-4 text-base">
@@ -390,6 +418,15 @@ function ContenidoPaso3({
         <p className="text-sm" style={{ color: "var(--gx-muted)" }}>
           Es menos que el precio del plan (${montoSugerido.toFixed(2)}) — queda como abono, se puede completar
           después desde la ficha del miembro.
+        </p>
+      )}
+      {modalidad === "abono" && montoObjetivo > 0 && (
+        <p className="text-sm" style={{ color: proyeccionAbono.cumpleMinimo ? "var(--gx-muted)" : "var(--gx-bad)" }}>
+          {proyeccionAbono.cumpleMinimo
+            ? proyeccionAbono.fechaLimite
+              ? `Este abono da acceso hasta el ${proyeccionAbono.fechaLimite.toLocaleDateString("es-VE")}.`
+              : "Este monto cubre el plan completo."
+            : `El abono mínimo para este plan es $${proyeccionAbono.montoMinimo.toFixed(2)}.`}
         </p>
       )}
 
@@ -555,6 +592,7 @@ export function ModalRegistrarPagoCaja({
   metodosPago,
   tasaActual,
   lineasResumenTurno,
+  reglasAbono,
   onCerrar,
 }: {
   miembros: Miembro[];
@@ -562,6 +600,7 @@ export function ModalRegistrarPagoCaja({
   metodosPago: MetodoPago[];
   tasaActual: number | null;
   lineasResumenTurno: LineaResumenMetodo[];
+  reglasAbono: ReglaAbonoPorFrecuencia[];
   onCerrar: () => void;
 }) {
   const [paso, setPaso] = useState<Paso>(1);
@@ -670,6 +709,17 @@ export function ModalRegistrarPagoCaja({
             monto={
               (miembroElegido.plan ?? planes.find((p) => p.id === planElegidoId))?.precioUSD ?? 0
             }
+            frecuencia={
+              (miembroElegido.plan ?? planes.find((p) => p.id === planElegidoId))?.frecuencia ?? "MENSUAL"
+            }
+            minimoAbonoTipo={
+              (miembroElegido.plan ?? planes.find((p) => p.id === planElegidoId))?.minimoAbonoTipo ?? null
+            }
+            minimoAbonoValor={
+              (miembroElegido.plan ?? planes.find((p) => p.id === planElegidoId))?.minimoAbonoValor ?? null
+            }
+            fechaVencimiento={miembroElegido.fechaVencimiento}
+            reglasAbono={reglasAbono}
             modalidad={modalidadElegida}
             metodosPago={metodosPago}
             lineasResumenTurno={lineasResumenTurno}

@@ -1061,19 +1061,19 @@ export function ModalRegistrarPagoCaja({
             miembroId={miembroElegido.id}
             planId={planElegidoId}
             monto={
-              (miembroElegido.plan ?? planes.find((p) => p.id === planElegidoId))?.precioUSD ?? 0
+              (planes.find((p) => p.id === planElegidoId) ?? miembroElegido.plan)?.precioUSD ?? 0
             }
             frecuencia={
-              (miembroElegido.plan ?? planes.find((p) => p.id === planElegidoId))?.frecuencia ?? "MENSUAL"
+              (planes.find((p) => p.id === planElegidoId) ?? miembroElegido.plan)?.frecuencia ?? "MENSUAL"
             }
             permitePagoParcial={
-              (miembroElegido.plan ?? planes.find((p) => p.id === planElegidoId))?.permitePagoParcial ?? true
+              (planes.find((p) => p.id === planElegidoId) ?? miembroElegido.plan)?.permitePagoParcial ?? true
             }
             minimoAbonoTipo={
-              (miembroElegido.plan ?? planes.find((p) => p.id === planElegidoId))?.minimoAbonoTipo ?? null
+              (planes.find((p) => p.id === planElegidoId) ?? miembroElegido.plan)?.minimoAbonoTipo ?? null
             }
             minimoAbonoValor={
-              (miembroElegido.plan ?? planes.find((p) => p.id === planElegidoId))?.minimoAbonoValor ?? null
+              (planes.find((p) => p.id === planElegidoId) ?? miembroElegido.plan)?.minimoAbonoValor ?? null
             }
             fechaVencimiento={miembroElegido.fechaVencimiento}
             reglasAbono={reglasAbono}
@@ -1092,7 +1092,7 @@ export function ModalRegistrarPagoCaja({
           <ContenidoPaso4
             miembro={miembroElegido}
             planNombre={
-              (miembroElegido.plan ?? planes.find((p) => p.id === planElegidoId))?.nombre ?? "—"
+              (planes.find((p) => p.id === planElegidoId) ?? miembroElegido.plan)?.nombre ?? "—"
             }
             fechaFinCiclo={fechaFinCicloFinal}
             onCerrar={onCerrar}

@@ -5,6 +5,7 @@ import { Button } from "@gym-app/ui/components/Button";
 import { Input } from "@gym-app/ui/components/Input";
 import { CurrencyInput } from "@gym-app/ui/components/CurrencyInput";
 import { useFeedback } from "@gym-app/ui/components/FeedbackOverlay";
+import { ModalFallaTemporalTasa, ModalIngresoManualTasa } from "../pagos/SelectorMetodoPago";
 import type { EstadoRegistrarEgreso } from "./actions";
 
 // Los "value" deben coincidir exactamente con el snapshot que
@@ -62,6 +63,8 @@ export function ModalRegistrarEgreso({
   const [tasa, setTasa] = useState<number | null>(null);
   const [cargandoTasa, setCargandoTasa] = useState(false);
   const [cargadaEnMs, setCargadaEnMs] = useState<number | null>(null);
+  const [modalFallaTemporalAbierto, setModalFallaTemporalAbierto] = useState(false);
+  const [modalIngresoManualAbierto, setModalIngresoManualAbierto] = useState(false);
 
   function cargarTasa() {
     setCargandoTasa(true);
@@ -93,6 +96,19 @@ export function ModalRegistrarEgreso({
     }, 60_000);
     return () => clearInterval(intervalo);
   }, [moneda, cargadaEnMs]);
+
+  // Reacciona a la respuesta de la Server Action (Etapa 3): la tasa cambió
+  // en el servidor (reconfirmar con la nueva) o no se pudo verificar ahora
+  // mismo (mostrar el aviso de las 3 opciones). No cierra el modal.
+  useEffect(() => {
+    if (estado.tasaNueva !== undefined) {
+      setTasa(estado.tasaNueva);
+      setCargadaEnMs(Date.now());
+    }
+    if (estado.fallaTemporal) {
+      setModalFallaTemporalAbierto(true);
+    }
+  }, [estado.tasaNueva, estado.fallaTemporal]);
 
   return (
     <div
@@ -174,6 +190,28 @@ export function ModalRegistrarEgreso({
           </div>
         </form>
       </div>
+
+      {modalFallaTemporalAbierto && (
+        <ModalFallaTemporalTasa
+          tasaGuardada={tasa ?? 0}
+          onUsarGuardada={() => setModalFallaTemporalAbierto(false)}
+          onIngresarManual={() => {
+            setModalFallaTemporalAbierto(false);
+            setModalIngresoManualAbierto(true);
+          }}
+        />
+      )}
+
+      {modalIngresoManualAbierto && (
+        <ModalIngresoManualTasa
+          onCerrar={() => setModalIngresoManualAbierto(false)}
+          onGuardado={(valor) => {
+            setTasa(valor);
+            setCargadaEnMs(Date.now());
+            setModalIngresoManualAbierto(false);
+          }}
+        />
+      )}
     </div>
   );
 }

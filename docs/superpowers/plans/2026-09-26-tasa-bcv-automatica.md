@@ -350,23 +350,32 @@ Commit sugerido: `feat: actualiza la tasa BCV automáticamente durante el uso de
 
 Hoy `registrarPagoAction` y `registrarEgresoAction` confían en la `tasaCambio` que envía el navegador en un campo oculto. Si el BCV publica mientras la cajera tiene el cobro abierto, se registraría con la tasa anterior. Eso contradice el criterio del negocio.
 
+> **Ampliación (2026-09-26, decisión del usuario al iniciar esta etapa):** además de "la tasa cambió, reconfirma", se agrega un segundo caso: **DolarAPI falla justo al forzar la verificación en el momento de cobrar** (fallo temporal de red/API, no un cambio de tasa). En ese caso el cobro también se **bloquea** (igual de estricto que cuando la tasa cambió) y se le muestra al operador un aviso con 3 opciones: (a) usar la última tasa guardada igual, (b) abrir `https://bcv.org.ve/` en pestaña nueva para consultar el valor oficial, o (c) ingresar el valor manualmente (reusa el flujo ya existente de `ModalIngresoManualTasa`/`registrarTasaManualAction`, fuente `"MANUAL"`). El aviso aparece **solo al momento de cobrar** (Server Actions de pago/egreso en Bs) — no en el badge `RelojYTasa` ni en otras pantallas.
+
 ### Tarea 3.1: Validación en el servidor
 
-**Files:** Modify `apps/web-admin/app/(panel)/pagos/actions.ts`, `apps/web-admin/app/(panel)/caja/actions.ts`
+**Files:** Modify `apps/web-admin/app/(panel)/pagos/actions.ts`, `apps/web-admin/app/(panel)/caja/actions.ts`, `apps/web-admin/lib/tasaBcv.ts`
 
+- [ ] `obtenerTasaVigenteFresca` debe exponer si la sincronización forzada falló (hoy el fallo se traga silenciosamente en `sincronizarUnaVez`) — agregar `sincronizacionFallida: boolean` al resultado, sin romper el contrato existente que ya usan Etapa 2 (server-side) y el cliente.
 - [ ] Cuando la operación es en Bs: obtener `obtenerTasaVigenteFresca({ forzar: true })`, que espera como máximo 2,5 s.
-  - Si la tasa enviada por el cliente **difiere** de la última publicada, **no registrar** y devolver `{ error: "La tasa BCV cambió a Bs. X. Revisa el monto y confirma de nuevo.", tasaNueva: X }`.
+  - Si `sincronizacionFallida` es `true` (DolarAPI no respondió al forzar): **no registrar** y devolver `{ error: "No se pudo verificar la tasa BCV en este momento.", fallaTemporal: true, tasaGuardada: X }`.
+  - Si la tasa enviada por el cliente **difiere** de la última publicada (sincronización exitosa, pero cambió): **no registrar** y devolver `{ error: "La tasa BCV cambió a Bs. X. Revisa el monto y confirma de nuevo.", tasaNueva: X }`.
   - Si coincide, registrar con la tasa **del servidor**, nunca con la del formulario.
 - [ ] Comparar con tolerancia de redondeo (4 decimales, igual que `Decimal(12,4)`).
-- [ ] Si DolarAPI no responde, validar contra la última guardada (el fallback de siempre). No bloquear la caja.
 
-### Tarea 3.2: UI de reconfirmación
+### Tarea 3.2: UI de reconfirmación y aviso de fallo temporal
 
 - [ ] `SelectorMetodoPago` / `FormularioPago` / `ModalRegistrarEgreso`: si la respuesta trae `tasaNueva`, actualizar la tasa y el monto en Bs mostrados y dejar el formulario listo para confirmar de nuevo. No cerrar el modal ni perder los datos cargados.
+- [ ] Si la respuesta trae `fallaTemporal: true`, mostrar un aviso (reusa el patrón de `ModalErrorTasa`) con 3 acciones:
+  1. **"Usar Bs. X igual"** (la `tasaGuardada` que vino en la respuesta) — reintenta el envío con esa tasa como si el operador la hubiera confirmado.
+  2. **"Verificar en bcv.org.ve"** — `<a href="https://bcv.org.ve/" target="_blank" rel="noopener noreferrer">`, abre en pestaña nueva sin perder el formulario actual.
+  3. **"Ingresar el valor manualmente"** — abre `ModalIngresoManualTasa` ya existente (acepta valores como `857,00580000`, hasta el detalle que devuelve DolarAPI), guarda con `registrarTasaManualAction` (fuente `"MANUAL"") y continúa con esa tasa.
 
 ### Tarea 3.3: Verificación
 
+- [ ] Extender `scripts/verificar-tasa-bcv.ts` con un caso: sincronización forzada que falla (`fallaSincronizacion: true`) → `obtenerTasaVigenteFresca({ forzar: true })` debe devolver `sincronizacionFallida: true` junto con la tasa guardada, no propagar el error.
 - [ ] Manual: abrir el modal de cobro en Bs, cambiar la tasa guardada en la base de **desarrollo** con el script de sincronización y un servicio falso (no editando el motor a mano), y confirmar que al enviar aparece el aviso con la tasa nueva y que no se registró nada.
+- [ ] Manual: simular un fallo temporal de DolarAPI (servicio falso que lanza error) y confirmar que aparece el aviso de las 3 opciones, y que ninguna de las 3 registra nada hasta que el operador decide.
 - [ ] Builds de la Tarea 1.10 → todos ✅.
 
 ### 🛑 FIN DE ETAPA 3

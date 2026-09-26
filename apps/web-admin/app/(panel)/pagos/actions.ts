@@ -12,6 +12,7 @@ import { PrismaTurnoRepository } from "@gym-app/infrastructure/persistence/prism
 import { PrismaPermisoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaPermisoRepository";
 import { PrismaSucursalRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaSucursalRepository";
 import { AuthorizationService } from "@gym-app/domain/services/AuthorizationService";
+import { orquestadorTasa, validarTasaCobro } from "@/lib/tasaBcv";
 import { conMensajeOk } from "../redirectConMensaje";
 import {
   registrarPago,
@@ -44,6 +45,35 @@ export interface EstadoFormularioPago {
   // con `ok`. La usa el Paso 4 del modal de Caja para mostrar la fecha de
   // vencimiento resultante sin recalcularla en el cliente.
   fechaFinCiclo?: string;
+  // La tasa BCV cambió justo al validar (Etapa 3) — el formulario debe
+  // actualizarla y dejar que el operador confirme de nuevo, sin cerrar el modal.
+  tasaNueva?: number;
+  // No se pudo verificar la tasa BCV en este momento (fallo temporal de
+  // DolarAPI) — el formulario debe ofrecer usar la última guardada, verificar
+  // en bcv.org.ve, o ingresarla manualmente.
+  fallaTemporal?: boolean;
+  tasaGuardada?: number;
+}
+
+// Valida que la tasa del formulario sea la última publicada, cuando la
+// operación es en Bs (Etapa 3 del plan de tasa BCV). Nunca se registra con
+// la tasa del formulario: si coincide, se usa la del servidor.
+async function validarTasaSiEsEnBs(
+  tasaCambioRaw: string | undefined
+): Promise<{ ok: true; tasaCambio: number | null } | { ok: false; estado: EstadoFormularioPago }> {
+  if (!tasaCambioRaw) return { ok: true, tasaCambio: null };
+
+  const tasaFormulario = Number(tasaCambioRaw);
+  const fresca = await orquestadorTasa.obtenerTasaVigenteFresca({ forzar: true });
+  const resultado = validarTasaCobro(tasaFormulario, fresca);
+
+  if (!resultado.ok) {
+    if ("fallaTemporal" in resultado) {
+      return { ok: false, estado: { error: resultado.error, fallaTemporal: true, tasaGuardada: resultado.tasaGuardada } };
+    }
+    return { ok: false, estado: { error: resultado.error, tasaNueva: resultado.tasaNueva } };
+  }
+  return { ok: true, tasaCambio: resultado.tasa };
 }
 
 export async function registrarPagoAction(
@@ -80,6 +110,9 @@ export async function registrarPagoAction(
     return { error: "No se pudo determinar en qué sucursal se registra el pago." };
   }
 
+  const validacionTasa = await validarTasaSiEsEnBs(tasaCambioRaw);
+  if (!validacionTasa.ok) return validacionTasa.estado;
+
   let pago;
   try {
     pago = await registrarPago(
@@ -100,7 +133,7 @@ export async function registrarPagoAction(
         metodo: metodo || "Cortesía",
         metodoPagoId,
         numeroOperacion,
-        tasaCambio: tasaCambioRaw ? Number(tasaCambioRaw) : null,
+        tasaCambio: validacionTasa.tasaCambio,
         sucursalId: sucursalIdPago,
         registradoPorId: usuario.id,
         rolUsuario: usuario.rol,

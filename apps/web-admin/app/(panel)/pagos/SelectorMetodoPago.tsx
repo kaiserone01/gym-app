@@ -95,12 +95,22 @@ interface RespuestaTasa {
   error?: string;
 }
 
+// Lo que la Server Action devuelve sobre la tasa BCV (Etapa 3): la tasa
+// cambió (tasaNueva) o no se pudo verificar en este momento (fallaTemporal).
+// Ver EstadoFormularioPago en pagos/actions.ts.
+export interface AvisoTasaServidor {
+  tasaNueva?: number;
+  fallaTemporal?: boolean;
+  tasaGuardada?: number;
+}
+
 export function SelectorMetodoPago({
   metodos,
   monto,
   onCambio,
   idFormulario,
   grande = false,
+  avisoServidor,
 }: {
   metodos: MetodoPago[];
   monto: number;
@@ -116,6 +126,10 @@ export function SelectorMetodoPago({
   // Solo el wizard de Caja (ModalRegistrarPagoCaja) lo pide — el uso en
   // /miembros/[id] y /pagos/nuevo se queda con su tamaño actual.
   grande?: boolean;
+  // Resultado de la última validación de tasa en el servidor (Etapa 3) — si
+  // trae tasaNueva o fallaTemporal, se muestra el aviso correspondiente sin
+  // cerrar el formulario ni perder los datos ya cargados.
+  avisoServidor?: AvisoTasaServidor;
 }) {
   const [tipoAbierto, setTipoAbierto] = useState<TipoMetodoPago | null>(null);
   const [metodoId, setMetodoId] = useState<string | null>(null);
@@ -126,6 +140,7 @@ export function SelectorMetodoPago({
   const [errorTasa, setErrorTasa] = useState(false);
   const [modalTasaAbierto, setModalTasaAbierto] = useState(false);
   const [cargadaEnMs, setCargadaEnMs] = useState<number | null>(null);
+  const [modalFallaTemporalAbierto, setModalFallaTemporalAbierto] = useState(false);
 
   const tiposDisponibles = Array.from(new Set(metodos.map((m) => m.tipo)));
   const metodo = metodos.find((m) => m.id === metodoId) ?? null;
@@ -168,6 +183,20 @@ export function SelectorMetodoPago({
     }, 60_000);
     return () => clearInterval(intervalo);
   }, [esEnBs, cargadaEnMs]);
+
+  // Reacciona a la respuesta de la Server Action (Etapa 3): la tasa cambió
+  // en el servidor (reconfirmar con la nueva) o no se pudo verificar ahora
+  // mismo (mostrar el aviso de las 3 opciones). No cierra el formulario ni
+  // pierde los datos ya cargados.
+  useEffect(() => {
+    if (avisoServidor?.tasaNueva !== undefined) {
+      setTasa(avisoServidor.tasaNueva);
+      setCargadaEnMs(Date.now());
+    }
+    if (avisoServidor?.fallaTemporal) {
+      setModalFallaTemporalAbierto(true);
+    }
+  }, [avisoServidor]);
 
   useEffect(() => {
     const tasaCambio = esEnBs ? tasa : null;
@@ -333,6 +362,17 @@ export function SelectorMetodoPago({
       )}
 
       {mostrarDatos && metodo && <ModalDatosPago metodo={metodo} onCerrar={() => setMostrarDatos(false)} />}
+
+      {modalFallaTemporalAbierto && avisoServidor?.fallaTemporal && (
+        <ModalFallaTemporalTasa
+          tasaGuardada={avisoServidor.tasaGuardada ?? tasa ?? 0}
+          onUsarGuardada={() => setModalFallaTemporalAbierto(false)}
+          onIngresarManual={() => {
+            setModalFallaTemporalAbierto(false);
+            setModalTasaAbierto(true);
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -358,7 +398,59 @@ function ModalErrorTasa({ onReintentar, onIngresarManual }: { onReintentar: () =
   );
 }
 
-function ModalIngresoManualTasa({ onCerrar, onGuardado }: { onCerrar: () => void; onGuardado: (valor: number) => void }) {
+// Se muestra cuando la Server Action no pudo verificar la tasa BCV justo al
+// forzar la validación en el momento de cobrar (fallo temporal de DolarAPI,
+// no un cambio de tasa) — Etapa 3 del plan. Bloquea el registro hasta que el
+// operador decide: usar la última guardada igual, verificar en el sitio
+// oficial, o ingresarla manualmente.
+// Exportado: lo reusa ModalRegistrarEgreso.tsx.
+export function ModalFallaTemporalTasa({
+  tasaGuardada,
+  onUsarGuardada,
+  onIngresarManual,
+}: {
+  tasaGuardada: number;
+  onUsarGuardada: () => void;
+  onIngresarManual: () => void;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: "color-mix(in srgb, black 60%, transparent)" }}
+    >
+      <div className="w-full max-w-sm rounded-2xl border-2 p-6" style={{ borderColor: "var(--gx-accent)", background: "var(--gx-surface)" }}>
+        <h3 className="text-lg font-bold" style={{ color: "var(--gx-ink)" }}>
+          No se pudo verificar la tasa BCV
+        </h3>
+        <p className="mt-1 text-sm" style={{ color: "var(--gx-muted)" }}>
+          Hubo un problema temporal para confirmar si la tasa cambió. La última guardada es{" "}
+          <strong>Bs. {tasaGuardada}</strong>.
+        </p>
+        <div className="mt-4 flex flex-col gap-2">
+          <Button type="button" className="w-full" onClick={onUsarGuardada}>
+            Usar Bs. {tasaGuardada} igual
+          </Button>
+          <a
+            href="https://bcv.org.ve/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex min-h-11 w-full items-center justify-center rounded-lg border-2 text-sm font-medium transition-colors duration-150"
+            style={{ borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }}
+          >
+            Verificar en bcv.org.ve
+          </a>
+          <Button type="button" variant="secundario" className="w-full" onClick={onIngresarManual}>
+            Ingresar el valor manualmente
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Exportado: lo reusa ModalRegistrarEgreso.tsx (mismo flujo de ingreso
+// manual, fuera del árbol de SelectorMetodoPago).
+export function ModalIngresoManualTasa({ onCerrar, onGuardado }: { onCerrar: () => void; onGuardado: (valor: number) => void }) {
   const [valor, setValor] = useState("");
   const [confirmando, setConfirmando] = useState(false);
   const [enviando, setEnviando] = useState(false);

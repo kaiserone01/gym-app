@@ -277,7 +277,13 @@ function ContenidoPaso3({
       {montoSugerido === 0 && <input type="hidden" name="monto" value={0} />}
 
       {monto > 0 ? (
-        <SelectorMetodoPago metodos={metodosPago} monto={monto} onCambio={setSeleccionMetodo} grande />
+        <SelectorMetodoPago
+          metodos={metodosPago}
+          monto={monto}
+          onCambio={setSeleccionMetodo}
+          grande
+          avisoServidor={{ tasaNueva: estado.tasaNueva, fallaTemporal: estado.fallaTemporal, tasaGuardada: estado.tasaGuardada }}
+        />
       ) : (
         <p className="text-sm" style={{ color: "var(--gx-muted)" }}>
           Este plan no tiene costo — no hace falta elegir método de pago.

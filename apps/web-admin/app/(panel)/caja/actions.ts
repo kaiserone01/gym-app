@@ -11,6 +11,7 @@ import { PrismaPagoRepository } from "@gym-app/infrastructure/persistence/prisma
 import { PrismaSucursalRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaSucursalRepository";
 import { PrismaPermisoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaPermisoRepository";
 import { AuthorizationService } from "@gym-app/domain/services/AuthorizationService";
+import { orquestadorTasa, validarTasaCobro } from "@/lib/tasaBcv";
 import { abrirTurno, RolNoAutorizadoError as RolNoAutorizadoAbrir, TurnoYaAbiertoError, SucursalNoEncontradaError } from "@gym-app/domain/use-cases/AbrirTurno";
 import { registrarEgreso, RolNoAutorizadoError as RolNoAutorizadoEgreso, TurnoCerradoError, TurnoNoEncontradoError as TurnoNoEncontradoEgreso, MotivoRequeridoError, TasaRequeridaError as TasaRequeridaEgreso } from "@gym-app/domain/use-cases/RegistrarEgreso";
 import { cerrarTurno, RolNoAutorizadoError as RolNoAutorizadoCerrar, TurnoYaCerradoError, TurnoNoEncontradoError as TurnoNoEncontradoCerrar, NotaRequeridaError } from "@gym-app/domain/use-cases/CerrarTurno";
@@ -76,6 +77,11 @@ export async function abrirTurnoAction(
 export interface EstadoRegistrarEgreso {
   error?: string;
   ok?: string;
+  // Ver EstadoFormularioPago en pagos/actions.ts — mismo criterio de
+  // reconfirmación/aviso de fallo temporal (Etapa 3 del plan de tasa BCV).
+  tasaNueva?: number;
+  fallaTemporal?: boolean;
+  tasaGuardada?: number;
 }
 
 export async function registrarEgresoAction(
@@ -94,10 +100,22 @@ export async function registrarEgresoAction(
   // Solo relevante para moneda BS — capturada en el cliente desde
   // /api/tasa-cambio al momento de registrar (ver ModalRegistrarEgreso).
   const tasaCambioTexto = formData.get("tasaCambio")?.toString();
-  const tasaCambio = tasaCambioTexto ? Number(tasaCambioTexto) : null;
 
   if (!turnoId || Number.isNaN(monto) || (moneda !== "USD" && moneda !== "BS") || !metodo) {
     return { error: "Monto, moneda y método son requeridos." };
+  }
+
+  let tasaCambio: number | null = null;
+  if (moneda === "BS" && tasaCambioTexto) {
+    const fresca = await orquestadorTasa.obtenerTasaVigenteFresca({ forzar: true });
+    const resultado = validarTasaCobro(Number(tasaCambioTexto), fresca);
+    if (!resultado.ok) {
+      if ("fallaTemporal" in resultado) {
+        return { error: resultado.error, fallaTemporal: true, tasaGuardada: resultado.tasaGuardada };
+      }
+      return { error: resultado.error, tasaNueva: resultado.tasaNueva };
+    }
+    tasaCambio = resultado.tasa;
   }
 
   try {

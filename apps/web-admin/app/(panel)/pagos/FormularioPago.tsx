@@ -269,6 +269,7 @@ export function FormularioPago({
           metodos={metodosPago}
           monto={montoNumero}
           onCambio={setSeleccionMetodo}
+          avisoServidor={{ tasaNueva: estado.tasaNueva, fallaTemporal: estado.fallaTemporal, tasaGuardada: estado.tasaGuardada }}
         />
       ) : (
         <p className="text-sm" style={{ color: "var(--gx-muted)" }}>

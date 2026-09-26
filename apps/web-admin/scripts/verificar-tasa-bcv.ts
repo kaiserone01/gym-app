@@ -11,7 +11,7 @@ import { sincronizarTasas } from "@gym-app/domain/use-cases/SincronizarTasas";
 import type { ITasaCambioRepository } from "@gym-app/domain/ports/ITasaCambioRepository";
 import type { IExchangeRateService, ResultadoPublicadas } from "@gym-app/domain/ports/IExchangeRateService";
 import type { TasaCambio } from "@gym-app/domain/entities/TasaCambio";
-import { crearOrquestadorTasa } from "../lib/tasaBcv";
+import { crearOrquestadorTasa, validarTasaCobro, type TasaVigenteFresca } from "../lib/tasaBcv";
 
 let pasadas = 0;
 let total = 0;
@@ -223,7 +223,7 @@ async function main() {
     // Arranca ya por encima del throttle (45 min) — como el primer request
     // del día, donde el throttle interno (ultimoIntento=0) siempre está vencido.
     let relojMs = 60 * 60_000;
-    const tareasProgramadas: Array<() => Promise<void>> = [];
+    const tareasProgramadas: Array<() => Promise<unknown>> = [];
 
     async function sincronizar(versionConocida: string | null): Promise<{ version: string | null }> {
       llamadasSincronizar++;
@@ -328,6 +328,55 @@ async function main() {
     assert.equal(f.llamadasSincronizar, 1);
     await f.orquestador.obtenerTasaVigenteFresca({ forzar: true });
     assert.equal(f.llamadasSincronizar, 2);
+  });
+
+  await caso("18: forzar:true con sincronización fallida → sincronizacionFallida:true, devuelve la tasa guardada, no propaga", async () => {
+    const f = crearFakes({
+      hoy: fecha("2026-09-26"),
+      tasaInicial: V28,
+      fechaInicial: fecha("2026-09-28"),
+      fallaSincronizacion: true,
+    });
+    const r = await f.orquestador.obtenerTasaVigenteFresca({ forzar: true });
+    assert.equal(r.sincronizacionFallida, true);
+    assert.equal(r.tasa.valor, V28);
+  });
+
+  // --- Casos de validarTasaCobro (Tarea 3.1) ---
+  function fresca(valor: number, sincronizacionFallida = false): TasaVigenteFresca {
+    return {
+      tasa: { id: "fake", fecha: fecha("2026-09-26"), valor, fuente: "BCV" },
+      estado: "AL_DIA",
+      sincronizacionFallida,
+    };
+  }
+
+  await caso("19: tasa del formulario coincide → ok:true con la tasa del servidor", () => {
+    const r = validarTasaCobro(V28, fresca(V28));
+    assert.equal(r.ok, true);
+    if (r.ok) assert.equal(r.tasa, V28);
+  });
+
+  await caso("20: tasa del formulario coincide dentro de la tolerancia de redondeo (4 decimales)", () => {
+    const r = validarTasaCobro(857.00579999, fresca(857.0058));
+    assert.equal(r.ok, true);
+  });
+
+  await caso("21: tasa del formulario difiere → ok:false con tasaNueva", () => {
+    const r = validarTasaCobro(V28, fresca(860));
+    assert.equal(r.ok, false);
+    if (!r.ok && "tasaNueva" in r) assert.equal(r.tasaNueva, 860);
+  });
+
+  await caso("22: sincronización falló al forzar → ok:false con fallaTemporal y tasaGuardada", () => {
+    const r = validarTasaCobro(V28, fresca(V28, true));
+    assert.equal(r.ok, false);
+    if (!r.ok && "fallaTemporal" in r) {
+      assert.equal(r.fallaTemporal, true);
+      assert.equal(r.tasaGuardada, V28);
+    } else {
+      assert.fail("se esperaba fallaTemporal");
+    }
   });
 
   console.log(`\n${pasadas === total ? "OK" : "FALLÓ"} (${pasadas}/${total})`);

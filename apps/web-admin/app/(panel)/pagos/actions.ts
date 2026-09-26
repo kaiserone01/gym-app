@@ -135,6 +135,22 @@ export async function registrarPagoAction(
     return { error: "Cada línea del pago necesita un monto mayor a $0 y un método." };
   }
 
+  // Pago combinado (más de una línea): el cliente gatea el envío en que la
+  // suma coincida con el monto objetivo, pero el servidor nunca recibía ese
+  // objetivo — un FormData armado a mano podía mandar líneas que no suman lo
+  // acordado. Solo aplica cuando montoObjetivo viene en el POST (combinado);
+  // total/abono siguen sin mandarlo... salvo que el campo del wizard ya lo
+  // postea siempre, así que esto también protege esos flujos sin cambiar su
+  // comportamiento (la única línea ya suma exactamente montoObjetivo).
+  const montoObjetivoRaw = formData.get("montoObjetivo")?.toString();
+  if (lineas.length > 1 && montoObjetivoRaw) {
+    const montoObjetivo = Number(montoObjetivoRaw);
+    const sumaLineas = lineas.reduce((suma, linea) => suma + linea.monto, 0);
+    if (!Number.isNaN(montoObjetivo) && Math.abs(sumaLineas - montoObjetivo) >= 0.01) {
+      return { error: "La suma de las líneas no coincide con el monto a pagar." };
+    }
+  }
+
   // La tasa BCV se valida por línea que opere en Bs — cada línea puede
   // usar un método distinto, así que cada una se revalida por separado
   // contra el servidor (Etapa 3 del plan de tasa BCV, no se confía en la

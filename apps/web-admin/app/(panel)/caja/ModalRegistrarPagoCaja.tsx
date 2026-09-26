@@ -301,7 +301,11 @@ function ContenidoPaso3({
 
   const lineasEnProgreso = lineasActivas
     .filter((l) => Number(l.monto) > 0 && l.seleccion.metodo)
-    .map((l) => ({ metodo: l.seleccion.metodo, monto: Number(l.monto), enBs: l.seleccion.tasaCambio !== null }));
+    .map((l) => ({
+      metodo: l.seleccion.metodo,
+      monto: l.seleccion.tasaCambio !== null ? Number(l.monto) * l.seleccion.tasaCambio : Number(l.monto),
+      enBs: l.seleccion.tasaCambio !== null,
+    }));
 
   const proyeccion = proyectarResumenTurno(lineasResumenTurno, lineasEnProgreso);
   const proyeccionConMovimiento = proyeccion.filter((l) => l.proyectado !== l.actual);

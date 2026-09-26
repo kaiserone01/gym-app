@@ -5,10 +5,12 @@ import { IMemberRepository } from "../ports/IMemberRepository";
 import { IPlanRepository } from "../ports/IPlanRepository";
 import { ITurnoRepository } from "../ports/ITurnoRepository";
 import { ISucursalRepository } from "../ports/ISucursalRepository";
+import { IReglaAbonoRepository } from "../ports/IReglaAbonoRepository";
 import { Pago, pagosVigentesDelCiclo, totalPagado } from "../entities/Pago";
 import { RolUsuario } from "../entities/UsuarioAdmin";
 import { IAuthorizationService } from "../ports/IAuthorizationService";
 import { DURACION_DIAS_POR_FRECUENCIA } from "../entities/Plan";
+import { resolverReglaAbono, calcularMontoMinimoAbono, calcularFechaLimiteAbono } from "../entities/ReglaAbono";
 import { MiembroFueraDeSucursalError } from "./ObtenerMiembro";
 
 export { MiembroFueraDeSucursalError };
@@ -58,6 +60,23 @@ export class LineasDePagoInvalidasError extends Error {
   }
 }
 
+// El plan tiene permitePagoParcial=false — no se puede registrar un abono
+// (monto menor al precio del plan) contra él. El pago combinado NO está
+// sujeto a esta restricción (ver diseño acordado).
+export class AbonoNoPermitidoError extends Error {
+  constructor() {
+    super("Este plan no admite pagos parciales (abonos) — el monto debe cubrir el precio completo.");
+  }
+}
+
+// El monto acumulado del ciclo (tras este pago) no alcanza el mínimo que
+// exige la regla de abono efectiva (del plan o de su frecuencia).
+export class AbonoMenorAlMinimoError extends Error {
+  constructor(minimoUSD: number) {
+    super(`El abono mínimo para este plan es $${minimoUSD.toFixed(2)}.`);
+  }
+}
+
 export interface RegistrarPagoDeps {
   pagos: IPagoRepository;
   suscripciones: ISuscripcionRepository;
@@ -66,6 +85,7 @@ export interface RegistrarPagoDeps {
   turnos: ITurnoRepository;
   sucursales: ISucursalRepository;
   autorizacion: IAuthorizationService;
+  reglasAbono: IReglaAbonoRepository;
 }
 
 export interface DatosLineaPago {
@@ -158,11 +178,61 @@ export async function registrarPago(deps: RegistrarPagoDeps, input: DatosRegistr
     base = activa && activa.fin > ahora ? activa.fin : ahora;
     fin = new Date(base);
     fin.setDate(fin.getDate() + DURACION_DIAS_POR_FRECUENCIA[plan.frecuencia]);
+  }
 
+  // Motor de reglas de abono: solo aplica cuando el pago resultante deja
+  // el ciclo sin saldar (es decir, es un abono real, no un pago total).
+  // montoTotal ya viene calculado más arriba como suma de input.lineas.
+  const montoAcumuladoDelCiclo = esAbonoDeCicloAbierto
+    ? totalPagado(pagosDelCicloAbierto) + montoTotal
+    : montoTotal;
+  const esAbonoParcial = montoAcumuladoDelCiclo < miembro.precioPlan;
+
+  let fechaLimiteAbonoCalculada: Date | null = null;
+
+  if (esAbonoParcial) {
+    if (!plan.permitePagoParcial) {
+      throw new AbonoNoPermitidoError();
+    }
+
+    const reglaFrecuencia = await deps.reglasAbono.buscarPorOrganizacionYFrecuencia(
+      input.organizacionId,
+      plan.frecuencia
+    );
+    const reglaEfectiva = resolverReglaAbono(
+      { minimoAbonoTipo: plan.minimoAbonoTipo, minimoAbonoValor: plan.minimoAbonoValor },
+      reglaFrecuencia
+    );
+    const diasDelCiclo = DURACION_DIAS_POR_FRECUENCIA[plan.frecuencia];
+    const montoMinimo = calcularMontoMinimoAbono(reglaEfectiva, miembro.precioPlan, diasDelCiclo);
+
+    if (montoAcumuladoDelCiclo < montoMinimo) {
+      throw new AbonoMenorAlMinimoError(montoMinimo);
+    }
+
+    fechaLimiteAbonoCalculada = calcularFechaLimiteAbono(
+      reglaEfectiva,
+      montoAcumuladoDelCiclo,
+      miembro.precioPlan,
+      base,
+      diasDelCiclo
+    );
+  }
+
+  if (esAbonoDeCicloAbierto) {
+    await deps.suscripciones.actualizarFechaLimiteAbono(activa!.id, fechaLimiteAbonoCalculada);
+  } else {
     if (activa) {
       await deps.suscripciones.extenderFin(activa.id, fin);
+      await deps.suscripciones.actualizarFechaLimiteAbono(activa.id, fechaLimiteAbonoCalculada);
     } else {
-      await deps.suscripciones.crear({ miembroId: input.miembroId, planId: input.planId, inicio: ahora, fin });
+      await deps.suscripciones.crear({
+        miembroId: input.miembroId,
+        planId: input.planId,
+        inicio: ahora,
+        fin,
+        fechaLimiteAbono: fechaLimiteAbonoCalculada,
+      });
     }
 
     await deps.miembros.actualizar(input.organizacionId, input.miembroId, { planId: input.planId });

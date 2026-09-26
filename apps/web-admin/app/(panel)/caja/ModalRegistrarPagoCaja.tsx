@@ -186,8 +186,9 @@ function ContenidoPaso2({
       {cambiandoPlan && tieneCicloVigente && miembro.plan ? (
         <div className="flex flex-col gap-3 rounded-lg border p-4" style={{ borderColor: "var(--gx-accent)" }}>
           <p className="text-xs" style={{ color: "var(--gx-muted)" }}>
-            Para subir o bajar de plan sin esperar a que venza el ciclo actual — cobra solo la diferencia de precio,
-            si la hay. El vencimiento no cambia.
+            Para subir o bajar de plan sin esperar a que venza el ciclo actual — el sistema prorratea el valor no
+            consumido del ciclo. Elegí si solo ajustar el vencimiento (sin costo) o pagar un ciclo completo del plan
+            nuevo (cobra o acredita la diferencia).
           </p>
           <FormularioCambiarPlan
             accion={accionCambiarPlan}
@@ -196,6 +197,7 @@ function ContenidoPaso2({
             planActualId={miembro.plan.id}
             precioActual={miembro.plan.precioUSD}
             frecuenciaActual={miembro.plan.frecuencia}
+            fechaVencimientoActual={miembro.fechaVencimiento ?? new Date()}
             metodosPago={metodosPago}
             entrenadores={entrenadores}
             entrenadorActualId={miembro.entrenadorId}

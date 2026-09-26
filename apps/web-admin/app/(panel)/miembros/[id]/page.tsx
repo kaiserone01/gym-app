@@ -163,6 +163,7 @@ export default async function PaginaEditarMiembro({ params }: { params: Promise<
                 planActualId={miembro.planId}
                 precioActual={miembro.precioPlan}
                 frecuenciaActual={frecuenciaActual}
+                fechaVencimientoActual={miembro.fechaVencimiento ?? new Date()}
                 entrenadores={entrenadoresDelMiembro}
                 entrenadorActualId={miembro.entrenadorId}
               />

@@ -27,6 +27,7 @@ export function PanelPagoYCambioPlan({
   planActualId,
   precioActual,
   frecuenciaActual,
+  fechaVencimientoActual,
   entrenadores,
   entrenadorActualId,
 }: {
@@ -44,6 +45,10 @@ export function PanelPagoYCambioPlan({
   planActualId: string | null;
   precioActual: number;
   frecuenciaActual: FrecuenciaPago;
+  // Solo se usa (y solo es correcta) cuando tieneCicloVigente es true — la
+  // fórmula de prorrateo de FormularioCambiarPlan la necesita para calcular
+  // el valor no consumido del ciclo actual.
+  fechaVencimientoActual: Date;
   entrenadores: EntrenadorParaCambio[];
   entrenadorActualId: string | null;
 }) {
@@ -113,6 +118,7 @@ export function PanelPagoYCambioPlan({
             planActualId={planActualId}
             precioActual={precioActual}
             frecuenciaActual={frecuenciaActual}
+            fechaVencimientoActual={fechaVencimientoActual}
             metodosPago={metodosPago}
             entrenadores={entrenadores}
             entrenadorActualId={entrenadorActualId}

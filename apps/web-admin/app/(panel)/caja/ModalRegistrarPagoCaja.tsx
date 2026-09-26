@@ -262,7 +262,17 @@ function ContenidoPaso3({
   const [lineaUnica, setLineaUnica] = useState<LineaFormulario>(nuevaLineaVacia());
   const [lineasCombinadas, setLineasCombinadas] = useState<LineaFormulario[]>([nuevaLineaVacia(), nuevaLineaVacia()]);
 
-  const lineasActivas = modalidad === "combinado" ? lineasCombinadas : [lineaUnica];
+  // En modalidad no combinada, el monto real a enviar es siempre
+  // montoObjetivo, nunca lineaUnica.monto — ese campo solo se actualiza
+  // dentro del onCambio de SelectorMetodoPago (útil para la proyección en
+  // vivo), pero ese onCambio depende del useEffect interno del selector,
+  // que NO reacciona a cambios de monto/montoObjetivo (solo a
+  // metodo/esEnBs/tasa/numeroOperacion) — así que si el usuario elige
+  // método y DESPUÉS edita el monto objetivo, lineaUnica.monto queda
+  // desactualizado. Se fuerza acá para que lo enviado siempre coincida con
+  // lo que se ve en pantalla.
+  const lineasActivas =
+    modalidad === "combinado" ? lineasCombinadas : [{ ...lineaUnica, monto: String(montoObjetivo) }];
   const sumaLineas = lineasActivas.reduce((suma, l) => suma + (Number(l.monto) || 0), 0);
   const sumaCoincide = modalidad !== "combinado" || Math.abs(sumaLineas - montoObjetivo) < 0.01;
 

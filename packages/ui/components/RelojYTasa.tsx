@@ -19,7 +19,9 @@ interface TasaCambioRespuesta {
 // hora "real" que usa el sistema para abrir/cerrar turno la fija el
 // servidor vía TZ=America/Caracas (ver Task 1 del plan); este reloj es
 // solo informativo para quien opera la caja.
-export function RelojYTasa() {
+// onClickTasa (opcional): abre el historial de tasas al pulsar el texto de
+// la tasa — ver ModalHistorialTasas/RelojYTasaConHistorial en apps/web-admin.
+export function RelojYTasa({ onClickTasa }: { onClickTasa?: () => void }) {
   const [ahora, setAhora] = useState<Date | null>(null);
   const [tasa, setTasa] = useState<TasaCambioRespuesta | null>(null);
 
@@ -72,7 +74,14 @@ export function RelojYTasa() {
       {tasa && (
         <>
           <span style={{ color: "var(--gx-edge)" }}>|</span>
-          <span style={{ color: "var(--gx-accent)" }}>Bs. {tasa.valor.toFixed(2)} (BCV)</span>
+          <button
+            type="button"
+            onClick={onClickTasa}
+            className="cursor-pointer transition-opacity duration-150 hover:opacity-70"
+            style={{ color: "var(--gx-accent)" }}
+          >
+            Bs. {tasa.valor.toFixed(2)} (BCV)
+          </button>
         </>
       )}
     </div>

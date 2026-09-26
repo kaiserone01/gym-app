@@ -6,7 +6,7 @@ import { PrismaSucursalRepository } from "@gym-app/infrastructure/persistence/pr
 import { Sidebar } from "@gym-app/ui/components/Sidebar";
 import { FeedbackProvider } from "@gym-app/ui/components/FeedbackOverlay";
 import { FeedbackDesdeUrl } from "@gym-app/ui/components/FeedbackDesdeUrl";
-import { RelojYTasa } from "@gym-app/ui/components/RelojYTasa";
+import { RelojYTasaConHistorial } from "./RelojYTasaConHistorial";
 import { BarraUsuario } from "./BarraUsuario";
 import { EncabezadoSidebar } from "./EncabezadoSidebar";
 import { NavegacionMobile } from "./NavegacionMobile";
@@ -29,7 +29,7 @@ export default async function PanelLayout({ children }: { children: React.ReactN
       <Suspense fallback={null}>
         <FeedbackDesdeUrl />
       </Suspense>
-      <RelojYTasa />
+      <RelojYTasaConHistorial />
       <div className="flex min-h-dvh flex-col lg:flex-row" style={{ background: "var(--gx-ground)" }}>
         <div className="hidden lg:block print:hidden">
           <Sidebar

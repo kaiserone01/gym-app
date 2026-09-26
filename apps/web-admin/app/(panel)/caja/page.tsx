@@ -7,7 +7,8 @@ import { PrismaEgresoRepository } from "@gym-app/infrastructure/persistence/pris
 import { PrismaMemberRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaMemberRepository";
 import { PrismaPlanRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaPlanRepository";
 import { obtenerResumenTurno, METODO_EFECTIVO_BS } from "@gym-app/domain/use-cases/ObtenerResumenTurno";
-import { obtenerTasaActual, SinTasaDisponibleError } from "@gym-app/domain/use-cases/ObtenerTasaActual";
+import { obtenerTasaVigente, SinTasaDisponibleError } from "@gym-app/domain/use-cases/ObtenerTasaVigente";
+import { diaCalendarioCaracas } from "@gym-app/domain/utils/fechaCaracas";
 import { obtenerUltimoCierrePorSucursal } from "@gym-app/domain/use-cases/ObtenerUltimoCierrePorSucursal";
 import { PrismaTasaCambioRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaTasaCambioRepository";
 import { PrismaArqueoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaArqueoRepository";
@@ -85,12 +86,12 @@ export default async function PaginaCaja() {
       // Solo para mostrar la referencia en USD de la porción "fondo
       // inicial" de la línea en Bs (ver más abajo) — si no hay tasa
       // guardada todavía, simplemente se omite ese REF.
-      obtenerTasaActual({ tasas: new PrismaTasaCambioRepository(prisma) }).catch((error) => {
+      obtenerTasaVigente({ tasas: new PrismaTasaCambioRepository(prisma) }, diaCalendarioCaracas(new Date())).catch((error) => {
         if (error instanceof SinTasaDisponibleError) return null;
         throw error;
       }),
     ]);
-    const tasaActual = tasaCambio?.valor ?? null;
+    const tasaActual = tasaCambio?.tasa.valor ?? null;
 
     const miembrosActivos = miembros.filter((m) => m.activo);
     const planesActivos = planes.filter((p) => p.activo);

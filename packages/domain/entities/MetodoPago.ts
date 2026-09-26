@@ -3,7 +3,7 @@ export type TipoMetodoPago = "EFECTIVO" | "PAGO_MOVIL" | "TRANSFERENCIA" | "PUNT
 export type MonedaMetodoPago = "USD" | "BS";
 
 // Tipos que operan en bolívares y por lo tanto requieren tasa de cambio
-// BCV al momento de registrar un pago con ellos (ver ObtenerTasaActual).
+// BCV al momento de registrar un pago con ellos (ver ObtenerTasaVigente).
 export const TIPOS_QUE_PUEDEN_SER_EN_BS: TipoMetodoPago[] = ["EFECTIVO", "PAGO_MOVIL", "TRANSFERENCIA", "PUNTO_VENTA", "BIOPAGO"];
 
 export interface MetodoPago {

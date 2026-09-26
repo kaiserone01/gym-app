@@ -4,7 +4,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { obtenerUsuarioDeSesion } from "@/lib/sesion";
 import { PrismaTasaCambioRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaTasaCambioRepository";
-import { obtenerTasaActual, SinTasaDisponibleError } from "@gym-app/domain/use-cases/ObtenerTasaActual";
+import { obtenerTasaVigente, SinTasaDisponibleError } from "@gym-app/domain/use-cases/ObtenerTasaVigente";
+import { diaCalendarioCaracas } from "@gym-app/domain/utils/fechaCaracas";
 
 export async function GET(req: NextRequest) {
   const sesion = await obtenerUsuarioDeSesion(req);
@@ -14,9 +15,12 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const tasa = await obtenerTasaActual({ tasas: new PrismaTasaCambioRepository(prisma) });
+    const { tasa, estado } = await obtenerTasaVigente(
+      { tasas: new PrismaTasaCambioRepository(prisma) },
+      diaCalendarioCaracas(new Date())
+    );
 
-    return NextResponse.json(tasa);
+    return NextResponse.json({ ...tasa, estado });
   } catch (error) {
     if (error instanceof SinTasaDisponibleError) {
       return NextResponse.json({ error: error.message }, { status: 404 });

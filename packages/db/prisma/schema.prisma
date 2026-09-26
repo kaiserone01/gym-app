@@ -292,11 +292,12 @@ model CheckIn {
 }
 
 model TasaCambio {
-  id        String   @id @default(cuid())
-  fecha     DateTime @unique // día calendario
-  valor     Decimal  @db.Decimal(12, 4)
-  fuente    String // "BCV" | "BINANCE_P2P" | "MANUAL"
-  createdAt DateTime @default(now())
+  id              String   @id @default(cuid())
+  fecha           DateTime @unique // día calendario
+  valor           Decimal  @db.Decimal(12, 4)
+  fuente          String // "BCV" | "BINANCE_P2P" | "MANUAL"
+  registradoPorId String? // UsuarioAdmin.id — solo se conoce para fuente MANUAL; null en filas BCV o en MANUAL previas a esta columna.
+  createdAt       DateTime @default(now())
 }
 
 enum TipoMetodoPago {

@@ -1,0 +1,354 @@
+{
+  "fechaEjecucion": "2026-09-27T12:18:16.687Z",
+  "semilla": 20260927,
+  "entradas": [
+    {
+      "miembroId": "cmu2sf0ym001u2wfl2ot1w60x",
+      "nombre": "Andrés Suárez",
+      "vencimientoAnterior": "2026-09-23",
+      "vencimientoNuevo": "2026-10-18"
+    },
+    {
+      "miembroId": "cmuamzkk90006t8flwl0p6phs",
+      "nombre": "cacho",
+      "vencimientoAnterior": "2026-11-20",
+      "vencimientoNuevo": "2026-09-24"
+    },
+    {
+      "miembroId": "cmu2sewuo000l2wfllhe1a9r5",
+      "nombre": "Camila Castro",
+      "vencimientoAnterior": "2026-10-12",
+      "vencimientoNuevo": "2026-11-01"
+    },
+    {
+      "miembroId": "cmu2sf02w001l2wflicb3z5ei",
+      "nombre": "Camila González",
+      "vencimientoAnterior": "2026-09-23",
+      "vencimientoNuevo": "2026-11-11"
+    },
+    {
+      "miembroId": "cmu2sevjx00062wflox465q8w",
+      "nombre": "Camila Pérez",
+      "vencimientoAnterior": "2026-10-07",
+      "vencimientoNuevo": "2026-09-24"
+    },
+    {
+      "miembroId": "cmu2sev0v00002wfl52hzmifj",
+      "nombre": "Carlos Flores",
+      "vencimientoAnterior": "2026-10-12",
+      "vencimientoNuevo": "2026-09-19"
+    },
+    {
+      "miembroId": "cmu2sey8l00102wflf32trjbs",
+      "nombre": "Carlos González",
+      "vencimientoAnterior": "2026-10-13",
+      "vencimientoNuevo": "2026-09-13"
+    },
+    {
+      "miembroId": "cmu2sf0ff001o2wflxv9uv5rg",
+      "nombre": "Carmen Mendoza",
+      "vencimientoAnterior": "2026-10-03",
+      "vencimientoNuevo": "2026-09-23"
+    },
+    {
+      "miembroId": "cmuan7h9g000at8fle1ze4bhi",
+      "nombre": "david",
+      "vencimientoAnterior": "2026-10-21",
+      "vencimientoNuevo": "2026-09-13"
+    },
+    {
+      "miembroId": "cmufkvi7a000201mi8z4034xp",
+      "nombre": "diario",
+      "vencimientoAnterior": "2026-10-26",
+      "vencimientoNuevo": "2026-09-13"
+    },
+    {
+      "miembroId": "cmu2sew2j000c2wfl1sd9dfi2",
+      "nombre": "Diego Rodríguez",
+      "vencimientoAnterior": "2026-10-04",
+      "vencimientoNuevo": "2026-09-23"
+    },
+    {
+      "miembroId": "cmuhfvtyf000501mljfck8f7l",
+      "nombre": "Eliana Higle",
+      "vencimientoAnterior": "2026-09-23",
+      "vencimientoNuevo": "2026-09-24"
+    },
+    {
+      "miembroId": "cmu9us057000101pp9gjlkj0n",
+      "nombre": "Ely Marquez",
+      "vencimientoAnterior": "—",
+      "vencimientoNuevo": "2026-09-13"
+    },
+    {
+      "miembroId": "cmu2sezth001i2wfl2vubnkmz",
+      "nombre": "Francisco Gómez",
+      "vencimientoAnterior": "2026-10-19",
+      "vencimientoNuevo": "2026-10-14"
+    },
+    {
+      "miembroId": "cmu2sex41000o2wflub3uv87n",
+      "nombre": "Francisco Marín",
+      "vencimientoAnterior": "2026-10-19",
+      "vencimientoNuevo": "2026-09-11"
+    },
+    {
+      "miembroId": "cmu2sezjv001f2wflut6i44iz",
+      "nombre": "Francisco Marín",
+      "vencimientoAnterior": "2026-09-23",
+      "vencimientoNuevo": "2026-11-07"
+    },
+    {
+      "miembroId": "cmu2sf3pb002o2wflrk8suiex",
+      "nombre": "Gabriela Rivas",
+      "vencimientoAnterior": "2026-09-23",
+      "vencimientoNuevo": "2026-09-23"
+    },
+    {
+      "miembroId": "cmu2sexdg000r2wflpa1tvewr",
+      "nombre": "Gabriela Rojas",
+      "vencimientoAnterior": "2026-09-30",
+      "vencimientoNuevo": "2026-09-24"
+    },
+    {
+      "miembroId": "cmu3yav0l000201mx38o0fbqu",
+      "nombre": "Gustavo Amarista",
+      "vencimientoAnterior": "2026-09-25",
+      "vencimientoNuevo": "2026-11-03"
+    },
+    {
+      "miembroId": "cmuif848q000d01mrgyd73j93",
+      "nombre": "harry",
+      "vencimientoAnterior": "2026-10-03",
+      "vencimientoNuevo": "2026-10-20"
+    },
+    {
+      "miembroId": "cmu2sf488002u2wflvmr0cvb9",
+      "nombre": "Isabel Martínez",
+      "vencimientoAnterior": "2026-12-11",
+      "vencimientoNuevo": "2026-10-16"
+    },
+    {
+      "miembroId": "cmuegsu30000v01qmgd2lretr",
+      "nombre": "Issanny  Abihasan",
+      "vencimientoAnterior": "2026-09-30",
+      "vencimientoNuevo": "2026-10-18"
+    },
+    {
+      "miembroId": "cmu2sevt800092wfl9jym6mld",
+      "nombre": "Jorge Martínez",
+      "vencimientoAnterior": "2026-09-23",
+      "vencimientoNuevo": "2026-09-23"
+    },
+    {
+      "miembroId": "cmu2sf2jr002c2wfl232rbhpi",
+      "nombre": "Jorge Pérez",
+      "vencimientoAnterior": "2026-10-12",
+      "vencimientoNuevo": "2026-09-11"
+    },
+    {
+      "miembroId": "cmu2sf0p6001r2wflnv891wks",
+      "nombre": "José Rivas",
+      "vencimientoAnterior": "2026-10-06",
+      "vencimientoNuevo": "2026-09-13"
+    },
+    {
+      "miembroId": "cmu9uqegt000001ppp2a5tkfc",
+      "nombre": "Juana de Arco",
+      "vencimientoAnterior": "2026-09-27",
+      "vencimientoNuevo": "2026-11-07"
+    },
+    {
+      "miembroId": "cmue2d477000301nnjug22w8j",
+      "nombre": "juanito",
+      "vencimientoAnterior": "2026-11-22",
+      "vencimientoNuevo": "2026-09-18"
+    },
+    {
+      "miembroId": "cmuehufka000y01qmstpkjkqb",
+      "nombre": "Julio Porte",
+      "vencimientoAnterior": "2026-10-23",
+      "vencimientoNuevo": "2026-10-08"
+    },
+    {
+      "miembroId": "cmu2seyrg00162wflw5q7lplq",
+      "nombre": "Laura González",
+      "vencimientoAnterior": "2026-10-05",
+      "vencimientoNuevo": "2026-09-18"
+    },
+    {
+      "miembroId": "cmu2sf59u00362wfl22uy5dhe",
+      "nombre": "Laura Hernández",
+      "vencimientoAnterior": "2026-09-26",
+      "vencimientoNuevo": "2026-10-24"
+    },
+    {
+      "miembroId": "cmu2sf2t7002f2wflgporcnn8",
+      "nombre": "Laura Hernández",
+      "vencimientoAnterior": "2026-09-23",
+      "vencimientoNuevo": "2026-11-05"
+    },
+    {
+      "miembroId": "cmu2sf5j900392wfldb3geww4",
+      "nombre": "Laura Hernández",
+      "vencimientoAnterior": "2026-09-28",
+      "vencimientoNuevo": "2026-10-30"
+    },
+    {
+      "miembroId": "cmuhflzw3000201mlkr125cib",
+      "nombre": "Luimar J. Cordero",
+      "vencimientoAnterior": "2026-10-25",
+      "vencimientoNuevo": "2026-11-03"
+    },
+    {
+      "miembroId": "cmu2sf185001x2wfl45r25bxd",
+      "nombre": "Luis Castro",
+      "vencimientoAnterior": "2027-06-02",
+      "vencimientoNuevo": "2026-09-23"
+    },
+    {
+      "miembroId": "cmued684q000h01qm3lm5nbry",
+      "nombre": "luis malave",
+      "vencimientoAnterior": "2026-10-23",
+      "vencimientoNuevo": "2026-09-19"
+    },
+    {
+      "miembroId": "cmu2sexpw000u2wflbod6ogkb",
+      "nombre": "Luis Mendoza",
+      "vencimientoAnterior": "2026-10-05",
+      "vencimientoNuevo": "2026-09-18"
+    },
+    {
+      "miembroId": "cmuah4qsp000701pj3k7reb80",
+      "nombre": "luis porteles",
+      "vencimientoAnterior": "2027-11-14",
+      "vencimientoNuevo": "2026-09-11"
+    },
+    {
+      "miembroId": "cmu2sez0w00192wfldpdq741x",
+      "nombre": "María Hernández",
+      "vencimientoAnterior": "2026-10-07",
+      "vencimientoNuevo": "2026-10-28"
+    },
+    {
+      "miembroId": "cmuhajhta000101meam2njy1i",
+      "nombre": "memer",
+      "vencimientoAnterior": "2026-09-23",
+      "vencimientoNuevo": "2026-11-05"
+    },
+    {
+      "miembroId": "cmu2sf1hp00202wflrrn618jn",
+      "nombre": "Miguel Marín",
+      "vencimientoAnterior": "2026-09-23",
+      "vencimientoNuevo": "2026-09-23"
+    },
+    {
+      "miembroId": "cmu2sewla000i2wfllmw69pl8",
+      "nombre": "Pedro Rivas",
+      "vencimientoAnterior": "2026-09-23",
+      "vencimientoNuevo": "2026-09-13"
+    },
+    {
+      "miembroId": "cmue8o2zp000201qm680yt6ki",
+      "nombre": "prueba 27",
+      "vencimientoAnterior": "2026-10-23",
+      "vencimientoNuevo": "2026-10-20"
+    },
+    {
+      "miembroId": "cmu2seyi300132wflkai2afwv",
+      "nombre": "Rafael Flores",
+      "vencimientoAnterior": "2026-09-23",
+      "vencimientoNuevo": "2026-09-13"
+    },
+    {
+      "miembroId": "cmu2sexz9000x2wflaaac32dt",
+      "nombre": "Rafael Hernández",
+      "vencimientoAnterior": "2026-09-30",
+      "vencimientoNuevo": "2026-10-18"
+    },
+    {
+      "miembroId": "cmu2sf3yw002r2wflrfiigni9",
+      "nombre": "Rafael Martínez",
+      "vencimientoAnterior": "2026-09-30",
+      "vencimientoNuevo": "2026-10-10"
+    },
+    {
+      "miembroId": "cmu2sf2a700292wflfelut23l",
+      "nombre": "Rafael Ramírez",
+      "vencimientoAnterior": "2026-10-03",
+      "vencimientoNuevo": "2026-10-26"
+    },
+    {
+      "miembroId": "cmuecm6i1000c01qmk9mqwr0f",
+      "nombre": "Ronieska Guzmán",
+      "vencimientoAnterior": "2026-09-30",
+      "vencimientoNuevo": "2026-10-08"
+    },
+    {
+      "miembroId": "cmu2sf50f00332wfllv3jhf4s",
+      "nombre": "Rosa Marín",
+      "vencimientoAnterior": "2026-10-15",
+      "vencimientoNuevo": "2026-10-30"
+    },
+    {
+      "miembroId": "cmu2sevak00032wfl8tpl1p2p",
+      "nombre": "Rosa Martínez",
+      "vencimientoAnterior": "2026-10-03",
+      "vencimientoNuevo": "2026-10-16"
+    },
+    {
+      "miembroId": "cmu2sf20m00262wfl8c2n2rur",
+      "nombre": "Rosa Mendoza",
+      "vencimientoAnterior": "2026-10-06",
+      "vencimientoNuevo": "2026-10-08"
+    },
+    {
+      "miembroId": "cmu2sewbx000f2wfl7hm8m2sj",
+      "nombre": "Rosa Ortiz",
+      "vencimientoAnterior": "2026-10-02",
+      "vencimientoNuevo": "2026-11-01"
+    },
+    {
+      "miembroId": "cmu2sf4hp002x2wfljrjeyr5b",
+      "nombre": "Rosa Pérez",
+      "vencimientoAnterior": "2026-10-11",
+      "vencimientoNuevo": "2026-11-07"
+    },
+    {
+      "miembroId": "cmu9uxr17000201ppbehielcg",
+      "nombre": "Teresa Alvarez",
+      "vencimientoAnterior": "2026-09-23",
+      "vencimientoNuevo": "2026-09-19"
+    },
+    {
+      "miembroId": "cmuamurif0003t8fl7ldqe9ve",
+      "nombre": "tokio",
+      "vencimientoAnterior": "2026-11-20",
+      "vencimientoNuevo": "2026-11-03"
+    },
+    {
+      "miembroId": "cmu2sf1qz00232wflyjdytk4v",
+      "nombre": "Valentina López",
+      "vencimientoAnterior": "2026-09-23",
+      "vencimientoNuevo": "2026-10-26"
+    },
+    {
+      "miembroId": "cmu2sf3fm002l2wfl30t461b6",
+      "nombre": "Valentina Ortiz",
+      "vencimientoAnterior": "2026-10-12",
+      "vencimientoNuevo": "2026-11-09"
+    },
+    {
+      "miembroId": "cmu2sezae001c2wfl4qh0mvs2",
+      "nombre": "Valentina Ortiz",
+      "vencimientoAnterior": "2026-10-03",
+      "vencimientoNuevo": "2026-09-23"
+    },
+    {
+      "miembroId": "cmu2sf4r100302wflwz7ofz2s",
+      "nombre": "Valentina Pérez",
+      "vencimientoAnterior": "2026-10-05",
+      "vencimientoNuevo": "2026-09-18"
+    }
+  ]
+}

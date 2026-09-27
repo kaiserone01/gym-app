@@ -276,7 +276,7 @@ describe("cambiarPlanConPago — caso Luis Castro (E1: vista previa vs guardado)
   const planNuevo = crearPlan({ id: "plan-semanal", nombre: "Semanal", frecuencia: "SEMANAL", precioUSD: 8 });
   const vencimientoOriginal = new Date("2027-06-02T16:00:00Z");
 
-  test("Solo ajustar vencimiento: guarda 27/03/2027 tanto en el Miembro como en la Suscripción", async () => {
+  test("V > precioNuevo: excedente absorbido en días, sin cobro, guardado en Miembro y Suscripción", async () => {
     const { miembro, suscripcion } = crearMiembroConSuscripcion({
       id: "miembro-castro",
       nombre: "Luis Castro",
@@ -284,16 +284,24 @@ describe("cambiarPlanConPago — caso Luis Castro (E1: vista previa vs guardado)
       plan: planViejo,
       vencimiento: vencimientoOriginal,
     });
-    const { deps, miembros, suscripciones, auditoriasCreadas } = crearFakes({ miembro, suscripcion, planes: [planViejo, planNuevo] });
+    const { deps, miembros, suscripciones, pagosCreados, auditoriasCreadas } = crearFakes({
+      miembro,
+      suscripcion,
+      planes: [planViejo, planNuevo],
+    });
 
     const restaurarReloj = fijarReloj(HOY_ISO);
     try {
+      // 249 días restantes de un plan $25/30d -> V = $207.50, muy por
+      // encima del precio del plan nuevo ($8/7d) — cae en el camino de
+      // "excedente absorbido en días".
       const resultado = await cambiarPlanConPago(deps, {
         organizacionId: "org-1",
         miembroId: miembro.id,
         planNuevoId: planNuevo.id,
-        modo: "AJUSTAR_VENCIMIENTO",
         origen: "CAJA",
+        // Sin método de pago: no debe hacer falta, porque no hay nada que
+        // cobrar cuando el excedente se absorbe en días.
         metodo: null,
         metodoPagoId: null,
         numeroOperacion: null,
@@ -304,21 +312,19 @@ describe("cambiarPlanConPago — caso Luis Castro (E1: vista previa vs guardado)
         entrenadorId: null,
       });
 
-      const esperado = new Date("2027-03-27T00:00:00Z");
-
-      expect(resultado.nuevoVencimiento).toEqual(esperado);
       expect(resultado.diferencia).toBe(0);
+      expect(resultado.pago).toBeNull();
+      // No debe haberse creado ningún Pago — ni siquiera uno de $0.
+      expect(pagosCreados).toHaveLength(0);
 
-      // El bug reportado (E1): el vencimiento se guarda en la Suscripción
-      // pero NUNCA se propaga a Miembro.fechaVencimiento en modo
-      // AJUSTAR_VENCIMIENTO (diferencia siempre 0 en ese modo) — el
-      // miembro seguía viendo el vencimiento viejo tras recargar.
-      expect(miembros.get(miembro.id)!.fechaVencimiento).toEqual(esperado);
+      const esperado = miembros.get(miembro.id)!.fechaVencimiento;
+      expect(esperado).not.toBeNull();
+      expect(resultado.nuevoVencimiento).toEqual(esperado);
       expect(suscripciones.get(suscripcion.id)!.fin).toEqual(esperado);
       expect(miembros.get(miembro.id)!.planId).toBe(planNuevo.id);
 
       // Registro de auditoría (regla 11): un registro por cambio, con el
-      // snapshot exacto del cálculo aplicado.
+      // snapshot exacto del cálculo aplicado, sin pago asociado.
       expect(auditoriasCreadas).toHaveLength(1);
       expect(auditoriasCreadas[0]).toMatchObject({
         organizacionId: "org-1",
@@ -333,9 +339,8 @@ describe("cambiarPlanConPago — caso Luis Castro (E1: vista previa vs guardado)
         diasCicloAnterior: 30,
         precioNuevoCentavos: 800,
         diasCicloNuevo: 7,
-        diasNuevos: 182,
         montoCobradoCentavos: 0,
-        modo: "AJUSTAR_VENCIMIENTO",
+        modo: "CICLO_COMPLETO",
         origen: "CAJA",
         pagoId: null,
         registradoPorId: "usuario-1",
@@ -345,23 +350,29 @@ describe("cambiarPlanConPago — caso Luis Castro (E1: vista previa vs guardado)
     }
   });
 
-  test("Ciclo completo: cobra $8.00 y vence 03/04/2027, guardado en Miembro y Suscripción", async () => {
+  test("V < precioNuevo: cobra la diferencia y vence hoy + diasCicloNuevo, guardado en Miembro y Suscripción", async () => {
+    const vencimientoCorto = new Date("2026-10-06T16:00:00Z"); // 10 días desde el 26/09
     const { miembro, suscripcion } = crearMiembroConSuscripcion({
       id: "miembro-castro-ciclo",
       nombre: "Luis Castro",
       cedula: "99374526",
       plan: planViejo,
-      vencimiento: vencimientoOriginal,
+      vencimiento: vencimientoCorto,
     });
-    const { deps, miembros, suscripciones, auditoriasCreadas } = crearFakes({ miembro, suscripcion, planes: [planViejo, planNuevo] });
+    const planNuevoCaro = crearPlan({ id: "plan-con-entrenador", nombre: "Con entrenador", frecuencia: "MENSUAL", precioUSD: 30 });
+    const { deps, miembros, suscripciones, auditoriasCreadas } = crearFakes({
+      miembro,
+      suscripcion,
+      planes: [planViejo, planNuevoCaro],
+    });
 
     const restaurarReloj = fijarReloj(HOY_ISO);
     try {
+      // V = 10 * (25/30) = $8.33. precioNuevo = $30. Diferencia = $21.67.
       const resultado = await cambiarPlanConPago(deps, {
         organizacionId: "org-1",
         miembroId: miembro.id,
-        planNuevoId: planNuevo.id,
-        modo: "CICLO_COMPLETO",
+        planNuevoId: planNuevoCaro.id,
         origen: "CAJA",
         metodo: "efectivo_usd",
         metodoPagoId: "metodo-1",
@@ -373,32 +384,69 @@ describe("cambiarPlanConPago — caso Luis Castro (E1: vista previa vs guardado)
         entrenadorId: null,
       });
 
-      const esperado = new Date("2027-04-03T00:00:00Z");
+      const esperado = new Date("2026-10-26T00:00:00Z"); // hoy (26/09) + 30 días
 
-      expect(resultado.diferencia).toBe(8);
+      expect(resultado.diferencia).toBe(21.67);
       expect(resultado.nuevoVencimiento).toEqual(esperado);
       expect(resultado.pago).not.toBeNull();
-      expect(resultado.pago!.monto).toBe(8);
+      expect(resultado.pago!.monto).toBe(21.67);
 
       expect(miembros.get(miembro.id)!.fechaVencimiento).toEqual(esperado);
       expect(suscripciones.get(suscripcion.id)!.fin).toEqual(esperado);
-      expect(miembros.get(miembro.id)!.planId).toBe(planNuevo.id);
+      expect(miembros.get(miembro.id)!.planId).toBe(planNuevoCaro.id);
 
       // Con cobro real, la auditoría queda enlazada al Pago creado (regla 11).
       expect(auditoriasCreadas).toHaveLength(1);
-      expect(auditoriasCreadas[0].montoCobradoCentavos).toBe(800);
+      expect(auditoriasCreadas[0].montoCobradoCentavos).toBe(2167);
       expect(auditoriasCreadas[0].pagoId).toBe(resultado.pago!.id);
       expect(auditoriasCreadas[0].modo).toBe("CICLO_COMPLETO");
     } finally {
       restaurarReloj();
     }
   });
+
+  test("V < precioNuevo sin método de pago: lanza MetodoPagoRequeridoError", async () => {
+    const vencimientoCorto = new Date("2026-10-06T16:00:00Z");
+    const { miembro, suscripcion } = crearMiembroConSuscripcion({
+      id: "miembro-castro-sin-metodo",
+      nombre: "Luis Castro",
+      cedula: "99374526",
+      plan: planViejo,
+      vencimiento: vencimientoCorto,
+    });
+    const planNuevoCaro = crearPlan({ id: "plan-con-entrenador-2", nombre: "Con entrenador", frecuencia: "MENSUAL", precioUSD: 30 });
+    const { deps } = crearFakes({ miembro, suscripcion, planes: [planViejo, planNuevoCaro] });
+
+    const restaurarReloj = fijarReloj(HOY_ISO);
+    try {
+      await expect(
+        cambiarPlanConPago(deps, {
+          organizacionId: "org-1",
+          miembroId: miembro.id,
+          planNuevoId: planNuevoCaro.id,
+          origen: "CAJA",
+          metodo: null,
+          metodoPagoId: null,
+          numeroOperacion: null,
+          tasaCambio: null,
+          sucursalId: "sucursal-1",
+          registradoPorId: "usuario-1",
+          rolUsuario: "SOCIO",
+          entrenadorId: null,
+        })
+      ).rejects.toThrow("Elegí un método de pago para cobrar la diferencia.");
+    } finally {
+      restaurarReloj();
+    }
+  });
 });
 
-describe("cambiarPlanConPago — caso Luis Mendoza (Corporativo -> Plan Viejo, Solo ajustar)", () => {
-  test("9 días restantes: guarda 06/10/2026 en el Miembro y en la Suscripción", async () => {
+describe("cambiarPlanConPago — caso Luis Mendoza (Corporativo -> Plan Viejo, V == precioNuevo)", () => {
+  test("V == precioNuevo: sin cobro, avanza un ciclo normal, guardado en el Miembro y en la Suscripción", async () => {
     const planViejo = crearPlan({ id: "plan-corporativo", nombre: "Corporativo", frecuencia: "MENSUAL", precioUSD: 22 });
-    const planNuevo = crearPlan({ id: "plan-viejo", nombre: "Plan Viejo", frecuencia: "MENSUAL", precioUSD: 20 });
+    // 9 días restantes de $22/30d -> V = $6.60. Plan nuevo con precio exacto
+    // igual a V para probar el caso "V == precioNuevo" del use-case completo.
+    const planNuevo = crearPlan({ id: "plan-igual-a-v", nombre: "Igual a V", frecuencia: "MENSUAL", precioUSD: 6.6 });
     const vencimientoOriginal = new Date("2026-10-05T16:00:00Z"); // 9 días desde el 26/09
 
     const { miembro, suscripcion } = crearMiembroConSuscripcion({
@@ -408,7 +456,7 @@ describe("cambiarPlanConPago — caso Luis Mendoza (Corporativo -> Plan Viejo, S
       plan: planViejo,
       vencimiento: vencimientoOriginal,
     });
-    const { deps, miembros, suscripciones } = crearFakes({ miembro, suscripcion, planes: [planViejo, planNuevo] });
+    const { deps, miembros, suscripciones, pagosCreados } = crearFakes({ miembro, suscripcion, planes: [planViejo, planNuevo] });
 
     const restaurarReloj = fijarReloj(HOY_ISO);
     try {
@@ -416,7 +464,6 @@ describe("cambiarPlanConPago — caso Luis Mendoza (Corporativo -> Plan Viejo, S
         organizacionId: "org-1",
         miembroId: miembro.id,
         planNuevoId: planNuevo.id,
-        modo: "AJUSTAR_VENCIMIENTO",
         origen: "CAJA",
         metodo: null,
         metodoPagoId: null,
@@ -428,9 +475,11 @@ describe("cambiarPlanConPago — caso Luis Mendoza (Corporativo -> Plan Viejo, S
         entrenadorId: null,
       });
 
-      const esperado = new Date("2026-10-06T00:00:00Z");
+      const esperado = new Date("2026-10-26T00:00:00Z"); // hoy (26/09) + 30 días, sin días extra
 
       expect(resultado.diferencia).toBe(0);
+      expect(resultado.pago).toBeNull();
+      expect(pagosCreados).toHaveLength(0);
       expect(resultado.nuevoVencimiento).toEqual(esperado);
       expect(miembros.get(miembro.id)!.fechaVencimiento).toEqual(esperado);
       expect(suscripciones.get(suscripcion.id)!.fin).toEqual(esperado);

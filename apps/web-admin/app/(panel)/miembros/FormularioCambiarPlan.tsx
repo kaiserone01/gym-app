@@ -4,11 +4,11 @@ import { useActionState, useEffect, useState } from "react";
 import { Button } from "@gym-app/ui/components/Button";
 import { useFeedback } from "@gym-app/ui/components/FeedbackOverlay";
 import type { MetodoPago } from "@gym-app/domain/entities/MetodoPago";
-import type { FrecuenciaPago } from "@gym-app/domain/entities/Plan";
+import { DURACION_DIAS_POR_FRECUENCIA, type FrecuenciaPago } from "@gym-app/domain/entities/Plan";
+import { calcularCambioPlan, PlanCortesiaConTiempoRestanteError, type ModoCambioPlan, type ResultadoCambioPlan } from "@gym-app/domain/entities/cambioPlanCalculo";
 import type { EstadoCambioPlan } from "../pagos/actions";
 import { SelectorMetodoPago } from "../pagos/SelectorMetodoPago";
 import { useHayCambiosSinGuardar } from "./ContextoCambiosSinGuardar";
-import { calcularProrrateoPlanCliente } from "../caja/calcularProrrateoPlan";
 
 const ETIQUETA_FRECUENCIA: Record<FrecuenciaPago, string> = {
   DIARIO: "diario",
@@ -30,6 +30,16 @@ export interface EntrenadorParaCambio {
   nombre: string;
 }
 
+// Lo que el padre (ContenidoPaso2 del wizard de Caja) necesita para mostrar
+// UN solo pronóstico coherente con el botón que el operador va a tocar —
+// corrige E6 (el cuadro de renovación mostraba un cálculo distinto, sin
+// prorratear, al de los botones de acá). null cuando no hay plan nuevo
+// elegido o el modo todavía no se decidió (ningún botón preseleccionado).
+export interface ProyeccionCambioPlan {
+  modo: ModoCambioPlan;
+  resultado: ResultadoCambioPlan;
+}
+
 export function FormularioCambiarPlan({
   accion,
   miembroId,
@@ -44,15 +54,16 @@ export function FormularioCambiarPlan({
   origen,
   onCambiado,
   onPlanNuevoCambiado,
+  onProyeccionCambiada,
 }: {
   accion: (estado: EstadoCambioPlan, formData: FormData) => Promise<EstadoCambioPlan>;
   miembroId: string;
   planes: PlanParaCambio[];
   planActualId: string | null;
-  // Precio y vencimiento vigentes del plan actual — la fórmula de
-  // prorrateo (calcularProrrateoPlanCliente) los usa para calcular el
-  // valor no consumido del ciclo, sin importar la frecuencia del plan
-  // nuevo (ver diseño acordado, ya no se restringe a la misma frecuencia).
+  // Precio y vencimiento vigentes del plan actual — calcularCambioPlan los
+  // usa para calcular el valor no consumido del ciclo, sin importar la
+  // frecuencia del plan nuevo (ver diseño acordado, ya no se restringe a
+  // la misma frecuencia).
   precioActual: number;
   frecuenciaActual: FrecuenciaPago;
   fechaVencimientoActual: Date;
@@ -74,6 +85,12 @@ export function FormularioCambiarPlan({
   // vivo la proyección de días/vencimiento que muestra debajo (ver
   // feedback: no reaccionaba porque planNuevoId es estado interno acá).
   onPlanNuevoCambiado?: (plan: PlanParaCambio | null) => void;
+  // Avisa al wizard de Caja el resultado exacto (modo + cálculo) que
+  // corresponde al botón que el operador tiene resaltado — ContenidoPaso2
+  // lo usa para reemplazar su propio cuadro de renovación (que no
+  // prorrateaba, ver E6) por este mismo número. null si no hay nada
+  // elegido todavía.
+  onProyeccionCambiada?: (proyeccion: ProyeccionCambioPlan | null) => void;
 }) {
   const [estado, enviar, enviando] = useActionState(accion, {});
   const { mostrarError, mostrarExito } = useFeedback();
@@ -106,33 +123,54 @@ export function FormularioCambiarPlan({
 
   const planNuevo = planes.find((p) => p.id === planNuevoId) ?? null;
 
-  const ahora = new Date();
-  const prorrateoAjustar = planNuevo
-    ? calcularProrrateoPlanCliente({
-        precioViejo: precioActual,
-        frecuenciaVieja: frecuenciaActual,
-        precioNuevo: planNuevo.precioUSD,
-        frecuenciaNueva: planNuevo.frecuencia,
-        fechaVencimientoActual,
-        ahora,
-        modo: "AJUSTAR_VENCIMIENTO",
-      })
-    : null;
-  const prorrateoCicloCompleto = planNuevo
-    ? calcularProrrateoPlanCliente({
-        precioViejo: precioActual,
-        frecuenciaVieja: frecuenciaActual,
-        precioNuevo: planNuevo.precioUSD,
-        frecuenciaNueva: planNuevo.frecuencia,
-        fechaVencimientoActual,
-        ahora,
-        modo: "CICLO_COMPLETO",
-      })
-    : null;
+  // Cortesía ($0) con tiempo restante — calcularCambioPlan bloquea este
+  // caso lanzando PlanCortesiaConTiempoRestanteError (regla 6 del diseño
+  // acordado: nunca se regala el tiempo restante). Acá se atrapa para
+  // mostrar el mensaje en vez de romper el render.
+  let prorrateoAjustar: ResultadoCambioPlan | null = null;
+  let prorrateoCicloCompleto: ResultadoCambioPlan | null = null;
+  let errorCortesia: string | null = null;
 
-  const [modoElegido, setModoElegido] = useState<"AJUSTAR_VENCIMIENTO" | "CICLO_COMPLETO" | null>(null);
+  if (planNuevo) {
+    const datosBase = {
+      hoy: new Date(),
+      precioViejo: precioActual,
+      diasCicloViejo: DURACION_DIAS_POR_FRECUENCIA[frecuenciaActual],
+      fechaVencimientoActual,
+      precioNuevo: planNuevo.precioUSD,
+      diasCicloNuevo: DURACION_DIAS_POR_FRECUENCIA[planNuevo.frecuencia],
+    };
+    try {
+      prorrateoAjustar = calcularCambioPlan({ ...datosBase, modo: "AJUSTAR_VENCIMIENTO" });
+      prorrateoCicloCompleto = calcularCambioPlan({ ...datosBase, modo: "CICLO_COMPLETO" });
+    } catch (error) {
+      if (error instanceof PlanCortesiaConTiempoRestanteError) {
+        errorCortesia = error.message;
+      } else {
+        throw error;
+      }
+    }
+  }
+
+  // Ningún botón viene preseleccionado por defecto (ver diseño acordado,
+  // regla 10) — modoElegido arranca en null y solo se fija cuando el
+  // operador toca uno de los dos botones.
+  const [modoElegido, setModoElegido] = useState<ModoCambioPlan | null>(null);
   const requiereEntrenador = planNuevo?.incluyeEntrenador ?? false;
-  const diferenciaCicloCompleto = prorrateoCicloCompleto?.diferencia ?? 0;
+  const montoCicloCompleto = prorrateoCicloCompleto ? prorrateoCicloCompleto.montoCobradoCentavos / 100 : 0;
+
+  // Avisa al padre (ContenidoPaso2 del wizard de Caja) cuál es el pronóstico
+  // que corresponde al botón resaltado — corrige E6, ver ProyeccionCambioPlan.
+  useEffect(() => {
+    if (!onProyeccionCambiada) return;
+    if (!modoElegido) {
+      onProyeccionCambiada(null);
+      return;
+    }
+    const resultado = modoElegido === "AJUSTAR_VENCIMIENTO" ? prorrateoAjustar : prorrateoCicloCompleto;
+    onProyeccionCambiada(resultado ? { modo: modoElegido, resultado } : null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- se recalcula con cada render de este componente (planNuevo/fechas ya están en las deps de arriba); solo evita un bucle infinito si onProyeccionCambiada no es estable
+  }, [modoElegido, prorrateoAjustar, prorrateoCicloCompleto]);
 
   return (
     <form
@@ -213,16 +251,25 @@ export function FormularioCambiarPlan({
         </label>
       )}
 
-      {planNuevo && diferenciaCicloCompleto > 0 && (
+      {planNuevo && errorCortesia && (
+        <p
+          className="rounded-lg px-3 py-2 text-sm"
+          style={{ background: "color-mix(in srgb, var(--gx-bad) 15%, transparent)", color: "var(--gx-bad)" }}
+        >
+          {errorCortesia}
+        </p>
+      )}
+
+      {planNuevo && montoCicloCompleto > 0 && (
         <SelectorMetodoPago
           metodos={metodosPago}
-          monto={diferenciaCicloCompleto}
+          monto={montoCicloCompleto}
           onCambio={setSeleccionMetodo}
           avisoServidor={{ tasaNueva: estado.tasaNueva, fallaTemporal: estado.fallaTemporal, tasaGuardada: estado.tasaGuardada }}
         />
       )}
 
-      {planNuevo && planNuevo.id !== planActualId && prorrateoAjustar && prorrateoCicloCompleto && (
+      {planNuevo && planNuevo.id !== planActualId && !errorCortesia && prorrateoAjustar && prorrateoCicloCompleto && (
         <div className="flex flex-col gap-2">
           {/* Cada botón integra su propio detalle (antes eran una card
               informativa separada arriba de un botón de solo texto — daba
@@ -248,18 +295,16 @@ export function FormularioCambiarPlan({
             type="submit"
             name="modo"
             value="CICLO_COMPLETO"
-            disabled={enviando || (requiereEntrenador && !entrenadorId) || (diferenciaCicloCompleto > 0 && !seleccionMetodo.metodoPagoId)}
+            disabled={enviando || (requiereEntrenador && !entrenadorId) || (montoCicloCompleto > 0 && !seleccionMetodo.metodoPagoId)}
             onClick={() => setModoElegido("CICLO_COMPLETO")}
             className="flex min-h-fit flex-col items-start gap-1 py-3 text-left"
           >
             <span className="font-semibold">
               {enviando && modoElegido === "CICLO_COMPLETO"
                 ? "Guardando..."
-                : diferenciaCicloCompleto > 0
-                  ? `Pagar ciclo completo — cobrar $${diferenciaCicloCompleto.toFixed(2)}`
-                  : diferenciaCicloCompleto < 0
-                    ? `Pagar ciclo completo — acreditar $${Math.abs(diferenciaCicloCompleto).toFixed(2)}`
-                    : "Pagar ciclo completo"}
+                : montoCicloCompleto > 0
+                  ? `Pagar ciclo completo — cobrar $${montoCicloCompleto.toFixed(2)}`
+                  : "Pagar ciclo completo"}
             </span>
             <span className="text-xs font-normal" style={{ color: "var(--gx-accent-ink)", opacity: 0.85 }}>
               Nuevo vencimiento: {prorrateoCicloCompleto.nuevoVencimiento.toLocaleDateString("es-VE")}

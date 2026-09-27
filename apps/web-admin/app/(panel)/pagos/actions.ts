@@ -335,12 +335,13 @@ export async function cambiarPlanAction(
   revalidatePath(`/miembros/${miembroId}/pagos`);
   revalidatePath("/caja");
 
+  // CambiarPlanConPago ya no genera saldo a favor (ver regla 5 del diseño
+  // acordado: el valor no consumido se convierte en días, nunca en
+  // crédito) — resultado.diferencia siempre es >= 0.
   const mensaje =
     resultado.diferencia > 0
-      ? `Plan cambiado — se cobró la diferencia de $${resultado.diferencia.toFixed(2)}.`
-      : resultado.saldoAFavorGenerado > 0
-        ? `Plan cambiado — se acreditaron $${resultado.saldoAFavorGenerado.toFixed(2)} de saldo a favor.`
-        : "Plan cambiado, sin costo adicional.";
+      ? `Plan cambiado — se cobró $${resultado.diferencia.toFixed(2)}.`
+      : "Plan cambiado, sin costo adicional.";
 
   // Desde el wizard de Caja: se queda en /caja y cierra el modal (ver
   // diseño acordado), igual criterio que registrarPagoAction con

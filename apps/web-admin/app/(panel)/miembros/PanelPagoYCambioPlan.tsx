@@ -116,7 +116,7 @@ export function PanelPagoYCambioPlan({
           <p className="mb-4 text-xs" style={{ color: "var(--gx-muted)" }}>
             Para subir o bajar de plan sin esperar a que venza el ciclo actual — el sistema prorratea el valor no
             consumido del ciclo. Elegí si solo ajustar el vencimiento (sin costo) o pagar un ciclo completo del plan
-            nuevo (cobra o acredita la diferencia).
+            nuevo.
           </p>
           <FormularioCambiarPlan
             accion={accionCambiarPlan}

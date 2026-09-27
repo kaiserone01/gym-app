@@ -18,7 +18,7 @@ import { calcularProyeccionAbono } from "./proyeccionAbono";
 import { PanelRemanentePago } from "./PanelRemanentePago";
 import { formatearFechaCorta } from "./ProyeccionCiclosUI";
 import type { ReglaAbonoPorFrecuencia } from "@gym-app/domain/entities/ReglaAbono";
-import { FormularioCambiarPlan, type EntrenadorParaCambio } from "../miembros/FormularioCambiarPlan";
+import { FormularioCambiarPlan, type EntrenadorParaCambio, type ProyeccionCambioPlan } from "../miembros/FormularioCambiarPlan";
 
 type Paso = 1 | 2 | 3 | 4;
 
@@ -148,18 +148,18 @@ function ContenidoPaso2({
   // FormularioCambiarPlan) en vez de solo reasignarlo para este pago.
   const tieneCicloVigente = miembro.fechaVencimiento !== null && miembro.fechaVencimiento > new Date();
   const [cambiandoPlan, setCambiandoPlan] = useState(false);
-  // Plan elegido en el <select> "Plan nuevo" DENTRO de FormularioCambiarPlan
-  // — ese select vive en el estado interno de ese componente, así que sin
-  // este puente la proyección de días/vencimiento de abajo quedaba fija en
-  // el plan viejo del miembro y no reaccionaba al cambiar de plan nuevo acá
-  // (ver feedback: "no lo hace en este momento").
-  const [frecuenciaPlanEnCambio, setFrecuenciaPlanEnCambio] = useState<FrecuenciaPago | null>(null);
-  const frecuenciaParaProyeccion =
-    cambiandoPlan && tieneCicloVigente ? frecuenciaPlanEnCambio : (planEfectivo?.frecuencia ?? null);
+  // Resultado exacto (modo + cálculo con calcularCambioPlan) que corresponde
+  // al botón resaltado dentro de FormularioCambiarPlan — corrige E6: antes
+  // este cuadro usaba calcularProyeccionRenovacion (suma un ciclo al
+  // vencimiento actual, SIN prorratear) incluso mientras se cambiaba de
+  // plan, mostrando un número distinto al de los botones de abajo.
+  const [proyeccionCambioPlan, setProyeccionCambioPlan] = useState<ProyeccionCambioPlan | null>(null);
 
-  const proyeccion = frecuenciaParaProyeccion
-    ? calcularProyeccionRenovacion(miembro.fechaVencimiento, frecuenciaParaProyeccion)
-    : null;
+  // Fuera del flujo de cambio de plan: la renovación normal del plan
+  // vigente (sin prorrateo, correcto acá — no hay cambio de plan de por
+  // medio) usa calcularProyeccionRenovacion como siempre.
+  const proyeccionRenovacionNormal =
+    !cambiandoPlan && planEfectivo ? calcularProyeccionRenovacion(miembro.fechaVencimiento, planEfectivo.frecuencia) : null;
 
   return (
     <div className="flex flex-col gap-5 text-base">
@@ -179,7 +179,7 @@ function ContenidoPaso2({
             type="button"
             onClick={() => {
               setCambiandoPlan(true);
-              setFrecuenciaPlanEnCambio(null);
+              setProyeccionCambioPlan(null);
             }}
             className="min-h-9 shrink-0 rounded-lg border px-3 text-sm font-medium"
             style={{ borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }}
@@ -208,7 +208,7 @@ function ContenidoPaso2({
           <p className="text-xs" style={{ color: "var(--gx-muted)" }}>
             Para subir o bajar de plan sin esperar a que venza el ciclo actual — el sistema prorratea el valor no
             consumido del ciclo. Elegí si solo ajustar el vencimiento (sin costo) o pagar un ciclo completo del plan
-            nuevo (cobra o acredita la diferencia).
+            nuevo.
           </p>
           <FormularioCambiarPlan
             accion={accionCambiarPlan}
@@ -223,14 +223,15 @@ function ContenidoPaso2({
             entrenadorActualId={miembro.entrenadorId}
             origen="caja"
             onCambiado={onCerrar}
-            onPlanNuevoCambiado={(plan) => setFrecuenciaPlanEnCambio(plan?.frecuencia ?? null)}
+            onPlanNuevoCambiado={() => setProyeccionCambioPlan(null)}
+            onProyeccionCambiada={setProyeccionCambioPlan}
           />
           <Button
             type="button"
             variant="secundario"
             onClick={() => {
               setCambiandoPlan(false);
-              setFrecuenciaPlanEnCambio(null);
+              setProyeccionCambioPlan(null);
             }}
           >
             Cancelar
@@ -285,17 +286,35 @@ function ContenidoPaso2({
         </label>
       )}
 
-      {proyeccion && (
+      {/* Cambiando de plan: un solo pronóstico, el que corresponde al botón
+          resaltado dentro de FormularioCambiarPlan — nunca el de renovación
+          normal a la vez (corrige E6: antes se mostraban dos números
+          distintos, sin prorrateo acá y prorrateado en los botones). Sin
+          ningún botón tocado todavía (modoElegido null), no se muestra
+          nada — ningún pronóstico "por defecto". */}
+      {cambiandoPlan && proyeccionCambioPlan && (
+        <div className="rounded-lg border p-4" style={{ borderColor: "var(--gx-accent)" }}>
+          <p style={{ color: "var(--gx-ink)" }}>
+            {proyeccionCambioPlan.modo === "AJUSTAR_VENCIMIENTO"
+              ? "Solo ajustar vencimiento — "
+              : "Pagar ciclo completo — "}
+            nuevo vencimiento{" "}
+            <strong>{formatearFechaCorta(proyeccionCambioPlan.resultado.nuevoVencimiento)}</strong>.
+          </p>
+        </div>
+      )}
+
+      {!cambiandoPlan && proyeccionRenovacionNormal && (
         <div className="rounded-lg border p-4" style={{ borderColor: "var(--gx-edge)" }}>
           <p style={{ color: "var(--gx-ink)" }}>
-            Al pagar la renovación, disfrutará de <strong>{proyeccion.diasDelPlan} días</strong>
-            {proyeccion.adelantandoCuota && (
-              <> ({proyeccion.diasTotalesTrasPago} días en total, incluyendo los días restantes)</>
+            Al pagar la renovación, disfrutará de <strong>{proyeccionRenovacionNormal.diasDelPlan} días</strong>
+            {proyeccionRenovacionNormal.adelantandoCuota && (
+              <> ({proyeccionRenovacionNormal.diasTotalesTrasPago} días en total, incluyendo los días restantes)</>
             )}
             .
           </p>
           <p className="mt-2" style={{ color: "var(--gx-muted)" }}>
-            Próximo vencimiento: {formatearFechaCorta(proyeccion.fechaProximoVencimiento)}
+            Próximo vencimiento: {formatearFechaCorta(proyeccionRenovacionNormal.fechaProximoVencimiento)}
           </p>
         </div>
       )}

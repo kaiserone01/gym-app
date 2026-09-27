@@ -17,6 +17,13 @@ async function main() {
   const checkIns = await prisma.checkIn.deleteMany({});
   console.log(`🗑️  CheckIns borrados: ${checkIns.count}`);
 
+  // CambioPlanAuditoria.miembroId es RESTRICT (ver diseño acordado: el
+  // historial de auditoría no debe desaparecer silenciosamente en una baja
+  // real) — este script de prueba sí necesita borrarlo primero, a mano,
+  // porque es el único lugar que borra Miembro físicamente.
+  const auditoriasCambioPlan = await prisma.cambioPlanAuditoria.deleteMany({});
+  console.log(`🗑️  Auditorías de cambio de plan borradas: ${auditoriasCambioPlan.count}`);
+
   const pagos = await prisma.pago.deleteMany({});
   console.log(`🗑️  Pagos borrados: ${pagos.count}`);
 

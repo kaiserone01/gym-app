@@ -1,4 +1,4 @@
-import type { PrismaClient } from "@gym-app/db/generated/prisma/client";
+import type { PrismaClientOrTx } from "./PrismaClientOrTx";
 import type { IMemberRepository } from "@gym-app/domain/ports/IMemberRepository";
 import type { Miembro, DatosNuevoMiembro, CambiosMiembro } from "@gym-app/domain/entities/Miembro";
 
@@ -47,7 +47,7 @@ function mapear(miembro: FilaMiembro): Miembro {
 }
 
 export class PrismaMemberRepository implements IMemberRepository {
-  constructor(private readonly prisma: PrismaClient) {}
+  constructor(private readonly prisma: PrismaClientOrTx) {}
 
   async buscarPorOrganizacionYCedula(organizacionId: string, cedula: string): Promise<Miembro | null> {
     const miembro = await this.prisma.miembro.findUnique({

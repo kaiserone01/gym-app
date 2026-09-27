@@ -1,4 +1,4 @@
-import type { PrismaClient } from "@gym-app/db/generated/prisma/client";
+import type { PrismaClientOrTx } from "./PrismaClientOrTx";
 import type { ISuscripcionRepository } from "@gym-app/domain/ports/ISuscripcionRepository";
 import type { Suscripcion } from "@gym-app/domain/entities/Suscripcion";
 
@@ -25,7 +25,7 @@ function mapear(suscripcion: FilaSuscripcion): Suscripcion {
 }
 
 export class PrismaSuscripcionRepository implements ISuscripcionRepository {
-  constructor(private readonly prisma: PrismaClient) {}
+  constructor(private readonly prisma: PrismaClientOrTx) {}
 
   async buscarActivaVigentePorMiembro(miembroId: string, fecha: Date): Promise<Suscripcion | null> {
     const suscripcion = await this.prisma.suscripcion.findFirst({

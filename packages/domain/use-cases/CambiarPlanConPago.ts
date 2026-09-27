@@ -10,6 +10,8 @@ import { RolUsuario } from "../entities/UsuarioAdmin";
 import { MiembroFueraDeSucursalError } from "./ObtenerMiembro";
 import { calcularCambioPlan, PlanCortesiaConTiempoRestanteError, type ModoCambioPlan } from "../entities/cambioPlanCalculo";
 import { DURACION_DIAS_POR_FRECUENCIA } from "../entities/Plan";
+import { ICambioPlanAuditoriaRepository } from "../ports/ICambioPlanAuditoriaRepository";
+import type { OrigenCambioPlan } from "../entities/CambioPlanAuditoria";
 
 export { PlanCortesiaConTiempoRestanteError };
 
@@ -68,6 +70,7 @@ export interface CambiarPlanConPagoDeps {
   turnos: ITurnoRepository;
   sucursales: ISucursalRepository;
   autorizacion: IAuthorizationService;
+  auditoria: ICambioPlanAuditoriaRepository;
 }
 
 export interface DatosCambiarPlanConPago {
@@ -79,6 +82,10 @@ export interface DatosCambiarPlanConPago {
   // completo del plan nuevo, cobrando o acreditando la diferencia) — ver
   // diseño en docs/superpowers/specs/2026-09-26-cambio-plan-con-prorrateo-design.md.
   modo: ModoCambioPlan;
+  // Desde dónde se disparó este cambio — se persiste en el registro de
+  // auditoría (regla 11 del diseño acordado; ver
+  // packages/domain/entities/CambioPlanAuditoria.ts).
+  origen: OrigenCambioPlan;
   metodo: string | null;
   metodoPagoId: string | null;
   numeroOperacion: string | null;
@@ -216,6 +223,31 @@ export async function cambiarPlanConPago(
     planId: input.planNuevoId,
     precioPlan: planNuevo.precioUSD,
     ...(planNuevo.incluyeEntrenador ? { entrenadorId: input.entrenadorId } : {}),
+  });
+
+  // Registro de auditoría (regla 11): snapshot exacto de los datos crudos
+  // usados en el cálculo (precio y días de ciclo de cada plan, no la
+  // tarifa ya derivada) — para que el registro no dependa de una división
+  // ya redondeada y se pueda auditar/recalcular sin ambigüedad.
+  await deps.auditoria.crear({
+    organizacionId: input.organizacionId,
+    miembroId: input.miembroId,
+    planAnteriorId: activa.planId,
+    planNuevoId: input.planNuevoId,
+    vencimientoAnterior: activa.fin,
+    vencimientoNuevo: resultado.nuevoVencimiento,
+    diasRestantes: resultado.diasRestantes,
+    valorNoConsumidoCentavos: resultado.valorNoConsumidoCentavos,
+    precioAnteriorCentavos: Math.round(precioViejo * 100),
+    diasCicloAnterior: DURACION_DIAS_POR_FRECUENCIA[frecuenciaVieja],
+    precioNuevoCentavos: Math.round(planNuevo.precioUSD * 100),
+    diasCicloNuevo: DURACION_DIAS_POR_FRECUENCIA[planNuevo.frecuencia],
+    diasNuevos: resultado.diasNuevos,
+    montoCobradoCentavos: resultado.montoCobradoCentavos,
+    modo: input.modo,
+    origen: input.origen,
+    pagoId: pago?.id ?? null,
+    registradoPorId: input.registradoPorId,
   });
 
   return {

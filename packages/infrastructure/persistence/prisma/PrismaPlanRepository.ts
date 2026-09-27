@@ -1,4 +1,4 @@
-import type { PrismaClient } from "@gym-app/db/generated/prisma/client";
+import type { PrismaClientOrTx } from "./PrismaClientOrTx";
 import type { IPlanRepository } from "@gym-app/domain/ports/IPlanRepository";
 import type { Plan, DatosNuevoPlan, CambiosPlan, FrecuenciaPago } from "@gym-app/domain/entities/Plan";
 
@@ -33,7 +33,7 @@ function mapear(plan: FilaPlan): Plan {
 }
 
 export class PrismaPlanRepository implements IPlanRepository {
-  constructor(private readonly prisma: PrismaClient) {}
+  constructor(private readonly prisma: PrismaClientOrTx) {}
 
   async listarPorOrganizacion(organizacionId: string): Promise<Plan[]> {
     const planes = await this.prisma.plan.findMany({

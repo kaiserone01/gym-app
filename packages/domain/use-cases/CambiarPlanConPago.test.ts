@@ -11,6 +11,8 @@ import type { Miembro, CambiosMiembro } from "../entities/Miembro";
 import type { Suscripcion } from "../entities/Suscripcion";
 import type { Plan, FrecuenciaPago } from "../entities/Plan";
 import type { Pago, DatosNuevoPago } from "../entities/Pago";
+import type { ICambioPlanAuditoriaRepository } from "../ports/ICambioPlanAuditoriaRepository";
+import type { CambioPlanAuditoria, DatosNuevoCambioPlanAuditoria } from "../entities/CambioPlanAuditoria";
 
 // Fakes en memoria — reproducen el caso real reportado (Luis Castro) sin
 // tocar Prisma/DB, para probar el use-case completo de punta a punta
@@ -22,6 +24,7 @@ function crearFakes(estadoInicial: { miembro: Miembro; suscripcion: Suscripcion;
   const suscripciones = new Map<string, Suscripcion>([[estadoInicial.suscripcion.id, estadoInicial.suscripcion]]);
   const planes = new Map<string, Plan>(estadoInicial.planes.map((p) => [p.id, p]));
   const pagosCreados: DatosNuevoPago[] = [];
+  const auditoriasCreadas: DatosNuevoCambioPlanAuditoria[] = [];
 
   const memberRepo: IMemberRepository = {
     buscarPorOrganizacionYCedula: async () => null,
@@ -153,6 +156,18 @@ function crearFakes(estadoInicial: { miembro: Miembro; suscripcion: Suscripcion;
     tienePermiso: async () => true,
   };
 
+  const auditoriaRepo: ICambioPlanAuditoriaRepository = {
+    crear: async (datos) => {
+      auditoriasCreadas.push(datos);
+      const registro: CambioPlanAuditoria = {
+        id: `auditoria-${auditoriasCreadas.length}`,
+        ...datos,
+        fecha: new Date(),
+      };
+      return registro;
+    },
+  };
+
   const deps: CambiarPlanConPagoDeps = {
     pagos: pagoRepo,
     suscripciones: suscripcionRepo,
@@ -161,9 +176,10 @@ function crearFakes(estadoInicial: { miembro: Miembro; suscripcion: Suscripcion;
     turnos: turnoRepo,
     sucursales: sucursalRepo,
     autorizacion,
+    auditoria: auditoriaRepo,
   };
 
-  return { deps, miembros, suscripciones, pagosCreados };
+  return { deps, miembros, suscripciones, pagosCreados, auditoriasCreadas };
 }
 
 function crearPlan(datos: {
@@ -268,7 +284,7 @@ describe("cambiarPlanConPago — caso Luis Castro (E1: vista previa vs guardado)
       plan: planViejo,
       vencimiento: vencimientoOriginal,
     });
-    const { deps, miembros, suscripciones } = crearFakes({ miembro, suscripcion, planes: [planViejo, planNuevo] });
+    const { deps, miembros, suscripciones, auditoriasCreadas } = crearFakes({ miembro, suscripcion, planes: [planViejo, planNuevo] });
 
     const restaurarReloj = fijarReloj(HOY_ISO);
     try {
@@ -277,6 +293,7 @@ describe("cambiarPlanConPago — caso Luis Castro (E1: vista previa vs guardado)
         miembroId: miembro.id,
         planNuevoId: planNuevo.id,
         modo: "AJUSTAR_VENCIMIENTO",
+        origen: "CAJA",
         metodo: null,
         metodoPagoId: null,
         numeroOperacion: null,
@@ -299,6 +316,30 @@ describe("cambiarPlanConPago — caso Luis Castro (E1: vista previa vs guardado)
       expect(miembros.get(miembro.id)!.fechaVencimiento).toEqual(esperado);
       expect(suscripciones.get(suscripcion.id)!.fin).toEqual(esperado);
       expect(miembros.get(miembro.id)!.planId).toBe(planNuevo.id);
+
+      // Registro de auditoría (regla 11): un registro por cambio, con el
+      // snapshot exacto del cálculo aplicado.
+      expect(auditoriasCreadas).toHaveLength(1);
+      expect(auditoriasCreadas[0]).toMatchObject({
+        organizacionId: "org-1",
+        miembroId: miembro.id,
+        planAnteriorId: planViejo.id,
+        planNuevoId: planNuevo.id,
+        vencimientoAnterior: vencimientoOriginal,
+        vencimientoNuevo: esperado,
+        diasRestantes: 249,
+        valorNoConsumidoCentavos: 20750,
+        precioAnteriorCentavos: 2500,
+        diasCicloAnterior: 30,
+        precioNuevoCentavos: 800,
+        diasCicloNuevo: 7,
+        diasNuevos: 182,
+        montoCobradoCentavos: 0,
+        modo: "AJUSTAR_VENCIMIENTO",
+        origen: "CAJA",
+        pagoId: null,
+        registradoPorId: "usuario-1",
+      });
     } finally {
       restaurarReloj();
     }
@@ -312,7 +353,7 @@ describe("cambiarPlanConPago — caso Luis Castro (E1: vista previa vs guardado)
       plan: planViejo,
       vencimiento: vencimientoOriginal,
     });
-    const { deps, miembros, suscripciones } = crearFakes({ miembro, suscripcion, planes: [planViejo, planNuevo] });
+    const { deps, miembros, suscripciones, auditoriasCreadas } = crearFakes({ miembro, suscripcion, planes: [planViejo, planNuevo] });
 
     const restaurarReloj = fijarReloj(HOY_ISO);
     try {
@@ -321,6 +362,7 @@ describe("cambiarPlanConPago — caso Luis Castro (E1: vista previa vs guardado)
         miembroId: miembro.id,
         planNuevoId: planNuevo.id,
         modo: "CICLO_COMPLETO",
+        origen: "CAJA",
         metodo: "efectivo_usd",
         metodoPagoId: "metodo-1",
         numeroOperacion: null,
@@ -341,6 +383,12 @@ describe("cambiarPlanConPago — caso Luis Castro (E1: vista previa vs guardado)
       expect(miembros.get(miembro.id)!.fechaVencimiento).toEqual(esperado);
       expect(suscripciones.get(suscripcion.id)!.fin).toEqual(esperado);
       expect(miembros.get(miembro.id)!.planId).toBe(planNuevo.id);
+
+      // Con cobro real, la auditoría queda enlazada al Pago creado (regla 11).
+      expect(auditoriasCreadas).toHaveLength(1);
+      expect(auditoriasCreadas[0].montoCobradoCentavos).toBe(800);
+      expect(auditoriasCreadas[0].pagoId).toBe(resultado.pago!.id);
+      expect(auditoriasCreadas[0].modo).toBe("CICLO_COMPLETO");
     } finally {
       restaurarReloj();
     }
@@ -369,6 +417,7 @@ describe("cambiarPlanConPago — caso Luis Mendoza (Corporativo -> Plan Viejo, S
         miembroId: miembro.id,
         planNuevoId: planNuevo.id,
         modo: "AJUSTAR_VENCIMIENTO",
+        origen: "CAJA",
         metodo: null,
         metodoPagoId: null,
         numeroOperacion: null,

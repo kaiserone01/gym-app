@@ -12,6 +12,7 @@ import { PrismaTurnoRepository } from "@gym-app/infrastructure/persistence/prism
 import { PrismaPermisoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaPermisoRepository";
 import { PrismaSucursalRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaSucursalRepository";
 import { PrismaReglaAbonoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaReglaAbonoRepository";
+import { PrismaCambioPlanAuditoriaRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaCambioPlanAuditoriaRepository";
 import { AuthorizationService } from "@gym-app/domain/services/AuthorizationService";
 import { orquestadorTasa, validarTasaCobro } from "@/lib/tasaBcv";
 import { conMensajeOk } from "../redirectConMensaje";
@@ -36,6 +37,7 @@ import {
   SinCicloVigenteError,
   MetodoPagoRequeridoError,
   EntrenadorRequeridoError,
+  PlanCortesiaConTiempoRestanteError,
 } from "@gym-app/domain/use-cases/CambiarPlanConPago";
 
 export interface EstadoFormularioPago {
@@ -276,30 +278,39 @@ export async function cambiarPlanAction(
 
   let resultado;
   try {
-    resultado = await cambiarPlanConPago(
-      {
-        pagos: new PrismaPagoRepository(prisma),
-        suscripciones: new PrismaSuscripcionRepository(prisma),
-        miembros: new PrismaMemberRepository(prisma),
-        planes: new PrismaPlanRepository(prisma),
-        turnos: new PrismaTurnoRepository(prisma),
-        sucursales: new PrismaSucursalRepository(prisma),
-        autorizacion: new AuthorizationService(new PrismaPermisoRepository(prisma)),
-      },
-      {
-        organizacionId: usuario.organizacionId,
-        miembroId,
-        planNuevoId,
-        modo,
-        metodo,
-        metodoPagoId,
-        numeroOperacion,
-        tasaCambio: validacionTasa.tasaCambio,
-        sucursalId: sucursalIdPago,
-        registradoPorId: usuario.id,
-        rolUsuario: usuario.rol,
-        entrenadorId,
-      }
+    // Guardado atómico (regla 11 del diseño acordado): plan, vencimiento,
+    // pago y el registro de auditoría se escriben en una sola transacción
+    // Prisma — todos los repos reciben `tx` (compatible con la misma
+    // interfaz que PrismaClient) en vez del cliente global, así que si
+    // cualquier paso falla, ninguno de los otros queda a medio escribir.
+    resultado = await prisma.$transaction((tx) =>
+      cambiarPlanConPago(
+        {
+          pagos: new PrismaPagoRepository(tx),
+          suscripciones: new PrismaSuscripcionRepository(tx),
+          miembros: new PrismaMemberRepository(tx),
+          planes: new PrismaPlanRepository(tx),
+          turnos: new PrismaTurnoRepository(tx),
+          sucursales: new PrismaSucursalRepository(tx),
+          autorizacion: new AuthorizationService(new PrismaPermisoRepository(tx)),
+          auditoria: new PrismaCambioPlanAuditoriaRepository(tx),
+        },
+        {
+          organizacionId: usuario.organizacionId,
+          miembroId,
+          planNuevoId,
+          modo,
+          origen: origen === "caja" ? "CAJA" : "FICHA_MIEMBRO",
+          metodo,
+          metodoPagoId,
+          numeroOperacion,
+          tasaCambio: validacionTasa.tasaCambio,
+          sucursalId: sucursalIdPago,
+          registradoPorId: usuario.id,
+          rolUsuario: usuario.rol,
+          entrenadorId,
+        }
+      )
     );
   } catch (error) {
     if (
@@ -310,7 +321,8 @@ export async function cambiarPlanAction(
       error instanceof RolNoAutorizadoErrorCambio ||
       error instanceof SinCicloVigenteError ||
       error instanceof MetodoPagoRequeridoError ||
-      error instanceof EntrenadorRequeridoError
+      error instanceof EntrenadorRequeridoError ||
+      error instanceof PlanCortesiaConTiempoRestanteError
     ) {
       return { error: error.message };
     }

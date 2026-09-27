@@ -1,9 +1,9 @@
-import type { PrismaClient } from "@gym-app/db/generated/prisma/client";
+import type { PrismaClientOrTx } from "./PrismaClientOrTx";
 import type { IPermisoRepository } from "@gym-app/domain/ports/IPermisoRepository";
 import type { Permiso, ModuloPermiso, AccionPermiso } from "@gym-app/domain/entities/Permiso";
 
 export class PrismaPermisoRepository implements IPermisoRepository {
-  constructor(private readonly prisma: PrismaClient) {}
+  constructor(private readonly prisma: PrismaClientOrTx) {}
 
   async tiene(usuarioId: string, modulo: ModuloPermiso, accion: AccionPermiso): Promise<boolean> {
     const permiso = await this.prisma.permisoUsuario.findUnique({

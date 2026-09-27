@@ -1,4 +1,4 @@
-import type { PrismaClient } from "@gym-app/db/generated/prisma/client";
+import type { PrismaClientOrTx } from "./PrismaClientOrTx";
 import type { ITurnoRepository } from "@gym-app/domain/ports/ITurnoRepository";
 import type { Turno, DatosNuevoTurno } from "@gym-app/domain/entities/Turno";
 
@@ -29,7 +29,7 @@ function mapear(fila: FilaTurno): Turno {
 }
 
 export class PrismaTurnoRepository implements ITurnoRepository {
-  constructor(private readonly prisma: PrismaClient) {}
+  constructor(private readonly prisma: PrismaClientOrTx) {}
 
   async crear(datos: DatosNuevoTurno): Promise<Turno> {
     const turno = await this.prisma.turno.create({

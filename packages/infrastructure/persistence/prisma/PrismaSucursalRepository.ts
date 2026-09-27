@@ -1,4 +1,4 @@
-import type { PrismaClient } from "@gym-app/db/generated/prisma/client";
+import type { PrismaClientOrTx } from "./PrismaClientOrTx";
 import type { ISucursalRepository } from "@gym-app/domain/ports/ISucursalRepository";
 import type { Sucursal, CambiosSucursal, DatosNuevaSucursal } from "@gym-app/domain/entities/Sucursal";
 import type { SucursalResumen } from "@gym-app/domain/entities/SucursalResumen";
@@ -24,7 +24,7 @@ function mapear(sucursal: {
 }
 
 export class PrismaSucursalRepository implements ISucursalRepository {
-  constructor(private readonly prisma: PrismaClient) {}
+  constructor(private readonly prisma: PrismaClientOrTx) {}
 
   async buscarPorApiKey(apiKey: string): Promise<Sucursal | null> {
     const sucursal = await this.prisma.sucursal.findUnique({ where: { apiKey } });

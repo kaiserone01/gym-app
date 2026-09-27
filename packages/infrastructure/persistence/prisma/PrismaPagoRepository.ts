@@ -1,4 +1,4 @@
-import type { PrismaClient } from "@gym-app/db/generated/prisma/client";
+import type { PrismaClientOrTx } from "./PrismaClientOrTx";
 import type { IPagoRepository } from "@gym-app/domain/ports/IPagoRepository";
 import type { Pago, DatosNuevoPago } from "@gym-app/domain/entities/Pago";
 
@@ -47,7 +47,7 @@ function mapear(pago: FilaPago): Pago {
 }
 
 export class PrismaPagoRepository implements IPagoRepository {
-  constructor(private readonly prisma: PrismaClient) {}
+  constructor(private readonly prisma: PrismaClientOrTx) {}
 
   async crear(datos: DatosNuevoPago): Promise<Pago> {
     const pago = await this.prisma.pago.create({

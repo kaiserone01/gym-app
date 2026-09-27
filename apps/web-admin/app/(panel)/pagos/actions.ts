@@ -261,10 +261,6 @@ export async function cambiarPlanAction(
   // queda en /caja en vez de navegar a /miembros (ver diseño acordado, igual
   // criterio que origen en registrarPagoAction).
   const origen = formData.get("origen")?.toString();
-  // "AJUSTAR_VENCIMIENTO" (default) o "CICLO_COMPLETO" — cuál de los dos
-  // botones de FormularioCambiarPlan disparó el envío (ver diseño acordado).
-  const modoRaw = formData.get("modo")?.toString();
-  const modo = modoRaw === "CICLO_COMPLETO" ? "CICLO_COMPLETO" : "AJUSTAR_VENCIMIENTO";
 
   if (!miembroId || !planNuevoId) {
     return { error: "Miembro y plan nuevo son requeridos." };
@@ -299,7 +295,6 @@ export async function cambiarPlanAction(
           organizacionId: usuario.organizacionId,
           miembroId,
           planNuevoId,
-          modo,
           origen: origen === "caja" ? "CAJA" : "FICHA_MIEMBRO",
           metodo,
           metodoPagoId,

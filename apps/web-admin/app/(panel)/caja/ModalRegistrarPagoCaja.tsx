@@ -148,11 +148,11 @@ function ContenidoPaso2({
   // FormularioCambiarPlan) en vez de solo reasignarlo para este pago.
   const tieneCicloVigente = miembro.fechaVencimiento !== null && miembro.fechaVencimiento > new Date();
   const [cambiandoPlan, setCambiandoPlan] = useState(false);
-  // Resultado exacto (modo + cálculo con calcularCambioPlan) que corresponde
-  // al botón resaltado dentro de FormularioCambiarPlan — corrige E6: antes
-  // este cuadro usaba calcularProyeccionRenovacion (suma un ciclo al
+  // Resultado exacto (calcularCambioPlan, único camino) del plan nuevo
+  // elegido dentro de FormularioCambiarPlan — corrige E6: antes este
+  // cuadro usaba calcularProyeccionRenovacion (suma un ciclo al
   // vencimiento actual, SIN prorratear) incluso mientras se cambiaba de
-  // plan, mostrando un número distinto al de los botones de abajo.
+  // plan, mostrando un número distinto al del formulario de abajo.
   const [proyeccionCambioPlan, setProyeccionCambioPlan] = useState<ProyeccionCambioPlan | null>(null);
 
   // Fuera del flujo de cambio de plan: la renovación normal del plan
@@ -207,8 +207,7 @@ function ContenidoPaso2({
         <div className="flex flex-col gap-3 rounded-lg border p-4" style={{ borderColor: "var(--gx-accent)" }}>
           <p className="text-xs" style={{ color: "var(--gx-muted)" }}>
             Para subir o bajar de plan sin esperar a que venza el ciclo actual — el sistema prorratea el valor no
-            consumido del ciclo. Elegí si solo ajustar el vencimiento (sin costo) o pagar un ciclo completo del plan
-            nuevo.
+            consumido del ciclo contra el precio del plan nuevo y cobra o absorbe la diferencia automáticamente.
           </p>
           <FormularioCambiarPlan
             accion={accionCambiarPlan}
@@ -286,18 +285,17 @@ function ContenidoPaso2({
         </label>
       )}
 
-      {/* Cambiando de plan: un solo pronóstico, el que corresponde al botón
-          resaltado dentro de FormularioCambiarPlan — nunca el de renovación
-          normal a la vez (corrige E6: antes se mostraban dos números
-          distintos, sin prorrateo acá y prorrateado en los botones). Sin
-          ningún botón tocado todavía (modoElegido null), no se muestra
-          nada — ningún pronóstico "por defecto". */}
+      {/* Cambiando de plan: un solo pronóstico, el del único camino de
+          cálculo — nunca el de renovación normal a la vez (corrige E6:
+          antes se mostraban dos números distintos, sin prorrateo acá y
+          prorrateado en el formulario). Sin plan nuevo elegido todavía, no
+          se muestra nada. */}
       {cambiandoPlan && proyeccionCambioPlan && (
         <div className="rounded-lg border p-4" style={{ borderColor: "var(--gx-accent)" }}>
           <p style={{ color: "var(--gx-ink)" }}>
-            {proyeccionCambioPlan.modo === "AJUSTAR_VENCIMIENTO"
-              ? "Solo ajustar vencimiento — "
-              : "Pagar ciclo completo — "}
+            {proyeccionCambioPlan.resultado.montoCobradoCentavos > 0
+              ? `Se cobra $${(proyeccionCambioPlan.resultado.montoCobradoCentavos / 100).toFixed(2)} — `
+              : "Sin costo adicional — "}
             nuevo vencimiento{" "}
             <strong>{formatearFechaCorta(proyeccionCambioPlan.resultado.nuevoVencimiento)}</strong>.
           </p>

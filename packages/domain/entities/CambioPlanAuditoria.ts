@@ -1,4 +1,9 @@
-import type { ModoCambioPlan } from "./cambioPlanCalculo";
+// Modo histórico de un registro de auditoría. "AJUSTAR_VENCIMIENTO" ya no
+// se escribe desde el código (único camino de cálculo, ver
+// packages/domain/entities/cambioPlanCalculo.ts) — se conserva solo para
+// leer registros históricos ya existentes en la base (0 registros con ese
+// modo al momento de este cambio).
+export type ModoCambioPlan = "AJUSTAR_VENCIMIENTO" | "CICLO_COMPLETO";
 
 // Desde dónde se disparó el cambio de plan — ver
 // packages/db/prisma/schema.prisma (enum OrigenCambioPlanAuditoria) para

@@ -1,7 +1,5 @@
 import { diaCalendarioCaracas, sumarDias } from "../utils/fechaCaracas";
 
-export type ModoCambioPlan = "AJUSTAR_VENCIMIENTO" | "CICLO_COMPLETO";
-
 export interface DatosCambioPlan {
   hoy: Date;
   precioViejo: number;
@@ -9,21 +7,20 @@ export interface DatosCambioPlan {
   fechaVencimientoActual: Date;
   precioNuevo: number;
   diasCicloNuevo: number;
-  modo: ModoCambioPlan;
 }
 
 export interface ResultadoCambioPlan {
   diasRestantes: number;
+  // Valor no consumido del plan viejo, en centavos (V = diasRestantes *
+  // tarifaDiariaVieja).
   valorNoConsumidoCentavos: number;
-  // Solo AJUSTAR_VENCIMIENTO: cuántos días del plan nuevo equivalen al
-  // valor no consumido. En CICLO_COMPLETO, 0 (no aplica).
+  // Días extra que el excedente (V - precioNuevo) agrega al ciclo base del
+  // plan nuevo, cuando V > precioNuevo. 0 en cualquier otro caso.
   diasNuevos: number;
   nuevoVencimiento: Date;
-  // Solo CICLO_COMPLETO: el precio completo del plan nuevo, en centavos.
-  // Nunca negativo, nunca "acredita" — el valor no consumido que exceda
-  // este monto queda documentado en valorNoConsumidoCentavos para
-  // auditoría, pero no se descuenta ni se devuelve como crédito acá (ver
-  // regla 5 del diseño acordado). 0 en AJUSTAR_VENCIMIENTO.
+  // precioNuevo - V cuando es positivo (V < precioNuevo); 0 en cualquier
+  // otro caso — nunca se acredita dinero en efectivo ni queda saldo
+  // separado (ver regla de negocio: único camino de cálculo).
   montoCobradoCentavos: number;
 }
 
@@ -38,6 +35,18 @@ export class PlanCortesiaConTiempoRestanteError extends Error {
 
 const MS_POR_DIA = 86_400_000;
 
+// Único camino de cálculo del cambio de plan a mitad de ciclo: siempre en
+// USD, siempre un cálculo diferencial en dinero contra el valor no
+// consumido del plan viejo (V). No existe una alternativa de "solo mover
+// la fecha sin dinero de por medio" — todo cambio de plan pasa por acá.
+//
+// - V > precioNuevo: el excedente se convierte en días adicionales del
+//   plan nuevo, sumados al ciclo base. Nunca se acredita dinero en
+//   efectivo ni queda saldo separado.
+// - V < precioNuevo: se cobra la diferencia (precioNuevo - V) y el
+//   vencimiento avanza un ciclo normal del plan nuevo desde hoy.
+// - V == precioNuevo: no se cobra nada, vencimiento avanza un ciclo
+//   normal del plan nuevo desde hoy.
 export function calcularCambioPlan(datos: DatosCambioPlan): ResultadoCambioPlan {
   const hoyCaracas = diaCalendarioCaracas(datos.hoy);
   const vencimientoCaracas = diaCalendarioCaracas(datos.fechaVencimientoActual);
@@ -54,23 +63,22 @@ export function calcularCambioPlan(datos: DatosCambioPlan): ResultadoCambioPlan 
   const valorNoConsumidoCentavos = Math.round(
     ((datos.precioViejo * 100) / datos.diasCicloViejo) * diasRestantes
   );
+  const precioNuevoCentavos = Math.round(datos.precioNuevo * 100);
 
-  const tarifaNuevaCentavos = (datos.precioNuevo * 100) / datos.diasCicloNuevo;
-  const diasNuevos = tarifaNuevaCentavos > 0 ? Math.round(valorNoConsumidoCentavos / tarifaNuevaCentavos) : 0;
-
-  if (datos.modo === "AJUSTAR_VENCIMIENTO") {
-    const nuevoVencimiento = sumarDias(hoyCaracas, diasNuevos);
+  if (valorNoConsumidoCentavos > precioNuevoCentavos) {
+    // Excedente absorbido en días extra del plan nuevo, sin cobro.
+    const excedenteCentavos = valorNoConsumidoCentavos - precioNuevoCentavos;
+    const tarifaNuevaCentavos = precioNuevoCentavos > 0 ? precioNuevoCentavos / datos.diasCicloNuevo : 0;
+    const diasNuevos = tarifaNuevaCentavos > 0 ? Math.round(excedenteCentavos / tarifaNuevaCentavos) : 0;
+    const nuevoVencimiento = sumarDias(hoyCaracas, datos.diasCicloNuevo + diasNuevos);
     return { diasRestantes, valorNoConsumidoCentavos, diasNuevos, nuevoVencimiento, montoCobradoCentavos: 0 };
   }
 
-  // CICLO_COMPLETO: se cobra el precio completo del plan nuevo y el
-  // vencimiento avanza diasNuevos (el valor no consumido convertido a días
-  // del plan nuevo, igual que en AJUSTAR_VENCIMIENTO) MÁS un ciclo completo
-  // — el valor no consumido nunca se pierde ni se devuelve como crédito acá
-  // (ver regla 5 del diseño acordado; un saldo a favor persistido es
-  // responsabilidad del caller, no de esta función pura).
-  const montoCobradoCentavos = Math.round(datos.precioNuevo * 100);
-  const nuevoVencimiento = sumarDias(hoyCaracas, diasNuevos + datos.diasCicloNuevo);
+  // V < precioNuevo: cobra la diferencia. V == precioNuevo: no cobra nada.
+  // En ambos casos el vencimiento avanza un ciclo normal del plan nuevo
+  // desde hoy, sin días extra.
+  const montoCobradoCentavos = precioNuevoCentavos - valorNoConsumidoCentavos;
+  const nuevoVencimiento = sumarDias(hoyCaracas, datos.diasCicloNuevo);
 
-  return { diasRestantes, valorNoConsumidoCentavos, diasNuevos, nuevoVencimiento, montoCobradoCentavos };
+  return { diasRestantes, valorNoConsumidoCentavos, diasNuevos: 0, nuevoVencimiento, montoCobradoCentavos };
 }

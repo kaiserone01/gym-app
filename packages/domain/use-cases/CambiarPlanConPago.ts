@@ -8,7 +8,7 @@ import { IAuthorizationService } from "../ports/IAuthorizationService";
 import { Pago } from "../entities/Pago";
 import { RolUsuario } from "../entities/UsuarioAdmin";
 import { MiembroFueraDeSucursalError } from "./ObtenerMiembro";
-import { calcularCambioPlan, PlanCortesiaConTiempoRestanteError, type ModoCambioPlan } from "../entities/cambioPlanCalculo";
+import { calcularCambioPlan, PlanCortesiaConTiempoRestanteError } from "../entities/cambioPlanCalculo";
 import { DURACION_DIAS_POR_FRECUENCIA } from "../entities/Plan";
 import { ICambioPlanAuditoriaRepository } from "../ports/ICambioPlanAuditoriaRepository";
 import type { OrigenCambioPlan } from "../entities/CambioPlanAuditoria";
@@ -77,11 +77,6 @@ export interface DatosCambiarPlanConPago {
   organizacionId: string;
   miembroId: string;
   planNuevoId: string;
-  // "AJUSTAR_VENCIMIENTO" (Modo A: convierte el valor no consumido a días
-  // del plan nuevo, sin cobrar) o "CICLO_COMPLETO" (Modo B: deja un ciclo
-  // completo del plan nuevo, cobrando o acreditando la diferencia) — ver
-  // diseño en docs/superpowers/specs/2026-09-26-cambio-plan-con-prorrateo-design.md.
-  modo: ModoCambioPlan;
   // Desde dónde se disparó este cambio — se persiste en el registro de
   // auditoría (regla 11 del diseño acordado; ver
   // packages/domain/entities/CambioPlanAuditoria.ts).
@@ -101,28 +96,23 @@ export interface DatosCambiarPlanConPago {
 
 export interface ResultadoCambioPlan {
   pago: Pago | null;
-  // Monto cobrado — 0 en modo AJUSTAR_VENCIMIENTO (nunca cobra), precio
-  // completo del plan nuevo en modo CICLO_COMPLETO. Nunca negativo: esta
-  // función ya no "acredita" dinero por el valor no consumido (ver regla 5
-  // del diseño acordado — el valor no consumido se convierte en días, no
-  // en crédito devuelto).
+  // precioNuevo - V cuando es positivo; 0 si V >= precioNuevo (el
+  // excedente se convierte en días, nunca en crédito devuelto).
   diferencia: number;
   nuevoVencimiento: Date;
-  // Siempre 0 — CambiarPlanConPago ya no genera saldo a favor (ver regla 5
-  // del diseño acordado). Se mantiene el campo por compatibilidad con los
-  // callers existentes.
+  // Siempre 0 — CambiarPlanConPago nunca genera saldo a favor. Se mantiene
+  // el campo por compatibilidad con los callers existentes.
   saldoAFavorGenerado: number;
 }
 
 // Cambia de plan a mitad de ciclo usando calcularCambioPlan (única fuente
 // de verdad, compartida con la vista previa del frontend — ver
 // packages/domain/entities/cambioPlanCalculo.ts): el valor no consumido del
-// plan viejo nunca se pierde, se convierte a días del plan nuevo
-// (AJUSTAR_VENCIMIENTO) o se suma al ciclo completo cobrado
-// (CICLO_COMPLETO). El precio del plan "anterior" se toma del plan real de
-// la Suscripcion vigente (no de Miembro.planId, que puede haber quedado
-// desincronizado por una edición manual — ver diseño acordado sobre el bug
-// de "vuelve a cobrar de menos").
+// plan viejo nunca se pierde, se convierte en días extra del plan nuevo si
+// sobra, o se cobra la diferencia si falta. El precio del plan "anterior"
+// se toma del plan real de la Suscripcion vigente (no de Miembro.planId,
+// que puede haber quedado desincronizado por una edición manual — ver
+// diseño acordado sobre el bug de "vuelve a cobrar de menos").
 export async function cambiarPlanConPago(
   deps: CambiarPlanConPagoDeps,
   input: DatosCambiarPlanConPago
@@ -179,7 +169,6 @@ export async function cambiarPlanConPago(
     fechaVencimientoActual: activa.fin,
     precioNuevo: planNuevo.precioUSD,
     diasCicloNuevo: DURACION_DIAS_POR_FRECUENCIA[planNuevo.frecuencia],
-    modo: input.modo,
   });
 
   const montoCobrado = resultado.montoCobradoCentavos / 100;
@@ -244,7 +233,11 @@ export async function cambiarPlanConPago(
     diasCicloNuevo: DURACION_DIAS_POR_FRECUENCIA[planNuevo.frecuencia],
     diasNuevos: resultado.diasNuevos,
     montoCobradoCentavos: resultado.montoCobradoCentavos,
-    modo: input.modo,
+    // Único camino de cálculo desde esta fase — el valor "AJUSTAR_VENCIMIENTO"
+    // del enum se conserva solo para lectura de registros históricos, el
+    // código nunca vuelve a escribirlo (0 registros históricos con ese modo,
+    // verificado contra producción antes de este cambio).
+    modo: "CICLO_COMPLETO",
     origen: input.origen,
     pagoId: pago?.id ?? null,
     registradoPorId: input.registradoPorId,

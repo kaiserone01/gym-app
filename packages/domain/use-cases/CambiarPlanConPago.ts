@@ -8,7 +8,10 @@ import { IAuthorizationService } from "../ports/IAuthorizationService";
 import { Pago } from "../entities/Pago";
 import { RolUsuario } from "../entities/UsuarioAdmin";
 import { MiembroFueraDeSucursalError } from "./ObtenerMiembro";
-import { calcularProrrateoPlan, type ModoCambioPlan } from "../entities/CambioPlan";
+import { calcularCambioPlan, PlanCortesiaConTiempoRestanteError, type ModoCambioPlan } from "../entities/cambioPlanCalculo";
+import { DURACION_DIAS_POR_FRECUENCIA } from "../entities/Plan";
+
+export { PlanCortesiaConTiempoRestanteError };
 
 export { MiembroFueraDeSucursalError };
 
@@ -91,20 +94,28 @@ export interface DatosCambiarPlanConPago {
 
 export interface ResultadoCambioPlan {
   pago: Pago | null;
-  // Positiva = se cobró; negativa = se acreditó como saldo a favor; 0 =
-  // ninguna de las dos (incluye siempre el caso Modo A).
+  // Monto cobrado — 0 en modo AJUSTAR_VENCIMIENTO (nunca cobra), precio
+  // completo del plan nuevo en modo CICLO_COMPLETO. Nunca negativo: esta
+  // función ya no "acredita" dinero por el valor no consumido (ver regla 5
+  // del diseño acordado — el valor no consumido se convierte en días, no
+  // en crédito devuelto).
   diferencia: number;
   nuevoVencimiento: Date;
-  // 0 salvo Modo B con diferencia negativa.
+  // Siempre 0 — CambiarPlanConPago ya no genera saldo a favor (ver regla 5
+  // del diseño acordado). Se mantiene el campo por compatibilidad con los
+  // callers existentes.
   saldoAFavorGenerado: number;
 }
 
-// Sube (o cambia) de plan A MITAD DE CICLO cobrando solo la diferencia de
-// precio, sin extender el vencimiento — el miembro ya pagó por esos días,
-// el cambio de plan no se los renueva (ver diseño acordado). El precio del
-// plan "anterior" se toma del plan real de la Suscripcion vigente (no de
-// Miembro.planId, que puede haber quedado desincronizado por una edición
-// manual — ver diseño acordado sobre el bug de "vuelve a cobrar de menos").
+// Cambia de plan a mitad de ciclo usando calcularCambioPlan (única fuente
+// de verdad, compartida con la vista previa del frontend — ver
+// packages/domain/entities/cambioPlanCalculo.ts): el valor no consumido del
+// plan viejo nunca se pierde, se convierte a días del plan nuevo
+// (AJUSTAR_VENCIMIENTO) o se suma al ciclo completo cobrado
+// (CICLO_COMPLETO). El precio del plan "anterior" se toma del plan real de
+// la Suscripcion vigente (no de Miembro.planId, que puede haber quedado
+// desincronizado por una edición manual — ver diseño acordado sobre el bug
+// de "vuelve a cobrar de menos").
 export async function cambiarPlanConPago(
   deps: CambiarPlanConPagoDeps,
   input: DatosCambiarPlanConPago
@@ -148,21 +159,27 @@ export async function cambiarPlanConPago(
   // dividir por una frecuencia inexistente (caso extremo: el plan viejo
   // fue borrado del catálogo).
   const frecuenciaVieja = planViejo?.frecuencia ?? planNuevo.frecuencia;
-  const prorrateo = calcularProrrateoPlan({
+
+  // El backend SIEMPRE recalcula con calcularCambioPlan — la misma función
+  // pura que usa la vista previa del frontend — y nunca confía en un monto
+  // o fecha que mande el cliente (ver diseño acordado). Lanza
+  // PlanCortesiaConTiempoRestanteError si el plan nuevo es $0 y todavía
+  // queda tiempo pagado del plan viejo (regla 6).
+  const resultado = calcularCambioPlan({
+    hoy: ahora,
     precioViejo,
-    frecuenciaVieja,
-    precioNuevo: planNuevo.precioUSD,
-    frecuenciaNueva: planNuevo.frecuencia,
+    diasCicloViejo: DURACION_DIAS_POR_FRECUENCIA[frecuenciaVieja],
     fechaVencimientoActual: activa.fin,
-    ahora,
+    precioNuevo: planNuevo.precioUSD,
+    diasCicloNuevo: DURACION_DIAS_POR_FRECUENCIA[planNuevo.frecuencia],
     modo: input.modo,
   });
-  const diferencia = prorrateo.diferencia;
+
+  const montoCobrado = resultado.montoCobradoCentavos / 100;
 
   let pago: Pago | null = null;
-  let saldoAFavorGenerado = 0;
 
-  if (diferencia > 0) {
+  if (montoCobrado > 0) {
     if (!input.metodo || !input.metodoPagoId) {
       throw new MetodoPagoRequeridoError();
     }
@@ -174,36 +191,37 @@ export async function cambiarPlanConPago(
       sucursalId: input.sucursalId,
       turnoId: turnoAbierto?.id ?? null,
       registradoPorId: input.registradoPorId,
-      monto: diferencia,
+      monto: montoCobrado,
       metodo: input.metodo,
       metodoPagoId: input.metodoPagoId,
       numeroOperacion: input.numeroOperacion,
       tasaCambio: input.tasaCambio,
-      montoBs: input.tasaCambio !== null ? diferencia * input.tasaCambio : null,
+      montoBs: input.tasaCambio !== null ? montoCobrado * input.tasaCambio : null,
       fechaInicioCiclo: activa.inicio,
-      fechaFinCiclo: prorrateo.nuevoVencimiento,
+      fechaFinCiclo: resultado.nuevoVencimiento,
       grupoPagoId: null,
-    });
-
-    await deps.miembros.actualizarFechasPago(input.miembroId, ahora, prorrateo.nuevoVencimiento);
-  } else if (diferencia < 0) {
-    saldoAFavorGenerado = Math.abs(diferencia);
-    await deps.miembros.actualizar(input.organizacionId, input.miembroId, {
-      saldoAFavorUSD: miembro.saldoAFavorUSD + saldoAFavorGenerado,
     });
   }
 
   await deps.suscripciones.cambiarPlan(activa.id, input.planNuevoId);
-  await deps.suscripciones.extenderFin(activa.id, prorrateo.nuevoVencimiento);
+  await deps.suscripciones.extenderFin(activa.id, resultado.nuevoVencimiento);
+  // Corrige E1: antes, en modo AJUSTAR_VENCIMIENTO (donde nunca se cobra
+  // nada) Miembro.fechaVencimiento NO se actualizaba — solo se tocaba
+  // dentro del branch "hubo cobro". El miembro quedaba con el vencimiento
+  // viejo aunque la Suscripción sí tuviera el nuevo (vista previa ≠
+  // guardado real, ver bug reportado con Luis Castro). Ahora se actualiza
+  // siempre, sin importar el modo ni si hubo cobro.
+  await deps.miembros.actualizarFechasPago(input.miembroId, ahora, resultado.nuevoVencimiento);
   await deps.miembros.actualizar(input.organizacionId, input.miembroId, {
     planId: input.planNuevoId,
     precioPlan: planNuevo.precioUSD,
     ...(planNuevo.incluyeEntrenador ? { entrenadorId: input.entrenadorId } : {}),
   });
-  // Si diferencia > 0, actualizarFechasPago (arriba) ya dejó
-  // fechaVencimiento en prorrateo.nuevoVencimiento — este update de
-  // miembros no toca ese campo (no está en CambiosMiembro con ese
-  // propósito), así que no hay doble escritura conflictiva.
 
-  return { pago, diferencia, nuevoVencimiento: prorrateo.nuevoVencimiento, saldoAFavorGenerado };
+  return {
+    pago,
+    diferencia: montoCobrado,
+    nuevoVencimiento: resultado.nuevoVencimiento,
+    saldoAFavorGenerado: 0,
+  };
 }

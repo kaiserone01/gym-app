@@ -34,6 +34,9 @@ const ETIQUETA_FRECUENCIA: Record<FrecuenciaPago, string> = {
   SEMANAL: "semanal",
   QUINCENAL: "quincenal",
   MENSUAL: "mensual",
+  SEMESTRAL: "semestral",
+  ANUAL: "anual",
+  PERSONALIZADO: "personalizado",
 };
 
 function iniciales(nombre: string): string {
@@ -159,7 +162,7 @@ function ContenidoPaso2({
   // vigente (sin prorrateo, correcto acá — no hay cambio de plan de por
   // medio) usa calcularProyeccionRenovacion como siempre.
   const proyeccionRenovacionNormal =
-    !cambiandoPlan && planEfectivo ? calcularProyeccionRenovacion(miembro.fechaVencimiento, planEfectivo.frecuencia) : null;
+    !cambiandoPlan && planEfectivo ? calcularProyeccionRenovacion(miembro.fechaVencimiento, planEfectivo.diasCiclo) : null;
 
   return (
     <div className="flex flex-col gap-5 text-base">
@@ -215,7 +218,7 @@ function ContenidoPaso2({
             planes={planes}
             planActualId={miembro.plan.id}
             precioActual={miembro.plan.precioUSD}
-            frecuenciaActual={miembro.plan.frecuencia}
+            diasCicloActual={miembro.plan.diasCiclo}
             fechaVencimientoActual={miembro.fechaVencimiento ?? new Date()}
             metodosPago={metodosPago}
             entrenadores={entrenadores}
@@ -410,7 +413,8 @@ function ContenidoPaso3({
   miembroId,
   planId,
   monto: montoSugerido,
-  frecuencia,
+  frecuenciaDelPlan,
+  diasCiclo,
   permitePagoParcial,
   minimoAbonoTipo,
   minimoAbonoValor,
@@ -430,7 +434,8 @@ function ContenidoPaso3({
   // pendiente real del miembro (ese cálculo vive en su ficha) — quien
   // cobra tiene que saber cuánto pedir si es un abono, no el precio completo.
   monto: number;
-  frecuencia: FrecuenciaPago;
+  frecuenciaDelPlan: FrecuenciaPago;
+  diasCiclo: number;
   // Si el plan no admite abono, el monto objetivo tampoco puede quedar
   // editable en modalidad Combinado — el pago combinado siempre debe
   // sumar el precio completo del plan en ese caso (nunca se restringe la
@@ -526,7 +531,7 @@ function ContenidoPaso3({
   const fechaInicioCicloEstimada =
     fechaVencimiento !== null && fechaVencimiento > ahora ? fechaVencimiento : ahora;
   const proyeccionAbono = calcularProyeccionAbono(
-    { minimoAbonoTipo, minimoAbonoValor, frecuencia, precioUSD: montoSugerido },
+    { minimoAbonoTipo, minimoAbonoValor, frecuencia: frecuenciaDelPlan, diasCiclo, precioUSD: montoSugerido },
     reglasAbono,
     montoObjetivo,
     fechaInicioCicloEstimada,
@@ -1099,8 +1104,11 @@ export function ModalRegistrarPagoCaja({
             monto={
               (planes.find((p) => p.id === planElegidoId) ?? miembroElegido.plan)?.precioUSD ?? 0
             }
-            frecuencia={
+            frecuenciaDelPlan={
               (planes.find((p) => p.id === planElegidoId) ?? miembroElegido.plan)?.frecuencia ?? "MENSUAL"
+            }
+            diasCiclo={
+              (planes.find((p) => p.id === planElegidoId) ?? miembroElegido.plan)?.diasCiclo ?? 30
             }
             permitePagoParcial={
               (planes.find((p) => p.id === planElegidoId) ?? miembroElegido.plan)?.permitePagoParcial ?? true

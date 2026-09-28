@@ -4,7 +4,6 @@ import { useState } from "react";
 import { Button } from "@gym-app/ui/components/Button";
 import { Card } from "@gym-app/ui/components/Card";
 import type { MetodoPago } from "@gym-app/domain/entities/MetodoPago";
-import type { FrecuenciaPago } from "@gym-app/domain/entities/Plan";
 import { FormularioPago, type PlanParaSelector, type PlanFijo } from "../pagos/FormularioPago";
 import { FormularioCambiarPlan, type PlanParaCambio, type EntrenadorParaCambio } from "./FormularioCambiarPlan";
 import type { EstadoFormularioPago, EstadoCambioPlan } from "../pagos/actions";
@@ -27,7 +26,7 @@ export function PanelPagoYCambioPlan({
   tieneCicloVigente,
   planActualId,
   precioActual,
-  frecuenciaActual,
+  diasCicloActual,
   fechaVencimientoActual,
   entrenadores,
   entrenadorActualId,
@@ -49,7 +48,7 @@ export function PanelPagoYCambioPlan({
   tieneCicloVigente: boolean;
   planActualId: string | null;
   precioActual: number;
-  frecuenciaActual: FrecuenciaPago;
+  diasCicloActual: number;
   // Solo se usa (y solo es correcta) cuando tieneCicloVigente es true — la
   // fórmula de prorrateo de FormularioCambiarPlan la necesita para calcular
   // el valor no consumido del ciclo actual.
@@ -115,8 +114,7 @@ export function PanelPagoYCambioPlan({
         <>
           <p className="mb-4 text-xs" style={{ color: "var(--gx-muted)" }}>
             Para subir o bajar de plan sin esperar a que venza el ciclo actual — el sistema prorratea el valor no
-            consumido del ciclo. Elegí si solo ajustar el vencimiento (sin costo) o pagar un ciclo completo del plan
-            nuevo.
+            consumido del ciclo contra el precio del plan nuevo y cobra o absorbe la diferencia automáticamente.
           </p>
           <FormularioCambiarPlan
             accion={accionCambiarPlan}
@@ -124,7 +122,7 @@ export function PanelPagoYCambioPlan({
             planes={planesParaCambio}
             planActualId={planActualId}
             precioActual={precioActual}
-            frecuenciaActual={frecuenciaActual}
+            diasCicloActual={diasCicloActual}
             fechaVencimientoActual={fechaVencimientoActual}
             metodosPago={metodosPago}
             entrenadores={entrenadores}

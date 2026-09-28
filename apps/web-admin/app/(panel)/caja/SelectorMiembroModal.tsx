@@ -6,14 +6,16 @@ import type { FrecuenciaPago, TipoMinimoAbono } from "@gym-app/domain/entities/P
 
 // Solo los campos que este modal necesita mostrar del plan — evita atar
 // este componente al tipo Plan completo del dominio (activo, etc. no se
-// usa acá). frecuencia sí hace falta: calcularProyeccionRenovacion (Paso 2
-// del modal de Caja) la necesita para saber la duración del plan.
+// usa acá). diasCiclo sí hace falta: calcularProyeccionRenovacion/
+// calcularProyeccionAbono (Paso 2 y 3 del modal de Caja) lo necesitan para
+// saber la duración del ciclo del plan.
 export interface PlanParaModal {
   id: string;
   nombre: string;
   precioUSD: number;
   multisede: boolean;
   frecuencia: FrecuenciaPago;
+  diasCiclo: number;
   permitePagoParcial: boolean;
   minimoAbonoTipo: TipoMinimoAbono | null;
   minimoAbonoValor: number | null;

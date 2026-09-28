@@ -1,9 +1,7 @@
 // Réplica intencional de la lógica en packages/domain/use-cases/RegistrarPago.ts
 // (base = activa && activa.fin > ahora ? activa.fin : ahora; fin = base +
-// DURACION_DIAS_POR_FRECUENCIA[plan.frecuencia]) — mismo criterio, para
-// que lo mostrado ANTES de pagar coincida con lo que el backend aplica.
-import { DURACION_DIAS_POR_FRECUENCIA, type FrecuenciaPago } from "@gym-app/domain/entities/Plan";
-
+// plan.diasCiclo) — mismo criterio, para que lo mostrado ANTES de pagar
+// coincida con lo que el backend aplica.
 export interface ProyeccionRenovacion {
   diasDelPlan: number;
   diasTotalesTrasPago: number;
@@ -13,10 +11,10 @@ export interface ProyeccionRenovacion {
 
 export function calcularProyeccionRenovacion(
   fechaVencimiento: Date | null,
-  frecuencia: FrecuenciaPago
+  diasCicloDelPlan: number
 ): ProyeccionRenovacion {
   const ahora = new Date();
-  const diasDelPlan = DURACION_DIAS_POR_FRECUENCIA[frecuencia];
+  const diasDelPlan = diasCicloDelPlan;
   const vigente = fechaVencimiento !== null && fechaVencimiento > ahora;
   const base = vigente ? fechaVencimiento : ahora;
 

@@ -23,6 +23,7 @@ export interface PlanParaSelector {
   precioUSD: number;
   multisede: boolean;
   frecuencia: FrecuenciaPago;
+  diasCiclo: number;
   incluyeEntrenador: boolean;
   permitePagoParcial: boolean;
   minimoAbonoTipo: TipoMinimoAbono | null;

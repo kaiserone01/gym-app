@@ -4,7 +4,7 @@ import { useActionState, useEffect, useState } from "react";
 import { Button } from "@gym-app/ui/components/Button";
 import { useFeedback } from "@gym-app/ui/components/FeedbackOverlay";
 import type { MetodoPago } from "@gym-app/domain/entities/MetodoPago";
-import { DURACION_DIAS_POR_FRECUENCIA, type FrecuenciaPago } from "@gym-app/domain/entities/Plan";
+import type { FrecuenciaPago } from "@gym-app/domain/entities/Plan";
 import { calcularCambioPlan, PlanCortesiaConTiempoRestanteError, type ResultadoCambioPlan } from "@gym-app/domain/entities/cambioPlanCalculo";
 import type { EstadoCambioPlan } from "../pagos/actions";
 import { SelectorMetodoPago } from "../pagos/SelectorMetodoPago";
@@ -15,6 +15,9 @@ const ETIQUETA_FRECUENCIA: Record<FrecuenciaPago, string> = {
   SEMANAL: "semanal",
   QUINCENAL: "quincenal",
   MENSUAL: "mensual",
+  SEMESTRAL: "semestral",
+  ANUAL: "anual",
+  PERSONALIZADO: "personalizado",
 };
 
 export interface PlanParaCambio {
@@ -22,6 +25,7 @@ export interface PlanParaCambio {
   nombre: string;
   precioUSD: number;
   frecuencia: FrecuenciaPago;
+  diasCiclo: number;
   incluyeEntrenador: boolean;
 }
 
@@ -44,7 +48,7 @@ export function FormularioCambiarPlan({
   planes,
   planActualId,
   precioActual,
-  frecuenciaActual,
+  diasCicloActual,
   fechaVencimientoActual,
   metodosPago,
   entrenadores,
@@ -60,10 +64,10 @@ export function FormularioCambiarPlan({
   planActualId: string | null;
   // Precio y vencimiento vigentes del plan actual — calcularCambioPlan los
   // usa para calcular el valor no consumido del ciclo, sin importar la
-  // frecuencia del plan nuevo (ver diseño acordado, ya no se restringe a
-  // la misma frecuencia).
+  // duración del ciclo del plan nuevo (ver diseño acordado, ya no se
+  // restringe a la misma frecuencia).
   precioActual: number;
-  frecuenciaActual: FrecuenciaPago;
+  diasCicloActual: number;
   fechaVencimientoActual: Date;
   metodosPago: MetodoPago[];
   // Entrenadores elegibles para la sede del miembro — se muestra el
@@ -132,10 +136,10 @@ export function FormularioCambiarPlan({
       resultado = calcularCambioPlan({
         hoy: new Date(),
         precioViejo: precioActual,
-        diasCicloViejo: DURACION_DIAS_POR_FRECUENCIA[frecuenciaActual],
+        diasCicloViejo: diasCicloActual,
         fechaVencimientoActual,
         precioNuevo: planNuevo.precioUSD,
-        diasCicloNuevo: DURACION_DIAS_POR_FRECUENCIA[planNuevo.frecuencia],
+        diasCicloNuevo: planNuevo.diasCiclo,
       });
     } catch (error) {
       if (error instanceof PlanCortesiaConTiempoRestanteError) {

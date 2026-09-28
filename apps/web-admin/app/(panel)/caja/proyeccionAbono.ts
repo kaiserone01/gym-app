@@ -11,7 +11,7 @@ import {
   type TipoMinimoAbono,
   type CicloProyectado,
 } from "@gym-app/domain/entities/ReglaAbono";
-import { DURACION_DIAS_POR_FRECUENCIA, type FrecuenciaPago } from "@gym-app/domain/entities/Plan";
+import type { FrecuenciaPago } from "@gym-app/domain/entities/Plan";
 
 export interface ProyeccionAbono {
   montoMinimo: number;
@@ -45,7 +45,13 @@ export interface ProyeccionAbono {
 }
 
 export function calcularProyeccionAbono(
-  plan: { minimoAbonoTipo: TipoMinimoAbono | null; minimoAbonoValor: number | null; frecuencia: FrecuenciaPago; precioUSD: number },
+  plan: {
+    minimoAbonoTipo: TipoMinimoAbono | null;
+    minimoAbonoValor: number | null;
+    frecuencia: FrecuenciaPago;
+    diasCiclo: number;
+    precioUSD: number;
+  },
   reglasAbono: ReglaAbonoPorFrecuencia[],
   montoAcumulado: number,
   fechaInicioCiclo: Date,
@@ -62,7 +68,7 @@ export function calcularProyeccionAbono(
     { minimoAbonoTipo: plan.minimoAbonoTipo, minimoAbonoValor: plan.minimoAbonoValor },
     reglaFrecuencia
   );
-  const diasDelCiclo = DURACION_DIAS_POR_FRECUENCIA[plan.frecuencia];
+  const diasDelCiclo = plan.diasCiclo;
   const montoMinimo = calcularMontoMinimoAbono(reglaEfectiva, plan.precioUSD, diasDelCiclo);
 
   // El ciclo vigente ya está saldado (montoAcumulado >= precioUSD) y el

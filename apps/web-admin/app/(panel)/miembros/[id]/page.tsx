@@ -70,7 +70,7 @@ export default async function PaginaEditarMiembro({ params }: { params: Promise<
   // no venció — vencido, el próximo pago ya es el precio completo del plan
   // que sea (ver diseño acordado).
   const tieneCicloVigente = miembro.fechaVencimiento !== null && miembro.fechaVencimiento > new Date();
-  const frecuenciaActual = planes.find((p) => p.id === miembro.planId)?.frecuencia ?? "MENSUAL";
+  const diasCicloActual = planes.find((p) => p.id === miembro.planId)?.diasCiclo ?? 30;
 
   // Pagos fraccionados/mixtos: si el ciclo vigente todavía no juntó el
   // precio acordado con el miembro, esto es lo que falta — se le pasa al
@@ -163,7 +163,7 @@ export default async function PaginaEditarMiembro({ params }: { params: Promise<
                 tieneCicloVigente={tieneCicloVigente}
                 planActualId={miembro.planId}
                 precioActual={miembro.precioPlan}
-                frecuenciaActual={frecuenciaActual}
+                diasCicloActual={diasCicloActual}
                 fechaVencimientoActual={miembro.fechaVencimiento ?? new Date()}
                 entrenadores={entrenadoresDelMiembro}
                 entrenadorActualId={miembro.entrenadorId}

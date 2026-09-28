@@ -8,17 +8,23 @@
     "db:seed": "prisma db seed",
     "db:limpiar-miembros": "tsx limpiarMiembros.ts",
     "db:sembrar-prueba": "tsx sembrarMiembrosPrueba.ts",
-    "db:quitar-permisos-entrenadores": "tsx quitarPermisosEntrenadores.ts"
+    "db:quitar-permisos-entrenadores": "tsx quitarPermisosEntrenadores.ts",
+    "db:migrar-excel-adrenalina": "tsx migrarExcelAdrenalina.ts",
+    "db:migrar-excel-adrenalina:confirm": "tsx migrarExcelAdrenalina.ts --confirm",
+    "db:limpiar-migracion-excel-prueba": "tsx limpiarMigracionExcelPrueba.ts",
+    "test": "vitest run"
   },
   "dependencies": {
     "@prisma/client": "^7.10.0",
-    "@prisma/adapter-pg": "^7.10.0"
+    "@prisma/adapter-pg": "^7.10.0",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "prisma": "^7.10.0",
     "dotenv": "^17.4.2",
     "tsx": "^4.23.13",
     "bcryptjs": "^3.0.3",
-    "@types/bcryptjs": "^2.4.6"
+    "@types/bcryptjs": "^2.4.6",
+    "vitest": "5.0.2"
   }
 }

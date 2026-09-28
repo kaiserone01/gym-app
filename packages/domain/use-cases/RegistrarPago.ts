@@ -9,7 +9,6 @@ import { IReglaAbonoRepository } from "../ports/IReglaAbonoRepository";
 import { Pago, pagosVigentesDelCiclo, totalPagado } from "../entities/Pago";
 import { RolUsuario } from "../entities/UsuarioAdmin";
 import { IAuthorizationService } from "../ports/IAuthorizationService";
-import { DURACION_DIAS_POR_FRECUENCIA } from "../entities/Plan";
 import { resolverReglaAbono, calcularMontoMinimoAbono, calcularFechaLimiteAbono } from "../entities/ReglaAbono";
 import { MiembroFueraDeSucursalError } from "./ObtenerMiembro";
 
@@ -186,7 +185,7 @@ export async function registrarPago(deps: RegistrarPagoDeps, input: DatosRegistr
   } else {
     base = activa && activa.fin > ahora ? activa.fin : ahora;
     fin = new Date(base);
-    fin.setDate(fin.getDate() + DURACION_DIAS_POR_FRECUENCIA[plan.frecuencia]);
+    fin.setDate(fin.getDate() + plan.diasCiclo);
   }
 
   // Motor de reglas de abono: solo aplica cuando el pago resultante deja
@@ -211,7 +210,7 @@ export async function registrarPago(deps: RegistrarPagoDeps, input: DatosRegistr
       { minimoAbonoTipo: plan.minimoAbonoTipo, minimoAbonoValor: plan.minimoAbonoValor },
       reglaFrecuencia
     );
-    const diasDelCiclo = DURACION_DIAS_POR_FRECUENCIA[plan.frecuencia];
+    const diasDelCiclo = plan.diasCiclo;
     const montoMinimo = calcularMontoMinimoAbono(reglaEfectiva, miembro.precioPlan, diasDelCiclo);
 
     if (montoAcumuladoDelCiclo < montoMinimo) {

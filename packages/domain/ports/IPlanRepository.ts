@@ -11,6 +11,7 @@ export interface IPlanRepository {
   actualizarFrecuenciaYEntrenador(
     id: string,
     frecuencia: FrecuenciaPago,
+    diasCiclo: number,
     incluyeEntrenador: boolean
   ): Promise<Plan>;
   /**

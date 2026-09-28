@@ -9,7 +9,6 @@ import { Pago } from "../entities/Pago";
 import { RolUsuario } from "../entities/UsuarioAdmin";
 import { MiembroFueraDeSucursalError } from "./ObtenerMiembro";
 import { calcularCambioPlan, PlanCortesiaConTiempoRestanteError } from "../entities/cambioPlanCalculo";
-import { DURACION_DIAS_POR_FRECUENCIA } from "../entities/Plan";
 import { ICambioPlanAuditoriaRepository } from "../ports/ICambioPlanAuditoriaRepository";
 import type { OrigenCambioPlan } from "../entities/CambioPlanAuditoria";
 
@@ -152,10 +151,10 @@ export async function cambiarPlanConPago(
 
   const precioViejo = planViejo?.precioUSD ?? miembro.precioPlan;
   // Sin plan viejo resoluble, no hay ciclo previo del que partir en una
-  // frecuencia distinta — se asume la misma que el plan nuevo para no
-  // dividir por una frecuencia inexistente (caso extremo: el plan viejo
-  // fue borrado del catálogo).
-  const frecuenciaVieja = planViejo?.frecuencia ?? planNuevo.frecuencia;
+  // duración distinta — se asume la misma que el plan nuevo para no
+  // dividir por un diasCiclo inexistente (caso extremo: el plan viejo fue
+  // borrado del catálogo).
+  const diasCicloViejo = planViejo?.diasCiclo ?? planNuevo.diasCiclo;
 
   // El backend SIEMPRE recalcula con calcularCambioPlan — la misma función
   // pura que usa la vista previa del frontend — y nunca confía en un monto
@@ -165,10 +164,10 @@ export async function cambiarPlanConPago(
   const resultado = calcularCambioPlan({
     hoy: ahora,
     precioViejo,
-    diasCicloViejo: DURACION_DIAS_POR_FRECUENCIA[frecuenciaVieja],
+    diasCicloViejo,
     fechaVencimientoActual: activa.fin,
     precioNuevo: planNuevo.precioUSD,
-    diasCicloNuevo: DURACION_DIAS_POR_FRECUENCIA[planNuevo.frecuencia],
+    diasCicloNuevo: planNuevo.diasCiclo,
   });
 
   const montoCobrado = resultado.montoCobradoCentavos / 100;
@@ -228,9 +227,9 @@ export async function cambiarPlanConPago(
     diasRestantes: resultado.diasRestantes,
     valorNoConsumidoCentavos: resultado.valorNoConsumidoCentavos,
     precioAnteriorCentavos: Math.round(precioViejo * 100),
-    diasCicloAnterior: DURACION_DIAS_POR_FRECUENCIA[frecuenciaVieja],
+    diasCicloAnterior: diasCicloViejo,
     precioNuevoCentavos: Math.round(planNuevo.precioUSD * 100),
-    diasCicloNuevo: DURACION_DIAS_POR_FRECUENCIA[planNuevo.frecuencia],
+    diasCicloNuevo: planNuevo.diasCiclo,
     diasNuevos: resultado.diasNuevos,
     montoCobradoCentavos: resultado.montoCobradoCentavos,
     // Único camino de cálculo desde esta fase — el valor "AJUSTAR_VENCIMIENTO"

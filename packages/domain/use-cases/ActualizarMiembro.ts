@@ -66,7 +66,7 @@ export async function actualizarMiembro(
       }
 
       if (planViejo) {
-        const nuevoFin = prorratearVencimiento(activa.inicio, ahora, planViejo.frecuencia, planNuevo.frecuencia);
+        const nuevoFin = prorratearVencimiento(activa.inicio, ahora, planViejo.diasCiclo, planNuevo.diasCiclo);
         await deps.suscripciones.extenderFin(activa.id, nuevoFin);
       }
 

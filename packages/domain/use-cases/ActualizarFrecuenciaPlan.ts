@@ -32,6 +32,10 @@ export interface ActualizarFrecuenciaPlanInput {
   rolSolicitante: RolUsuario;
   planId: string;
   frecuencia: FrecuenciaPago;
+  // Duración del ciclo en días para la frecuencia elegida — el frontend la
+  // autocompleta para las 6 frecuencias fijas, o la deja editable cuando
+  // frecuencia="PERSONALIZADO" (ver FormularioPlan.tsx).
+  diasCiclo: number;
   incluyeEntrenador: boolean;
   // Debe coincidir exactamente con el nombre actual del Plan (confirmación
   // de doble alerta antes de un cambio masivo).
@@ -58,19 +62,20 @@ export async function actualizarFrecuenciaPlan(
     throw new ConfirmacionInvalidaError();
   }
 
-  const frecuenciaVieja = plan.frecuencia;
+  const diasCicloViejo = plan.diasCiclo;
   const actualizado = await deps.planes.actualizarFrecuenciaYEntrenador(
     input.planId,
     input.frecuencia,
+    input.diasCiclo,
     input.incluyeEntrenador
   );
 
-  if (!input.exonerar && frecuenciaVieja !== input.frecuencia) {
+  if (!input.exonerar && diasCicloViejo !== input.diasCiclo) {
     const ahora = new Date();
     const activas = await deps.suscripciones.listarActivasVigentesPorPlan(input.planId, ahora);
 
     for (const suscripcion of activas) {
-      const nuevoFin = prorratearVencimiento(suscripcion.inicio, ahora, frecuenciaVieja, input.frecuencia);
+      const nuevoFin = prorratearVencimiento(suscripcion.inicio, ahora, diasCicloViejo, input.diasCiclo);
       await deps.suscripciones.extenderFin(suscripcion.id, nuevoFin);
     }
   }

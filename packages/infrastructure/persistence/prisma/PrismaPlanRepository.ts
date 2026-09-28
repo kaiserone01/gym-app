@@ -7,6 +7,7 @@ type FilaPlan = {
   organizacionId: string;
   nombre: string;
   frecuencia: Plan["frecuencia"];
+  diasCiclo: number;
   incluyeEntrenador: boolean;
   precioUSD: { toNumber(): number };
   multisede: boolean;
@@ -22,6 +23,7 @@ function mapear(plan: FilaPlan): Plan {
     organizacionId: plan.organizacionId,
     nombre: plan.nombre,
     frecuencia: plan.frecuencia,
+    diasCiclo: plan.diasCiclo,
     incluyeEntrenador: plan.incluyeEntrenador,
     precioUSD: plan.precioUSD.toNumber(),
     multisede: plan.multisede,
@@ -58,6 +60,7 @@ export class PrismaPlanRepository implements IPlanRepository {
         organizacionId: datos.organizacionId,
         nombre: datos.nombre,
         frecuencia: datos.frecuencia,
+        diasCiclo: datos.diasCiclo,
         incluyeEntrenador: datos.incluyeEntrenador,
         precioUSD: datos.precioUSD,
         multisede: datos.multisede,
@@ -91,11 +94,12 @@ export class PrismaPlanRepository implements IPlanRepository {
   async actualizarFrecuenciaYEntrenador(
     id: string,
     frecuencia: FrecuenciaPago,
+    diasCiclo: number,
     incluyeEntrenador: boolean
   ): Promise<Plan> {
     const plan = await this.prisma.plan.update({
       where: { id },
-      data: { frecuencia, incluyeEntrenador },
+      data: { frecuencia, diasCiclo, incluyeEntrenador },
     });
 
     return mapear(plan);

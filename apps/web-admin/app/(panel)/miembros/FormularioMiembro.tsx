@@ -36,6 +36,9 @@ const ETIQUETA_FRECUENCIA: Record<FrecuenciaPago, string> = {
   SEMANAL: "Semanal",
   QUINCENAL: "Quincenal",
   MENSUAL: "Mensual",
+  SEMESTRAL: "Semestral",
+  ANUAL: "Anual",
+  PERSONALIZADO: "Personalizado",
 };
 
 // OJO: nunca usar fecha.toISOString() acá — convierte a UTC primero, y de

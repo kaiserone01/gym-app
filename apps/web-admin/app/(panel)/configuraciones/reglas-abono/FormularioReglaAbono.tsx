@@ -5,7 +5,7 @@ import { Button } from "@gym-app/ui/components/Button";
 import { Input } from "@gym-app/ui/components/Input";
 import { useFeedback } from "@gym-app/ui/components/FeedbackOverlay";
 import { diasAPorcentaje, porcentajeADias, type TipoMinimoAbono } from "@gym-app/domain/entities/ReglaAbono";
-import { DURACION_DIAS_POR_FRECUENCIA, type FrecuenciaPago } from "@gym-app/domain/entities/Plan";
+import type { FrecuenciaPago } from "@gym-app/domain/entities/Plan";
 import type { EstadoReglaAbono } from "./actions";
 
 const ETIQUETA_FRECUENCIA: Record<FrecuenciaPago, string> = {
@@ -13,20 +13,28 @@ const ETIQUETA_FRECUENCIA: Record<FrecuenciaPago, string> = {
   SEMANAL: "Semanal",
   QUINCENAL: "Quincenal",
   MENSUAL: "Mensual",
+  SEMESTRAL: "Semestral",
+  ANUAL: "Anual",
+  PERSONALIZADO: "Personalizado",
 };
 
 export function FormularioReglaAbono({
   frecuencia,
+  diasCiclo,
   valoresIniciales,
   accion,
 }: {
   frecuencia: FrecuenciaPago;
+  // Duración típica de esta frecuencia, solo para calcular el equivalente
+  // en % en esta pantalla de configuración (ver page.tsx) — no es
+  // Plan.diasCiclo de ningún plan real.
+  diasCiclo: number;
   valoresIniciales: { activo: boolean; tipo: TipoMinimoAbono; valor: number } | null;
   accion: (estado: EstadoReglaAbono, formData: FormData) => Promise<EstadoReglaAbono>;
 }) {
   const [estado, enviar, enviando] = useActionState(accion, {});
   const { mostrarExito, mostrarError } = useFeedback();
-  const diasDelCiclo = DURACION_DIAS_POR_FRECUENCIA[frecuencia];
+  const diasDelCiclo = diasCiclo;
 
   const [activo, setActivo] = useState(valoresIniciales?.activo ?? false);
   const [tipo, setTipo] = useState<TipoMinimoAbono>(valoresIniciales?.tipo ?? "DIAS");

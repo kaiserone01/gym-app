@@ -11,6 +11,7 @@ import type { FrecuenciaPago, TipoMinimoAbono } from "@gym-app/domain/entities/P
 export interface ValoresFormularioPlan {
   nombre: string;
   frecuencia: FrecuenciaPago;
+  diasCiclo: number;
   incluyeEntrenador: boolean;
   precioUSD: number;
   multisede: boolean;
@@ -24,6 +25,21 @@ const ETIQUETA_FRECUENCIA: Record<FrecuenciaPago, string> = {
   SEMANAL: "Semanal",
   QUINCENAL: "Quincenal",
   MENSUAL: "Mensual",
+  SEMESTRAL: "Semestral",
+  ANUAL: "Anual",
+  PERSONALIZADO: "Personalizado",
+};
+
+// Duración fija (en días) para las 6 frecuencias con ciclo estándar —
+// PERSONALIZADO no tiene entrada acá a propósito: su diasCiclo lo tipea el
+// admin a mano en un input aparte (ver selectorFrecuencia más abajo).
+const DIAS_CICLO_POR_FRECUENCIA_FIJA: Record<Exclude<FrecuenciaPago, "PERSONALIZADO">, number> = {
+  DIARIO: 1,
+  SEMANAL: 7,
+  QUINCENAL: 15,
+  MENSUAL: 30,
+  SEMESTRAL: 180,
+  ANUAL: 365,
 };
 
 export function FormularioPlan({
@@ -50,6 +66,14 @@ export function FormularioPlan({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- solo debe reaccionar a un nuevo estado.error, no a mostrarError
   }, [estado.error]);
 
+  const [frecuencia, setFrecuencia] = useState<FrecuenciaPago>(valoresIniciales?.frecuencia ?? "MENSUAL");
+  const [diasCicloPersonalizado, setDiasCicloPersonalizado] = useState(
+    String(valoresIniciales?.frecuencia === "PERSONALIZADO" ? valoresIniciales.diasCiclo : "")
+  );
+  const esPersonalizado = frecuencia === "PERSONALIZADO";
+  const diasCicloEfectivo = esPersonalizado
+    ? Number(diasCicloPersonalizado) || 0
+    : DIAS_CICLO_POR_FRECUENCIA_FIJA[frecuencia];
   const [permitePagoParcial, setPermitePagoParcial] = useState(valoresIniciales?.permitePagoParcial ?? true);
   const [tieneMinimoPropio, setTieneMinimoPropio] = useState(
     valoresIniciales?.minimoAbonoTipo !== null && valoresIniciales?.minimoAbonoTipo !== undefined
@@ -78,7 +102,8 @@ export function FormularioPlan({
               <select
                 name="frecuencia"
                 required
-                defaultValue="MENSUAL"
+                value={frecuencia}
+                onChange={(e) => setFrecuencia(e.target.value as FrecuenciaPago)}
                 className="min-h-11 rounded-lg border px-3 outline-none focus:border-[var(--gx-accent)]"
                 style={{ background: "var(--gx-surface-2)", borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }}
               >
@@ -86,8 +111,24 @@ export function FormularioPlan({
                 <option value="SEMANAL">Semanal</option>
                 <option value="QUINCENAL">Quincenal</option>
                 <option value="MENSUAL">Mensual</option>
+                <option value="SEMESTRAL">Semestral</option>
+                <option value="ANUAL">Anual</option>
+                <option value="PERSONALIZADO">Personalizado</option>
               </select>
             </label>
+
+            {esPersonalizado && (
+              <Input
+                name="diasCiclo"
+                label="Duración del ciclo (días)"
+                type="number"
+                min={1}
+                required
+                value={diasCicloPersonalizado}
+                onChange={(e) => setDiasCicloPersonalizado(e.target.value)}
+              />
+            )}
+            {!esPersonalizado && <input type="hidden" name="diasCiclo" value={diasCicloEfectivo} />}
 
             <label className="flex min-h-11 items-center gap-2 text-sm" style={{ color: "var(--gx-muted)" }}>
               <input type="checkbox" name="incluyeEntrenador" className="h-5 w-5 accent-[var(--gx-accent)]" />
@@ -163,7 +204,9 @@ export function FormularioPlan({
           <div className="rounded-lg border p-3 text-sm" style={{ borderColor: "var(--gx-edge)" }}>
             <div className="flex justify-between">
               <span style={{ color: "var(--gx-muted)" }}>Frecuencia</span>
-              <span style={{ color: "var(--gx-ink)" }}>{ETIQUETA_FRECUENCIA[valoresIniciales.frecuencia]}</span>
+              <span style={{ color: "var(--gx-ink)" }}>
+                {ETIQUETA_FRECUENCIA[valoresIniciales.frecuencia]} ({valoresIniciales.diasCiclo} días)
+              </span>
             </div>
             <div className="mt-1 flex justify-between">
               <span style={{ color: "var(--gx-muted)" }}>Entrenador</span>
@@ -191,6 +234,7 @@ export function FormularioPlan({
         <CambiarFrecuenciaSection
           nombrePlan={valoresIniciales.nombre}
           frecuenciaActual={valoresIniciales.frecuencia}
+          diasCicloActual={valoresIniciales.diasCiclo}
           incluyeEntrenadorActual={valoresIniciales.incluyeEntrenador}
           cantidadSuscripcionesActivas={cambioFrecuencia.cantidadSuscripcionesActivas}
           accion={cambioFrecuencia.accion}
@@ -203,12 +247,14 @@ export function FormularioPlan({
 function CambiarFrecuenciaSection({
   nombrePlan,
   frecuenciaActual,
+  diasCicloActual,
   incluyeEntrenadorActual,
   cantidadSuscripcionesActivas,
   accion,
 }: {
   nombrePlan: string;
   frecuenciaActual: FrecuenciaPago;
+  diasCicloActual: number;
   incluyeEntrenadorActual: boolean;
   cantidadSuscripcionesActivas: number;
   accion: (estado: EstadoFormularioPlan, formData: FormData) => Promise<EstadoFormularioPlan>;
@@ -223,11 +269,21 @@ function CambiarFrecuenciaSection({
 
   const [abierto, setAbierto] = useState(false);
   const [frecuencia, setFrecuencia] = useState<FrecuenciaPago>(frecuenciaActual);
+  const [diasCicloPersonalizado, setDiasCicloPersonalizado] = useState(
+    String(frecuenciaActual === "PERSONALIZADO" ? diasCicloActual : "")
+  );
+  const esPersonalizado = frecuencia === "PERSONALIZADO";
+  const diasCicloEfectivo = esPersonalizado
+    ? Number(diasCicloPersonalizado) || 0
+    : DIAS_CICLO_POR_FRECUENCIA_FIJA[frecuencia];
   const [incluyeEntrenador, setIncluyeEntrenador] = useState(incluyeEntrenadorActual);
   const [exonerar, setExonerar] = useState(false);
   const [confirmacion, setConfirmacion] = useState("");
 
-  const hayCambios = frecuencia !== frecuenciaActual || incluyeEntrenador !== incluyeEntrenadorActual;
+  const hayCambios =
+    frecuencia !== frecuenciaActual ||
+    diasCicloEfectivo !== diasCicloActual ||
+    incluyeEntrenador !== incluyeEntrenadorActual;
   const confirmacionValida = confirmacion.trim() === nombrePlan;
 
   return (
@@ -252,8 +308,25 @@ function CambiarFrecuenciaSection({
             <option value="SEMANAL">Semanal</option>
             <option value="QUINCENAL">Quincenal</option>
             <option value="MENSUAL">Mensual</option>
+            <option value="SEMESTRAL">Semestral</option>
+            <option value="ANUAL">Anual</option>
+            <option value="PERSONALIZADO">Personalizado</option>
           </select>
         </label>
+
+        {esPersonalizado && (
+          <label className="flex flex-col gap-1.5 text-sm" style={{ color: "var(--gx-muted)" }}>
+            Duración del ciclo (días)
+            <input
+              type="number"
+              min={1}
+              value={diasCicloPersonalizado}
+              onChange={(e) => setDiasCicloPersonalizado(e.target.value)}
+              className="min-h-11 rounded-lg border px-3 outline-none focus:border-[var(--gx-accent)]"
+              style={{ background: "var(--gx-surface-2)", borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }}
+            />
+          </label>
+        )}
 
         <label className="flex min-h-11 items-center gap-2 text-sm" style={{ color: "var(--gx-muted)" }}>
           <input
@@ -301,6 +374,7 @@ function CambiarFrecuenciaSection({
 
             <form action={enviar} className="mt-4 flex flex-col gap-3">
               <input type="hidden" name="frecuencia" value={frecuencia} />
+              <input type="hidden" name="diasCiclo" value={diasCicloEfectivo} />
               <input type="hidden" name="incluyeEntrenador" value={incluyeEntrenador ? "1" : ""} />
               <input type="hidden" name="exonerar" value={exonerar ? "1" : ""} />
 

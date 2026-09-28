@@ -31,6 +31,7 @@ export default async function PaginaEditarPlan({ params }: { params: Promise<{ i
         valoresIniciales={{
           nombre: plan.nombre,
           frecuencia: plan.frecuencia,
+          diasCiclo: plan.diasCiclo,
           incluyeEntrenador: plan.incluyeEntrenador,
           precioUSD: plan.precioUSD,
           multisede: plan.multisede,

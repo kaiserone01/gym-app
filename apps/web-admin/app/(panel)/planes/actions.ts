@@ -53,13 +53,14 @@ export async function crearPlanAction(
 
   const nombre = formData.get("nombre")?.toString().trim();
   const frecuencia = formData.get("frecuencia")?.toString() as FrecuenciaPago | undefined;
+  const diasCiclo = Number(formData.get("diasCiclo"));
   const incluyeEntrenador = formData.get("incluyeEntrenador")?.toString() === "on";
   const multisede = formData.get("multisede")?.toString() === "on";
   const precioUSD = Number(formData.get("precioUSD"));
   const { permitePagoParcial, minimoAbonoTipo, minimoAbonoValor } = leerCamposDeAbono(formData);
 
-  if (!nombre || !frecuencia || Number.isNaN(precioUSD)) {
-    return { error: "Nombre, frecuencia y precio son requeridos." };
+  if (!nombre || !frecuencia || !diasCiclo || diasCiclo <= 0 || Number.isNaN(precioUSD)) {
+    return { error: "Nombre, frecuencia, duración del ciclo y precio son requeridos." };
   }
 
   await crearPlan(
@@ -68,6 +69,7 @@ export async function crearPlanAction(
       organizacionId: usuario.organizacionId,
       nombre,
       frecuencia,
+      diasCiclo,
       incluyeEntrenador,
       precioUSD,
       multisede,
@@ -129,12 +131,13 @@ export async function actualizarFrecuenciaPlanAction(
   const { usuario } = sesion;
 
   const frecuencia = formData.get("frecuencia")?.toString() as FrecuenciaPago | undefined;
+  const diasCiclo = Number(formData.get("diasCiclo"));
   const incluyeEntrenador = formData.get("incluyeEntrenador")?.toString() === "1";
   const exonerar = formData.get("exonerar")?.toString() === "1";
   const confirmacion = formData.get("confirmacion")?.toString() ?? "";
 
-  if (!frecuencia) {
-    return { error: "Frecuencia es requerida." };
+  if (!frecuencia || !diasCiclo || diasCiclo <= 0) {
+    return { error: "Frecuencia y duración del ciclo son requeridas." };
   }
 
   try {
@@ -145,6 +148,7 @@ export async function actualizarFrecuenciaPlanAction(
         rolSolicitante: usuario.rol,
         planId: id,
         frecuencia,
+        diasCiclo,
         incluyeEntrenador,
         confirmacion,
         exonerar,

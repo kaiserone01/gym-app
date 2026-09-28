@@ -10,7 +10,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 // real vive en la raíz del monorepo. dotenv no sobreescribe variables ya
 // definidas (p.ej. inyectadas por la plataforma en producción), así que esto
 // es un no-op seguro fuera de desarrollo local.
-config({ path: path.resolve(process.cwd(), "../../.env") });
+config({ path: path.resolve(process.cwd(), "../../.env"), quiet: true });
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;

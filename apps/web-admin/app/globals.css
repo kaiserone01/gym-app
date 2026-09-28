@@ -5,6 +5,13 @@
   touch-action: manipulation;
 }
 
+html {
+  /* Sin esto, el navegador pinta los controles nativos (lista del <select>,
+     date picker, scrollbars) con su tema claro por defecto, aunque toda la
+     UI sea oscura — se ve un rectángulo blanco al abrir un <select>. */
+  color-scheme: dark;
+}
+
 body {
   background: var(--gx-ground);
   color: var(--gx-ink);

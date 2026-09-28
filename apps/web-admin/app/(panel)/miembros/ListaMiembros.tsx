@@ -73,6 +73,8 @@ export function ListaMiembros({
   const [busqueda, setBusqueda] = useState("");
   const [inscritoDesde, setInscritoDesde] = useState("");
   const [venceHasta, setVenceHasta] = useState("");
+  const [planFiltro, setPlanFiltro] = useState("");
+  const [proximoCobroFiltro, setProximoCobroFiltro] = useState<"" | "vencidos" | "7" | "15" | "30">("");
 
   const planesPorId = useMemo(() => new Map(planes.map((plan) => [plan.id, plan])), [planes]);
   const sucursalesPorId = useMemo(() => new Map(sucursales.map((s) => [s.id, s.nombre])), [sucursales]);
@@ -104,14 +106,29 @@ export function ListaMiembros({
         }
       }
 
+      if (planFiltro && miembro.planId !== planFiltro) return false;
+
+      if (proximoCobroFiltro) {
+        if (!miembro.fechaVencimiento) return false;
+        const dias = diasHastaVencimiento(miembro.fechaVencimiento);
+        if (proximoCobroFiltro === "vencidos") {
+          if (dias >= 0) return false;
+        } else {
+          const limite = Number(proximoCobroFiltro);
+          if (dias < 0 || dias > limite) return false;
+        }
+      }
+
       return true;
     });
-  }, [filas, busqueda, inscritoDesde, venceHasta]);
+  }, [filas, busqueda, inscritoDesde, venceHasta, planFiltro, proximoCobroFiltro]);
 
   function limpiarFiltros() {
     setBusqueda("");
     setInscritoDesde("");
     setVenceHasta("");
+    setPlanFiltro("");
+    setProximoCobroFiltro("");
   }
 
   return (
@@ -131,6 +148,37 @@ export function ListaMiembros({
           onChange={(e) => setInscritoDesde(e.target.value)}
         />
         <Input label="Vencidos hasta" type="date" value={venceHasta} onChange={(e) => setVenceHasta(e.target.value)} />
+        <label className="flex flex-col gap-1.5 text-sm" style={{ color: "var(--gx-muted)" }}>
+          Plan
+          <select
+            value={planFiltro}
+            onChange={(e) => setPlanFiltro(e.target.value)}
+            className="min-h-11 rounded-lg border px-3 outline-none focus:border-[var(--gx-accent)]"
+            style={{ background: "var(--gx-surface-2)", borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }}
+          >
+            <option value="">Todos los planes</option>
+            {planes.map((plan) => (
+              <option key={plan.id} value={plan.id}>
+                {plan.nombre}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="flex flex-col gap-1.5 text-sm" style={{ color: "var(--gx-muted)" }}>
+          Próximo cobro
+          <select
+            value={proximoCobroFiltro}
+            onChange={(e) => setProximoCobroFiltro(e.target.value as typeof proximoCobroFiltro)}
+            className="min-h-11 rounded-lg border px-3 outline-none focus:border-[var(--gx-accent)]"
+            style={{ background: "var(--gx-surface-2)", borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }}
+          >
+            <option value="">Todos</option>
+            <option value="vencidos">Vencidos</option>
+            <option value="7">Próximos 7 días</option>
+            <option value="15">Próximos 15 días</option>
+            <option value="30">Próximos 30 días</option>
+          </select>
+        </label>
         <button type="button" onClick={limpiarFiltros} className="text-sm hover:underline" style={{ color: "var(--gx-muted)" }}>
           Limpiar
         </button>

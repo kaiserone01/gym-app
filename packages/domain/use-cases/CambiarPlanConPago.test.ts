@@ -182,18 +182,30 @@ function crearFakes(estadoInicial: { miembro: Miembro; suscripcion: Suscripcion;
   return { deps, miembros, suscripciones, pagosCreados, auditoriasCreadas };
 }
 
+const DIAS_CICLO_DE_PRUEBA: Record<FrecuenciaPago, number> = {
+  DIARIO: 1,
+  SEMANAL: 7,
+  QUINCENAL: 15,
+  MENSUAL: 30,
+  SEMESTRAL: 180,
+  ANUAL: 365,
+  PERSONALIZADO: 0,
+};
+
 function crearPlan(datos: {
   id: string;
   nombre: string;
   frecuencia: FrecuenciaPago;
   precioUSD: number;
   incluyeEntrenador?: boolean;
+  diasCiclo?: number;
 }): Plan {
   return {
     id: datos.id,
     organizacionId: "org-1",
     nombre: datos.nombre,
     frecuencia: datos.frecuencia,
+    diasCiclo: datos.diasCiclo ?? DIAS_CICLO_DE_PRUEBA[datos.frecuencia],
     incluyeEntrenador: datos.incluyeEntrenador ?? false,
     precioUSD: datos.precioUSD,
     multisede: false,

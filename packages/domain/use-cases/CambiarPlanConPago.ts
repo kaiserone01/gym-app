@@ -11,6 +11,9 @@ import { MiembroFueraDeSucursalError } from "./ObtenerMiembro";
 import { calcularCambioPlan, PlanCortesiaConTiempoRestanteError } from "../entities/cambioPlanCalculo";
 import { ICambioPlanAuditoriaRepository } from "../ports/ICambioPlanAuditoriaRepository";
 import type { OrigenCambioPlan } from "../entities/CambioPlanAuditoria";
+import { validarLineasDePago, LineasDePagoInvalidasError, MontoLineasNoCubreObjetivoError } from "../entities/Pago";
+import { randomUUID } from "node:crypto";
+import type { DatosLineaPago } from "../entities/Pago";
 
 export { PlanCortesiaConTiempoRestanteError };
 
@@ -55,6 +58,8 @@ export class MetodoPagoRequeridoError extends Error {
   }
 }
 
+export { LineasDePagoInvalidasError, MontoLineasNoCubreObjetivoError };
+
 export class EntrenadorRequeridoError extends Error {
   constructor() {
     super("El plan nuevo incluye entrenador — elegí cuál antes de cambiar de plan.");
@@ -80,10 +85,11 @@ export interface DatosCambiarPlanConPago {
   // auditoría (regla 11 del diseño acordado; ver
   // packages/domain/entities/CambioPlanAuditoria.ts).
   origen: OrigenCambioPlan;
-  metodo: string | null;
-  metodoPagoId: string | null;
-  numeroOperacion: string | null;
-  tasaCambio: number | null;
+  // Una diferencia de cambio de plan se cobra completa, aunque combinando
+  // varios métodos (2+ líneas) — no existe abono parcial sobre esta
+  // diferencia (ver diseño acordado, Fase 3). Vacío cuando no hay nada que
+  // cobrar (el excedente se absorbió en días o V == precioNuevo).
+  lineas: DatosLineaPago[];
   sucursalId: string;
   registradoPorId: string;
   rolUsuario: RolUsuario;
@@ -94,7 +100,7 @@ export interface DatosCambiarPlanConPago {
 }
 
 export interface ResultadoCambioPlan {
-  pago: Pago | null;
+  pagos: Pago[];
   // precioNuevo - V cuando es positivo; 0 si V >= precioNuevo (el
   // excedente se convierte en días, nunca en crédito devuelto).
   diferencia: number;
@@ -172,30 +178,38 @@ export async function cambiarPlanConPago(
 
   const montoCobrado = resultado.montoCobradoCentavos / 100;
 
-  let pago: Pago | null = null;
+  const pagos: Pago[] = [];
 
   if (montoCobrado > 0) {
-    if (!input.metodo || !input.metodoPagoId) {
+    if (input.lineas.length === 0) {
       throw new MetodoPagoRequeridoError();
     }
+    // Modo "exacto": la diferencia se paga completa, aunque combinando
+    // varios métodos — no hay abono parcial sobre el cambio de plan (ver
+    // diseño acordado, Fase 3).
+    validarLineasDePago(input.lineas, "exacto", montoCobrado);
 
     const turnoAbierto = await deps.turnos.buscarAbiertoPorSucursal(input.sucursalId);
+    const grupoPagoId = input.lineas.length > 1 ? randomUUID() : null;
 
-    pago = await deps.pagos.crear({
-      miembroId: input.miembroId,
-      sucursalId: input.sucursalId,
-      turnoId: turnoAbierto?.id ?? null,
-      registradoPorId: input.registradoPorId,
-      monto: montoCobrado,
-      metodo: input.metodo,
-      metodoPagoId: input.metodoPagoId,
-      numeroOperacion: input.numeroOperacion,
-      tasaCambio: input.tasaCambio,
-      montoBs: input.tasaCambio !== null ? montoCobrado * input.tasaCambio : null,
-      fechaInicioCiclo: activa.inicio,
-      fechaFinCiclo: resultado.nuevoVencimiento,
-      grupoPagoId: null,
-    });
+    for (const linea of input.lineas) {
+      const pago = await deps.pagos.crear({
+        miembroId: input.miembroId,
+        sucursalId: input.sucursalId,
+        turnoId: turnoAbierto?.id ?? null,
+        registradoPorId: input.registradoPorId,
+        monto: linea.monto,
+        metodo: linea.metodo,
+        metodoPagoId: linea.metodoPagoId,
+        numeroOperacion: linea.numeroOperacion,
+        tasaCambio: linea.tasaCambio,
+        montoBs: linea.tasaCambio !== null ? linea.monto * linea.tasaCambio : null,
+        fechaInicioCiclo: activa.inicio,
+        fechaFinCiclo: resultado.nuevoVencimiento,
+        grupoPagoId,
+      });
+      pagos.push(pago);
+    }
   }
 
   await deps.suscripciones.cambiarPlan(activa.id, input.planNuevoId);
@@ -238,12 +252,12 @@ export async function cambiarPlanConPago(
     // verificado contra producción antes de este cambio).
     modo: "CICLO_COMPLETO",
     origen: input.origen,
-    pagoId: pago?.id ?? null,
+    pagoId: pagos[0]?.id ?? null,
     registradoPorId: input.registradoPorId,
   });
 
   return {
-    pago,
+    pagos,
     diferencia: montoCobrado,
     nuevoVencimiento: resultado.nuevoVencimiento,
     saldoAFavorGenerado: 0,

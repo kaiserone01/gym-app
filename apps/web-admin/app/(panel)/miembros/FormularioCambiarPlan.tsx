@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useState } from "react";
 import { Button } from "@gym-app/ui/components/Button";
+import { CurrencyInput } from "@gym-app/ui/components/CurrencyInput";
 import { useFeedback } from "@gym-app/ui/components/FeedbackOverlay";
 import type { MetodoPago } from "@gym-app/domain/entities/MetodoPago";
 import type { FrecuenciaPago } from "@gym-app/domain/entities/Plan";
@@ -40,6 +41,19 @@ export interface EntrenadorParaCambio {
 // hay plan nuevo elegido.
 export interface ProyeccionCambioPlan {
   resultado: ResultadoCambioPlan;
+}
+
+interface LineaPagoCambio {
+  clave: string;
+  monto: string;
+  metodoPagoId: string | null;
+  metodo: string;
+  tasaCambio: number | null;
+  numeroOperacion: string;
+}
+
+function nuevaLineaVacia(): LineaPagoCambio {
+  return { clave: crypto.randomUUID(), monto: "", metodoPagoId: null, metodo: "", tasaCambio: null, numeroOperacion: "" };
 }
 
 export function FormularioCambiarPlan({
@@ -115,12 +129,18 @@ export function FormularioCambiarPlan({
 
   const [planNuevoId, setPlanNuevoId] = useState("");
   const [entrenadorId, setEntrenadorId] = useState(entrenadorActualId ?? "");
-  const [seleccionMetodo, setSeleccionMetodo] = useState<{
-    metodoPagoId: string | null;
-    metodo: string;
-    tasaCambio: number | null;
-    numeroOperacion: string;
-  }>({ metodoPagoId: null, metodo: "", tasaCambio: null, numeroOperacion: "" });
+  // Diferencia de cambio de plan: se paga completa, aunque combinando
+  // varios métodos — no hay abono parcial sobre esta diferencia (ver
+  // diseño acordado, Fase 3). "combinado" agrega una línea más; nunca
+  // menos de una.
+  const [esCombinado, setEsCombinado] = useState(false);
+  const [lineas, setLineas] = useState<LineaPagoCambio[]>([nuevaLineaVacia()]);
+
+  function actualizarLinea(clave: string, cambios: Partial<LineaPagoCambio>) {
+    setLineas((actuales) => actuales.map((l) => (l.clave === clave ? { ...l, ...cambios } : l)));
+  }
+
+  const sumaLineas = lineas.reduce((suma, l) => suma + (Number(l.monto) || 0), 0);
 
   const planNuevo = planes.find((p) => p.id === planNuevoId) ?? null;
 
@@ -190,10 +210,21 @@ export function FormularioCambiarPlan({
       <input type="hidden" name="miembroId" value={miembroId} />
       <input type="hidden" name="planNuevoId" value={planNuevoId} />
       <input type="hidden" name="entrenadorId" value={entrenadorId} />
-      <input type="hidden" name="metodo" value={seleccionMetodo.metodo} />
-      <input type="hidden" name="metodoPagoId" value={seleccionMetodo.metodoPagoId ?? ""} />
-      <input type="hidden" name="tasaCambio" value={seleccionMetodo.tasaCambio ?? ""} />
-      <input type="hidden" name="numeroOperacion" value={seleccionMetodo.numeroOperacion} />
+      <input
+        type="hidden"
+        name="lineas"
+        value={JSON.stringify(
+          montoACobrar > 0
+            ? lineas.map((l) => ({
+                monto: esCombinado ? Number(l.monto) || 0 : montoACobrar,
+                metodo: l.metodo,
+                metodoPagoId: l.metodoPagoId,
+                numeroOperacion: l.numeroOperacion || null,
+                tasaCambio: l.tasaCambio,
+              }))
+            : []
+        )}
+      />
       {origen && <input type="hidden" name="origen" value={origen} />}
 
       <label className="flex flex-col gap-1.5 text-sm" style={{ color: "var(--gx-muted)" }}>
@@ -203,6 +234,8 @@ export function FormularioCambiarPlan({
           onChange={(e) => {
             setPlanNuevoId(e.target.value);
             onPlanNuevoCambiado?.(planes.find((p) => p.id === e.target.value) ?? null);
+            setEsCombinado(false);
+            setLineas([nuevaLineaVacia()]);
           }}
           className="min-h-11 rounded-lg border px-3 outline-none focus:border-[var(--gx-accent)]"
           style={{ background: "var(--gx-surface-2)", borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }}
@@ -248,20 +281,115 @@ export function FormularioCambiarPlan({
         </p>
       )}
 
-      {planNuevo && montoACobrar > 0 && (
-        <SelectorMetodoPago
-          metodos={metodosPago}
-          monto={montoACobrar}
-          onCambio={setSeleccionMetodo}
-          avisoServidor={{ tasaNueva: estado.tasaNueva, fallaTemporal: estado.fallaTemporal, tasaGuardada: estado.tasaGuardada }}
-        />
+      {planNuevo && montoACobrar > 0 && !esCombinado && (
+        <>
+          <SelectorMetodoPago
+            metodos={metodosPago}
+            monto={montoACobrar}
+            onCambio={(seleccion) => actualizarLinea(lineas[0].clave, seleccion)}
+            avisoServidor={{ tasaNueva: estado.tasaNueva, fallaTemporal: estado.fallaTemporal, tasaGuardada: estado.tasaGuardada }}
+          />
+          <button
+            type="button"
+            onClick={() => {
+              setEsCombinado(true);
+              setLineas([nuevaLineaVacia(), nuevaLineaVacia()]);
+            }}
+            className="text-left text-sm font-medium"
+            style={{ color: "var(--gx-accent-ink)" }}
+          >
+            Pagar con varios métodos
+          </button>
+        </>
+      )}
+
+      {/* Diferencia de cambio de plan combinada entre 2+ métodos — se paga
+          completa, no hay abono parcial sobre esta diferencia (ver diseño
+          acordado, Fase 3). */}
+      {planNuevo && montoACobrar > 0 && esCombinado && (
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-medium" style={{ color: "var(--gx-muted)" }}>
+              Distribución del pago
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                setEsCombinado(false);
+                setLineas([nuevaLineaVacia()]);
+              }}
+              className="text-sm"
+              style={{ color: "var(--gx-muted)" }}
+            >
+              Volver a un solo método
+            </button>
+          </div>
+          {lineas.map((linea, indice) => (
+            <div key={linea.clave} className="flex flex-col gap-3 rounded-lg border p-3" style={{ borderColor: "var(--gx-edge)" }}>
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium" style={{ color: "var(--gx-ink)" }}>
+                  Método {indice + 1}
+                </span>
+                {lineas.length > 2 && (
+                  <button
+                    type="button"
+                    onClick={() => setLineas((prev) => prev.filter((_, i) => i !== indice))}
+                    className="text-sm"
+                    style={{ color: "var(--gx-bad)" }}
+                  >
+                    Quitar
+                  </button>
+                )}
+              </div>
+              <SelectorMetodoPago
+                metodos={metodosPago}
+                monto={Number(linea.monto) || montoACobrar}
+                onCambio={(seleccion) => actualizarLinea(linea.clave, seleccion)}
+                ocultarNumeroOperacion
+                numeroOperacion={linea.numeroOperacion}
+                onCambioNumeroOperacion={(valor) => actualizarLinea(linea.clave, { numeroOperacion: valor })}
+              />
+              {linea.metodoPagoId !== null && (
+                <CurrencyInput
+                  name={`monto-linea-${indice}`}
+                  label="Monto de este método (USD)"
+                  moneda="USD"
+                  required
+                  value={linea.monto}
+                  onChange={(valorUSD) => actualizarLinea(linea.clave, { monto: valorUSD })}
+                />
+              )}
+            </div>
+          ))}
+          <button
+            type="button"
+            onClick={() => setLineas((prev) => [...prev, nuevaLineaVacia()])}
+            className="min-h-11 rounded-lg border px-3 text-sm font-medium"
+            style={{ borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }}
+          >
+            + Agregar método
+          </button>
+          <div className="flex justify-between rounded-lg px-3 py-2 text-sm" style={{ background: "var(--gx-surface-2)" }}>
+            <span style={{ color: "var(--gx-muted)" }}>Total ingresado</span>
+            <span className="font-semibold" style={{ color: "var(--gx-ink)" }}>
+              ${sumaLineas.toFixed(2)} de ${montoACobrar.toFixed(2)}
+            </span>
+          </div>
+        </div>
       )}
 
       {planNuevo && planNuevo.id !== planActualId && !errorCortesia && resultado && (
         <div className="flex flex-col gap-2">
           <Button
             type="submit"
-            disabled={enviando || (requiereEntrenador && !entrenadorId) || (montoACobrar > 0 && !seleccionMetodo.metodoPagoId)}
+            disabled={
+              enviando ||
+              (requiereEntrenador && !entrenadorId) ||
+              (montoACobrar > 0 &&
+                (esCombinado
+                  ? lineas.some((l) => !l.metodoPagoId || (Number(l.monto) || 0) <= 0) || Math.abs(sumaLineas - montoACobrar) >= 0.01
+                  : !lineas[0].metodoPagoId))
+            }
             className="flex min-h-fit flex-col items-start gap-1 py-3 text-left"
           >
             <span className="font-semibold">

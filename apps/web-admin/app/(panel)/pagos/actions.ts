@@ -38,6 +38,8 @@ import {
   MetodoPagoRequeridoError,
   EntrenadorRequeridoError,
   PlanCortesiaConTiempoRestanteError,
+  LineasDePagoInvalidasError as LineasDePagoInvalidasErrorCambio,
+  MontoLineasNoCubreObjetivoError,
 } from "@gym-app/domain/use-cases/CambiarPlanConPago";
 
 export interface EstadoFormularioPago {
@@ -251,10 +253,7 @@ export async function cambiarPlanAction(
 
   const miembroId = formData.get("miembroId")?.toString();
   const planNuevoId = formData.get("planNuevoId")?.toString();
-  const metodo = formData.get("metodo")?.toString() || null;
-  const metodoPagoId = formData.get("metodoPagoId")?.toString() || null;
-  const tasaCambioRaw = formData.get("tasaCambio")?.toString();
-  const numeroOperacion = formData.get("numeroOperacion")?.toString().trim() || null;
+  const lineasRaw = formData.get("lineas")?.toString();
   const sucursalIdPago = formData.get("sucursalIdPago")?.toString() || sucursalActivaId;
   const entrenadorId = formData.get("entrenadorId")?.toString() || null;
   // "caja": viene del wizard de Caja (Paso 2), dentro de un modal — se
@@ -269,8 +268,34 @@ export async function cambiarPlanAction(
     return { error: "No se pudo determinar en qué sucursal se registra el cambio." };
   }
 
-  const validacionTasa = await validarTasaSiEsEnBs(tasaCambioRaw);
-  if (!validacionTasa.ok) return validacionTasa.estado;
+  let lineas: Array<{
+    monto: number;
+    metodo: string;
+    metodoPagoId: string | null;
+    numeroOperacion: string | null;
+    tasaCambio: number | null;
+  }> = [];
+  if (lineasRaw) {
+    try {
+      lineas = JSON.parse(lineasRaw);
+    } catch {
+      return { error: "No se pudo interpretar la información del pago." };
+    }
+    if (!Array.isArray(lineas)) {
+      return { error: "No se pudo interpretar la información del pago." };
+    }
+  }
+
+  // La tasa BCV se valida por línea que opere en Bs — cada línea puede usar
+  // un método distinto (Etapa 3 del plan de tasa BCV, no se confía en la
+  // tasa que mandó el formulario). Sin líneas (nada que cobrar), no hay
+  // nada que validar.
+  const lineasValidadas: typeof lineas = [];
+  for (const linea of lineas) {
+    const validacionTasa = await validarTasaSiEsEnBs(linea.tasaCambio !== null ? String(linea.tasaCambio) : undefined);
+    if (!validacionTasa.ok) return validacionTasa.estado;
+    lineasValidadas.push({ ...linea, tasaCambio: validacionTasa.tasaCambio });
+  }
 
   let resultado;
   try {
@@ -296,10 +321,7 @@ export async function cambiarPlanAction(
           miembroId,
           planNuevoId,
           origen: origen === "caja" ? "CAJA" : "FICHA_MIEMBRO",
-          metodo,
-          metodoPagoId,
-          numeroOperacion,
-          tasaCambio: validacionTasa.tasaCambio,
+          lineas: lineasValidadas,
           sucursalId: sucursalIdPago,
           registradoPorId: usuario.id,
           rolUsuario: usuario.rol,
@@ -317,7 +339,9 @@ export async function cambiarPlanAction(
       error instanceof SinCicloVigenteError ||
       error instanceof MetodoPagoRequeridoError ||
       error instanceof EntrenadorRequeridoError ||
-      error instanceof PlanCortesiaConTiempoRestanteError
+      error instanceof PlanCortesiaConTiempoRestanteError ||
+      error instanceof LineasDePagoInvalidasErrorCambio ||
+      error instanceof MontoLineasNoCubreObjetivoError
     ) {
       return { error: error.message };
     }

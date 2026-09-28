@@ -312,12 +312,9 @@ describe("cambiarPlanConPago — caso Luis Castro (E1: vista previa vs guardado)
         miembroId: miembro.id,
         planNuevoId: planNuevo.id,
         origen: "CAJA",
-        // Sin método de pago: no debe hacer falta, porque no hay nada que
+        // Sin líneas de pago: no debe hacer falta, porque no hay nada que
         // cobrar cuando el excedente se absorbe en días.
-        metodo: null,
-        metodoPagoId: null,
-        numeroOperacion: null,
-        tasaCambio: null,
+        lineas: [],
         sucursalId: "sucursal-1",
         registradoPorId: "usuario-1",
         rolUsuario: "SOCIO",
@@ -325,7 +322,7 @@ describe("cambiarPlanConPago — caso Luis Castro (E1: vista previa vs guardado)
       });
 
       expect(resultado.diferencia).toBe(0);
-      expect(resultado.pago).toBeNull();
+      expect(resultado.pagos).toHaveLength(0);
       // No debe haberse creado ningún Pago — ni siquiera uno de $0.
       expect(pagosCreados).toHaveLength(0);
 
@@ -386,10 +383,7 @@ describe("cambiarPlanConPago — caso Luis Castro (E1: vista previa vs guardado)
         miembroId: miembro.id,
         planNuevoId: planNuevoCaro.id,
         origen: "CAJA",
-        metodo: "efectivo_usd",
-        metodoPagoId: "metodo-1",
-        numeroOperacion: null,
-        tasaCambio: null,
+        lineas: [{ monto: 21.67, metodo: "efectivo_usd", metodoPagoId: "metodo-1", numeroOperacion: null, tasaCambio: null }],
         sucursalId: "sucursal-1",
         registradoPorId: "usuario-1",
         rolUsuario: "SOCIO",
@@ -400,24 +394,104 @@ describe("cambiarPlanConPago — caso Luis Castro (E1: vista previa vs guardado)
 
       expect(resultado.diferencia).toBe(21.67);
       expect(resultado.nuevoVencimiento).toEqual(esperado);
-      expect(resultado.pago).not.toBeNull();
-      expect(resultado.pago!.monto).toBe(21.67);
+      expect(resultado.pagos).toHaveLength(1);
+      expect(resultado.pagos[0].monto).toBe(21.67);
 
       expect(miembros.get(miembro.id)!.fechaVencimiento).toEqual(esperado);
       expect(suscripciones.get(suscripcion.id)!.fin).toEqual(esperado);
       expect(miembros.get(miembro.id)!.planId).toBe(planNuevoCaro.id);
 
-      // Con cobro real, la auditoría queda enlazada al Pago creado (regla 11).
+      // Con cobro real, la auditoría queda enlazada al primer Pago creado (regla 11).
       expect(auditoriasCreadas).toHaveLength(1);
       expect(auditoriasCreadas[0].montoCobradoCentavos).toBe(2167);
-      expect(auditoriasCreadas[0].pagoId).toBe(resultado.pago!.id);
+      expect(auditoriasCreadas[0].pagoId).toBe(resultado.pagos[0].id);
       expect(auditoriasCreadas[0].modo).toBe("CICLO_COMPLETO");
     } finally {
       restaurarReloj();
     }
   });
 
-  test("V < precioNuevo sin método de pago: lanza MetodoPagoRequeridoError", async () => {
+  test("V < precioNuevo, pago combinado (2 métodos que suman exacto): crea 2 pagos con el mismo grupoPagoId", async () => {
+    const vencimientoCorto = new Date("2026-10-06T16:00:00Z"); // 10 días desde el 26/09
+    const { miembro, suscripcion } = crearMiembroConSuscripcion({
+      id: "miembro-castro-combinado",
+      nombre: "Luis Castro",
+      cedula: "99374526",
+      plan: planViejo,
+      vencimiento: vencimientoCorto,
+    });
+    const planNuevoCaro = crearPlan({ id: "plan-con-entrenador-combinado", nombre: "Con entrenador", frecuencia: "MENSUAL", precioUSD: 30 });
+    const { deps, pagosCreados, auditoriasCreadas } = crearFakes({
+      miembro,
+      suscripcion,
+      planes: [planViejo, planNuevoCaro],
+    });
+
+    const restaurarReloj = fijarReloj(HOY_ISO);
+    try {
+      // Diferencia = $21.67, dividida en dos métodos distintos.
+      const resultado = await cambiarPlanConPago(deps, {
+        organizacionId: "org-1",
+        miembroId: miembro.id,
+        planNuevoId: planNuevoCaro.id,
+        origen: "CAJA",
+        lineas: [
+          { monto: 10, metodo: "efectivo_usd", metodoPagoId: "metodo-1", numeroOperacion: null, tasaCambio: null },
+          { monto: 11.67, metodo: "punto_de_venta", metodoPagoId: "metodo-2", numeroOperacion: "OP-1", tasaCambio: null },
+        ],
+        sucursalId: "sucursal-1",
+        registradoPorId: "usuario-1",
+        rolUsuario: "SOCIO",
+        entrenadorId: null,
+      });
+
+      expect(resultado.diferencia).toBe(21.67);
+      expect(resultado.pagos).toHaveLength(2);
+      expect(pagosCreados).toHaveLength(2);
+      expect(pagosCreados[0].grupoPagoId).not.toBeNull();
+      expect(pagosCreados[0].grupoPagoId).toBe(pagosCreados[1].grupoPagoId);
+      expect(auditoriasCreadas).toHaveLength(1);
+      expect(auditoriasCreadas[0].pagoId).toBe(resultado.pagos[0].id);
+    } finally {
+      restaurarReloj();
+    }
+  });
+
+  test("V < precioNuevo, líneas que no suman exacto: lanza MontoLineasNoCubreObjetivoError", async () => {
+    const vencimientoCorto = new Date("2026-10-06T16:00:00Z");
+    const { miembro, suscripcion } = crearMiembroConSuscripcion({
+      id: "miembro-castro-lineas-incompletas",
+      nombre: "Luis Castro",
+      cedula: "99374526",
+      plan: planViejo,
+      vencimiento: vencimientoCorto,
+    });
+    const planNuevoCaro = crearPlan({ id: "plan-con-entrenador-incompleto", nombre: "Con entrenador", frecuencia: "MENSUAL", precioUSD: 30 });
+    const { deps } = crearFakes({ miembro, suscripcion, planes: [planViejo, planNuevoCaro] });
+
+    const restaurarReloj = fijarReloj(HOY_ISO);
+    try {
+      // Diferencia real = $21.67, pero las líneas solo suman $15 — no debe
+      // tratarse como abono parcial (no existe abono sobre esta diferencia).
+      await expect(
+        cambiarPlanConPago(deps, {
+          organizacionId: "org-1",
+          miembroId: miembro.id,
+          planNuevoId: planNuevoCaro.id,
+          origen: "CAJA",
+          lineas: [{ monto: 15, metodo: "efectivo_usd", metodoPagoId: "metodo-1", numeroOperacion: null, tasaCambio: null }],
+          sucursalId: "sucursal-1",
+          registradoPorId: "usuario-1",
+          rolUsuario: "SOCIO",
+          entrenadorId: null,
+        })
+      ).rejects.toThrow("La suma de las líneas de pago no coincide con el monto a cobrar.");
+    } finally {
+      restaurarReloj();
+    }
+  });
+
+  test("V < precioNuevo sin líneas de pago: lanza MetodoPagoRequeridoError", async () => {
     const vencimientoCorto = new Date("2026-10-06T16:00:00Z");
     const { miembro, suscripcion } = crearMiembroConSuscripcion({
       id: "miembro-castro-sin-metodo",
@@ -437,10 +511,7 @@ describe("cambiarPlanConPago — caso Luis Castro (E1: vista previa vs guardado)
           miembroId: miembro.id,
           planNuevoId: planNuevoCaro.id,
           origen: "CAJA",
-          metodo: null,
-          metodoPagoId: null,
-          numeroOperacion: null,
-          tasaCambio: null,
+          lineas: [],
           sucursalId: "sucursal-1",
           registradoPorId: "usuario-1",
           rolUsuario: "SOCIO",
@@ -477,10 +548,7 @@ describe("cambiarPlanConPago — caso Luis Mendoza (Corporativo -> Plan Viejo, V
         miembroId: miembro.id,
         planNuevoId: planNuevo.id,
         origen: "CAJA",
-        metodo: null,
-        metodoPagoId: null,
-        numeroOperacion: null,
-        tasaCambio: null,
+        lineas: [],
         sucursalId: "sucursal-1",
         registradoPorId: "usuario-1",
         rolUsuario: "SOCIO",
@@ -490,7 +558,7 @@ describe("cambiarPlanConPago — caso Luis Mendoza (Corporativo -> Plan Viejo, V
       const esperado = new Date("2026-10-26T00:00:00Z"); // hoy (26/09) + 30 días, sin días extra
 
       expect(resultado.diferencia).toBe(0);
-      expect(resultado.pago).toBeNull();
+      expect(resultado.pagos).toHaveLength(0);
       expect(pagosCreados).toHaveLength(0);
       expect(resultado.nuevoVencimiento).toEqual(esperado);
       expect(miembros.get(miembro.id)!.fechaVencimiento).toEqual(esperado);

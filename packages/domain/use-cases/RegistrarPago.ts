@@ -6,7 +6,7 @@ import { IPlanRepository } from "../ports/IPlanRepository";
 import { ITurnoRepository } from "../ports/ITurnoRepository";
 import { ISucursalRepository } from "../ports/ISucursalRepository";
 import { IReglaAbonoRepository } from "../ports/IReglaAbonoRepository";
-import { Pago, pagosVigentesDelCiclo, totalPagado } from "../entities/Pago";
+import { Pago, pagosVigentesDelCiclo, totalPagado, validarLineasDePago, LineasDePagoInvalidasError } from "../entities/Pago";
 import { RolUsuario } from "../entities/UsuarioAdmin";
 import { IAuthorizationService } from "../ports/IAuthorizationService";
 import { resolverReglaAbono, calcularMontoMinimoAbono, calcularFechaLimiteAbono } from "../entities/ReglaAbono";
@@ -49,15 +49,7 @@ export class MontoInvalidoError extends Error {
   }
 }
 
-// Un pago combinado sin líneas, o con alguna línea en $0/negativo, no tiene
-// forma de saber a qué método imputar cada monto — se rechaza acá, no solo
-// en la UI, porque un FormData armado a mano podría saltarse la validación
-// del cliente.
-export class LineasDePagoInvalidasError extends Error {
-  constructor() {
-    super("Cada línea del pago combinado necesita un monto mayor a $0 y un método.");
-  }
-}
+export { LineasDePagoInvalidasError };
 
 // El plan tiene permitePagoParcial=false — no se puede registrar un abono
 // (monto menor al precio del plan) contra él. El pago combinado NO está
@@ -114,14 +106,7 @@ export async function registrarPago(deps: RegistrarPagoDeps, input: DatosRegistr
     throw new RolNoAutorizadoError();
   }
 
-  if (input.lineas.length === 0 || input.lineas.some((linea) => linea.monto <= 0 || !linea.metodo)) {
-    // Excepción: una sola línea en $0 sigue siendo válida para planes de
-    // cortesía (precioPlan === 0) — se valida más abajo contra
-    // miembro.precioPlan, no acá.
-    if (!(input.lineas.length === 1 && input.lineas[0].monto <= 0)) {
-      throw new LineasDePagoInvalidasError();
-    }
-  }
+  validarLineasDePago(input.lineas, "conAbono");
 
   const miembro = await deps.miembros.buscarPorId(input.organizacionId, input.miembroId);
   if (!miembro) {

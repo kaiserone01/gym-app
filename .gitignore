@@ -50,3 +50,8 @@ next-env.d.ts
 # fotos subidas desde el panel admin — contenido de usuario, no del repo
 apps/web-admin/public/uploads/
 .superpowers/
+
+# reportes de migración Excel — contienen PII real (nombres, cédulas, teléfonos)
+packages/db/migracion-excel/reporte-migracion-*.json
+# archivo fuente real de la migración — PII; el análisis en .md sí se versiona
+docs/xls/*.xlsm

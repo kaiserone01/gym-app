@@ -79,6 +79,7 @@ export interface DatosMiembroAMigrar {
   estado: "ACTIVA" | "VENCIDA";
   fechaVencimiento: Date;
   fechaInicio: Date;
+  fechaUltimoPago: Date | null;
   pago:
     | { monto: number; metodo: string; fechaPago: Date }
     | null;

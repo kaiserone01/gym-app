@@ -118,6 +118,9 @@ async function migrarFilaConfirmada(
     fila.datos.precioPlanUSD,
     !fila.datos.planLegacy,
   );
+  // Si el Plan ya existía, su precioUSD/activo reales mandan — nunca se sobreescriben
+  // con lo computado por esta fila (ver obtenerOCrearPlanParaFila: reuse existing as-is).
+  const precioPlanParaMiembro = plan.precioUSD;
 
   await prisma.$transaction(async (tx) => {
     const miembro = await tx.miembro.create({
@@ -128,8 +131,8 @@ async function migrarFilaConfirmada(
         cedula: fila.datos.cedula,
         celular: fila.datos.celular,
         planId: plan.id,
-        precioPlan: fila.datos.precioPlanUSD,
-        fechaUltimoPago: fila.datos.pago ? fila.datos.pago.fechaPago : null,
+        precioPlan: precioPlanParaMiembro,
+        fechaUltimoPago: fila.datos.fechaUltimoPago,
         fechaVencimiento: fila.datos.fechaVencimiento,
         activo: true,
       },
@@ -214,24 +217,56 @@ async function main() {
 
   let escritas = 0;
   let saltadas = 0;
+  let conError = 0;
+  const resultadosFinales: FilaClasificada[] = [];
 
   for (const resultado of resultados) {
-    if (resultado.categoria !== "migrada") continue;
+    if (resultado.categoria !== "migrada") {
+      resultadosFinales.push(resultado);
+      continue;
+    }
     try {
       const { escrita } = await migrarFilaConfirmada(resultado, organizacion.id, sucursal.id, admin.id);
-      if (escrita) escritas++;
-      else saltadas++;
+      if (escrita) {
+        escritas++;
+        resultadosFinales.push(resultado);
+      } else {
+        saltadas++;
+        resultadosFinales.push({
+          categoria: "ya-existia",
+          numeroFila: resultado.numeroFila,
+          cedula: resultado.datos.cedula,
+        });
+      }
     } catch (error) {
+      conError++;
       console.error(`Fila ${resultado.numeroFila} falló al escribir:`, error);
+      resultadosFinales.push({
+        categoria: "excluida",
+        motivo: "error-parseo",
+        numeroFila: resultado.numeroFila,
+        detalle: error instanceof Error ? error.message : String(error),
+      });
     }
   }
 
   console.log(`Filas escritas: ${escritas}`);
   console.log(`Filas ya existentes (salteadas): ${saltadas}`);
+  console.log(`Filas con error al escribir: ${conError}`);
 
   writeFileSync(
     rutaReporte,
-    JSON.stringify({ ...reporteInicial, filasEscritas: escritas, filasSalteadas: saltadas }, null, 2),
+    JSON.stringify(
+      {
+        ...reporteInicial,
+        resultados: resultadosFinales,
+        filasEscritas: escritas,
+        filasSalteadas: saltadas,
+        filasConError: conError,
+      },
+      null,
+      2,
+    ),
     "utf-8",
   );
 }

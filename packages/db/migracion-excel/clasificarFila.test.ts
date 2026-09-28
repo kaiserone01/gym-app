@@ -154,6 +154,75 @@ describe("clasificarFila — FECHA PAGO nota de texto", () => {
   });
 });
 
+describe("clasificarFila — fechaUltimoPago (spec §3.7)", () => {
+  test("fechaPago tipo fecha real → datos.fechaUltimoPago es esa fecha exacta, sin Pago adicional", () => {
+    const fechaReal = new Date("2026-08-15T00:00:00.000Z");
+    const resultado = clasificarFila(
+      filaNormalizadaBase({ fechaPago: { tipo: "fecha", fecha: fechaReal } }),
+      mapeoVacio,
+      reglasCedulaVacias,
+      placeholderFecha,
+    );
+    expect(resultado.categoria).toBe("migrada");
+    if (resultado.categoria === "migrada") {
+      expect(resultado.datos.fechaUltimoPago).toEqual(fechaReal);
+      expect(resultado.datos.pago).toBe(null);
+    }
+  });
+
+  test("fechaPago notaTexto → datos.fechaUltimoPago = fechaVencimiento (mismo valor usado en Pago aproximado)", () => {
+    const resultado = clasificarFila(
+      filaNormalizadaBase({ fechaPago: { tipo: "notaTexto", texto: "Intercambio" } }),
+      mapeoVacio,
+      reglasCedulaVacias,
+      placeholderFecha,
+    );
+    expect(resultado.categoria).toBe("migrada");
+    if (resultado.categoria === "migrada") {
+      expect(resultado.datos.fechaUltimoPago).toEqual(resultado.datos.fechaVencimiento);
+    }
+  });
+
+  test("fechaPago vacia → datos.fechaUltimoPago es null", () => {
+    const resultado = clasificarFila(
+      filaNormalizadaBase({ fechaPago: { tipo: "vacia" } }),
+      mapeoVacio,
+      reglasCedulaVacias,
+      placeholderFecha,
+    );
+    expect(resultado.categoria).toBe("migrada");
+    if (resultado.categoria === "migrada") {
+      expect(resultado.datos.fechaUltimoPago).toBe(null);
+    }
+  });
+});
+
+describe("clasificarFila — precio de plan mapeado sin override (spec §2/§3.5)", () => {
+  test("mapear sin precioPlanOverrideUSD y valorExcel numerico → usa ese numero como precio, no 0", () => {
+    const fila = filaNormalizadaBase({ plan: { tipo: "requiereMapeo", valorOriginal: "15" } });
+    const mapeo: MapeoPlanEntry[] = [
+      { valorExcel: "15", accion: "mapear", planNombreDestino: "Plan $15" },
+    ];
+    const resultado = clasificarFila(fila, mapeo, reglasCedulaVacias, placeholderFecha);
+    expect(resultado.categoria).toBe("migrada");
+    if (resultado.categoria === "migrada") {
+      expect(resultado.datos.precioPlanUSD).toBe(15);
+    }
+  });
+
+  test("mapear sin precioPlanOverrideUSD y valorExcel no numerico → precio cae a 0 (sin otra senal disponible)", () => {
+    const fila = filaNormalizadaBase({ plan: { tipo: "requiereMapeo", valorOriginal: "Pend" } });
+    const mapeo: MapeoPlanEntry[] = [
+      { valorExcel: "Pend", accion: "mapear", planNombreDestino: "Plan $20" },
+    ];
+    const resultado = clasificarFila(fila, mapeo, reglasCedulaVacias, placeholderFecha);
+    expect(resultado.categoria).toBe("migrada");
+    if (resultado.categoria === "migrada") {
+      expect(resultado.datos.precioPlanUSD).toBe(0);
+    }
+  });
+});
+
 describe("clasificarFila — duplicados de cedula", () => {
   test("fila es la ganadora de un par fusionable → migrada, sin exclusión", () => {
     const reglas: ReglasCedula = {

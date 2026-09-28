@@ -9,9 +9,7 @@ import { listarMiembros } from "@gym-app/domain/use-cases/ListarMiembros";
 import { listarPlanes } from "@gym-app/domain/use-cases/ListarPlanes";
 import { listarSucursales } from "@gym-app/domain/use-cases/ListarSucursales";
 import { Button } from "@gym-app/ui/components/Button";
-import { PageHeader } from "@gym-app/ui/components/PageHeader";
 import { ListaMiembros } from "./ListaMiembros";
-import { BotonImprimir } from "../BotonImprimir";
 import { obtenerTurnoAbiertoParaUsuario } from "../caja/obtenerTurnoAbiertoParaUsuario";
 import { AvisoCajaCerrada } from "../caja/AvisoCajaCerrada";
 
@@ -27,34 +25,29 @@ export default async function PaginaMiembros() {
     obtenerTurnoAbiertoParaUsuario(sucursalActivaId, usuario.id),
   ]);
 
+  // Inscribir un miembro es una operación de caja — el alta queda atada a
+  // un turno para el cuadre (ver diseño acordado: hay que abrir caja antes
+  // de inscribir o cobrar). Se renderiza dentro de ListaMiembros, junto al
+  // título y el toggle Cards/Lista (ver diseño acordado).
+  const botonNuevoMiembro = turnoAbierto?.esPropio ? (
+    <Link href="/miembros/nuevo">
+      <Button>Nuevo miembro</Button>
+    </Link>
+  ) : (
+    <Button
+      disabled
+      title={
+        turnoAbierto
+          ? `La caja la tiene abierta ${turnoAbierto.turno.usuarioNombre ?? "otro usuario"}`
+          : "Abrí la caja para poder inscribir un miembro"
+      }
+    >
+      Nuevo miembro
+    </Button>
+  );
+
   return (
     <div className="p-6 lg:p-8">
-      <div className="mb-6 flex items-center justify-between print:hidden">
-        <PageHeader>Miembros</PageHeader>
-        <div className="flex gap-2">
-          <BotonImprimir />
-          {/* Inscribir un miembro es una operación de caja — el alta
-              queda atada a un turno para el cuadre (ver diseño acordado:
-              hay que abrir caja antes de inscribir o cobrar). */}
-          {turnoAbierto?.esPropio ? (
-            <Link href="/miembros/nuevo">
-              <Button>Nuevo miembro</Button>
-            </Link>
-          ) : (
-            <Button
-              disabled
-              title={
-                turnoAbierto
-                  ? `La caja la tiene abierta ${turnoAbierto.turno.usuarioNombre ?? "otro usuario"}`
-                  : "Abrí la caja para poder inscribir un miembro"
-              }
-            >
-              Nuevo miembro
-            </Button>
-          )}
-        </div>
-      </div>
-
       {!turnoAbierto?.esPropio && (
         <div className="mb-6 print:hidden">
           <AvisoCajaCerrada
@@ -67,7 +60,7 @@ export default async function PaginaMiembros() {
         </div>
       )}
 
-      <ListaMiembros miembros={miembros} planes={planes} sucursales={sucursales} />
+      <ListaMiembros miembros={miembros} planes={planes} sucursales={sucursales} accionesHeader={botonNuevoMiembro} />
     </div>
   );
 }

@@ -15,13 +15,6 @@ export function EstadoToggle({ id, activo }: { id: string; activo: boolean }) {
     evento.preventDefault();
     evento.stopPropagation();
 
-    if (activoLocal) {
-      const confirmado = window.confirm(
-        "¿Dar de baja a este miembro? Va a perder el acceso al gym hasta que lo reactives."
-      );
-      if (!confirmado) return;
-    }
-
     const siguiente = !activoLocal;
     setActivoLocal(siguiente);
 
@@ -50,13 +43,13 @@ export function EstadoToggle({ id, activo }: { id: string; activo: boolean }) {
       aria-checked={activoLocal}
       title={activoLocal ? "Activo — clic para dar de baja" : "Inactivo — clic para reactivar"}
       className="inline-flex h-7 w-12 shrink-0 cursor-pointer items-center rounded-full border-0 p-0.5 shadow-inner outline-none transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50"
-      style={{ background: activoLocal ? "var(--gx-good)" : "var(--gx-bad)" }}
+      style={{ background: activoLocal ? "var(--gx-good)" : "#E0E0E0" }}
     >
       <span
         className={`h-6 w-6 rounded-full shadow transition-transform duration-150 ${
           activoLocal ? "translate-x-5" : "translate-x-0"
         }`}
-        style={{ background: activoLocal ? "var(--gx-good-ink)" : "var(--gx-bad-ink)" }}
+        style={{ background: activoLocal ? "var(--gx-good-ink)" : "#8A8A8A" }}
       />
     </button>
   );

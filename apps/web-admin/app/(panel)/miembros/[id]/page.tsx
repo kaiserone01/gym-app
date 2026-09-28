@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { obtenerUsuarioDeSesionActual } from "@/lib/sesion";
@@ -17,11 +16,7 @@ import { obtenerEntrenadoresPorSucursal } from "../obtenerEntrenadoresPorSucursa
 import { MiembroFueraDeSucursal } from "./MiembroFueraDeSucursal";
 import { FormularioMiembro } from "../FormularioMiembro";
 import { actualizarMiembroAction } from "../actions";
-import { PanelPagoYCambioPlan } from "../PanelPagoYCambioPlan";
-import { registrarPagoAction, cambiarPlanAction } from "../../pagos/actions";
 import { PageHeader } from "@gym-app/ui/components/PageHeader";
-import { obtenerTurnoAbiertoParaUsuario } from "../../caja/obtenerTurnoAbiertoParaUsuario";
-import { AvisoCajaCerrada } from "../../caja/AvisoCajaCerrada";
 
 // OJO: nunca usar fecha.toISOString() acá — convierte a UTC primero, y de
 // noche (pasadas las 8pm en Venezuela, UTC-4) eso salta al día siguiente.
@@ -53,7 +48,7 @@ export default async function PaginaEditarMiembro({ params }: { params: Promise<
     throw error;
   }
 
-  const [pagos, planes, sucursales, metodosPago, turnoAbierto] = await Promise.all([
+  const [pagos, planes, sucursales, metodosPago] = await Promise.all([
     listarPagos(
       { pagos: new PrismaPagoRepository(prisma), miembros: new PrismaMemberRepository(prisma) },
       { organizacionId: usuario.organizacionId, miembroId: id }
@@ -61,16 +56,13 @@ export default async function PaginaEditarMiembro({ params }: { params: Promise<
     listarPlanes({ planes: new PrismaPlanRepository(prisma) }, usuario.organizacionId),
     obtenerSucursalesVisiblesParaMiembro(usuario),
     listarMetodosPagoActivos({ metodosPago: new PrismaMetodoPagoRepository(prisma) }, usuario.organizacionId),
-    obtenerTurnoAbiertoParaUsuario(sucursalActivaId, usuario.id),
   ]);
   const entrenadoresPorSucursal = await obtenerEntrenadoresPorSucursal(usuario.organizacionId, sucursales);
 
-  const planesActivos = planes.filter((plan) => plan.activo);
   // Solo tiene sentido cobrar "la diferencia" cuando el ciclo actual todavía
   // no venció — vencido, el próximo pago ya es el precio completo del plan
   // que sea (ver diseño acordado).
   const tieneCicloVigente = miembro.fechaVencimiento !== null && miembro.fechaVencimiento > new Date();
-  const diasCicloActual = planes.find((p) => p.id === miembro.planId)?.diasCiclo ?? 30;
 
   // Pagos fraccionados/mixtos: si el ciclo vigente todavía no juntó el
   // precio acordado con el miembro, esto es lo que falta — se le pasa al
@@ -89,15 +81,6 @@ export default async function PaginaEditarMiembro({ params }: { params: Promise<
     .slice(0, 5)
     .map((pago) => ({ id: pago.id, fechaInicioCiclo: pago.fechaInicioCiclo, fechaFinCiclo: pago.fechaFinCiclo }));
 
-  // Entrenadores elegibles para "Cambiar de plan" (panel de pago) — mismo
-  // criterio que FormularioMiembro: si el miembro es de una sede fija, solo
-  // los de esa sede; si es "Ambas" (sucursalId null), los de todas.
-  const entrenadoresDelMiembro = miembro.sucursalId
-    ? entrenadoresPorSucursal[miembro.sucursalId] ?? []
-    : Object.values(entrenadoresPorSucursal)
-        .flat()
-        .filter((e, i, lista) => lista.findIndex((otro) => otro.id === e.id) === i);
-
   return (
     <div className="max-w-7xl p-6 lg:px-8 lg:py-6">
       <div className="mb-4">
@@ -115,6 +98,8 @@ export default async function PaginaEditarMiembro({ params }: { params: Promise<
         miembroId={id}
         ultimosCiclos={ultimosCiclos}
         tieneCicloVigente={tieneCicloVigente}
+        saldoPendiente={saldoPendiente}
+        totalPagos={pagos.length}
         valoresIniciales={{
           nombre: miembro.nombre,
           cedula: miembro.cedula,
@@ -126,67 +111,6 @@ export default async function PaginaEditarMiembro({ params }: { params: Promise<
           entrenadorId: miembro.entrenadorId,
           fotoUrl: miembro.fotoUrl,
         }}
-        panelLateral={
-          <div className="flex flex-col gap-6">
-            <p className="text-xs" style={{ color: "var(--gx-muted)" }}>
-              Registrar pago y Cambiar de plan se aplican al instante — no hace falta tocar &quot;Guardar&quot;
-              primero.
-            </p>
-
-            <Link
-              href={`/miembros/${id}/pagos`}
-              className="block min-h-11 content-center rounded-lg px-4 text-center text-sm font-medium transition-colors duration-150 active:scale-95"
-              style={{ background: "var(--gx-surface-2)", color: "var(--gx-ink)" }}
-            >
-              Ver historial de pagos ({pagos.length})
-            </Link>
-
-            {turnoAbierto?.esPropio && (
-              <PanelPagoYCambioPlan
-                miembroId={id}
-                accionRegistrarPago={registrarPagoAction}
-                accionCambiarPlan={cambiarPlanAction}
-                planes={planesActivos}
-                planFijo={
-                  miembro.planId
-                    ? {
-                        id: miembro.planId,
-                        nombre: planes.find((p) => p.id === miembro.planId)?.nombre ?? "Plan actual",
-                        precioUSD: miembro.precioPlan,
-                        multisede: planes.find((p) => p.id === miembro.planId)?.multisede ?? false,
-                      }
-                    : undefined
-                }
-                metodosPago={metodosPago}
-                saldoPendiente={saldoPendiente}
-                saldoAFavorUSD={miembro.saldoAFavorUSD}
-                tieneCicloVigente={tieneCicloVigente}
-                planActualId={miembro.planId}
-                precioActual={miembro.precioPlan}
-                diasCicloActual={diasCicloActual}
-                fechaVencimientoActual={miembro.fechaVencimiento ?? new Date()}
-                entrenadores={entrenadoresDelMiembro}
-                entrenadorActualId={miembro.entrenadorId}
-              />
-            )}
-
-            {!turnoAbierto?.esPropio && (
-              // Cobrar una mensualidad es una operación de caja — no se
-              // puede sin turno abierto (ver diseño acordado). Editar los
-              // datos del miembro (el formulario principal) sí sigue
-              // disponible, esto solo bloquea el bloque de cobro. Si la
-              // caja está abierta pero por OTRO usuario, se avisa quién la
-              // tiene en vez del genérico "abrí la caja".
-              <AvisoCajaCerrada
-                mensaje={
-                  turnoAbierto
-                    ? `No puedes registrar pagos: la caja está abierta por ${turnoAbierto.turno.usuarioNombre ?? "otro usuario"}.`
-                    : "Para registrar un pago primero tenés que abrir la caja."
-                }
-              />
-            )}
-          </div>
-        }
       />
     </div>
   );

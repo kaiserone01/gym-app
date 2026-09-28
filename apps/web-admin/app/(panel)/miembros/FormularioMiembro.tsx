@@ -91,9 +91,10 @@ export function FormularioMiembro({
   metodosPago,
   miembroId,
   ultimosCiclos,
+  saldoPendiente,
+  totalPagos,
   valoresIniciales,
   tieneCicloVigente,
-  panelLateral,
 }: {
   accion: (estado: EstadoFormularioMiembro, formData: FormData) => Promise<EstadoFormularioMiembro>;
   // Entrenadores disponibles por cada sucursal visible — el elegible
@@ -118,6 +119,14 @@ export function FormularioMiembro({
   // previos a esta funcionalidad no tienen fechaInicioCiclo/
   // fechaFinCiclo y no aparecen aquí) — solo se usa en modo edición.
   ultimosCiclos: { id: string; fechaInicioCiclo: Date | null; fechaFinCiclo: Date | null }[];
+  // Cuánto falta para completar el ciclo vigente — se muestra dentro de la
+  // tarjeta de Plan de membresía. Undefined o 0 significa que no hay saldo
+  // pendiente (ver diseño acordado: los pagos se registran desde Caja, acá
+  // solo se informa si debe algo).
+  saldoPendiente?: number;
+  // Cantidad total de pagos del miembro — solo para el contador del link
+  // "Ver historial de pagos". Undefined en modo creación.
+  totalPagos?: number;
   valoresIniciales?: ValoresFormularioMiembro;
   // Mientras el ciclo actual esté vigente, cambiar de plan gratis desde acá
   // quedaría pisado por "Cambiar de plan" del panel derecho (que sí cobra
@@ -125,10 +134,6 @@ export function FormularioMiembro({
   // botones "Cambiar plan" haciendo cosas distintas al mismo tiempo (ver
   // diseño acordado). Solo relevante en edición; en alta siempre es true.
   tieneCicloVigente?: boolean;
-  // Contenido propio de la pantalla de edición (dar de baja, historial de
-  // pagos, registrar pago) — se muestra en el panel derecho cuando no hay
-  // ticket de confirmación abierto, para no tener que scrollear.
-  panelLateral?: React.ReactNode;
 }) {
   const [estado, enviar, enviando] = useActionState(accion, {});
   const esEdicion = !!valoresIniciales;
@@ -306,7 +311,7 @@ export function FormularioMiembro({
       </p>
     )}
 
-    <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+    <div className={`grid grid-cols-1 gap-6 ${esEdicion && !mostrarTicket ? "lg:grid-cols-2" : "lg:grid-cols-3"}`}>
       {/* display: contents — Datos personales y Plan de membresía quedan como
           celdas independientes de la grilla de 3 columnas, pero sus campos
           (incluidos los de la card de Plan) siguen siendo hijos reales de
@@ -396,8 +401,7 @@ export function FormularioMiembro({
             Guardar
           </Button>
           <span className="mt-2 block text-xs" style={{ color: "var(--gx-muted-dim)" }}>
-            Guarda estos datos junto con la sede, el entrenador y el plan del cuadro de al lado — &quot;Registrar
-            pago&quot; y &quot;Cambiar de plan&quot; (más a la derecha) se aplican al instante, sin pasar por acá.
+            Guarda estos datos junto con la sede, el entrenador y el plan del cuadro de al lado.
           </span>
         </Card>
 
@@ -655,16 +659,39 @@ export function FormularioMiembro({
               Cancelar cambio de plan
             </Button>
           )}
+
+          {esEdicion && (
+            <div className="mt-4 flex flex-col gap-3">
+              {!!saldoPendiente && saldoPendiente > 0 && (
+                <div
+                  className="flex items-center justify-between rounded-lg px-3 py-2 text-sm font-medium"
+                  style={{ background: "color-mix(in srgb, var(--gx-accent) 15%, transparent)", color: "var(--gx-accent)" }}
+                >
+                  <span>Saldo pendiente</span>
+                  <span>${saldoPendiente.toFixed(2)}</span>
+                </div>
+              )}
+              {miembroId && (
+                <Link
+                  href={`/miembros/${miembroId}/pagos`}
+                  className="block min-h-11 content-center rounded-lg px-4 text-center text-sm font-medium transition-colors duration-150 active:scale-95"
+                  style={{ background: "var(--gx-surface-2)", color: "var(--gx-ink)" }}
+                >
+                  Ver historial de pagos ({totalPagos ?? 0})
+                </Link>
+              )}
+            </div>
+          )}
         </Card>
       </form>
 
-      {/* Registrar pago / Cambiar de plan (panelLateral) — formularios propios,
-          fuera de "formulario-miembro" a propósito (no se pueden anidar <form>). */}
+      {/* Primer pago (solo al crear un miembro) / ticket de confirmación —
+          formulario propio, fuera de "formulario-miembro" a propósito (no se
+          pueden anidar <form>). En edición no hay columna acá salvo mientras
+          se confirma el ticket — los pagos se registran desde Caja. */}
+      {(!esEdicion || mostrarTicket) && (
       <div className="lg:col-start-3 lg:row-start-1">
         {!mostrarTicket ? (
-          esEdicion ? (
-            panelLateral
-          ) : (
             <Card>
               <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--gx-muted)" }}>
                 Primer pago
@@ -687,7 +714,6 @@ export function FormularioMiembro({
                 </p>
               )}
             </Card>
-          )
         ) : (
           <div
             className="rounded-2xl border-2 border-dashed p-5"
@@ -771,9 +797,10 @@ export function FormularioMiembro({
           </div>
         )}
       </div>
+      )}
 
       {esEdicion && ultimosCiclos.length > 0 && (
-        <Card className="lg:col-start-1 lg:col-span-3 lg:row-start-2">
+        <Card className={`lg:col-start-1 lg:row-start-2 ${mostrarTicket ? "lg:col-span-3" : "lg:col-span-2"}`}>
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--gx-muted)" }}>
               Ciclos

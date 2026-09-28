@@ -118,6 +118,26 @@ export async function registrarPago(deps: RegistrarPagoDeps, input: DatosRegistr
     throw new MiembroFueraDeSucursalError(sucursal?.nombre ?? "otra sucursal");
   }
 
+  const plan = await deps.planes.buscarPorId(input.organizacionId, input.planId);
+  if (!plan) {
+    throw new PlanNoEncontradoError();
+  }
+  if (!plan.activo) {
+    throw new PlanInactivoError();
+  }
+
+  // Miembro.precioPlan es el precio acordado del plan que el miembro tiene
+  // asignado ahora mismo — solo sirve como "precio objetivo del ciclo"
+  // cuando este pago es para ESE mismo plan. Si input.planId es otro (un
+  // cambio de plan hecho desde acá, sin pasar por "Cambiar de
+  // plan"/CambiarPlanConPago), miembro.precioPlan queda del plan viejo y no
+  // corresponde usarlo para decidir si esto es un abono parcial, el mínimo
+  // exigido, etc. — se usa el precio de lista del plan nuevo (ver bug
+  // reportado: un abono menor al precio nuevo, pero mayor al precio viejo,
+  // se aceptaba como pago total).
+  const huboCambioDePlan = miembro.planId !== input.planId;
+  const precioObjetivo = huboCambioDePlan ? plan.precioUSD : miembro.precioPlan;
+
   const montoTotal = input.lineas.reduce((suma, linea) => suma + linea.monto, 0);
 
   // Saldo a favor (generado por un cambio de plan a la baja, ver
@@ -127,18 +147,10 @@ export async function registrarPago(deps: RegistrarPagoDeps, input: DatosRegistr
   // cambios de este pago (más abajo), no antes, para no gastarlo si el
   // pago falla por otra validación.
   const saldoDisponible = miembro.saldoAFavorUSD;
-  const saldoAConsumir = Math.min(saldoDisponible, montoTotal > 0 ? montoTotal : miembro.precioPlan);
+  const saldoAConsumir = Math.min(saldoDisponible, montoTotal > 0 ? montoTotal : precioObjetivo);
 
-  if (miembro.precioPlan > 0 && montoTotal <= 0 && saldoAConsumir < miembro.precioPlan) {
+  if (precioObjetivo > 0 && montoTotal <= 0 && saldoAConsumir < precioObjetivo) {
     throw new MontoInvalidoError();
-  }
-
-  const plan = await deps.planes.buscarPorId(input.organizacionId, input.planId);
-  if (!plan) {
-    throw new PlanNoEncontradoError();
-  }
-  if (!plan.activo) {
-    throw new PlanInactivoError();
   }
 
   const ahora = new Date();
@@ -159,7 +171,7 @@ export async function registrarPago(deps: RegistrarPagoDeps, input: DatosRegistr
     pagosDelCicloAbierto = pagosVigentesDelCiclo(pagosDelMiembro, activa.fin);
   }
   const esAbonoDeCicloAbierto =
-    pagosDelCicloAbierto.length > 0 && totalPagado(pagosDelCicloAbierto) < miembro.precioPlan;
+    pagosDelCicloAbierto.length > 0 && totalPagado(pagosDelCicloAbierto) < precioObjetivo;
 
   let base: Date;
   let fin: Date;
@@ -178,7 +190,7 @@ export async function registrarPago(deps: RegistrarPagoDeps, input: DatosRegistr
   // montoTotal ya viene calculado más arriba como suma de input.lineas.
   const montoAcumuladoDelCiclo =
     (esAbonoDeCicloAbierto ? totalPagado(pagosDelCicloAbierto) : 0) + montoTotal + saldoAConsumir;
-  const esAbonoParcial = montoAcumuladoDelCiclo < miembro.precioPlan;
+  const esAbonoParcial = montoAcumuladoDelCiclo < precioObjetivo;
 
   let fechaLimiteAbonoCalculada: Date | null = null;
 
@@ -196,7 +208,7 @@ export async function registrarPago(deps: RegistrarPagoDeps, input: DatosRegistr
       reglaFrecuencia
     );
     const diasDelCiclo = plan.diasCiclo;
-    const montoMinimo = calcularMontoMinimoAbono(reglaEfectiva, miembro.precioPlan, diasDelCiclo);
+    const montoMinimo = calcularMontoMinimoAbono(reglaEfectiva, precioObjetivo, diasDelCiclo);
 
     if (montoAcumuladoDelCiclo < montoMinimo) {
       throw new AbonoMenorAlMinimoError(montoMinimo);
@@ -205,7 +217,7 @@ export async function registrarPago(deps: RegistrarPagoDeps, input: DatosRegistr
     fechaLimiteAbonoCalculada = calcularFechaLimiteAbono(
       reglaEfectiva,
       montoAcumuladoDelCiclo,
-      miembro.precioPlan,
+      precioObjetivo,
       base,
       diasDelCiclo
     );
@@ -227,7 +239,18 @@ export async function registrarPago(deps: RegistrarPagoDeps, input: DatosRegistr
       });
     }
 
-    await deps.miembros.actualizar(input.organizacionId, input.miembroId, { planId: input.planId });
+    // Cuando este pago corresponde a un plan distinto al que el miembro
+    // tenía asignado (p. ej. un cambio de plan hecho desde acá en vez de
+    // "Cambiar de plan"/CambiarPlanConPago), Miembro.precioPlan también se
+    // sincroniza con el precio del plan nuevo — si no, queda con el precio
+    // del plan viejo aunque planId ya haya cambiado (bug reportado:
+    // "Mensual con entrenador" mostrando el precio de "Semanal"). Si es el
+    // mismo plan de siempre, no se toca — preserva un precio negociado
+    // manualmente en la ficha del miembro.
+    await deps.miembros.actualizar(input.organizacionId, input.miembroId, {
+      planId: input.planId,
+      ...(huboCambioDePlan ? { precioPlan: plan.precioUSD } : {}),
+    });
     await deps.miembros.actualizarFechasPago(input.miembroId, ahora, fin);
   }
 

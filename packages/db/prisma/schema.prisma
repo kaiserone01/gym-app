@@ -155,6 +155,11 @@ enum FrecuenciaPago {
   SEMANAL // 7 días
   QUINCENAL // 15 días
   MENSUAL // 30 días
+  SEMESTRAL // 180 días
+  ANUAL // 365 días
+  // Sin duración fija asociada — diasCiclo del Plan es el número que el
+  // admin tipeó a mano (ver FormularioPlan.tsx, opción "Personalizado").
+  PERSONALIZADO
 }
 
 model Plan {
@@ -163,6 +168,11 @@ model Plan {
   organizacion      Organizacion   @relation(fields: [organizacionId], references: [id])
   nombre            String
   frecuencia        FrecuenciaPago
+  // Duración del ciclo en días — única fuente de verdad (reemplaza el mapa
+  // hardcodeado que existía en el dominio). Para las 6 frecuencias fijas
+  // se autocompleta (1/7/15/30/180/365); para PERSONALIZADO es el valor
+  // que el admin tipeó a mano.
+  diasCiclo         Int
   incluyeEntrenador Boolean        @default(false)
   precioUSD         Decimal        @db.Decimal(10, 2)
   multisede         Boolean        @default(false) // si es true, el Miembro con este plan puede asignarse a "Ambas" sedes (sucursalId = null)

@@ -91,7 +91,7 @@ Array de entradas, una por cada valor de PLAN que no es uno de los 5 dominantes:
    - Nota de texto (30 filas) → crea un `Pago` con `monto: 0`, `metodo: "<texto original de la nota>"`, `fechaPago: F/VENC` (aproximado), flag `pago-aproximado`.
    - Vacía → no genera `Pago`.
 8. **Clasificar la fila** en una de las categorías de la sección 4 y agregarla al reporte.
-9. **Si `--confirm`:** para cada fila migrable, en una transacción Prisma por fila: buscar `(organizacionId, cedula)` existente → si existe, saltear (`ya-existia`); si no, crear `Miembro` + `Suscripcion` + `Pago` (si aplica). Auto-crear `Organizacion` de prueba y `Sucursal` `"Migracion-Test"` si no existen aún, antes de procesar filas.
+9. **Si `--confirm`:** para cada fila migrable, en una transacción Prisma por fila: buscar `(organizacionId, cedula)` existente → si existe, saltear (`ya-existia`); si no, crear `Miembro` + `Suscripcion` + `Pago` (si aplica). Antes de procesar filas, buscar/crear la `Organizacion` de prueba y su `Sucursal` según la sección 9.
 
 ## 4. Manejo de errores y reporte
 
@@ -110,7 +110,7 @@ Ninguna fila se migra en silencio. Cada una de las 1395 filas termina en exactam
 - **Placeholder de cédula determinístico:** `PLACEHOLDER-<numeroFilaExcelOriginal>`, usando el número de fila real del `.xlsm` fuente (nunca UUID ni timestamp). La fila 47 sin cédula genera siempre `PLACEHOLDER-47` en cualquier corrida, permitiendo que la verificación de "ya existe" la detecte correctamente en re-ejecuciones. **Precondición:** el script debe leer el `.xlsm` como archivo fijo de entrada, preservando los números de fila originales — nunca re-derivarlos de un dataset ya filtrado o reordenado.
 - **Granularidad de transacción:** una transacción Prisma independiente por fila (`Miembro` + `Suscripcion` + `Pago` opcional, todo o nada por esa fila). Un fallo en una fila no revierte filas anteriores ya confirmadas ni bloquea el resto del batch — se captura el error, la fila se marca `excluida` con el motivo técnico, y el script continúa.
 - **Corte del proceso completo:** si el proceso se interrumpe (kill, caída de conexión), las filas ya escritas quedan como están (commits por fila, no transacción global). Reintentar con `--confirm` retoma de forma segura gracias a la verificación de "ya existe".
-- **Fuera de alcance de esta fase:** no hay rollback automático de todo el batch ni modo "deshacer migración completa". Si hace falta deshacer, se hace a mano contra la base local, acotado por la `Sucursal "Migracion-Test"` (todo lo migrado cuelga de ahí) o por rango de fecha de creación.
+- **Fuera de alcance de esta fase:** no hay rollback automático de todo el batch ni modo "deshacer migración completa". Si hace falta deshacer, alcanza con borrar la `Organizacion` de prueba completa (cascade) desde la base local — ver sección 9.
 
 ## 6. Fecha placeholder (F/VENC inválido/vacío)
 
@@ -119,10 +119,23 @@ Para las 13 filas sin F/VENC parseable, se usa una fecha placeholder explícita 
 ## 7. Explícitamente fuera de alcance
 
 - Migrar `F/NACIMIENTO` (descartable según el análisis).
-- Migrar contra producción o cualquier entorno más allá del `DATABASE_URL` actual.
+- Migrar contra producción, o contra la `Organizacion` real de Adrenalina, o cualquier entorno más allá del `DATABASE_URL` actual.
 - Detección automática de "producción" por patrón de string.
 - Rollback automático de todo el batch.
 - Resolver automáticamente los 7 pares de cédula duplicada sin revisión del usuario (la fusión automática es una *sugerencia*, no una decisión final sin `reglas-cedula.json` completado).
+- Un comando de limpieza selectivo o verificación de limpieza parcial — no hace falta en esta fase (ver sección 9).
+
+## 9. Organización destino: aislada y desechable
+
+Esta fase nunca migra contra la organización real de Adrenalina ni contra cualquier dato compartido con ella. El script trabaja exclusivamente contra una `Organizacion` de prueba, separada y desechable:
+
+- **Identificación:** un slug fijo hardcodeado en el script (ej. `"migracion-adrenalina-test"`), no configurable por flag en esta fase. El script busca la `Organizacion` por ese slug; si no existe, la crea, simulando un gimnasio nuevo sin relación con el real.
+- **Sucursal:** dentro de esa organización de prueba se busca/crea una única `Sucursal` (nombre simple, ej. `"Sucursal Principal"` — no hace falta distinguirla de nada más porque es la única sucursal de una organización exclusiva de esta prueba).
+- **Aislamiento de idempotencia:** el chequeo `(organizacionId, cedula)` de la sección 5 queda naturalmente aislado a esta organización de prueba — no hay forma de que contamine ni bloquee ninguna migración futura contra la organización real.
+- **Limpieza:** una vez validado que la migración funciona bien, "empezar de nuevo" es simplemente borrar la `Organizacion` de prueba completa (cascade) desde la base local. No requiere lógica de limpieza selectiva ni verificación parcial, porque no hay nada compartido con la organización real que pueda quedar en mal estado.
+- **Migración real futura:** cuando llegue el momento de migrar contra la organización real de Adrenalina, es una decisión explícita y posterior, fuera del alcance de esta spec (consistente con las secciones 1 y 7: esta fase nunca toca producción sin decisión explícita). Lo más probable en ese momento es reutilizar este mismo script parametrizando el slug de organización destino, en vez de escribir uno nuevo — pero esa parametrización no se implementa ahora.
+
+## 10. Parámetros de negocio pendientes (a completar por el usuario antes de `--confirm`)
 
 ## 8. Parámetros de negocio pendientes (a completar por el usuario antes de `--confirm`)
 

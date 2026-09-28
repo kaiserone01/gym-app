@@ -31,6 +31,7 @@
 - **STATUS value that is exactly `"ACTIVO"` vs `" ACTIVO"` vs `" ACTIVA"`** — a reasonable person expects all three (plus the S/V variants) to normalize identically regardless of leading whitespace or the one gendered variant, per section 1.2 of the analysis. Task 2 must cover this in tests, not just the two "clean" spellings.
 - **F/VENC stored as Excel date serial vs. `dd-mm-yyyy` text vs. malformed text** (`"19-082026"`, `"17-06-026"`) — a reasonable person expects all three input shapes handled, with only the truly malformed ones falling back to the placeholder date path, not every text-formatted date. Task 3 needs explicit tests for the serial path, the text path, and the two known malformed strings.
 - **Re-running the script twice with `--confirm` against a database that already has some rows from the first run** — a reasonable person expects the second run to skip already-migrated rows cleanly (report shows `ya-existia`) and never throw a unique-constraint error or create duplicate `Plan`/`Miembro` rows. Task 7's integration verification must include an explicit second dry-then-confirm pass, not just a single run.
+- **CELULAR column value, including the ~16 non-phone text rows** (`ESPAÑA`, `Nunca vino`, etc.) — a reasonable person expects this free-text field to migrate as-is into `Miembro.celular` (no special validation, since the schema field is free text), and expects it to actually be read from the source row rather than silently dropped. Task 2's `normalizarFila` must populate `celularOriginal` the same way it populates `cedulaOriginal`, and Task 3's `clasificarFila` must pass it through to `datos.celular` instead of hardcoding `null`.
 
 ---
 
@@ -90,6 +91,7 @@ export interface FilaNormalizada {
   nombre: string;
   estado: EstadoSuscripcionNormalizado;
   cedulaOriginal: string | null; // trimmed, null only if truly empty
+  celularOriginal: string | null; // trimmed, null only if truly empty — texto libre, incluye no-telefonos como "ESPAÑA"/"Nunca vino"
   plan: ClasificacionPlan;
   fVenc: ResultadoFecha;
   fechaPago:
@@ -284,6 +286,26 @@ describe("normalizarFila — cedula", () => {
     };
   }
 
+  test("celular presente (formato teléfono) → celularOriginal con el valor tal cual", () => {
+    const resultado = normalizarFila(filaBase({ celular: "0412-1234567" }));
+    expect(resultado.celularOriginal).toBe("0412-1234567");
+  });
+
+  test("celular presente con texto no-teléfono (ESPAÑA) → celularOriginal preservado tal cual", () => {
+    const resultado = normalizarFila(filaBase({ celular: "ESPAÑA" }));
+    expect(resultado.celularOriginal).toBe("ESPAÑA");
+  });
+
+  test("celular vacío (null) → celularOriginal null", () => {
+    const resultado = normalizarFila(filaBase({ celular: null }));
+    expect(resultado.celularOriginal).toBe(null);
+  });
+
+  test("celular vacío (string vacío) → celularOriginal null", () => {
+    const resultado = normalizarFila(filaBase({ celular: "" }));
+    expect(resultado.celularOriginal).toBe(null);
+  });
+
   test("cedula numérica presente → cedulaOriginal con el valor tal cual (string)", () => {
     const resultado = normalizarFila(filaBase({ cedula: 12345678 }));
     expect(resultado.cedulaOriginal).toBe("12345678");
@@ -381,6 +403,7 @@ export function parsearFechaExcel(valor: string | number | null): ResultadoFecha
 
 export function normalizarFila(fila: FilaExcelCruda): FilaNormalizada {
   const cedulaTexto = fila.cedula === null ? "" : String(fila.cedula).trim();
+  const celularTexto = fila.celular === null ? "" : String(fila.celular).trim();
 
   let fechaPago: FilaNormalizada["fechaPago"];
   const fechaPagoParsed = parsearFechaExcel(fila.fechaPago);
@@ -398,6 +421,7 @@ export function normalizarFila(fila: FilaExcelCruda): FilaNormalizada {
     nombre: fila.nombre.trim(),
     estado: normalizarStatus(fila.status),
     cedulaOriginal: cedulaTexto === "" ? null : cedulaTexto,
+    celularOriginal: celularTexto === "" ? null : celularTexto,
     plan: clasificarValorPlan(fila.plan),
     fVenc: parsearFechaExcel(fila.fVenc),
     fechaPago,
@@ -446,6 +470,7 @@ function filaNormalizadaBase(overrides: Partial<FilaNormalizada>): FilaNormaliza
     nombre: "Juan Perez",
     estado: "ACTIVA",
     cedulaOriginal: "12345678",
+    celularOriginal: null,
     plan: { tipo: "dominante", valorUSD: 20 },
     fVenc: { tipo: "valida", fecha: new Date("2026-12-01T00:00:00.000Z") },
     fechaPago: { tipo: "vacia" },
@@ -465,6 +490,32 @@ describe("clasificarFila — caso limpio", () => {
       expect(resultado.datos.cedula).toBe("12345678");
       expect(resultado.datos.precioPlanUSD).toBe(20);
       expect(resultado.datos.estado).toBe("ACTIVA");
+    }
+  });
+
+  test("celularOriginal presente se migra tal cual en datos.celular, sin lógica especial", () => {
+    const resultado = clasificarFila(
+      filaNormalizadaBase({ celularOriginal: "ESPAÑA" }),
+      mapeoVacio,
+      reglasCedulaVacias,
+      placeholderFecha,
+    );
+    expect(resultado.categoria).toBe("migrada");
+    if (resultado.categoria === "migrada") {
+      expect(resultado.datos.celular).toBe("ESPAÑA");
+    }
+  });
+
+  test("celularOriginal null se migra como celular null", () => {
+    const resultado = clasificarFila(
+      filaNormalizadaBase({ celularOriginal: null }),
+      mapeoVacio,
+      reglasCedulaVacias,
+      placeholderFecha,
+    );
+    expect(resultado.categoria).toBe("migrada");
+    if (resultado.categoria === "migrada") {
+      expect(resultado.datos.celular).toBe(null);
     }
   });
 });
@@ -714,7 +765,7 @@ export function clasificarFila(
   const datos: DatosMiembroAMigrar = {
     cedula,
     nombre: fila.nombre,
-    celular: null,
+    celular: fila.celularOriginal,
     precioPlanUSD,
     planNombre,
     planLegacy,
@@ -844,6 +895,7 @@ function fila(overrides: Partial<FilaNormalizada>): FilaNormalizada {
     nombre: "X",
     estado: "ACTIVA",
     cedulaOriginal: "1",
+    celularOriginal: null,
     plan: { tipo: "dominante", valorUSD: 20 },
     fVenc: { tipo: "valida", fecha: new Date() },
     fechaPago: { tipo: "vacia" },
@@ -1432,4 +1484,4 @@ git commit -m "feat(migracion-excel): agregar script de limpieza para la organiz
 - **Spec coverage:** Section 1 (dry-run default, `--confirm` gate, DB URL echo) → Task 7. Section 2 (config file shapes) → Task 1 + Task 5. Section 3 (pipeline steps 1–9) → Tasks 2, 3, 6, 7. Section 4 (report/categories) → Task 3's `FilaClasificada` + Task 7's report writer. Section 5 (idempotency, per-row transaction, deterministic placeholder) → Task 3's cedula placeholder logic + Task 7's `findUnique` pre-check and per-row `$transaction`. Section 6 (placeholder date) → Task 7's `obtenerFechaPlaceholder`. Section 9 (disposable org, fixed slug, cascade cleanup) → Task 7's org/sucursal bootstrap + Task 8's cleanup script. Section 10 (pending business params) is explicitly not implementable — it's data the user fills into the generated JSON files, correctly left as manual follow-up, not a code task.
 - **Placeholder scan:** no "TBD"/"similar to Task N" patterns; every step has literal code.
 - **Type consistency:** `FilaClasificada`, `MotivoFlagRevision`, `MotivoExclusion`, `DatosMiembroAMigrar` defined once in Task 1 and used identically through Tasks 3, 5, 7. `clasificarFila`'s signature (fila, mapeoPlan, reglasCedula, obtenerFechaPlaceholder) matches between Task 3's implementation/tests and Task 7's call site.
-- **Review Focus:** all five items have explicit tests — cedula non-empty-but-nonstandard (Task 2), PLAN asterisk/whitespace variants (Task 2), STATUS whitespace/gender variants (Task 2), F/VENC serial/text/malformed (Task 2), and double-`--confirm` idempotency (Task 7 Step 5, integration-level since it needs a real database).
+- **Review Focus:** all six items have explicit tests — cedula non-empty-but-nonstandard (Task 2), PLAN asterisk/whitespace variants (Task 2), STATUS whitespace/gender variants (Task 2), F/VENC serial/text/malformed (Task 2), double-`--confirm` idempotency (Task 7 Step 5, integration-level since it needs a real database), and CELULAR passthrough including non-phone text values (Task 2 and Task 3 tests, added after this exact gap was caught in review — `celularOriginal` now flows from `normalizarFila` through `clasificarFila` into `datos.celular` instead of the earlier hardcoded `null`).

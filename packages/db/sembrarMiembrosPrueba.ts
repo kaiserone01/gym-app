@@ -76,6 +76,7 @@ async function obtenerOCrearPlan(organizacionId: string, preset: PresetPlan) {
       organizacionId,
       nombre: preset.nombre,
       frecuencia: preset.frecuencia,
+      diasCiclo: DURACION_DIAS[preset.frecuencia],
       incluyeEntrenador: preset.incluyeEntrenador,
       precioUSD: preset.precio,
       activo: true,

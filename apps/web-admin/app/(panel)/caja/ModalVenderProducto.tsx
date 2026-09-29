@@ -27,6 +27,11 @@ const SELECCION_VACIA: Seleccion = {
   requiereNumeroOperacion: false,
 };
 
+// Búsqueda sin distinguir mayúsculas ni tildes ("gatorade" encuentra "Gatorade", "cafe" a "Café").
+function normalizar(texto: string): string {
+  return texto.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+}
+
 export function ModalVenderProducto({
   accion,
   productos,
@@ -60,7 +65,13 @@ export function ModalVenderProducto({
   const [cantidad, setCantidad] = useState(1);
   const [seleccion, setSeleccion] = useState<Seleccion>(SELECCION_VACIA);
 
+  const [busqueda, setBusqueda] = useState("");
+
   const producto = productos.find((p) => p.id === productoId) ?? null;
+  const textoBusqueda = normalizar(busqueda.trim());
+  const productosFiltrados = textoBusqueda
+    ? productos.filter((p) => normalizar(`${p.nombre} ${p.descripcion ?? ""}`).includes(textoBusqueda))
+    : productos;
   const total = producto ? Math.round(producto.costoUSD * cantidad * 100) / 100 : 0;
   const numeroOperacionValido = !seleccion.requiereNumeroOperacion || /^\d{4}$/.test(seleccion.numeroOperacion);
   const puedeEnviar = producto !== null && seleccion.metodoPagoId !== null && numeroOperacionValido;
@@ -77,14 +88,14 @@ export function ModalVenderProducto({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center p-[1vmin]"
       style={{ background: "color-mix(in srgb, black 60%, transparent)" }}
       onClick={onCerrar}
     >
       <div
         role="dialog"
         aria-label="Vender producto"
-        className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-y-auto rounded-2xl border-2 p-6"
+        className="flex h-[98dvh] w-[98vw] flex-col rounded-2xl border-2 p-4 sm:p-6"
         style={{ borderColor: "var(--gx-accent)", background: "var(--gx-surface)" }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -97,13 +108,29 @@ export function ModalVenderProducto({
             No hay productos activos. Créalos en la sección Productos.
           </p>
         ) : (
-          <form id={ID_FORMULARIO} action={enviar} className="mt-4 flex flex-col gap-4">
+          <form id={ID_FORMULARIO} action={enviar} className="mt-4 flex min-h-0 flex-1 flex-col gap-4">
             <input type="hidden" name="productoId" value={productoId ?? ""} />
             <input type="hidden" name="cantidad" value={cantidad} />
             <input type="hidden" name="lineas" value={JSON.stringify(lineas)} />
 
-            <div className="grid max-h-64 grid-cols-2 gap-2 overflow-y-auto sm:grid-cols-3">
-              {productos.map((p) => {
+            <input
+              type="search"
+              autoFocus
+              value={busqueda}
+              onChange={(e) => setBusqueda(e.target.value)}
+              placeholder="Buscar producto..."
+              aria-label="Buscar producto"
+              className="min-h-11 shrink-0 rounded-lg border px-3 outline-none transition-colors focus:border-[var(--gx-accent)]"
+              style={{ background: "var(--gx-surface-2)", borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }}
+            />
+
+            <div className="grid min-h-40 flex-1 auto-rows-max grid-cols-2 content-start gap-2 overflow-y-auto sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8">
+              {productosFiltrados.length === 0 && (
+                <p className="col-span-full py-6 text-center text-sm" style={{ color: "var(--gx-muted)" }}>
+                  Ningún producto coincide con &quot;{busqueda.trim()}&quot;.
+                </p>
+              )}
+              {productosFiltrados.map((p) => {
                 const elegido = p.id === productoId;
                 return (
                   <button
@@ -136,7 +163,7 @@ export function ModalVenderProducto({
             </div>
 
             {producto && (
-              <>
+              <div className="flex max-h-[45%] shrink-0 flex-col gap-4 overflow-y-auto">
                 <div className="flex items-center justify-between gap-3 rounded-lg px-3 py-2" style={{ background: "var(--gx-surface-2)" }}>
                   <div className="flex items-center gap-2">
                     <Button
@@ -174,12 +201,12 @@ export function ModalVenderProducto({
                   onCambio={setSeleccion}
                   avisoServidor={{ tasaNueva: estado.tasaNueva, fallaTemporal: estado.fallaTemporal, tasaGuardada: estado.tasaGuardada }}
                 />
-              </>
+              </div>
             )}
           </form>
         )}
 
-        <div className="mt-4 flex gap-3">
+        <div className="mt-4 flex shrink-0 gap-3">
           <Button type="button" variant="secundario" className="flex-1" onClick={onCerrar}>
             Cancelar
           </Button>

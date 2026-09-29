@@ -476,6 +476,11 @@ function ContenidoPaso3({
   // se restringe como modalidad, pero si el plan exige el 100%, el total
   // a distribuir entre métodos tampoco puede bajar de ahí — ver
   // AbonoNoPermitidoError en RegistrarPago.ts, hallazgo de la revisión final).
+  // Deuda de productos a cobrar junto con la membresía (un plan de cortesía no la incluye). Lo que
+  // se carga en las líneas es el total pagado: la parte de la membresía es lo que excede a la deuda.
+  const deudaAPagar = montoSugerido > 0 && deudaMiembro && incluirDeudas ? deudaMiembro.totalUSD : 0;
+  const menosDeuda = (total: number) => Math.max(0, Math.round((total - deudaAPagar) * 100) / 100);
+
   const montoObjetivoBloqueado = modalidad === "total" || (modalidad === "combinado" && !permitePagoParcial);
   const [montoObjetivoTexto, setMontoObjetivoTexto] = useState(String(montoSugerido));
 
@@ -511,9 +516,9 @@ function ContenidoPaso3({
   const montoObjetivo = montoObjetivoBloqueado
     ? montoSugerido
     : esAbono
-      ? Number(lineaUnica.monto) || 0
+      ? menosDeuda(Number(lineaUnica.monto) || 0)
       : modalidad === "combinado"
-        ? sumaLineasCombinadas
+        ? menosDeuda(sumaLineasCombinadas)
         : Number(montoObjetivoTexto) || 0;
 
   // En modalidad total (no abono, no combinado), el monto real a enviar es
@@ -531,7 +536,7 @@ function ContenidoPaso3({
       ? lineasCombinadas
       : esAbono
         ? [lineaUnica]
-        : [{ ...lineaUnica, monto: String(montoObjetivo) }];
+        : [{ ...lineaUnica, monto: String(Math.round((montoObjetivo + deudaAPagar) * 100) / 100) }];
   const sumaLineas = lineasActivas.reduce((suma, l) => suma + (Number(l.monto) || 0), 0);
 
   // Réplica cliente del motor de reglas de abono (proyeccionAbono.ts) —
@@ -562,16 +567,12 @@ function ContenidoPaso3({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- solo debe reaccionar a un nuevo estado.ok, no a las funciones
   }, [estado.ok]);
 
-  // Deuda de productos a cobrar junto con la membresía (un plan de cortesía no la incluye).
-  // Se suma a la primera línea: el servidor descuenta la deuda primero y en orden, así que
-  // la membresía recibe exactamente lo que el cajero cargó en cada línea.
-  const deudaAPagar = montoSugerido > 0 && deudaMiembro && incluirDeudas ? deudaMiembro.totalUSD : 0;
-  // La deuda viaja en la primera línea con monto (ver lineasParaEnviar); el Bs de esa línea la incluye.
-  const indiceLineaConDeuda = Math.max(0, lineasCombinadas.findIndex((l) => Number(l.monto) > 0));
+  // Las líneas traen lo que el cliente paga en total (membresía + deuda): el servidor descuenta
+  // la deuda primero y en orden, y lo que sobra es la membresía.
   const lineasParaEnviar = lineasActivas
     .filter((l) => Number(l.monto) > 0)
-    .map((l, i) => ({
-      monto: Math.round((Number(l.monto) + (i === 0 ? deudaAPagar : 0)) * 100) / 100,
+    .map((l) => ({
+      monto: Math.round(Number(l.monto) * 100) / 100,
       metodo: l.seleccion.metodo,
       metodoPagoId: l.seleccion.metodoPagoId,
       numeroOperacion: l.seleccion.numeroOperacion || null,
@@ -588,7 +589,7 @@ function ContenidoPaso3({
   // (AbonoMenorAlMinimoError), que sí conoce el estado real del ciclo.
   const puedeEnviar = esAbono
     ? montoObjetivo > 0 && lineaUnica.seleccion.metodoPagoId !== null
-    : montoSugerido === 0 || (lineasParaEnviar.length > 0 && lineasParaEnviar.every((l) => l.metodoPagoId));
+    : montoSugerido === 0 || (lineasParaEnviar.length > 0 && montoObjetivo > 0 && lineasParaEnviar.every((l) => l.metodoPagoId));
 
   return (
     <form action={enviar} className="flex min-h-0 flex-1 flex-col gap-4 text-base lg:flex-row lg:gap-6">
@@ -696,7 +697,7 @@ function ContenidoPaso3({
               compacto
               metodos={metodosPago}
               monto={montoObjetivo + deudaAPagar}
-              onCambio={(seleccion) => setLineaUnica((prev) => ({ ...prev, monto: String(montoObjetivo), seleccion }))}
+              onCambio={(seleccion) => setLineaUnica((prev) => ({ ...prev, monto: String(montoObjetivo + deudaAPagar), seleccion }))}
               grande
               avisoServidor={{ tasaNueva: estado.tasaNueva, fallaTemporal: estado.fallaTemporal, tasaGuardada: estado.tasaGuardada }}
               ocultarNumeroOperacion
@@ -778,7 +779,7 @@ function ContenidoPaso3({
                         <SelectorMetodoPago
                           compacto
                           metodos={metodosPago}
-                          monto={(montoLinea > 0 ? montoLinea : montoSugerido) + (indice === indiceLineaConDeuda ? deudaAPagar : 0)}
+                          monto={montoLinea > 0 ? montoLinea : montoSugerido + deudaAPagar}
                           onCambio={(seleccion) =>
                             setLineasCombinadas((prev) => prev.map((l, i) => (i === indice ? { ...l, seleccion } : l)))
                           }
@@ -942,7 +943,7 @@ function ContenidoPaso3({
           // Proyección + detalle de períodos, siempre visible (ver diseño
           // acordado: "que el cliente vea que cubre su pago"), calculada
           // sobre la SUMA de todas las líneas activas — se actualiza en vivo.
-          proyeccion={sumaLineas > 0 ? proyeccionAbono : null}
+          proyeccion={sumaLineas > 0 && montoObjetivo > 0 ? proyeccionAbono : null}
           modalidad={modalidad}
           deudaProductos={deudaAPagar}
         />

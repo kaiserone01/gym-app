@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import { BellRinging, SpeakerSlash } from "@phosphor-icons/react/dist/ssr";
 import { Avatar } from "@gym-app/ui/components/Avatar";
@@ -8,8 +7,7 @@ import { Button } from "@gym-app/ui/components/Button";
 import { Card } from "@gym-app/ui/components/Card";
 import { Badge } from "@gym-app/ui/components/Badge";
 import type { EstadoCheckIn } from "@gym-app/domain/entities/CheckIn";
-import { useEnSala, type PersonaEnSalaVista } from "./ContextoEnSala";
-import { marcarSalidaAction } from "./actions";
+import { useEnSala } from "./ContextoEnSala";
 
 const ETIQUETA_ESTADO: Record<EstadoCheckIn, string> = {
   activo: "Al día",
@@ -27,22 +25,11 @@ function fecha(iso: string): string {
   return new Date(iso).toLocaleDateString("es-VE", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "UTC" });
 }
 
-export function ListaEnSala({ puedeMarcarSalida }: { puedeMarcarSalida: boolean }) {
+export function ListaEnSala() {
   const enSala = useEnSala();
-  const [saliendo, setSaliendo] = useState<string | null>(null);
 
   if (!enSala) return null;
-  const { personas, cobros, avisosActivos, activarAvisos, desactivarAvisos, recargar } = enSala;
-
-  async function marcarSalida(persona: PersonaEnSalaVista) {
-    setSaliendo(persona.miembroId);
-    try {
-      await marcarSalidaAction(persona.miembroId);
-      await recargar();
-    } finally {
-      setSaliendo(null);
-    }
-  }
+  const { personas, cobros, avisosActivos, activarAvisos, desactivarAvisos } = enSala;
 
   return (
     <div className="flex flex-col gap-4">
@@ -108,17 +95,6 @@ export function ListaEnSala({ puedeMarcarSalida }: { puedeMarcarSalida: boolean 
                 >
                   Cobrar ahora
                 </Link>
-              )}
-              {puedeMarcarSalida && (
-                <Button
-                  type="button"
-                  variant="secundario"
-                  className="flex-1 sm:flex-none"
-                  disabled={saliendo === persona.miembroId}
-                  onClick={() => void marcarSalida(persona)}
-                >
-                  Marcar salida
-                </Button>
               )}
             </div>
           </Card>

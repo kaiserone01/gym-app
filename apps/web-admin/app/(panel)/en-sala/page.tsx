@@ -8,14 +8,13 @@ export default async function PaginaEnSala() {
   if (!sesion) redirect("/login");
 
   if (!(await tienePermisoEnSala(sesion.usuario, "VER"))) redirect("/miembros");
-  const puedeMarcarSalida = await tienePermisoEnSala(sesion.usuario, "EDITAR");
 
   return (
     <div className="p-6 lg:p-8">
       <h1 className="mb-6 text-2xl font-semibold" style={{ color: "var(--gx-ink)" }}>
         En sala
       </h1>
-      <ListaEnSala puedeMarcarSalida={puedeMarcarSalida} />
+      <ListaEnSala />
     </div>
   );
 }

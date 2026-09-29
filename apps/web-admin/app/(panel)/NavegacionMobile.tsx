@@ -33,13 +33,17 @@ export function NavegacionMobile({
   );
 
   const items: ItemTab[] = [
-    {
-      tipo: "link",
-      href: "/miembros",
-      label: "Miembros",
-      icon: <UsersThree size={24} />,
-      iconActivo: <UsersThree size={24} weight="fill" />,
-    },
+    ...(puedeVerEnSala
+      ? [
+          {
+            tipo: "link" as const,
+            href: "/en-sala",
+            label: "En sala",
+            icon: iconoEnSala("regular"),
+            iconActivo: iconoEnSala("fill"),
+          },
+        ]
+      : []),
     {
       tipo: "link",
       href: "/caja",
@@ -54,17 +58,13 @@ export function NavegacionMobile({
       icon: <CreditCard size={24} />,
       iconActivo: <CreditCard size={24} weight="fill" />,
     },
-    ...(puedeVerEnSala
-      ? [
-          {
-            tipo: "link" as const,
-            href: "/en-sala",
-            label: "En sala",
-            icon: iconoEnSala("regular"),
-            iconActivo: iconoEnSala("fill"),
-          },
-        ]
-      : []),
+    {
+      tipo: "link",
+      href: "/miembros",
+      label: "Miembros",
+      icon: <UsersThree size={24} />,
+      iconActivo: <UsersThree size={24} weight="fill" />,
+    },
     {
       tipo: "accion",
       label: "Más",

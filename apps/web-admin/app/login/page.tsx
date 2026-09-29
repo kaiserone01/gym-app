@@ -48,7 +48,7 @@ export default function LoginPage() {
       return;
     }
 
-    router.push("/miembros");
+    router.push("/");
   }
 
   async function elegirSucursal(sucursalId: string) {
@@ -69,7 +69,7 @@ export default function LoginPage() {
       return;
     }
 
-    router.push("/miembros");
+    router.push("/");
   }
 
   return (

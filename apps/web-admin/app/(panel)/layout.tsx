@@ -42,10 +42,10 @@ export default async function PanelLayout({ children }: { children: React.ReactN
           <Sidebar
             encabezado={<EncabezadoSidebar sucursalNombre={sucursalActiva?.nombre ?? "—"} />}
             items={[
-              { href: "/miembros", label: "Miembros" },
+              ...(puedeVerEnSala ? [{ href: "/en-sala", label: "En sala", extra: <ContadorEnSala /> }] : []),
               { href: "/caja", label: "Caja" },
               { href: "/pagos", label: "Histórico de Pagos" },
-              ...(puedeVerEnSala ? [{ href: "/en-sala", label: "En sala", extra: <ContadorEnSala /> }] : []),
+              { href: "/miembros", label: "Miembros" },
               // Planes, Sucursales y Usuarios se administran desde las tabs
               // de Configuraciones (ver diseño acordado) — solo SOCIO llega
               // a ellas desde ahí.

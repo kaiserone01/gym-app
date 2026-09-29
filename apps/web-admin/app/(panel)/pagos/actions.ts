@@ -14,7 +14,7 @@ import { PrismaSucursalRepository } from "@gym-app/infrastructure/persistence/pr
 import { PrismaReglaAbonoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaReglaAbonoRepository";
 import { PrismaCambioPlanAuditoriaRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaCambioPlanAuditoriaRepository";
 import { AuthorizationService } from "@gym-app/domain/services/AuthorizationService";
-import { orquestadorTasa, validarTasaCobro } from "@/lib/tasaBcv";
+import { validarTasaSiEsEnBs } from "@/lib/tasaBcv";
 import { conMensajeOk } from "../redirectConMensaje";
 import {
   registrarPago,
@@ -60,36 +60,6 @@ export interface EstadoFormularioPago {
   // en bcv.org.ve, o ingresarla manualmente.
   fallaTemporal?: boolean;
   tasaGuardada?: number;
-}
-
-// Estado de error compartido entre EstadoFormularioPago y EstadoCambioPlan
-// (misma forma: error + el aviso de tasa de la Etapa 3).
-interface EstadoErrorTasa {
-  error: string;
-  tasaNueva?: number;
-  fallaTemporal?: boolean;
-  tasaGuardada?: number;
-}
-
-// Valida que la tasa del formulario sea la última publicada, cuando la
-// operación es en Bs (Etapa 3 del plan de tasa BCV). Nunca se registra con
-// la tasa del formulario: si coincide, se usa la del servidor.
-async function validarTasaSiEsEnBs(
-  tasaCambioRaw: string | undefined
-): Promise<{ ok: true; tasaCambio: number | null } | { ok: false; estado: EstadoErrorTasa }> {
-  if (!tasaCambioRaw) return { ok: true, tasaCambio: null };
-
-  const tasaFormulario = Number(tasaCambioRaw);
-  const fresca = await orquestadorTasa.obtenerTasaVigenteFresca({ forzar: true });
-  const resultado = validarTasaCobro(tasaFormulario, fresca);
-
-  if (!resultado.ok) {
-    if ("fallaTemporal" in resultado) {
-      return { ok: false, estado: { error: resultado.error, fallaTemporal: true, tasaGuardada: resultado.tasaGuardada } };
-    }
-    return { ok: false, estado: { error: resultado.error, tasaNueva: resultado.tasaNueva } };
-  }
-  return { ok: true, tasaCambio: resultado.tasa };
 }
 
 export async function registrarPagoAction(

@@ -132,7 +132,7 @@ export default async function PaginaHistoricoPagos({
                     {pago.fechaPago.toLocaleString("es-VE", { dateStyle: "short", timeStyle: "short" })}
                   </td>
                   <td className="py-1.5 print:text-black" style={{ color: "var(--gx-ink)" }}>
-                    {pago.miembroNombre ?? pago.miembroId}
+                    {pago.productoNombre ? `${pago.productoNombre} × ${pago.cantidad ?? 1}` : (pago.miembroNombre ?? pago.miembroId)}
                   </td>
                   <td className="py-1.5 print:text-black" style={{ color: "var(--gx-ink)" }}>
                     {nombreMetodo(pago.metodo)}

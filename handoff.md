@@ -63,6 +63,12 @@ Contexto: la tasa BCV mostrada en el panel estaba desactualizada 11 días (832.4
 - El usuario compartió en el chat (texto plano) la `DATABASE_URL` real de producción y las claves de R2 de su `.env` local, para poder usarlas en el daemon. **Son credenciales reales, ya expuestas en el historial de este chat** — si se retoma este tema, no volver a pedírselas por chat; usar lo que ya se tiene o pedirle que las cargue directo en el campo correspondiente de Easypanel cuando se encuentre.
 - El servicio "tasa-bcv" en Easypanel quedó CREADO (tipo Aplicación, Nixpacks, comando de instalación `npm ci`, comando de inicio `npm run worker:daemon`, repo `kaiserone01/gym-app` rama `main`, ruta de compilación `/`) pero **sin variables de entorno configuradas y sin desplegar** — no se le dio "Implementar" nunca. Se puede seguir configurando ese mismo servicio cuando se retome, no hace falta crear uno nuevo.
 
+## 2.2. Módulo Productos + "Vender producto" en Caja (2026-09-29) — código listo, migración SIN aplicar
+
+**Hecho (typecheck OK, `npm test --workspace packages/domain` 45/45 con el nuevo `VenderProducto.test.ts`, eslint limpio en los archivos tocados):** CRUD de productos (`/productos`, ítem propio en el menú; móvil vía "Más"), botón "Vender producto" junto a "Registrar pago" en `/caja` reutilizando `SelectorMetodoPago`. La venta es una fila `Pago` sin miembro (`miembroId` ahora opcional) con `productoId`/`productoNombre`/`cantidad`; entra al turno y al arqueo sin cambios. Permisos: administrar = PLANES, vender = CAJA/CREAR. Cantidad sí, control de stock no. La UI cobra con un solo método (el dominio ya admite varias líneas).
+
+**Bloqueado / pendiente:** la migración `20260929180000_agrega_productos_y_venta_en_pago` NO está aplicada en la base remota (`_prisma_migrations` la tiene marcada como revertida). Sin ella `/productos` y `/caja` fallan. No se hizo commit ni push por eso. Ver sección 4 y 5.
+
 ## 3. Archivos y cambios (todas las sesiones recientes acumuladas)
 - **Botón "Marcar salida" oculto en En sala (2026-09-29):** se quitó de `ListaEnSala.tsx` (y la prop/permiso `EDITAR` en `page.tsx`). Se conservan `en-sala/actions.ts` (`marcarSalidaAction`), `MarcarSalidaCheckIn.ts`, `CheckIn.salidaAt` y `marcarSalida` del repositorio para reactivarlo. Consecuencia: la lista solo se vacía al cambiar el día (Caracas).
 - **"Cobrar ahora" de En sala → Caja (2026-09-29):** el botón ahora enlaza a `/caja?cobrar=<miembroId>`. `caja/page.tsx` lee `cobrar` y lo pasa como `miembroInicialId` a `BotonRegistrarPagoCaja`, que abre el wizard solo; `ModalRegistrarPagoCaja` arranca en el Paso 2 (método/modalidad) con ese miembro elegido, saltando la búsqueda. Helper compartido `aMiembroConPlan` en `SelectorMiembroModal.tsx`. Al cerrar el wizard se limpia `?cobrar`. Limitación: si no hay turno abierto, `/caja` muestra abrir turno y el parámetro se pierde. Sin verificar en vivo.
@@ -328,6 +334,13 @@ Contexto: la tasa BCV mostrada en el panel estaba desactualizada 11 días (832.4
   - No se tocó `CambiarPlanConPago.ts` (el flujo del botón "Cambiar plan" explícito) — ese ya actualizaba `precioPlan` correctamente desde antes.
   - **Sin verificar en vivo ni con tests** — esta sesión no tiene `node_modules` instalado (ni siquiera en la raíz del repo), así que no se pudo correr `npm install`, `vitest`, `tsc --noEmit` ni el build. Revisión manual del diff únicamente. No hay archivo de test para `RegistrarPago.ts` en el repo (sí para `CambiarPlanConPago.ts`).
 
+### Sesión 2026-09-29 — Productos y venta en Caja
+- `packages/db/prisma/schema.prisma` + migración `20260929180000_agrega_productos_y_venta_en_pago`: modelo `Producto`; `Pago.miembroId` opcional; `Pago.productoId/productoNombre/cantidad`.
+- `packages/domain`: `entities/Producto.ts`, `ports/IProductoRepository.ts`, use-cases `Crear/Listar/Actualizar/EliminarProducto` y `VenderProducto` (+ test); `entities/Pago.ts` (`miembroId` nullable, ciclos opcionales, campos de producto).
+- `packages/infrastructure/persistence/prisma`: `PrismaProductoRepository.ts` nuevo; `PrismaPagoRepository.ts` filtra por `sucursal.organizacionId` (ya no por miembro) y tolera `miembro` null.
+- `apps/web-admin/lib/storageR2.ts` (extraído de 3 `actions.ts` duplicados) y `lib/tasaBcv.ts` (ahora exporta `validarTasaSiEsEnBs`, movido desde `pagos/actions.ts`).
+- `apps/web-admin/app/(panel)/productos/*` (lista, nuevo, editar, formulario, eliminar, acciones); `caja/{ModalVenderProducto,BotonVenderProducto}.tsx`, `caja/actions.ts` (`venderProductoAction`), `caja/page.tsx`; `layout.tsx` y `MasSheet.tsx` (menú); `pagos/page.tsx` (muestra el producto en vez del miembro); `miembros/SelectorFotoPerfil.tsx` (props `etiqueta` y `guiaCircular`).
+
 ## 4. Intentos fallidos
 - **Chrome DevTools MCP (`click`, `fill`, `press_key`) no simula bien eventos de teclado en inputs controlados de React en esta sesión** — el foco no quedaba realmente puesto (`document.activeElement` seguía en `<body>`), generando confusión sobre si `CurrencyInput` estaba roto cuando en realidad era el tooling de test. Se confirmó el fix real inyectando el valor vía `Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set` + `dispatchEvent(new Event('input', {bubbles:true}))`. **Lección: verificar `document.activeElement` antes de asumir que un input está roto; no usar Chrome DevTools MCP salvo pedido explícito (ya en `CLAUDE.md`).**
 - **Probar un fix de Server Action sin reiniciar el servidor de desarrollo tras `git pull`** llevó a pensar que el fix de `cerrarTurnoAction` no funcionaba (seguía guardando arqueo vacío) — Next.js/Turbopack no siempre recompila Server Actions en caliente cuando cambia qué campos de `FormData` lee. **Lección: reiniciar el servidor (parar y volver a levantar) después de cualquier pull que toque una Server Action.**
@@ -341,8 +354,17 @@ Contexto: la tasa BCV mostrada en el panel estaba desactualizada 11 días (832.4
 - **[Migración Excel] `TaskStop` sobre el comando en background NO mata el proceso `node` hijo:** hubo que matarlo con `Stop-Process` filtrando por `CommandLine` (`migrarExcelAdrenalina`). Antes de re-correr, verificar procesos node colgados.
 - **[Migración Excel] Escritura de 1371 filas contra la base remota con `prisma.$transaction` por fila y timeout por defecto (5000 ms):** 19 filas fallaron con `P2028` por latencia en el commit. Pendiente: subir el timeout de la transacción (`{ timeout: 20000 }`) o reintentar, y confirmar idempotencia re-corriendo.
 - **[Migración Excel] Conteo acumulado de vencidos "hace más de X"** no le sirvió al usuario para decidir; lo útil es el conteo por tramo exclusivo + "retenidas si corto aquí" (ver sección 2).
+- **[Productos, 2026-09-29] `prisma migrate deploy` contra la base remota se colgó y dejó la migración como fallida:** el `ALTER TABLE "Pago" DROP CONSTRAINT` esperaba un lock que tenía una transacción ajena "idle in transaction" (pid 78890, IP 186.92.3.99, 2 h, INSERT en `Miembro`, probablemente un script de migración del Excel colgado) y, mientras esperaba, encolaba y bloqueaba todas las lecturas de `Miembro` de la app. Se canceló solo el backend propio (`pg_cancel_backend`) y se hizo `migrate resolve --rolled-back`. Lección: antes de migrar, revisar `pg_stat_activity` por sesiones `idle in transaction`, y no lanzar migraciones en background con timeout.
+- **[Productos] Aplicar el SQL a mano contra la base remota con `pg` + `lock_timeout` fue denegado por la política del entorno** (despliegue a producción). No reintentar por otra vía; lo aplica el usuario o el arranque del contenedor.
+
 
 ## 5. Próximos pasos
+
+### 5.00. PRODUCTOS — próximos pasos (2026-09-29)
+1. Aplicar la migración `20260929180000_agrega_productos_y_venta_en_pago` (revisar antes `pg_stat_activity` por sesiones `idle in transaction`). El contenedor la aplica al arrancar (`docker-entrypoint.sh`), o `prisma migrate deploy --config prisma7.config.ts` desde `packages/db`. Si `_prisma_migrations` la sigue mostrando como fallida, primero `migrate resolve --rolled-back`.
+2. `npm run generate --workspace packages/db` y `npm run build` (turbo; el build de web-admin ya venía roto antes, ver sección 4).
+3. Verificar en vivo: crear producto con foto → aparece con USD y Bs → abrir turno → vender (efectivo USD, pago móvil en Bs) → resumen y arqueo del turno incluyen la venta → `/pagos` la muestra → anularla.
+4. Commit en español de una línea, sin firmas, y push a main (recién con la migración aplicada).
 
 ### 5.0. MIGRACIÓN DEL EXCEL — decisiones pendientes y pasos (sesión pausada 2026-09-29)
 **Decisiones que debe tomar el usuario antes de migrar a la organización real:**

@@ -21,7 +21,7 @@ import { PrismaPermisoRepository } from "@gym-app/infrastructure/persistence/pri
 import { PrismaSucursalRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaSucursalRepository";
 import { PrismaReglaAbonoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaReglaAbonoRepository";
 import { AuthorizationService } from "@gym-app/domain/services/AuthorizationService";
-import { R2StorageService } from "@gym-app/infrastructure/storage/R2StorageService";
+import { storageR2 } from "@/lib/storageR2";
 import {
   registrarPago,
   MiembroNoEncontradoError as PagoMiembroNoEncontradoError,
@@ -50,22 +50,6 @@ function resolverSucursalId(valor: string | undefined): string | null {
 
 function resolverPlanId(formData: FormData): string | null {
   return formData.get("planId")?.toString() || null;
-}
-
-function storageR2(): R2StorageService {
-  const accountId = process.env.R2_ACCOUNT_ID;
-  const accessKeyId = process.env.R2_ACCESS_KEY_ID;
-  const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
-  const bucket = process.env.R2_BUCKET_NAME;
-  const publicUrl = process.env.R2_PUBLIC_URL;
-
-  if (!accountId || !accessKeyId || !secretAccessKey || !bucket || !publicUrl) {
-    throw new Error(
-      "Faltan variables de entorno de R2 (R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET_NAME, R2_PUBLIC_URL)."
-    );
-  }
-
-  return new R2StorageService({ accountId, accessKeyId, secretAccessKey, bucket, publicUrl });
 }
 
 // Sube la foto al bucket "gym-app" en Cloudflare R2 (carpeta "miembros") y

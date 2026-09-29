@@ -1,6 +1,7 @@
 export interface Pago {
   id: string;
-  miembroId: string;
+  // Null en ventas de producto (ver productoId).
+  miembroId: string | null;
   miembroNombre?: string;
   miembroPrecioPlan?: number;
   sucursalId: string;
@@ -22,10 +23,14 @@ export interface Pago {
   // Correlaciona las N filas de un mismo pago combinado (ver
   // registrarPago) — null en pagos de una sola línea.
   grupoPagoId: string | null;
+  // Venta de producto: cada Pago es una línea de método de la venta.
+  productoId?: string | null;
+  productoNombre?: string | null;
+  cantidad?: number | null;
 }
 
 export interface DatosNuevoPago {
-  miembroId: string;
+  miembroId: string | null;
   sucursalId: string;
   turnoId: string | null;
   registradoPorId: string;
@@ -35,9 +40,12 @@ export interface DatosNuevoPago {
   numeroOperacion: string | null;
   tasaCambio: number | null;
   montoBs: number | null;
-  fechaInicioCiclo: Date;
-  fechaFinCiclo: Date;
+  fechaInicioCiclo: Date | null;
+  fechaFinCiclo: Date | null;
   grupoPagoId: string | null;
+  productoId?: string | null;
+  productoNombre?: string | null;
+  cantidad?: number | null;
 }
 
 // Pagos de fondos fraccionados/mixtos ("abonos") — varios Pago pueden

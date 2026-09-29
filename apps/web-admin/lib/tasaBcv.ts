@@ -125,3 +125,33 @@ export const orquestadorTasa = crearOrquestadorTasa({
   programar: (tarea) => after(tarea),
   ahoraMs: () => Date.now(),
 });
+
+// Estado de error compartido entre EstadoFormularioPago y EstadoCambioPlan
+// (misma forma: error + el aviso de tasa de la Etapa 3).
+export interface EstadoErrorTasa {
+  error: string;
+  tasaNueva?: number;
+  fallaTemporal?: boolean;
+  tasaGuardada?: number;
+}
+
+// Valida que la tasa del formulario sea la última publicada, cuando la
+// operación es en Bs (Etapa 3 del plan de tasa BCV). Nunca se registra con
+// la tasa del formulario: si coincide, se usa la del servidor.
+export async function validarTasaSiEsEnBs(
+  tasaCambioRaw: string | undefined
+): Promise<{ ok: true; tasaCambio: number | null } | { ok: false; estado: EstadoErrorTasa }> {
+  if (!tasaCambioRaw) return { ok: true, tasaCambio: null };
+
+  const tasaFormulario = Number(tasaCambioRaw);
+  const fresca = await orquestadorTasa.obtenerTasaVigenteFresca({ forzar: true });
+  const resultado = validarTasaCobro(tasaFormulario, fresca);
+
+  if (!resultado.ok) {
+    if ("fallaTemporal" in resultado) {
+      return { ok: false, estado: { error: resultado.error, fallaTemporal: true, tasaGuardada: resultado.tasaGuardada } };
+    }
+    return { ok: false, estado: { error: resultado.error, tasaNueva: resultado.tasaNueva } };
+  }
+  return { ok: true, tasaCambio: resultado.tasa };
+}

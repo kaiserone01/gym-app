@@ -11,7 +11,17 @@ import { PrismaPagoRepository } from "@gym-app/infrastructure/persistence/prisma
 import { PrismaSucursalRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaSucursalRepository";
 import { PrismaPermisoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaPermisoRepository";
 import { AuthorizationService } from "@gym-app/domain/services/AuthorizationService";
-import { orquestadorTasa, validarTasaCobro } from "@/lib/tasaBcv";
+import { orquestadorTasa, validarTasaCobro, validarTasaSiEsEnBs } from "@/lib/tasaBcv";
+import { PrismaProductoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaProductoRepository";
+import {
+  venderProducto,
+  RolNoAutorizadoError as RolNoAutorizadoVender,
+  ProductoNoEncontradoError,
+  ProductoInactivoError,
+  CantidadInvalidaError,
+  SinTurnoAbiertoError,
+} from "@gym-app/domain/use-cases/VenderProducto";
+import { LineasDePagoInvalidasError, MontoLineasNoCubreObjetivoError } from "@gym-app/domain/entities/Pago";
 import { abrirTurno, RolNoAutorizadoError as RolNoAutorizadoAbrir, TurnoYaAbiertoError, SucursalNoEncontradaError } from "@gym-app/domain/use-cases/AbrirTurno";
 import { registrarEgreso, RolNoAutorizadoError as RolNoAutorizadoEgreso, TurnoCerradoError, TurnoNoEncontradoError as TurnoNoEncontradoEgreso, MotivoRequeridoError, TasaRequeridaError as TasaRequeridaEgreso } from "@gym-app/domain/use-cases/RegistrarEgreso";
 import { cerrarTurno, RolNoAutorizadoError as RolNoAutorizadoCerrar, TurnoYaCerradoError, TurnoNoEncontradoError as TurnoNoEncontradoCerrar, NotaRequeridaError } from "@gym-app/domain/use-cases/CerrarTurno";
@@ -263,4 +273,90 @@ export async function anularPagoAction(
 
   revalidatePath("/caja");
   return { ok: "Pago anulado." };
+}
+
+export interface EstadoVenderProducto {
+  error?: string;
+  ok?: string;
+  // Mismo aviso de tasa que EstadoFormularioPago (pagos/actions.ts).
+  tasaNueva?: number;
+  fallaTemporal?: boolean;
+  tasaGuardada?: number;
+}
+
+export async function venderProductoAction(
+  _estadoPrevio: EstadoVenderProducto,
+  formData: FormData
+): Promise<EstadoVenderProducto> {
+  const sesion = await obtenerUsuarioDeSesionActual();
+  if (!sesion) redirect("/login");
+  const { usuario, sucursalActivaId } = sesion;
+
+  const productoId = formData.get("productoId")?.toString();
+  const cantidad = Number(formData.get("cantidad"));
+  const lineasRaw = formData.get("lineas")?.toString();
+  if (!productoId || !lineasRaw) {
+    return { error: "Producto y al menos un método de pago son requeridos." };
+  }
+
+  let lineas: Array<{
+    monto: number;
+    metodo: string;
+    metodoPagoId: string | null;
+    numeroOperacion: string | null;
+    tasaCambio: number | null;
+  }>;
+  try {
+    lineas = JSON.parse(lineasRaw);
+  } catch {
+    return { error: "No se pudo interpretar la información del pago." };
+  }
+  if (!Array.isArray(lineas) || lineas.length === 0 || lineas.some((linea) => !linea.metodoPagoId)) {
+    return { error: "Cada línea del pago necesita un monto y un método." };
+  }
+
+  // Cada línea en Bs se revalida contra la tasa vigente del servidor (igual
+  // que registrarPagoAction) — nunca se confía en la tasa del formulario.
+  const lineasValidadas: typeof lineas = [];
+  for (const linea of lineas) {
+    const validacionTasa = await validarTasaSiEsEnBs(linea.tasaCambio !== null ? String(linea.tasaCambio) : undefined);
+    if (!validacionTasa.ok) return validacionTasa.estado;
+    lineasValidadas.push({ ...linea, tasaCambio: validacionTasa.tasaCambio });
+  }
+
+  try {
+    await venderProducto(
+      {
+        pagos: new PrismaPagoRepository(prisma),
+        productos: new PrismaProductoRepository(prisma),
+        turnos: new PrismaTurnoRepository(prisma),
+        autorizacion: new AuthorizationService(new PrismaPermisoRepository(prisma)),
+      },
+      {
+        organizacionId: usuario.organizacionId,
+        productoId,
+        cantidad,
+        lineas: lineasValidadas,
+        sucursalId: sucursalActivaId,
+        registradoPorId: usuario.id,
+      }
+    );
+  } catch (error) {
+    if (
+      error instanceof RolNoAutorizadoVender ||
+      error instanceof ProductoNoEncontradoError ||
+      error instanceof ProductoInactivoError ||
+      error instanceof CantidadInvalidaError ||
+      error instanceof SinTurnoAbiertoError ||
+      error instanceof LineasDePagoInvalidasError ||
+      error instanceof MontoLineasNoCubreObjetivoError
+    ) {
+      return { error: error.message };
+    }
+    throw error;
+  }
+
+  revalidatePath("/caja");
+  revalidatePath("/pagos");
+  return { ok: "Venta registrada." };
 }

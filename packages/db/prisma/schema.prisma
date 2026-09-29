@@ -23,6 +23,7 @@ model Organizacion {
   usuariosAdmin        UsuarioAdmin[]
   miembros             Miembro[]
   planes               Plan[]
+  productos            Producto[]
   metodosPago          MetodoPago[]
   tema                 TemaOrganizacion?
   turnos               Turno[]
@@ -241,8 +242,9 @@ model Suscripcion {
 
 model Pago {
   id              String       @id @default(cuid())
-  miembroId       String
-  miembro         Miembro      @relation(fields: [miembroId], references: [id])
+  // Null en ventas de producto (sin miembro) — ver productoId.
+  miembroId       String?
+  miembro         Miembro?     @relation(fields: [miembroId], references: [id])
   sucursalId      String
   sucursal        Sucursal     @relation(fields: [sucursalId], references: [id])
   turnoId         String?
@@ -269,6 +271,14 @@ model Pago {
   // fueron un mismo cobro".
   grupoPagoId String?
 
+  // Venta de producto: cada fila Pago es una línea de método de pago de la
+  // venta. productoNombre es snapshot (no cambia si se renombra el
+  // producto). Sin control de stock.
+  productoId     String?
+  producto       Producto? @relation(fields: [productoId], references: [id])
+  productoNombre String?
+  cantidad       Int?
+
   anuladoEn       DateTime?
   anuladoPorId    String?
   anuladoPor      UsuarioAdmin? @relation("PagosAnulados", fields: [anuladoPorId], references: [id])
@@ -277,6 +287,24 @@ model Pago {
   cambioPlanAuditoria CambioPlanAuditoria[]
 
   @@index([grupoPagoId])
+}
+
+// Artículo a la venta en el gimnasio (agua, Gatorade, guantines). El
+// equivalente en Bs no se persiste: se calcula con la tasa vigente.
+model Producto {
+  id             String       @id @default(cuid())
+  organizacionId String
+  organizacion   Organizacion @relation(fields: [organizacionId], references: [id])
+  nombre         String
+  descripcion    String?
+  costoUSD       Decimal      @db.Decimal(10, 2)
+  fotoUrl        String?
+  activo         Boolean      @default(true)
+  createdAt      DateTime     @default(now())
+
+  pagos Pago[]
+
+  @@index([organizacionId])
 }
 
 enum ModoCambioPlanAuditoria {

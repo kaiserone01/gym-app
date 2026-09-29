@@ -20,7 +20,10 @@ export function MasSheet({
   // Usuarios, Sucursales y Planes se administran desde las tabs de
   // Configuraciones (ver diseño acordado) — solo SOCIO llega a ellos, igual
   // que en el sidebar de escritorio.
-  const enlaces = rol === "SOCIO" ? [{ href: "/configuraciones", label: "Configuraciones" }] : [];
+  const enlaces = [
+    { href: "/productos", label: "Productos" },
+    ...(rol === "SOCIO" ? [{ href: "/configuraciones", label: "Configuraciones" }] : []),
+  ];
 
   return (
     <Sheet abierto={abierto} onCerrar={onCerrar} titulo="Más">

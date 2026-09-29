@@ -9,9 +9,14 @@ import { comprimirAvatar } from "./comprimirImagen";
 export function SelectorFotoPerfil({
   tieneFoto,
   onCambio,
+  etiqueta = "Foto de perfil",
+  guiaCircular = true,
 }: {
   tieneFoto: boolean;
   onCambio: (archivo: File) => void;
+  etiqueta?: string;
+  // La guía circular ayuda a centrar un rostro; para productos no aplica.
+  guiaCircular?: boolean;
 }) {
   const inputFotoRef = useRef<HTMLInputElement>(null);
   const inputArchivoRef = useRef<HTMLInputElement>(null);
@@ -83,7 +88,7 @@ export function SelectorFotoPerfil({
   return (
     <div className="flex min-w-0 flex-col gap-2">
       <span className="text-sm" style={{ color: "var(--gx-muted)" }}>
-        Foto de perfil
+        {etiqueta}
       </span>
 
       <input ref={inputFotoRef} type="file" name="foto" hidden tabIndex={-1} />
@@ -133,13 +138,15 @@ export function SelectorFotoPerfil({
             <div className="relative aspect-square w-full overflow-hidden rounded-xl bg-black">
               <video ref={videoRef} autoPlay playsInline muted className="h-full w-full -scale-x-100 object-cover" />
               {/* Guía: el avatar es un círculo dentro del cuadrado; lo de afuera queda oscurecido. */}
-              <div
-                className="pointer-events-none absolute inset-[4%] rounded-full border-2"
-                style={{ borderColor: "var(--gx-accent)", boxShadow: "0 0 0 999px rgba(0,0,0,0.55)" }}
-              />
+              {guiaCircular && (
+                <div
+                  className="pointer-events-none absolute inset-[4%] rounded-full border-2"
+                  style={{ borderColor: "var(--gx-accent)", boxShadow: "0 0 0 999px rgba(0,0,0,0.55)" }}
+                />
+              )}
             </div>
             <p className="mt-2 text-center text-xs" style={{ color: "var(--gx-muted)" }}>
-              Centra el rostro dentro del círculo.
+              {guiaCircular ? "Centra el rostro dentro del círculo." : "Centra el producto en el cuadro."}
             </p>
             <div className="mt-3 flex gap-3">
               <Button type="button" variant="secundario" className="flex-1" onClick={() => setCamaraAbierta(false)}>

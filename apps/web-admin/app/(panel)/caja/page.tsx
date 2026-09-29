@@ -13,6 +13,8 @@ import { obtenerUltimoCierrePorSucursal } from "@gym-app/domain/use-cases/Obtene
 import { PrismaArqueoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaArqueoRepository";
 import { listarMiembros } from "@gym-app/domain/use-cases/ListarMiembros";
 import { listarPlanes } from "@gym-app/domain/use-cases/ListarPlanes";
+import { PrismaProductoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaProductoRepository";
+import { listarProductos } from "@gym-app/domain/use-cases/ListarProductos";
 import { Card } from "@gym-app/ui/components/Card";
 import { PageHeader } from "@gym-app/ui/components/PageHeader";
 import { PrismaMetodoPagoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaMetodoPagoRepository";
@@ -25,6 +27,7 @@ import { obtenerTurnoAbiertoParaUsuario } from "./obtenerTurnoAbiertoParaUsuario
 import { AvisoCajaAjena } from "./AvisoCajaAjena";
 import { BotonRegistrarPagoCaja } from "./BotonRegistrarPagoCaja";
 import { BotonRegistrarEgreso } from "./BotonRegistrarEgreso";
+import { BotonVenderProducto } from "./BotonVenderProducto";
 import { cambiarPlanAction } from "../pagos/actions";
 
 // El método ahora se guarda como snapshot legible ("Pago Móvil - Banesco")
@@ -57,7 +60,7 @@ import { formatearBs, formatearBsConRef } from "../tasaBcvFija";
 import { inicioDelDia, finDelDia, inicioDeSemana, finDeSemana, inicioDeMes, finDeMes, formatearFechaISO } from "../fechas";
 import { FormularioAbrirTurno } from "./FormularioAbrirTurno";
 import { FormularioArqueo } from "./FormularioArqueo";
-import { abrirTurnoAction, registrarEgresoAction, cerrarTurnoAction } from "./actions";
+import { abrirTurnoAction, registrarEgresoAction, cerrarTurnoAction, venderProductoAction } from "./actions";
 
 export default async function PaginaCaja({ searchParams }: { searchParams: Promise<{ cobrar?: string }> }) {
   const { cobrar } = await searchParams;
@@ -76,7 +79,7 @@ export default async function PaginaCaja({ searchParams }: { searchParams: Promi
 
   if (turnoAbierto) {
     const esPropio = turnoAbierto.esPropio;
-    const [resumen, miembros, planes, metodosPago, tasaCambio, reglasAbono, entrenadores] = await Promise.all([
+    const [resumen, miembros, planes, productos, metodosPago, tasaCambio, reglasAbono, entrenadores] = await Promise.all([
       obtenerResumenTurno(
         {
           turnos: turnoRepo,
@@ -87,6 +90,7 @@ export default async function PaginaCaja({ searchParams }: { searchParams: Promi
       ),
       listarMiembros({ miembros: new PrismaMemberRepository(prisma) }, usuario.organizacionId, sucursalActivaId),
       listarPlanes({ planes: new PrismaPlanRepository(prisma) }, usuario.organizacionId),
+      listarProductos({ productos: new PrismaProductoRepository(prisma) }, usuario.organizacionId),
       listarMetodosPagoActivos({ metodosPago: new PrismaMetodoPagoRepository(prisma) }, usuario.organizacionId),
       // Solo para mostrar la referencia en USD de la porción "fondo
       // inicial" de la línea en Bs (ver más abajo) — si no hay tasa
@@ -122,6 +126,12 @@ export default async function PaginaCaja({ searchParams }: { searchParams: Promi
                 entrenadores={entrenadores}
                 accionCambiarPlan={cambiarPlanAction}
                 miembroInicialId={cobrar}
+              />
+              <BotonVenderProducto
+                accion={venderProductoAction}
+                productos={productos.filter((p) => p.activo)}
+                metodosPago={metodosPago}
+                tasaActual={tasaActual}
               />
               <BotonRegistrarEgreso accion={registrarEgresoAction} turnoId={resumen.turno.id} />
             </div>

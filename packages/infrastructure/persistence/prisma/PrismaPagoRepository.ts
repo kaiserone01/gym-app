@@ -4,7 +4,7 @@ import type { Pago, DatosNuevoPago } from "@gym-app/domain/entities/Pago";
 
 type FilaPago = {
   id: string;
-  miembroId: string;
+  miembroId: string | null;
   sucursalId: string;
   turnoId: string | null;
   registradoPorId: string;
@@ -21,6 +21,9 @@ type FilaPago = {
   anuladoPorId: string | null;
   motivoAnulacion: string | null;
   grupoPagoId: string | null;
+  productoId: string | null;
+  productoNombre: string | null;
+  cantidad: number | null;
 };
 
 function mapear(pago: FilaPago): Pago {
@@ -43,6 +46,9 @@ function mapear(pago: FilaPago): Pago {
     anuladoPorId: pago.anuladoPorId,
     motivoAnulacion: pago.motivoAnulacion,
     grupoPagoId: pago.grupoPagoId,
+    productoId: pago.productoId,
+    productoNombre: pago.productoNombre,
+    cantidad: pago.cantidad,
   };
 }
 
@@ -65,6 +71,9 @@ export class PrismaPagoRepository implements IPagoRepository {
         fechaInicioCiclo: datos.fechaInicioCiclo,
         fechaFinCiclo: datos.fechaFinCiclo,
         grupoPagoId: datos.grupoPagoId,
+        productoId: datos.productoId ?? null,
+        productoNombre: datos.productoNombre ?? null,
+        cantidad: datos.cantidad ?? null,
       },
     });
     return mapear(pago);
@@ -81,27 +90,27 @@ export class PrismaPagoRepository implements IPagoRepository {
 
   async listarPorOrganizacion(organizacionId: string): Promise<Pago[]> {
     const pagos = await this.prisma.pago.findMany({
-      where: { miembro: { organizacionId } },
+      where: { sucursal: { organizacionId } },
       include: { miembro: { select: { nombre: true } }, registradoPor: { select: { nombre: true } } },
       orderBy: { fechaPago: "desc" },
     });
     return pagos.map((pago) => ({
       ...mapear(pago),
-      miembroNombre: pago.miembro.nombre,
+      miembroNombre: pago.miembro?.nombre,
       registradoPorNombre: pago.registradoPor.nombre,
     }));
   }
 
   async listarPorOrganizacionYRango(organizacionId: string, desde: Date, hasta: Date): Promise<Pago[]> {
     const pagos = await this.prisma.pago.findMany({
-      where: { miembro: { organizacionId }, fechaPago: { gte: desde, lte: hasta } },
+      where: { sucursal: { organizacionId }, fechaPago: { gte: desde, lte: hasta } },
       include: { miembro: { select: { nombre: true, precioPlan: true } } },
       orderBy: { fechaPago: "asc" },
     });
     return pagos.map((pago) => ({
       ...mapear(pago),
-      miembroNombre: pago.miembro.nombre,
-      miembroPrecioPlan: pago.miembro.precioPlan.toNumber(),
+      miembroNombre: pago.miembro?.nombre,
+      miembroPrecioPlan: pago.miembro?.precioPlan.toNumber(),
     }));
   }
 
@@ -111,19 +120,19 @@ export class PrismaPagoRepository implements IPagoRepository {
       include: { miembro: { select: { nombre: true } } },
       orderBy: { fechaPago: "asc" },
     });
-    return pagos.map((pago) => ({ ...mapear(pago), miembroNombre: pago.miembro.nombre }));
+    return pagos.map((pago) => ({ ...mapear(pago), miembroNombre: pago.miembro?.nombre }));
   }
 
   async buscarPorId(organizacionId: string, id: string): Promise<Pago | null> {
     const pago = await this.prisma.pago.findFirst({
-      where: { id, miembro: { organizacionId } },
+      where: { id, sucursal: { organizacionId } },
       include: { miembro: { select: { nombre: true } } },
     });
-    return pago ? { ...mapear(pago), miembroNombre: pago.miembro.nombre } : null;
+    return pago ? { ...mapear(pago), miembroNombre: pago.miembro?.nombre } : null;
   }
 
   async anular(organizacionId: string, id: string, anuladoPorId: string, motivo: string, anuladoEn: Date): Promise<Pago> {
-    const existente = await this.prisma.pago.findFirst({ where: { id, miembro: { organizacionId } } });
+    const existente = await this.prisma.pago.findFirst({ where: { id, sucursal: { organizacionId } } });
     if (!existente) {
       throw new Error("No se encontró el pago.");
     }

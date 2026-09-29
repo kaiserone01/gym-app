@@ -4,28 +4,22 @@ import { IProductoRepository } from "../ports/IProductoRepository";
 import { ITurnoRepository } from "../ports/ITurnoRepository";
 import { IAuthorizationService } from "../ports/IAuthorizationService";
 import { Pago, DatosLineaPago, validarLineasDePago } from "../entities/Pago";
+import { conceptoDeudas, totalDeudas } from "../entities/DeudaProducto";
+import {
+  resolverItemsVenta,
+  ProductoNoEncontradoError,
+  ProductoInactivoError,
+  CantidadInvalidaError,
+  SinProductosError,
+  ItemCarrito,
+} from "./resolverItemsVenta";
+
+export { ProductoNoEncontradoError, ProductoInactivoError, CantidadInvalidaError, SinProductosError };
+export type { ItemCarrito };
 
 export class RolNoAutorizadoError extends Error {
   constructor() {
     super("Tu rol no tiene permiso para vender productos.");
-  }
-}
-
-export class ProductoNoEncontradoError extends Error {
-  constructor() {
-    super("No se encontró el producto.");
-  }
-}
-
-export class ProductoInactivoError extends Error {
-  constructor() {
-    super("No se puede vender un producto inactivo.");
-  }
-}
-
-export class CantidadInvalidaError extends Error {
-  constructor() {
-    super("La cantidad tiene que ser un número entero mayor a 0.");
   }
 }
 
@@ -44,8 +38,7 @@ export interface VenderProductoDeps {
 
 export interface DatosVenderProducto {
   organizacionId: string;
-  productoId: string;
-  cantidad: number;
+  items: ItemCarrito[];
   lineas: DatosLineaPago[];
   sucursalId: string;
   registradoPorId: string;
@@ -56,25 +49,21 @@ export async function venderProducto(deps: VenderProductoDeps, input: DatosVende
     throw new RolNoAutorizadoError();
   }
 
-  if (!Number.isInteger(input.cantidad) || input.cantidad < 1) {
-    throw new CantidadInvalidaError();
-  }
+  const items = await resolverItemsVenta(deps.productos, input.organizacionId, input.items);
 
-  const producto = await deps.productos.buscarPorId(input.organizacionId, input.productoId);
-  if (!producto) {
-    throw new ProductoNoEncontradoError();
-  }
-  if (!producto.activo) {
-    throw new ProductoInactivoError();
-  }
-
-  const totalACobrar = Math.round(producto.costoUSD * input.cantidad * 100) / 100;
-  validarLineasDePago(input.lineas, "exacto", totalACobrar);
+  // El total lo calcula el servidor con el precio actual de cada producto.
+  const renglones = items.map((i) => ({ productoNombre: i.producto.nombre, cantidad: i.cantidad, precioUnitarioUSD: i.producto.costoUSD }));
+  validarLineasDePago(input.lineas, "exacto", totalDeudas(renglones));
 
   const turnoAbierto = await deps.turnos.buscarAbiertoPorSucursal(input.sucursalId);
   if (!turnoAbierto) {
     throw new SinTurnoAbiertoError();
   }
+
+  // Un carrito de un solo producto conserva el enlace al producto y la
+  // cantidad; con varios, el Pago solo lleva el concepto ("Agua × 2, Gatorade").
+  const unico = items.length === 1 ? items[0] : null;
+  const concepto = conceptoDeudas(renglones);
 
   // Un pago combinado (2+ líneas) se correlaciona con grupoPagoId, igual
   // que en RegistrarPago.
@@ -97,9 +86,9 @@ export async function venderProducto(deps: VenderProductoDeps, input: DatosVende
         fechaInicioCiclo: null,
         fechaFinCiclo: null,
         grupoPagoId,
-        productoId: producto.id,
-        productoNombre: producto.nombre,
-        cantidad: input.cantidad,
+        productoId: unico ? unico.producto.id : null,
+        productoNombre: unico ? unico.producto.nombre : concepto,
+        cantidad: unico ? unico.cantidad : null,
       })
     );
   }

@@ -3,18 +3,26 @@ import { fiarProducto, type FiarProductoDeps } from "./FiarProducto";
 import { totalDeudas, conceptoDeudas, type DatosNuevaDeuda, type DeudaProducto } from "../entities/DeudaProducto";
 import type { Producto } from "../entities/Producto";
 
+const producto = (id: string, nombre: string, costoUSD: number, extra: Partial<Producto> = {}): Producto => ({
+  id,
+  organizacionId: "org",
+  nombre,
+  descripcion: null,
+  costoUSD,
+  fotoUrl: null,
+  activo: true,
+  ...extra,
+});
+
 function crearDeps(
   opciones: {
     permitido?: boolean;
-    producto?: Partial<Producto> | null;
+    productos?: Producto[];
     miembro?: { sucursalId: string | null } | null;
   } = {}
 ) {
   const { permitido = true } = opciones;
-  const producto: Producto | null =
-    opciones.producto === null
-      ? null
-      : { id: "p1", organizacionId: "org", nombre: "Agua", descripcion: null, costoUSD: 1.5, fotoUrl: null, activo: true, ...opciones.producto };
+  const productos = opciones.productos ?? [producto("p1", "Agua", 1.5), producto("p2", "Gatorade", 2.25)];
   const miembro = opciones.miembro === null ? null : { id: "m1", sucursalId: "suc", ...opciones.miembro };
   const creadas: DatosNuevaDeuda[] = [];
 
@@ -22,10 +30,10 @@ function crearDeps(
     deudas: {
       crear: async (datos: DatosNuevaDeuda) => {
         creadas.push(datos);
-        return { id: "d1", estado: "PENDIENTE", ...datos } as unknown as DeudaProducto;
+        return { id: `d${creadas.length}`, estado: "PENDIENTE", ...datos } as unknown as DeudaProducto;
       },
     },
-    productos: { buscarPorId: async () => producto },
+    productos: { buscarPorId: async (_org: string, id: string) => productos.find((p) => p.id === id) ?? null },
     miembros: { buscarPorId: async () => miembro },
     sucursales: { buscarPorId: async () => ({ nombre: "Sede Norte" }) },
     autorizacion: { tienePermiso: async () => permitido },
@@ -34,12 +42,13 @@ function crearDeps(
   return { deps, creadas };
 }
 
-const base = { organizacionId: "org", miembroId: "m1", productoId: "p1", sucursalId: "suc", registradaPorId: "u1" };
+const base = { organizacionId: "org", miembroId: "m1", sucursalId: "suc", registradaPorId: "u1" };
+const unItem = (cantidad: number) => [{ productoId: "p1", cantidad }];
 
 describe("fiarProducto", () => {
   test("crea la deuda con nombre y precio copiados del producto", async () => {
     const { deps, creadas } = crearDeps();
-    await fiarProducto(deps, { ...base, cantidad: 2 });
+    await fiarProducto(deps, { ...base, items: unItem(2) });
 
     expect(creadas).toEqual([
       {
@@ -55,30 +64,66 @@ describe("fiarProducto", () => {
     ]);
   });
 
+  test("varios productos: una deuda por producto", async () => {
+    const { deps, creadas } = crearDeps();
+    const deudas = await fiarProducto(deps, {
+      ...base,
+      items: [
+        { productoId: "p1", cantidad: 2 },
+        { productoId: "p2", cantidad: 1 },
+      ],
+    });
+
+    expect(deudas).toHaveLength(2);
+    expect(creadas.map((d) => [d.productoNombre, d.cantidad, d.precioUnitarioUSD])).toEqual([
+      ["Agua", 2, 1.5],
+      ["Gatorade", 1, 2.25],
+    ]);
+  });
+
+  test("un producto inválido del carrito no crea ninguna deuda", async () => {
+    const { deps, creadas } = crearDeps({ productos: [producto("p1", "Agua", 1.5), producto("p2", "Gatorade", 2.25, { activo: false })] });
+    await expect(
+      fiarProducto(deps, {
+        ...base,
+        items: [
+          { productoId: "p1", cantidad: 1 },
+          { productoId: "p2", cantidad: 1 },
+        ],
+      })
+    ).rejects.toThrow(/inactivo/);
+    expect(creadas).toHaveLength(0);
+  });
+
+  test("rechaza un carrito vacío", async () => {
+    const { deps } = crearDeps();
+    await expect(fiarProducto(deps, { ...base, items: [] })).rejects.toThrow(/al menos un producto/);
+  });
+
   test("rechaza sin permiso de caja", async () => {
     const { deps } = crearDeps({ permitido: false });
-    await expect(fiarProducto(deps, { ...base, cantidad: 1 })).rejects.toThrow(/permiso/);
+    await expect(fiarProducto(deps, { ...base, items: unItem(1) })).rejects.toThrow(/permiso/);
   });
 
   test("rechaza producto inactivo o inexistente", async () => {
-    await expect(fiarProducto(crearDeps({ producto: { activo: false } }).deps, { ...base, cantidad: 1 })).rejects.toThrow(/inactivo/);
-    await expect(fiarProducto(crearDeps({ producto: null }).deps, { ...base, cantidad: 1 })).rejects.toThrow(/producto/);
+    await expect(fiarProducto(crearDeps({ productos: [producto("p1", "Agua", 1.5, { activo: false })] }).deps, { ...base, items: unItem(1) })).rejects.toThrow(/inactivo/);
+    await expect(fiarProducto(crearDeps({ productos: [] }).deps, { ...base, items: unItem(1) })).rejects.toThrow(/producto/);
   });
 
   test.each([0, -1, 1.5, Number.NaN])("rechaza la cantidad inválida %s", async (cantidad) => {
     const { deps } = crearDeps();
-    await expect(fiarProducto(deps, { ...base, cantidad })).rejects.toThrow(/cantidad/);
+    await expect(fiarProducto(deps, { ...base, items: unItem(cantidad) })).rejects.toThrow(/cantidad/);
   });
 
   test("rechaza un miembro inexistente", async () => {
     const { deps } = crearDeps({ miembro: null });
-    await expect(fiarProducto(deps, { ...base, cantidad: 1 })).rejects.toThrow(/miembro/);
+    await expect(fiarProducto(deps, { ...base, items: unItem(1) })).rejects.toThrow(/miembro/);
   });
 
   test("rechaza un miembro de otra sucursal y acepta uno multisede (sucursalId null)", async () => {
-    await expect(fiarProducto(crearDeps({ miembro: { sucursalId: "otra" } }).deps, { ...base, cantidad: 1 })).rejects.toThrow(/Sede Norte/);
+    await expect(fiarProducto(crearDeps({ miembro: { sucursalId: "otra" } }).deps, { ...base, items: unItem(1) })).rejects.toThrow(/Sede Norte/);
     const { deps, creadas } = crearDeps({ miembro: { sucursalId: null } });
-    await fiarProducto(deps, { ...base, cantidad: 1 });
+    await fiarProducto(deps, { ...base, items: unItem(1) });
     expect(creadas).toHaveLength(1);
   });
 });

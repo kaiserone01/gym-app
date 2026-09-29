@@ -73,6 +73,8 @@ Contexto: la tasa BCV mostrada en el panel estaba desactualizada 11 días (832.4
 
 **Hecho (`npm test --workspace packages/domain` 75/75, `tsc` y eslint sin errores nuevos):** en "Vender producto" (Caja) un interruptor "Fiar a un miembro" guarda la venta como `DeudaProducto` PENDIENTE; el botón "Cobrar deudas" lista miembros con saldo, cobra el total con `SelectorMetodoPago` (un solo pago, en transacción) y permite anular una deuda. Las deudas se cobran/anulan solo en la sucursal donde se fiaron. Anular el `Pago` de un cobro (si no queda ninguna línea vigente de ese `grupoPagoId`) devuelve las deudas a PENDIENTE. Spec: `docs/superpowers/specs/2026-09-29-productos-fiados-design.md`; plan: `docs/superpowers/plans/2026-09-29-productos-fiados.md`.
 
+**Vender producto en dos pasos (2026-09-29):** paso 1 elige uno o varios productos (carrito con cantidades y búsqueda); paso 2 elige "Cobrar ahora" (método de pago) o "Fiar a un miembro" (una deuda por producto, en `$transaction`). `VenderProducto` y `FiarProducto` reciben `items: [{ productoId, cantidad }]` (helper `use-cases/resolverItemsVenta.ts`); un carrito de un solo producto guarda `productoId` y `cantidad` en el `Pago`, con varios queda solo el concepto ("Agua × 2, Gatorade"). Sin migración. Tests del dominio: 86/86.
+
 **Pendiente:** la migración `20260929200000_agrega_deuda_producto` no está aplicada en la base remota; sin ella `/caja` falla (la página consulta `DeudaProducto`). Ver sección 5.000.
 
 ## 3. Archivos y cambios (todas las sesiones recientes acumuladas)

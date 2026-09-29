@@ -19,6 +19,7 @@ import {
   ProductoNoEncontradoError,
   ProductoInactivoError,
   CantidadInvalidaError,
+  SinProductosError,
   SinTurnoAbiertoError,
 } from "@gym-app/domain/use-cases/VenderProducto";
 import { LineasDePagoInvalidasError, MontoLineasNoCubreObjetivoError } from "@gym-app/domain/entities/Pago";
@@ -32,6 +33,7 @@ import {
   ProductoNoEncontradoError as ProductoNoEncontradoFiar,
   ProductoInactivoError as ProductoInactivoFiar,
   CantidadInvalidaError as CantidadInvalidaFiar,
+  SinProductosError as SinProductosFiar,
 } from "@gym-app/domain/use-cases/FiarProducto";
 import {
   cobrarDeudasMiembro,
@@ -311,6 +313,22 @@ export interface EstadoVenderProducto {
   tasaGuardada?: number;
 }
 
+// El carrito viaja como JSON en el campo "items": [{ productoId, cantidad }].
+function leerItemsCarrito(formData: FormData): Array<{ productoId: string; cantidad: number }> | null {
+  try {
+    const items = JSON.parse(formData.get("items")?.toString() ?? "");
+    if (
+      !Array.isArray(items) ||
+      items.some((i) => typeof i?.productoId !== "string" || typeof i?.cantidad !== "number")
+    ) {
+      return null;
+    }
+    return items;
+  } catch {
+    return null;
+  }
+}
+
 export async function venderProductoAction(
   _estadoPrevio: EstadoVenderProducto,
   formData: FormData
@@ -319,11 +337,10 @@ export async function venderProductoAction(
   if (!sesion) redirect("/login");
   const { usuario, sucursalActivaId } = sesion;
 
-  const productoId = formData.get("productoId")?.toString();
-  const cantidad = Number(formData.get("cantidad"));
+  const items = leerItemsCarrito(formData);
   const lineasRaw = formData.get("lineas")?.toString();
-  if (!productoId || !lineasRaw) {
-    return { error: "Producto y al menos un método de pago son requeridos." };
+  if (!items || items.length === 0 || !lineasRaw) {
+    return { error: "Elige al menos un producto y un método de pago." };
   }
 
   let lineas: Array<{
@@ -361,8 +378,7 @@ export async function venderProductoAction(
       },
       {
         organizacionId: usuario.organizacionId,
-        productoId,
-        cantidad,
+        items,
         lineas: lineasValidadas,
         sucursalId: sucursalActivaId,
         registradoPorId: usuario.id,
@@ -374,6 +390,7 @@ export async function venderProductoAction(
       error instanceof ProductoNoEncontradoError ||
       error instanceof ProductoInactivoError ||
       error instanceof CantidadInvalidaError ||
+      error instanceof SinProductosError ||
       error instanceof SinTurnoAbiertoError ||
       error instanceof LineasDePagoInvalidasError ||
       error instanceof MontoLineasNoCubreObjetivoError
@@ -402,28 +419,30 @@ export async function fiarProductoAction(
   const { usuario, sucursalActivaId } = sesion;
 
   const miembroId = formData.get("miembroId")?.toString();
-  const productoId = formData.get("productoId")?.toString();
-  if (!miembroId || !productoId) {
-    return { error: "Elige el miembro y el producto." };
+  const items = leerItemsCarrito(formData);
+  if (!miembroId || !items || items.length === 0) {
+    return { error: "Elige el miembro y al menos un producto." };
   }
 
   try {
-    await fiarProducto(
-      {
-        deudas: new PrismaDeudaProductoRepository(prisma),
-        productos: new PrismaProductoRepository(prisma),
-        miembros: new PrismaMemberRepository(prisma),
-        sucursales: new PrismaSucursalRepository(prisma),
-        autorizacion: new AuthorizationService(new PrismaPermisoRepository(prisma)),
-      },
-      {
-        organizacionId: usuario.organizacionId,
-        miembroId,
-        productoId,
-        cantidad: Number(formData.get("cantidad")),
-        sucursalId: sucursalActivaId,
-        registradaPorId: usuario.id,
-      }
+    // En transacción: las deudas de todos los productos se crean juntas o ninguna.
+    await prisma.$transaction((tx) =>
+      fiarProducto(
+        {
+          deudas: new PrismaDeudaProductoRepository(tx),
+          productos: new PrismaProductoRepository(tx),
+          miembros: new PrismaMemberRepository(tx),
+          sucursales: new PrismaSucursalRepository(tx),
+          autorizacion: new AuthorizationService(new PrismaPermisoRepository(tx)),
+        },
+        {
+          organizacionId: usuario.organizacionId,
+          miembroId,
+          items,
+          sucursalId: sucursalActivaId,
+          registradaPorId: usuario.id,
+        }
+      )
     );
   } catch (error) {
     if (
@@ -432,7 +451,8 @@ export async function fiarProductoAction(
       error instanceof MiembroFueraDeSucursalError ||
       error instanceof ProductoNoEncontradoFiar ||
       error instanceof ProductoInactivoFiar ||
-      error instanceof CantidadInvalidaFiar
+      error instanceof CantidadInvalidaFiar ||
+      error instanceof SinProductosFiar
     ) {
       return { error: error.message };
     }

@@ -5,9 +5,17 @@ import { ISucursalRepository } from "../ports/ISucursalRepository";
 import { IAuthorizationService } from "../ports/IAuthorizationService";
 import { DeudaProducto } from "../entities/DeudaProducto";
 import { MiembroFueraDeSucursalError } from "./ObtenerMiembro";
-import { ProductoNoEncontradoError, ProductoInactivoError, CantidadInvalidaError } from "./VenderProducto";
+import {
+  resolverItemsVenta,
+  ProductoNoEncontradoError,
+  ProductoInactivoError,
+  CantidadInvalidaError,
+  SinProductosError,
+  ItemCarrito,
+} from "./resolverItemsVenta";
 
-export { MiembroFueraDeSucursalError, ProductoNoEncontradoError, ProductoInactivoError, CantidadInvalidaError };
+export { MiembroFueraDeSucursalError, ProductoNoEncontradoError, ProductoInactivoError, CantidadInvalidaError, SinProductosError };
+export type { ItemCarrito };
 
 export class RolNoAutorizadoError extends Error {
   constructor() {
@@ -32,20 +40,19 @@ export interface FiarProductoDeps {
 export interface DatosFiarProducto {
   organizacionId: string;
   miembroId: string;
-  productoId: string;
-  cantidad: number;
+  items: ItemCarrito[];
   sucursalId: string;
   registradaPorId: string;
 }
 
-export async function fiarProducto(deps: FiarProductoDeps, input: DatosFiarProducto): Promise<DeudaProducto> {
+// Una deuda por producto del carrito. Debe correr dentro de una transacción
+// (ver fiarProductoAction) para que un fiado nunca quede a medias.
+export async function fiarProducto(deps: FiarProductoDeps, input: DatosFiarProducto): Promise<DeudaProducto[]> {
   if (!(await deps.autorizacion.tienePermiso(input.registradaPorId, "CAJA", "CREAR"))) {
     throw new RolNoAutorizadoError();
   }
 
-  if (!Number.isInteger(input.cantidad) || input.cantidad < 1) {
-    throw new CantidadInvalidaError();
-  }
+  const items = await resolverItemsVenta(deps.productos, input.organizacionId, input.items);
 
   const miembro = await deps.miembros.buscarPorId(input.organizacionId, input.miembroId);
   if (!miembro) {
@@ -56,22 +63,21 @@ export async function fiarProducto(deps: FiarProductoDeps, input: DatosFiarProdu
     throw new MiembroFueraDeSucursalError(sucursal?.nombre ?? "otra sucursal");
   }
 
-  const producto = await deps.productos.buscarPorId(input.organizacionId, input.productoId);
-  if (!producto) {
-    throw new ProductoNoEncontradoError();
-  }
-  if (!producto.activo) {
-    throw new ProductoInactivoError();
+  const deudas: DeudaProducto[] = [];
+  for (const { producto, cantidad } of items) {
+    deudas.push(
+      await deps.deudas.crear({
+        organizacionId: input.organizacionId,
+        sucursalId: input.sucursalId,
+        miembroId: input.miembroId,
+        productoId: producto.id,
+        productoNombre: producto.nombre,
+        cantidad,
+        precioUnitarioUSD: producto.costoUSD,
+        registradaPorId: input.registradaPorId,
+      })
+    );
   }
 
-  return deps.deudas.crear({
-    organizacionId: input.organizacionId,
-    sucursalId: input.sucursalId,
-    miembroId: input.miembroId,
-    productoId: producto.id,
-    productoNombre: producto.nombre,
-    cantidad: input.cantidad,
-    precioUnitarioUSD: producto.costoUSD,
-    registradaPorId: input.registradaPorId,
-  });
+  return deudas;
 }

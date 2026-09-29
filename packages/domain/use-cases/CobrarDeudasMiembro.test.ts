@@ -26,10 +26,14 @@ function crearDeps(
   const deudas = opciones.deudas ?? [deuda("d1", "Agua", 2, 1.5), deuda("d2", "Gatorade", 1, 2.25)];
   const pagosCreados: DatosNuevoPago[] = [];
   const marcadas: { ids: string[]; grupoPagoId: string }[] = [];
+  const consultas: { miembroId: string; sucursalId: string }[] = [];
 
   const deps = {
     deudas: {
-      listarPendientesPorMiembro: async () => deudas,
+      listarPendientesPorMiembro: async (_org: string, miembroId: string, sucursalId: string) => {
+        consultas.push({ miembroId, sucursalId });
+        return deudas;
+      },
       marcarCobradas: async (ids: string[], _por: string, _en: Date, grupoPagoId: string) => {
         marcadas.push({ ids, grupoPagoId });
         return opciones.cobradasPorLaBase ?? ids.length;
@@ -45,7 +49,7 @@ function crearDeps(
     autorizacion: { tienePermiso: async () => permitido },
   } as unknown as CobrarDeudasMiembroDeps;
 
-  return { deps, pagosCreados, marcadas };
+  return { deps, pagosCreados, marcadas, consultas };
 }
 
 const base = { organizacionId: "org", miembroId: "m1", sucursalId: "suc", registradoPorId: "u1" };
@@ -58,6 +62,12 @@ const linea = (monto: number, tasaCambio: number | null = null) => ({
 });
 
 describe("cobrarDeudasMiembro", () => {
+  test("solo consulta las deudas de la sucursal de la caja (no cobra deudas de otra sede)", async () => {
+    const { deps, consultas } = crearDeps();
+    await cobrarDeudasMiembro(deps, { ...base, lineas: [linea(5.25)] });
+    expect(consultas).toEqual([{ miembroId: "m1", sucursalId: "suc" }]);
+  });
+
   test("cobra el total: pagos a nombre del miembro con el concepto y deudas marcadas", async () => {
     const { deps, pagosCreados, marcadas } = crearDeps();
     await cobrarDeudasMiembro(deps, { ...base, lineas: [linea(5.25)] });

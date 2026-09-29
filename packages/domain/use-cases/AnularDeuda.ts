@@ -15,13 +15,13 @@ export class DeudaNoPendienteError extends Error {
 
 export async function anularDeuda(
   deps: { deudas: IDeudaProductoRepository; autorizacion: IAuthorizationService },
-  input: { organizacionId: string; id: string; anuladaPorId: string }
+  input: { organizacionId: string; id: string; sucursalId: string; anuladaPorId: string }
 ): Promise<void> {
   if (!(await deps.autorizacion.tienePermiso(input.anuladaPorId, "PAGOS", "ELIMINAR"))) {
     throw new RolNoAutorizadoError();
   }
 
-  const afectadas = await deps.deudas.anular(input.organizacionId, input.id, input.anuladaPorId, new Date());
+  const afectadas = await deps.deudas.anular(input.organizacionId, input.id, input.sucursalId, input.anuladaPorId, new Date());
   if (afectadas === 0) {
     throw new DeudaNoPendienteError();
   }

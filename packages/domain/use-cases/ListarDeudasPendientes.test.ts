@@ -31,7 +31,7 @@ describe("listarDeudasPendientes", () => {
       },
     } as unknown as Parameters<typeof listarDeudasPendientes>[0];
 
-    const grupos = await listarDeudasPendientes(deps, "org");
+    const grupos = await listarDeudasPendientes(deps, "org", "suc");
 
     expect(grupos.map((g) => [g.miembroNombre, g.totalUSD, g.deudas.length])).toEqual([
       ["Ana", 3, 1],
@@ -39,8 +39,22 @@ describe("listarDeudasPendientes", () => {
     ]);
   });
 
+  test("consulta solo la sucursal indicada", async () => {
+    const sucursales: string[] = [];
+    const deps = {
+      deudas: {
+        listarPendientesPorOrganizacion: async (_org: string, sucursalId: string) => {
+          sucursales.push(sucursalId);
+          return [];
+        },
+      },
+    } as unknown as Parameters<typeof listarDeudasPendientes>[0];
+    await listarDeudasPendientes(deps, "org", "suc-activa");
+    expect(sucursales).toEqual(["suc-activa"]);
+  });
+
   test("sin deudas devuelve lista vacía", async () => {
     const deps = { deudas: { listarPendientesPorOrganizacion: async () => [] } } as unknown as Parameters<typeof listarDeudasPendientes>[0];
-    await expect(listarDeudasPendientes(deps, "org")).resolves.toEqual([]);
+    await expect(listarDeudasPendientes(deps, "org", "suc")).resolves.toEqual([]);
   });
 });

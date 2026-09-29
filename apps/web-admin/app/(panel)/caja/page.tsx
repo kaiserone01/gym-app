@@ -95,7 +95,7 @@ export default async function PaginaCaja({ searchParams }: { searchParams: Promi
       listarMiembros({ miembros: new PrismaMemberRepository(prisma) }, usuario.organizacionId, sucursalActivaId),
       listarPlanes({ planes: new PrismaPlanRepository(prisma) }, usuario.organizacionId),
       listarProductos({ productos: new PrismaProductoRepository(prisma) }, usuario.organizacionId),
-      listarDeudasPendientes({ deudas: new PrismaDeudaProductoRepository(prisma) }, usuario.organizacionId),
+      listarDeudasPendientes({ deudas: new PrismaDeudaProductoRepository(prisma) }, usuario.organizacionId, sucursalActivaId),
       listarMetodosPagoActivos({ metodosPago: new PrismaMetodoPagoRepository(prisma) }, usuario.organizacionId),
       // Solo para mostrar la referencia en USD de la porción "fondo
       // inicial" de la línea en Bs (ver más abajo) — si no hay tasa

@@ -10,9 +10,10 @@ export interface GrupoDeudasMiembro {
 
 export async function listarDeudasPendientes(
   deps: { deudas: IDeudaProductoRepository },
-  organizacionId: string
+  organizacionId: string,
+  sucursalId: string
 ): Promise<GrupoDeudasMiembro[]> {
-  const pendientes = await deps.deudas.listarPendientesPorOrganizacion(organizacionId);
+  const pendientes = await deps.deudas.listarPendientesPorOrganizacion(organizacionId, sucursalId);
 
   const porMiembro = new Map<string, GrupoDeudasMiembro>();
   for (const deuda of pendientes) {

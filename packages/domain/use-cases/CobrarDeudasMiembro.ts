@@ -49,7 +49,7 @@ export async function cobrarDeudasMiembro(deps: CobrarDeudasMiembroDeps, input: 
     throw new RolNoAutorizadoError();
   }
 
-  const deudas = await deps.deudas.listarPendientesPorMiembro(input.organizacionId, input.miembroId);
+  const deudas = await deps.deudas.listarPendientesPorMiembro(input.organizacionId, input.miembroId, input.sucursalId);
   if (deudas.length === 0) {
     throw new SinDeudasPendientesError();
   }

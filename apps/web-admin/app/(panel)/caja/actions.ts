@@ -530,7 +530,7 @@ export async function cobrarDeudasAction(
 export async function anularDeudaAction(id: string): Promise<{ error?: string; ok?: string }> {
   const sesion = await obtenerUsuarioDeSesionActual();
   if (!sesion) redirect("/login");
-  const { usuario } = sesion;
+  const { usuario, sucursalActivaId } = sesion;
 
   try {
     await anularDeuda(
@@ -538,7 +538,7 @@ export async function anularDeudaAction(id: string): Promise<{ error?: string; o
         deudas: new PrismaDeudaProductoRepository(prisma),
         autorizacion: new AuthorizationService(new PrismaPermisoRepository(prisma)),
       },
-      { organizacionId: usuario.organizacionId, id, anuladaPorId: usuario.id }
+      { organizacionId: usuario.organizacionId, id, sucursalId: sucursalActivaId, anuladaPorId: usuario.id }
     );
   } catch (error) {
     if (error instanceof RolNoAutorizadoAnularDeuda || error instanceof DeudaNoPendienteError) {

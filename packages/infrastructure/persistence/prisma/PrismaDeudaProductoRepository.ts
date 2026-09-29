@@ -44,18 +44,18 @@ export class PrismaDeudaProductoRepository implements IDeudaProductoRepository {
     return mapear(await this.prisma.deudaProducto.create({ data: datos }));
   }
 
-  async listarPendientesPorOrganizacion(organizacionId: string): Promise<DeudaProducto[]> {
+  async listarPendientesPorOrganizacion(organizacionId: string, sucursalId: string): Promise<DeudaProducto[]> {
     const filas = await this.prisma.deudaProducto.findMany({
-      where: { organizacionId, estado: "PENDIENTE" },
+      where: { organizacionId, sucursalId, estado: "PENDIENTE" },
       include: { miembro: { select: { nombre: true } } },
       orderBy: { creadaEn: "asc" },
     });
     return filas.map((fila) => mapear(fila, fila.miembro.nombre));
   }
 
-  async listarPendientesPorMiembro(organizacionId: string, miembroId: string): Promise<DeudaProducto[]> {
+  async listarPendientesPorMiembro(organizacionId: string, miembroId: string, sucursalId: string): Promise<DeudaProducto[]> {
     const filas = await this.prisma.deudaProducto.findMany({
-      where: { organizacionId, miembroId, estado: "PENDIENTE" },
+      where: { organizacionId, miembroId, sucursalId, estado: "PENDIENTE" },
       orderBy: { creadaEn: "asc" },
     });
     return filas.map((fila) => mapear(fila));
@@ -69,9 +69,9 @@ export class PrismaDeudaProductoRepository implements IDeudaProductoRepository {
     return resultado.count;
   }
 
-  async anular(organizacionId: string, id: string, anuladaPorId: string, anuladaEn: Date): Promise<number> {
+  async anular(organizacionId: string, id: string, sucursalId: string, anuladaPorId: string, anuladaEn: Date): Promise<number> {
     const resultado = await this.prisma.deudaProducto.updateMany({
-      where: { id, organizacionId, estado: "PENDIENTE" },
+      where: { id, organizacionId, sucursalId, estado: "PENDIENTE" },
       data: { estado: "ANULADA", anuladaPorId, anuladaEn },
     });
     return resultado.count;

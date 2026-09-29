@@ -1,11 +1,10 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useEffect, useState, type ReactNode } from "react";
 import type { Miembro } from "@gym-app/domain/entities/Miembro";
 import type { MetodoPago } from "@gym-app/domain/entities/MetodoPago";
 import type { FrecuenciaPago } from "@gym-app/domain/entities/Plan";
 import { Button } from "@gym-app/ui/components/Button";
-import { Input } from "@gym-app/ui/components/Input";
 import { CurrencyInput } from "@gym-app/ui/components/CurrencyInput";
 import { useFeedback, DURACION_MS } from "@gym-app/ui/components/FeedbackOverlay";
 import { BuscadorMiembro, aMiembroConPlan, type MiembroConPlan, type PlanParaModal } from "./SelectorMiembroModal";
@@ -13,6 +12,7 @@ import { calcularProyeccionRenovacion } from "./proyeccionRenovacion";
 import { DiasDisponibles } from "../miembros/vencimiento";
 import { formatearBs } from "../tasaBcvFija";
 import { SelectorMetodoPago } from "../pagos/SelectorMetodoPago";
+import { CampoNumeroOperacion } from "../pagos/CampoNumeroOperacion";
 import { registrarPagoAction, type EstadoCambioPlan } from "../pagos/actions";
 import { calcularProyeccionAbono } from "./proyeccionAbono";
 import { PanelRemanentePago } from "./PanelRemanentePago";
@@ -67,6 +67,40 @@ function Avatar({ fotoUrl, nombre }: { fotoUrl: string | null; nombre: string })
   );
 }
 
+function CabeceraMiembro({ miembro }: { miembro: MiembroConPlan }) {
+  return (
+    <div className="flex items-center gap-4 rounded-xl p-4" style={{ background: "var(--gx-surface-2)" }}>
+      <Avatar fotoUrl={miembro.fotoUrl} nombre={miembro.nombre} />
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-lg font-semibold" style={{ color: "var(--gx-ink)" }}>
+          {miembro.nombre}
+        </p>
+        <p style={{ color: "var(--gx-muted)" }}>{miembro.cedula}</p>
+      </div>
+    </div>
+  );
+}
+
+// Método de pago a la izquierda y, a la derecha, una tarjeta angosta con el monto y la referencia,
+// para que las casillas tengan un ancho acorde a lo que se escribe en ellas.
+function MetodoYCampos({ selector, campos, vacio }: { selector: ReactNode; campos: ReactNode; vacio: string }) {
+  return (
+    <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_18rem] xl:gap-6">
+      <div className="min-w-0">{selector}</div>
+      <div className="flex flex-col gap-4 rounded-xl border p-4 xl:self-start" style={{ borderColor: "var(--gx-edge)", background: "var(--gx-surface-2)" }}>
+        <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--gx-muted)" }}>
+          Monto y referencia
+        </p>
+        {campos || (
+          <p className="text-sm" style={{ color: "var(--gx-muted)" }}>
+            {vacio}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function BarraProgreso({ paso, compacta = false }: { paso: Paso; compacta?: boolean }) {
   return (
     <div className={`${compacta ? "mb-3" : "mb-6"} flex items-center gap-2`}>
@@ -113,6 +147,20 @@ function ContenidoPaso1({
 }
 
 type Modalidad = "total" | "abono" | "combinado";
+
+const OPCIONES_MODALIDAD: { valor: Modalidad; titulo: string; descripcion: string }[] = [
+  { valor: "total", titulo: "Pago total", descripcion: "Cobra el precio completo del plan en un solo método de pago." },
+  {
+    valor: "abono",
+    titulo: "Abono parcial",
+    descripcion: "Recibe un monto menor al precio — el sistema calcula lo pendiente y hasta cuándo tiene acceso.",
+  },
+  {
+    valor: "combinado",
+    titulo: "Pago fraccionado",
+    descripcion: "Divide el total entre varios métodos de pago, por ejemplo efectivo y punto de venta.",
+  },
+];
 
 function ContenidoPaso2({
   miembro,
@@ -222,20 +270,21 @@ function ContenidoPaso2({
           </Button>
         </div>
       ) : planEfectivo && !cambiandoPlan ? (
-        <div className="rounded-lg border p-4" style={{ borderColor: "var(--gx-edge)", background: "var(--gx-surface-2)" }}>
-          <div className="flex justify-between">
-            <span style={{ color: "var(--gx-muted)" }}>Plan</span>
-            <span className="font-medium" style={{ color: "var(--gx-ink)" }}>
-              {planEfectivo.nombre}
-            </span>
-          </div>
-          <div className="mt-2 flex justify-between">
-            <span style={{ color: "var(--gx-muted)" }}>Precio</span>
-            <span className="font-semibold" style={{ color: "var(--gx-ink)" }}>
-              ${planEfectivo.precioUSD.toFixed(2)}/{ETIQUETA_FRECUENCIA[planEfectivo.frecuencia]}
-              {tasaActual !== null && ` · Bs. ${formatearBs(planEfectivo.precioUSD * tasaActual)}`}
-            </span>
-          </div>
+        <div className="grid gap-4 rounded-xl border p-5 sm:grid-cols-3" style={{ borderColor: "var(--gx-edge)", background: "var(--gx-surface-2)" }}>
+          {[
+            ["Plan", planEfectivo.nombre],
+            ["Precio", `$${planEfectivo.precioUSD.toFixed(2)}/${ETIQUETA_FRECUENCIA[planEfectivo.frecuencia]}`],
+            ...(tasaActual !== null ? [["Equivale a", `Bs. ${formatearBs(planEfectivo.precioUSD * tasaActual)}`]] : []),
+          ].map(([etiqueta, valor]) => (
+            <div key={etiqueta} className="flex flex-col gap-1">
+              <span className="text-xs uppercase tracking-wide" style={{ color: "var(--gx-muted)" }}>
+                {etiqueta}
+              </span>
+              <span className="text-xl font-semibold" style={{ color: "var(--gx-ink)" }}>
+                {valor}
+              </span>
+            </div>
+          ))}
         </div>
       ) : (
         <label className="flex flex-col gap-2" style={{ color: "var(--gx-muted)" }}>
@@ -271,51 +320,44 @@ function ContenidoPaso2({
       )}
 
       {planEfectivo && planEfectivo.precioUSD > 0 && (
-        <div className="flex flex-col gap-2">
-          <div className="flex gap-2">
-            {(
-              [
-                { valor: "total" as const, etiqueta: "Pago total" },
-                { valor: "abono" as const, etiqueta: "Abono parcial", deshabilitado: !planEfectivo.permitePagoParcial },
-                { valor: "combinado" as const, etiqueta: "Pago fraccionado" },
-              ]
-            ).map((opcion) => (
-              <button
-                key={opcion.valor}
-                type="button"
-                disabled={opcion.deshabilitado}
-                onClick={() => !opcion.deshabilitado && onCambiarModalidad(opcion.valor)}
-                className="min-h-11 flex-1 rounded-lg border px-3 text-sm font-medium transition-colors duration-150 disabled:opacity-40"
-                style={
-                  modalidadElegida === opcion.valor
-                    ? { borderColor: "var(--gx-accent)", background: "var(--gx-accent)", color: "var(--gx-accent-ink)" }
-                    : { borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }
-                }
-              >
-                {opcion.etiqueta}
-              </button>
-            ))}
-          </div>
-          {/* Tarjeta de ayuda con el acento de marca — reemplaza el tooltip
-              nativo del navegador (ver diseño acordado: debe destacar y
-              seguir el branding, no un title del sistema). Cambia su texto
-              según la modalidad elegida, siempre visible, sin interacción. */}
-          <div
-            className="rounded-lg border-l-4 px-3 py-2 text-xs"
-            style={{ borderColor: "var(--gx-accent)", background: "color-mix(in srgb, var(--gx-accent) 10%, transparent)", color: "var(--gx-ink)" }}
-          >
-            {(
-              {
-                total: "Cobra el precio completo del plan en un solo método de pago.",
-                abono:
-                  "Recibe un monto menor al precio del plan — el sistema calcula cuánto queda pendiente y hasta cuándo tiene acceso.",
-                combinado:
-                  "Divide el monto total entre varios métodos de pago — por ejemplo, una parte en efectivo y otra en punto de venta, incluso con dos tarjetas distintas.",
-              } satisfies Record<Modalidad, string>
-            )[modalidadElegida]}
+        <div className="flex flex-col gap-3">
+          <p className="text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--gx-muted)" }}>
+            Forma de pago
+          </p>
+          <div className="grid gap-3 sm:grid-cols-3">
+            {OPCIONES_MODALIDAD.map((opcion) => {
+              const deshabilitado = opcion.valor === "abono" && !planEfectivo.permitePagoParcial;
+              const elegida = modalidadElegida === opcion.valor;
+              return (
+                <button
+                  key={opcion.valor}
+                  type="button"
+                  disabled={deshabilitado}
+                  onClick={() => onCambiarModalidad(opcion.valor)}
+                  className="flex min-h-28 flex-col items-start gap-1.5 rounded-xl border-2 p-4 text-left transition-colors duration-150 disabled:opacity-40"
+                  style={
+                    elegida
+                      ? { borderColor: "var(--gx-accent)", background: "color-mix(in srgb, var(--gx-accent) 12%, transparent)" }
+                      : { borderColor: "var(--gx-edge)" }
+                  }
+                >
+                  <span className="flex w-full items-center justify-between gap-2 text-base font-semibold" style={{ color: "var(--gx-ink)" }}>
+                    {opcion.titulo}
+                    {elegida && (
+                      <span aria-hidden style={{ color: "var(--gx-accent)" }}>
+                        ✓
+                      </span>
+                    )}
+                  </span>
+                  <span className="text-sm" style={{ color: "var(--gx-muted)" }}>
+                    {opcion.descripcion}
+                  </span>
+                </button>
+              );
+            })}
           </div>
           {!planEfectivo.permitePagoParcial && (
-            <p className="text-xs" style={{ color: "var(--gx-muted)" }}>
+            <p className="text-sm" style={{ color: "var(--gx-muted)" }}>
               Este plan no admite abonos — solo pago total o pago fraccionado.
             </p>
           )}
@@ -323,16 +365,8 @@ function ContenidoPaso2({
       )}
 
       </div>
-      <aside className="flex flex-col gap-4 lg:w-80 lg:shrink-0 lg:overflow-y-auto lg:border-l lg:pl-6" style={{ borderColor: "var(--gx-edge)" }}>
-        <div className="flex items-center gap-4">
-          <Avatar fotoUrl={miembro.fotoUrl} nombre={miembro.nombre} />
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-lg font-semibold" style={{ color: "var(--gx-ink)" }}>
-              {miembro.nombre}
-            </p>
-            <p style={{ color: "var(--gx-muted)" }}>{miembro.cedula}</p>
-          </div>
-        </div>
+      <aside className="flex flex-col gap-4 lg:w-96 lg:shrink-0 lg:overflow-y-auto lg:border-l lg:pl-6" style={{ borderColor: "var(--gx-edge)" }}>
+        <CabeceraMiembro miembro={miembro} />
       <div className="flex justify-between">
         <span style={{ color: "var(--gx-muted)" }}>Vencimiento</span>
         <DiasDisponibles fechaVencimiento={miembro.fechaVencimiento} />
@@ -614,121 +648,78 @@ function ContenidoPaso3({
       />
 
       <div className="flex min-w-0 flex-col gap-4 lg:flex-1 lg:overflow-y-auto lg:pr-2">
-      {/* Total, y Combinado cuando el plan no admite abono: monto fijo, sin campo editable. */}
-      {montoSugerido > 0 && !esAbono && (modalidad === "total" || montoObjetivoBloqueado) && (
-        <div className="flex justify-between rounded-lg px-3 py-2 text-sm" style={{ background: "var(--gx-surface-2)" }}>
-          <span style={{ color: "var(--gx-muted)" }}>{modalidad === "combinado" ? "Total a pagar" : "Monto a cobrar"}</span>
-          <span className="font-semibold" style={{ color: "var(--gx-ink)" }}>${montoSugerido.toFixed(2)}</span>
-        </div>
-      )}
-      {/* Fraccionado, plan que sí admite abono: precio del plan fijo como
-          referencia del total a cubrir (mismo patrón que Abono, ver diseño
-          acordado) — nunca es el monto que se registra, cada fracción
-          define su propio monto más abajo. */}
-      {montoSugerido > 0 && modalidad === "combinado" && !montoObjetivoBloqueado && (
-        <div className="flex justify-between rounded-lg px-3 py-2 text-sm" style={{ background: "var(--gx-surface-2)" }}>
-          <span style={{ color: "var(--gx-muted)" }}>Precio del plan</span>
-          <span className="font-semibold" style={{ color: "var(--gx-accent)" }}>
-            ${montoSugerido.toFixed(2)}
-            {tasaActual !== null && ` · Bs. ${formatearBs(montoSugerido * tasaActual)}`}
-          </span>
-        </div>
-      )}
-
-      {/* Abono: precio del plan fijo en verde, referencia visible todo el
-          paso (ver diseño acordado) — nunca es el monto que se registra. */}
+      {/* Abono: el método se elige ANTES que el monto (ver diseño acordado) — se le pasa el precio
+          del plan como referencia para la tasa en Bs, no como monto a cobrar. El monto a abonar y
+          el número de operación viven en la tarjeta de la derecha. USD es la fuente de verdad;
+          escribir en Bs solo recalcula el USD. */}
       {esAbono && montoSugerido > 0 && (
-        <div className="flex justify-between rounded-lg px-3 py-2 text-sm" style={{ background: "var(--gx-surface-2)" }}>
-          <span style={{ color: "var(--gx-muted)" }}>Precio del plan</span>
-          <span className="font-semibold" style={{ color: "var(--gx-accent)" }}>
-            ${montoSugerido.toFixed(2)}
-            {tasaActual !== null && ` · Bs. ${formatearBs(montoSugerido * tasaActual)}`}
-          </span>
-        </div>
-      )}
-
-      {/* Abono: el método se elige ANTES que el monto (ver diseño
-          acordado) — se le pasa el precio del plan como referencia de
-          monto para calcular la tasa en Bs, no como monto a cobrar. */}
-      {esAbono && montoSugerido > 0 && (
-        <SelectorMetodoPago
-          compacto
-          metodos={metodosPago}
-          monto={montoSugerido}
-          onCambio={(seleccion) =>
-            setLineaUnica((prev) => {
-              // Cambiar de método en Bs a uno en USD (o viceversa) invalida
-              // la casilla Bs auxiliar — se limpia para no arrastrar un
-              // valor que ya no corresponde a la tasa nueva.
-              if (seleccion.tasaCambio === null) setMontoAbonoBsTexto("");
-              return { ...prev, seleccion };
-            })
-          }
-          grande
-          avisoServidor={{ tasaNueva: estado.tasaNueva, fallaTemporal: estado.fallaTemporal, tasaGuardada: estado.tasaGuardada }}
-          // El campo de número de operación se pide DESPUÉS del monto a
-          // abonar (ver diseño acordado) — se renderiza más abajo, con el
-          // mismo estado que este selector reporta vía onCambio.
-          ocultarNumeroOperacion
-          numeroOperacion={lineaUnica.seleccion.numeroOperacion}
-          onCambioNumeroOperacion={(valor) =>
-            setLineaUnica((prev) => ({ ...prev, seleccion: { ...prev.seleccion, numeroOperacion: valor } }))
-          }
-        />
-      )}
-
-      {/* Abono: monto a abonar, recién visible con método elegido. Cuando
-          el método es en Bs, USD y Bs van en dos columnas (una sola
-          "línea" visual, no dos campos apilados) — el USD sigue siendo la
-          fuente de verdad, escribir en Bs solo recalcula el de arriba. */}
-      {esAbono && metodoAbonoElegido && (
-        <div className={lineaUnica.seleccion.tasaCambio !== null ? "grid grid-cols-2 gap-3" : ""}>
-          <CurrencyInput
-            name="montoAbonoUSD"
-            label="Monto a abonar"
-            moneda="USD"
-            required
-            value={lineaUnica.monto}
-            onChange={(valorUSD) => {
-              setLineaUnica((prev) => ({ ...prev, monto: valorUSD }));
-              if (lineaUnica.seleccion.tasaCambio !== null) {
-                const numero = Number(valorUSD);
-                setMontoAbonoBsTexto(Number.isNaN(numero) || valorUSD === "" ? "" : String(numero * lineaUnica.seleccion.tasaCambio));
+        <MetodoYCampos
+          vacio="Elegí un método de pago para ingresar el monto a abonar."
+          selector={
+            <SelectorMetodoPago
+              compacto
+              metodos={metodosPago}
+              monto={montoSugerido}
+              onCambio={(seleccion) =>
+                setLineaUnica((prev) => {
+                  // Cambiar de método en Bs a uno en USD (o viceversa) invalida la casilla Bs auxiliar.
+                  if (seleccion.tasaCambio === null) setMontoAbonoBsTexto("");
+                  return { ...prev, seleccion };
+                })
               }
-            }}
-          />
-          {lineaUnica.seleccion.tasaCambio !== null && (
-            <CurrencyInput
-              name="montoAbonoBs"
-              label="Monto a abonar (Bs)"
-              moneda="Bs"
-              value={montoAbonoBsTexto}
-              onChange={(valorBs) => {
-                setMontoAbonoBsTexto(valorBs);
-                const numero = Number(valorBs);
-                const tasa = lineaUnica.seleccion.tasaCambio ?? 0;
-                setLineaUnica((prev) => ({
-                  ...prev,
-                  monto: Number.isNaN(numero) || valorBs === "" || tasa === 0 ? "" : String(numero / tasa),
-                }));
-              }}
+              grande
+              avisoServidor={{ tasaNueva: estado.tasaNueva, fallaTemporal: estado.fallaTemporal, tasaGuardada: estado.tasaGuardada }}
+              ocultarNumeroOperacion
+              numeroOperacion={lineaUnica.seleccion.numeroOperacion}
+              onCambioNumeroOperacion={(valor) =>
+                setLineaUnica((prev) => ({ ...prev, seleccion: { ...prev.seleccion, numeroOperacion: valor } }))
+              }
             />
-          )}
-        </div>
-      )}
-
-      {/* Número de operación — recién después del monto (ver diseño
-          acordado), solo cuando el método elegido lo pide (todos menos
-          Efectivo, ver SelectorMetodoPago/requiereNumeroOperacion). */}
-      {esAbono && metodoAbonoElegido && requiereNumeroOperacionAbono && (
-        <Input
-          label="Número de operación (últimos 4 dígitos)"
-          required
-          maxLength={4}
-          pattern="[0-9]{4}"
-          value={lineaUnica.seleccion.numeroOperacion}
-          onChange={(e) =>
-            setLineaUnica((prev) => ({ ...prev, seleccion: { ...prev.seleccion, numeroOperacion: e.target.value } }))
+          }
+          campos={
+            metodoAbonoElegido && (
+              <>
+                <CurrencyInput
+                  name="montoAbonoUSD"
+                  label="Monto a abonar"
+                  moneda="USD"
+                  required
+                  value={lineaUnica.monto}
+                  onChange={(valorUSD) => {
+                    setLineaUnica((prev) => ({ ...prev, monto: valorUSD }));
+                    if (lineaUnica.seleccion.tasaCambio !== null) {
+                      const numero = Number(valorUSD);
+                      setMontoAbonoBsTexto(Number.isNaN(numero) || valorUSD === "" ? "" : String(numero * lineaUnica.seleccion.tasaCambio));
+                    }
+                  }}
+                />
+                {lineaUnica.seleccion.tasaCambio !== null && (
+                  <CurrencyInput
+                    name="montoAbonoBs"
+                    label="Monto a abonar (Bs)"
+                    moneda="Bs"
+                    value={montoAbonoBsTexto}
+                    onChange={(valorBs) => {
+                      setMontoAbonoBsTexto(valorBs);
+                      const numero = Number(valorBs);
+                      const tasa = lineaUnica.seleccion.tasaCambio ?? 0;
+                      setLineaUnica((prev) => ({
+                        ...prev,
+                        monto: Number.isNaN(numero) || valorBs === "" || tasa === 0 ? "" : String(numero / tasa),
+                      }));
+                    }}
+                  />
+                )}
+                {requiereNumeroOperacionAbono && (
+                  <CampoNumeroOperacion
+                    value={lineaUnica.seleccion.numeroOperacion}
+                    onChange={(valor) =>
+                      setLineaUnica((prev) => ({ ...prev, seleccion: { ...prev.seleccion, numeroOperacion: valor } }))
+                    }
+                  />
+                )}
+              </>
+            )
           }
         />
       )}
@@ -739,13 +730,33 @@ function ContenidoPaso3({
           (ver diseño acordado). */}
 
       {montoObjetivo > 0 && !esAbono && modalidad !== "combinado" && (
-        <SelectorMetodoPago
-          compacto
-          metodos={metodosPago}
-          monto={montoObjetivo + deudaAPagar}
-          onCambio={(seleccion) => setLineaUnica((prev) => ({ ...prev, monto: String(montoObjetivo), seleccion }))}
-          grande
-          avisoServidor={{ tasaNueva: estado.tasaNueva, fallaTemporal: estado.fallaTemporal, tasaGuardada: estado.tasaGuardada }}
+        <MetodoYCampos
+          vacio={lineaUnica.seleccion.metodoPagoId ? "Este método no requiere número de operación." : "Elegí un método de pago."}
+          selector={
+            <SelectorMetodoPago
+              compacto
+              metodos={metodosPago}
+              monto={montoObjetivo + deudaAPagar}
+              onCambio={(seleccion) => setLineaUnica((prev) => ({ ...prev, monto: String(montoObjetivo), seleccion }))}
+              grande
+              avisoServidor={{ tasaNueva: estado.tasaNueva, fallaTemporal: estado.fallaTemporal, tasaGuardada: estado.tasaGuardada }}
+              ocultarNumeroOperacion
+              numeroOperacion={lineaUnica.seleccion.numeroOperacion}
+              onCambioNumeroOperacion={(valor) =>
+                setLineaUnica((prev) => ({ ...prev, seleccion: { ...prev.seleccion, numeroOperacion: valor } }))
+              }
+            />
+          }
+          campos={
+            lineaUnica.seleccion.requiereNumeroOperacion && (
+              <CampoNumeroOperacion
+                value={lineaUnica.seleccion.numeroOperacion}
+                onChange={(valor) =>
+                  setLineaUnica((prev) => ({ ...prev, seleccion: { ...prev.seleccion, numeroOperacion: valor } }))
+                }
+              />
+            )
+          }
         />
       )}
 
@@ -781,7 +792,7 @@ function ContenidoPaso3({
                     (tipo/instancia elegida) que se perdía al remontar cada
                     vez que se colapsaba la fracción. Colapsar ahora es
                     puramente visual (`hidden`), preserva ese estado. */}
-                <div className={`flex flex-col gap-3 border-t p-3 ${expandida ? "" : "hidden"}`} style={{ borderColor: "var(--gx-edge)" }}>
+                <div className={`flex flex-col gap-3 border-t p-4 ${expandida ? "" : "hidden"}`} style={{ borderColor: "var(--gx-edge)" }}>
                     {lineasCombinadas.length > 2 && (
                       <div className="flex justify-end">
                         <button
@@ -802,88 +813,80 @@ function ContenidoPaso3({
                       </div>
                     )}
 
-                    {/* Método primero (igual que Abono, ver diseño acordado)
-                        — antes de tener un monto propio, se le pasa el
-                        precio del plan como referencia para calcular la
-                        tasa en Bs. */}
-                    <SelectorMetodoPago
-          compacto
-                      metodos={metodosPago}
-                      monto={montoLinea > 0 ? montoLinea : montoSugerido}
-                      onCambio={(seleccion) =>
-                        setLineasCombinadas((prev) => prev.map((l, i) => (i === indice ? { ...l, seleccion } : l)))
+                    <MetodoYCampos
+                      vacio="Elegí un método de pago para ingresar el monto de esta fracción."
+                      selector={
+                        <SelectorMetodoPago
+                          compacto
+                          metodos={metodosPago}
+                          monto={montoLinea > 0 ? montoLinea : montoSugerido}
+                          onCambio={(seleccion) =>
+                            setLineasCombinadas((prev) => prev.map((l, i) => (i === indice ? { ...l, seleccion } : l)))
+                          }
+                          ocultarNumeroOperacion
+                          numeroOperacion={linea.seleccion.numeroOperacion}
+                          onCambioNumeroOperacion={(valor) =>
+                            setLineasCombinadas((prev) =>
+                              prev.map((l, i) => (i === indice ? { ...l, seleccion: { ...l.seleccion, numeroOperacion: valor } } : l))
+                            )
+                          }
+                        />
                       }
-                      ocultarNumeroOperacion
-                      numeroOperacion={linea.seleccion.numeroOperacion}
-                      onCambioNumeroOperacion={(valor) =>
-                        setLineasCombinadas((prev) =>
-                          prev.map((l, i) => (i === indice ? { ...l, seleccion: { ...l.seleccion, numeroOperacion: valor } } : l))
+                      campos={
+                        linea.seleccion.metodoPagoId !== null && (
+                          <>
+                            <CurrencyInput
+                              name={`monto-linea-${indice}`}
+                              label="Monto de esta fracción (USD)"
+                              moneda="USD"
+                              required
+                              value={linea.monto}
+                              onChange={(valorUSD) => {
+                                setLineasCombinadas((prev) => prev.map((l, i) => (i === indice ? { ...l, monto: valorUSD } : l)));
+                                if (linea.seleccion.tasaCambio !== null) {
+                                  const numero = Number(valorUSD);
+                                  setMontosBsCombinadas((prev) => ({
+                                    ...prev,
+                                    [linea.clave]:
+                                      Number.isNaN(numero) || valorUSD === "" ? "" : String(numero * linea.seleccion.tasaCambio!),
+                                  }));
+                                }
+                              }}
+                            />
+                            {linea.seleccion.tasaCambio !== null && (
+                              <CurrencyInput
+                                name={`monto-linea-${indice}-bs`}
+                                label="Monto de esta fracción (Bs)"
+                                moneda="Bs"
+                                value={montosBsCombinadas[linea.clave] ?? ""}
+                                onChange={(valorBs) => {
+                                  setMontosBsCombinadas((prev) => ({ ...prev, [linea.clave]: valorBs }));
+                                  const numero = Number(valorBs);
+                                  const tasa = linea.seleccion.tasaCambio ?? 0;
+                                  setLineasCombinadas((prev) =>
+                                    prev.map((l, i) =>
+                                      i === indice
+                                        ? { ...l, monto: Number.isNaN(numero) || valorBs === "" || tasa === 0 ? "" : String(numero / tasa) }
+                                        : l
+                                    )
+                                  );
+                                }}
+                              />
+                            )}
+                            {linea.seleccion.requiereNumeroOperacion && (
+                              <CampoNumeroOperacion
+                                value={linea.seleccion.numeroOperacion}
+                                onChange={(valor) =>
+                                  setLineasCombinadas((prev) =>
+                                    prev.map((l, i) => (i === indice ? { ...l, seleccion: { ...l.seleccion, numeroOperacion: valor } } : l))
+                                  )
+                                }
+                              />
+                            )}
+                          </>
                         )
                       }
                     />
-
-                    {/* Monto de esta fracción, recién visible con método
-                        elegido — split USD/Bs solo si el método de ESTA
-                        fracción es en bolívares (ver diseño acordado). */}
-                    {linea.seleccion.metodoPagoId !== null && (
-                      <div className={linea.seleccion.tasaCambio !== null ? "grid grid-cols-2 gap-3" : ""}>
-                        <CurrencyInput
-                          name={`monto-linea-${indice}`}
-                          label="Monto de esta fracción (USD)"
-                          moneda="USD"
-                          required
-                          value={linea.monto}
-                          onChange={(valorUSD) => {
-                            setLineasCombinadas((prev) => prev.map((l, i) => (i === indice ? { ...l, monto: valorUSD } : l)));
-                            if (linea.seleccion.tasaCambio !== null) {
-                              const numero = Number(valorUSD);
-                              setMontosBsCombinadas((prev) => ({
-                                ...prev,
-                                [linea.clave]:
-                                  Number.isNaN(numero) || valorUSD === "" ? "" : String(numero * linea.seleccion.tasaCambio!),
-                              }));
-                            }
-                          }}
-                        />
-                        {linea.seleccion.tasaCambio !== null && (
-                          <CurrencyInput
-                            name={`monto-linea-${indice}-bs`}
-                            label="Monto de esta fracción (Bs)"
-                            moneda="Bs"
-                            value={montosBsCombinadas[linea.clave] ?? ""}
-                            onChange={(valorBs) => {
-                              setMontosBsCombinadas((prev) => ({ ...prev, [linea.clave]: valorBs }));
-                              const numero = Number(valorBs);
-                              const tasa = linea.seleccion.tasaCambio ?? 0;
-                              setLineasCombinadas((prev) =>
-                                prev.map((l, i) =>
-                                  i === indice
-                                    ? { ...l, monto: Number.isNaN(numero) || valorBs === "" || tasa === 0 ? "" : String(numero / tasa) }
-                                    : l
-                                )
-                              );
-                            }}
-                          />
-                        )}
-                      </div>
-                    )}
-
-                    {/* Número de operación — recién después del monto,
-                        solo si el método elegido lo pide. */}
-                    {linea.seleccion.metodoPagoId !== null && linea.seleccion.requiereNumeroOperacion && (
-                      <Input
-                        label="Número de operación (últimos 4 dígitos)"
-                        required
-                        maxLength={4}
-                        pattern="[0-9]{4}"
-                        value={linea.seleccion.numeroOperacion}
-                        onChange={(e) =>
-                          setLineasCombinadas((prev) =>
-                            prev.map((l, i) => (i === indice ? { ...l, seleccion: { ...l.seleccion, numeroOperacion: e.target.value } } : l))
-                          )
-                        }
-                      />
-                    )}
                 </div>
               </div>
             );
@@ -895,7 +898,7 @@ function ContenidoPaso3({
               setLineasCombinadas((prev) => [...prev, nueva]);
               setFraccionAbiertaClave(nueva.clave);
             }}
-            className="min-h-11 rounded-lg border px-3 text-sm font-medium"
+            className="min-h-11 w-fit rounded-lg border px-4 text-sm font-medium"
             style={{ borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }}
           >
             + Agregar fracción
@@ -917,21 +920,28 @@ function ContenidoPaso3({
       )}
 
       </div>
-      <aside className="flex flex-col gap-4 lg:w-80 lg:shrink-0 lg:overflow-y-auto lg:border-l lg:pl-6" style={{ borderColor: "var(--gx-edge)" }}>
-        <div className="flex items-center gap-4">
-          <Avatar fotoUrl={miembro.fotoUrl} nombre={miembro.nombre} />
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-lg font-semibold" style={{ color: "var(--gx-ink)" }}>
-              {miembro.nombre}
-            </p>
-            <p style={{ color: "var(--gx-muted)" }}>{miembro.cedula}</p>
+      <aside className="flex flex-col gap-4 lg:w-96 lg:shrink-0 lg:overflow-y-auto lg:border-l lg:pl-6" style={{ borderColor: "var(--gx-edge)" }}>
+        <CabeceraMiembro miembro={miembro} />
+        <div className="flex flex-col gap-2 rounded-xl border p-4" style={{ borderColor: "var(--gx-edge)" }}>
+          <div className="flex justify-between gap-3">
+            <span style={{ color: "var(--gx-muted)" }}>Plan</span>
+            <span className="font-medium" style={{ color: "var(--gx-ink)" }}>
+              {planNombre}
+            </span>
           </div>
-        </div>
-        <div className="flex justify-between">
-          <span style={{ color: "var(--gx-muted)" }}>Plan</span>
-          <span className="font-medium" style={{ color: "var(--gx-ink)" }}>
-            {planNombre}
-          </span>
+          {montoSugerido > 0 && (
+            <div className="flex items-start justify-between gap-3">
+              <span style={{ color: "var(--gx-muted)" }}>Precio</span>
+              <span className="text-right font-semibold" style={{ color: "var(--gx-accent)" }}>
+                ${montoSugerido.toFixed(2)}
+                {tasaActual !== null && (
+                  <span className="block text-sm font-normal" style={{ color: "var(--gx-muted)" }}>
+                    Bs. {formatearBs(montoSugerido * tasaActual)}
+                  </span>
+                )}
+              </span>
+            </div>
+          )}
         </div>
       {montoSugerido > 0 && deudaMiembro && (
         <div
@@ -1103,7 +1113,7 @@ export function ModalRegistrarPagoCaja({
   const [confirmandoCierre, setConfirmandoCierre] = useState(false);
   const [fechaFinCicloFinal, setFechaFinCicloFinal] = useState<Date | null>(null);
 
-  // Pasos 2 y 3: panel alto pegado al borde derecho, con columna lateral de contexto, para no hacer scroll.
+  // Pasos 2 y 3: el asistente ocupa el 98% de la pantalla, con columna lateral de contexto, para no hacer scroll.
   const ancho = paso === 2 || paso === 3;
 
   function pedirCierre() {
@@ -1116,7 +1126,7 @@ export function ModalRegistrarPagoCaja({
 
   return (
     <div
-      className={`fixed inset-0 z-50 flex ${ancho ? "items-stretch justify-end" : "items-center justify-center p-4"}`}
+      className={`fixed inset-0 z-50 flex items-center justify-center ${ancho ? "p-[1%]" : "p-4"}`}
       style={{ background: "color-mix(in srgb, black 60%, transparent)" }}
       role="dialog"
       aria-modal="true"
@@ -1124,7 +1134,7 @@ export function ModalRegistrarPagoCaja({
       onClick={pedirCierre}
     >
       <div
-        className={`flex w-full flex-col text-base ${ancho ? "h-dvh max-w-[72rem] overflow-y-auto border-l-2 p-4 sm:rounded-l-2xl lg:overflow-hidden lg:p-6" : "max-h-[90vh] max-w-2xl overflow-y-auto rounded-2xl border-2 p-8"}`}
+        className={`flex w-full flex-col text-base ${ancho ? "h-full overflow-y-auto rounded-2xl border-2 p-4 lg:overflow-hidden lg:p-6" : "max-h-[90vh] max-w-2xl overflow-y-auto rounded-2xl border-2 p-8"}`}
         style={{ borderColor: "var(--gx-accent)", background: "var(--gx-surface)" }}
         onClick={(e) => e.stopPropagation()}
       >

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@gym-app/ui/components/Button";
-import { Input } from "@gym-app/ui/components/Input";
+import { CampoNumeroOperacion } from "./CampoNumeroOperacion";
 import { CurrencyInput } from "@gym-app/ui/components/CurrencyInput";
 import type { MetodoPago, TipoMetodoPago } from "@gym-app/domain/entities/MetodoPago";
 import { TIPOS_QUE_PUEDEN_SER_EN_BS } from "@gym-app/domain/entities/MetodoPago";
@@ -257,7 +257,7 @@ export function SelectorMetodoPago({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className={compacto ? "grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6" : "grid grid-cols-3 gap-2"}>
+      <div className={compacto ? "grid grid-cols-2 gap-2 sm:grid-cols-3" : "grid grid-cols-3 gap-2"}>
         {tiposDisponibles.map((tipo) => {
           const Icono = ICONO_TIPO[tipo];
           const seleccionado = tipoAbierto === tipo;
@@ -266,7 +266,7 @@ export function SelectorMetodoPago({
               key={tipo}
               type="button"
               onClick={() => elegirTipo(tipo)}
-              className={`flex items-center rounded-lg border-2 transition-colors duration-150 active:scale-95 ${compacto ? "flex-row gap-2 px-2 py-1.5 [&_svg]:h-5 [&_svg]:w-5" : "flex-col gap-1.5 p-3"}`}
+              className={`flex items-center rounded-lg border-2 transition-colors duration-150 active:scale-95 ${compacto ? "min-h-12 flex-row gap-2.5 px-3 py-1.5 [&_svg]:h-5 [&_svg]:w-5" : "flex-col gap-1.5 p-3"}`}
               style={
                 seleccionado
                   ? { borderColor: "var(--gx-accent)", background: "color-mix(in srgb, var(--gx-accent) 12%, transparent)" }
@@ -285,7 +285,7 @@ export function SelectorMetodoPago({
       </div>
 
       {tipoAbierto && instanciasDelTipo.length > 1 && (
-        <div className={compacto ? "grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-4" : "grid grid-cols-2 gap-2"}>
+        <div className={compacto ? "grid grid-cols-2 gap-2 sm:grid-cols-3" : "grid grid-cols-2 gap-2"}>
           {instanciasDelTipo.map((instancia) => (
             <button
               key={instancia.id}
@@ -335,38 +335,34 @@ export function SelectorMetodoPago({
       )}
 
       {metodo && metodo.tipo !== "EFECTIVO" && metodo.tipo !== "PUNTO_VENTA" && metodo.tipo !== "BIOPAGO" && (
-        <Button type="button" variant="secundario" onClick={() => setMostrarDatos(true)}>
+        <Button type="button" variant="secundario" className="self-start" onClick={() => setMostrarDatos(true)}>
           Ver datos para el pago
         </Button>
       )}
 
       {requiereNumeroOperacion && !ocultarNumeroOperacion && (
-        <Input
-          form={idFormulario}
-          label="Número de operación (últimos 4 dígitos)"
-          required
-          maxLength={4}
-          pattern="[0-9]{4}"
-          value={numeroOperacion}
-          onChange={(e) => setNumeroOperacion(e.target.value)}
-        />
+        <CampoNumeroOperacion form={idFormulario} value={numeroOperacion} onChange={setNumeroOperacion} />
       )}
 
       {esEnBs && tasa !== null && (
         <div
-          className={`rounded-lg border ${compacto ? "p-2" : "p-3"} ${grande ? "text-base" : "text-sm"}`}
+          className={`flex w-fit flex-wrap gap-x-8 gap-y-1 rounded-lg border ${compacto ? "px-4 py-2" : "p-3"} ${grande ? "text-base" : "text-sm"}`}
           style={{ borderColor: "var(--gx-edge)", background: "var(--gx-surface-2)" }}
         >
-          <div className="flex justify-between">
-            <span style={{ color: "var(--gx-muted)" }}>Tasa BCV</span>
-            <span className="font-medium" style={{ color: "var(--gx-ink)" }}>
+          <div className="flex flex-col">
+            <span className="text-xs" style={{ color: "var(--gx-muted)" }}>
+              Tasa BCV
+            </span>
+            <span className="font-medium tabular-nums" style={{ color: "var(--gx-ink)" }}>
               Bs. {tasa}
             </span>
           </div>
           {montoBs !== null && (
-            <div className="mt-1 flex justify-between">
-              <span style={{ color: "var(--gx-muted)" }}>Monto en bolívares</span>
-              <span className="font-semibold" style={{ color: "var(--gx-ink)" }}>
+            <div className="flex flex-col">
+              <span className="text-xs" style={{ color: "var(--gx-muted)" }}>
+                Monto en bolívares
+              </span>
+              <span className="font-semibold tabular-nums" style={{ color: "var(--gx-accent)" }}>
                 Bs. {formatearBs(montoBs)}
               </span>
             </div>

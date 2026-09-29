@@ -414,8 +414,6 @@ function nuevaLineaVacia(): LineaFormulario {
 }
 
 function ContenidoPaso3({
-  miembro,
-  planNombre,
   miembroId,
   planId,
   monto: montoSugerido,
@@ -433,9 +431,6 @@ function ContenidoPaso3({
   onVolver,
   onPagoRegistrado,
 }: {
-  // Para el resumen de la columna lateral.
-  miembro: MiembroConPlan;
-  planNombre: string;
   miembroId: string;
   planId: string;
   // Precio de lista del plan — punto de partida del monto objetivo, que
@@ -883,28 +878,6 @@ function ContenidoPaso3({
 
       </div>
       <aside className="flex flex-col gap-4 lg:w-96 lg:shrink-0 lg:overflow-y-auto lg:border-l lg:pl-6" style={{ borderColor: "var(--gx-edge)" }}>
-        <CabeceraMiembro miembro={miembro} />
-        <div className="flex flex-col gap-2 rounded-xl border p-4" style={{ borderColor: "var(--gx-edge)" }}>
-          <div className="flex justify-between gap-3">
-            <span style={{ color: "var(--gx-muted)" }}>Plan</span>
-            <span className="font-medium" style={{ color: "var(--gx-ink)" }}>
-              {planNombre}
-            </span>
-          </div>
-          {montoSugerido > 0 && (
-            <div className="flex items-start justify-between gap-3">
-              <span style={{ color: "var(--gx-muted)" }}>Precio</span>
-              <span className="text-right font-semibold" style={{ color: "var(--gx-accent)" }}>
-                ${montoSugerido.toFixed(2)}
-                {tasaActual !== null && (
-                  <span className="block text-sm font-normal" style={{ color: "var(--gx-muted)" }}>
-                    Bs. {formatearBs(montoSugerido * tasaActual)}
-                  </span>
-                )}
-              </span>
-            </div>
-          )}
-        </div>
       {montoSugerido > 0 && deudaMiembro && (
         <div
           className="flex flex-col gap-2 rounded-lg border-2 px-3 py-3"
@@ -1177,8 +1150,6 @@ export function ModalRegistrarPagoCaja({
 
         {paso === 3 && miembroElegido && planElegidoId && (
           <ContenidoPaso3
-            miembro={miembroElegido}
-            planNombre={(planes.find((p) => p.id === planElegidoId) ?? miembroElegido.plan)?.nombre ?? "—"}
             miembroId={miembroElegido.id}
             planId={planElegidoId}
             monto={

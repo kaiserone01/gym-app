@@ -566,6 +566,8 @@ function ContenidoPaso3({
   // Se suma a la primera línea: el servidor descuenta la deuda primero y en orden, así que
   // la membresía recibe exactamente lo que el cajero cargó en cada línea.
   const deudaAPagar = montoSugerido > 0 && deudaMiembro && incluirDeudas ? deudaMiembro.totalUSD : 0;
+  // La deuda viaja en la primera línea con monto (ver lineasParaEnviar); el Bs de esa línea la incluye.
+  const indiceLineaConDeuda = Math.max(0, lineasCombinadas.findIndex((l) => Number(l.monto) > 0));
   const lineasParaEnviar = lineasActivas
     .filter((l) => Number(l.monto) > 0)
     .map((l, i) => ({
@@ -616,7 +618,7 @@ function ContenidoPaso3({
             <SelectorMetodoPago
               compacto
               metodos={metodosPago}
-              monto={montoSugerido}
+              monto={montoSugerido + deudaAPagar}
               onCambio={(seleccion) =>
                 setLineaUnica((prev) => {
                   // Cambiar de método en Bs a uno en USD (o viceversa) invalida la casilla Bs auxiliar.
@@ -776,7 +778,7 @@ function ContenidoPaso3({
                         <SelectorMetodoPago
                           compacto
                           metodos={metodosPago}
-                          monto={montoLinea > 0 ? montoLinea : montoSugerido}
+                          monto={(montoLinea > 0 ? montoLinea : montoSugerido) + (indice === indiceLineaConDeuda ? deudaAPagar : 0)}
                           onCambio={(seleccion) =>
                             setLineasCombinadas((prev) => prev.map((l, i) => (i === indice ? { ...l, seleccion } : l)))
                           }

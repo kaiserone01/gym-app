@@ -282,7 +282,7 @@ describe("clasificarFila — aproximacion de plan legacy", () => {
     const r = clasificarFila(conPlan("15", { tipo: "valida", fecha: new Date("2026-05-01T00:00:00.000Z") }), mapeo, reglasCedulaVacias, placeholderFecha, hoy);
     expect(r.categoria).toBe("migrada");
     if (r.categoria === "migrada") {
-      expect(r.datos.planNombre).toBe("Plan $20");
+      expect(r.datos.planNombre).toBe("Plan Viejo");
       expect(r.datos.planLegacy).toBe(false);
       expect(r.datos.precioPlanOriginalUSD).toBe(15);
       expect(r.flags).toContain("plan-aproximado");

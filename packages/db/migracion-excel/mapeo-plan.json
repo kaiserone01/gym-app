@@ -6,7 +6,7 @@
   {
     "valorExcel": "20*",
     "accion": "mapear",
-    "planNombreDestino": "Plan $20",
+    "planNombreDestino": "Plan Viejo",
     "precioPlanOverrideUSD": 20
   },
   {
@@ -83,7 +83,7 @@
   {
     "valorExcel": "25+5",
     "accion": "mapear",
-    "planNombreDestino": "Plan $30",
+    "planNombreDestino": "Mensual con entrenador",
     "precioPlanOverrideUSD": 30
   },
   {

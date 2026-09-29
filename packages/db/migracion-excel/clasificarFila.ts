@@ -11,7 +11,16 @@ function diasCicloMensual(): number {
   return 30;
 }
 
-const PRECIOS_PLANES_REALES = [8, 20, 22, 25, 30];
+// Planes reales de la organización (nombres tal como aparecen en /planes). Los nombres y
+// atributos de los planes creados por la migración salen de acá.
+export const PLANES_REALES: Record<number, { nombre: string; frecuencia: "SEMANAL" | "MENSUAL"; diasCiclo: number; incluyeEntrenador: boolean }> = {
+  8: { nombre: "Semanal", frecuencia: "SEMANAL", diasCiclo: 7, incluyeEntrenador: false },
+  20: { nombre: "Plan Viejo", frecuencia: "MENSUAL", diasCiclo: 30, incluyeEntrenador: false },
+  22: { nombre: "Corporativo", frecuencia: "MENSUAL", diasCiclo: 30, incluyeEntrenador: false },
+  25: { nombre: "Mensual sin entrenador", frecuencia: "MENSUAL", diasCiclo: 30, incluyeEntrenador: false },
+  30: { nombre: "Mensual con entrenador", frecuencia: "MENSUAL", diasCiclo: 30, incluyeEntrenador: true },
+};
+const PRECIOS_PLANES_REALES = Object.keys(PLANES_REALES).map(Number);
 const DIAS_VENCIDO_PARA_APROXIMAR_PLAN = 60;
 
 function precioRealMasCercano(precio: number): number {
@@ -66,7 +75,7 @@ export function clasificarFila(
 
   if (fila.plan.tipo === "dominante") {
     precioPlanUSD = fila.plan.valorUSD;
-    planNombre = `Plan $${fila.plan.valorUSD}`;
+    planNombre = PLANES_REALES[fila.plan.valorUSD]?.nombre ?? `Plan $${fila.plan.valorUSD}`;
   } else {
     const entrada = mapeoPlan.find((m) => m.valorExcel === fila.plan.valorOriginal);
     if (!entrada || entrada.accion !== "mapear") {
@@ -97,7 +106,7 @@ export function clasificarFila(
     limite.setUTCDate(limite.getUTCDate() - DIAS_VENCIDO_PARA_APROXIMAR_PLAN);
     if (planLegacy && precioPlanUSD > 0 && fila.fVenc.tipo === "valida" && fila.fVenc.fecha < limite) {
       precioPlanOriginalUSD = precioPlanUSD;
-      planNombre = `Plan $${precioRealMasCercano(precioPlanUSD)}`;
+      planNombre = PLANES_REALES[precioRealMasCercano(precioPlanUSD)].nombre;
       planLegacy = false;
       flags.push("plan-aproximado");
     }
@@ -114,7 +123,8 @@ export function clasificarFila(
   }
 
   const fechaInicio = new Date(fechaVencimiento);
-  fechaInicio.setUTCDate(fechaInicio.getUTCDate() - diasCicloMensual());
+  const diasCiclo = Object.values(PLANES_REALES).find((p) => p.nombre === planNombre)?.diasCiclo ?? diasCicloMensual();
+  fechaInicio.setUTCDate(fechaInicio.getUTCDate() - diasCiclo);
 
   // Pago histórico opcional
   let pago: DatosMiembroAMigrar["pago"] = null;

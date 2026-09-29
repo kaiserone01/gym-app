@@ -16,7 +16,7 @@ import path from "node:path";
 import { writeFileSync } from "node:fs";
 import { leerFilasExcel } from "./migracion-excel/leerExcel";
 import { normalizarFila } from "./migracion-excel/normalizarFila";
-import { clasificarFila } from "./migracion-excel/clasificarFila";
+import { clasificarFila, PLANES_REALES } from "./migracion-excel/clasificarFila";
 import { cargarOCrearConfig, generarTemplateMapeoPlan, generarTemplateReglasCedula } from "./migracion-excel/config";
 import type { FilaClasificada } from "./migracion-excel/tipos";
 
@@ -73,12 +73,14 @@ async function obtenerOCrearPlanParaFila(
 ) {
   const existente = await prisma.plan.findFirst({ where: { organizacionId, nombre } });
   if (existente) return existente;
+  const real = Object.values(PLANES_REALES).find((p) => p.nombre === nombre);
   return prisma.plan.create({
     data: {
       organizacionId,
       nombre,
-      frecuencia: "MENSUAL",
-      diasCiclo: 30,
+      frecuencia: real?.frecuencia ?? "MENSUAL",
+      diasCiclo: real?.diasCiclo ?? 30,
+      incluyeEntrenador: real?.incluyeEntrenador ?? false,
       precioUSD,
       activo,
     },

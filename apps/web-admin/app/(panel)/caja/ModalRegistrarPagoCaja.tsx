@@ -969,6 +969,7 @@ function ContenidoPaso3({
           // sobre la SUMA de todas las líneas activas — se actualiza en vivo.
           proyeccion={sumaLineas > 0 ? proyeccionAbono : null}
           modalidad={modalidad}
+          deudaProductos={deudaAPagar}
         />
       )}
 

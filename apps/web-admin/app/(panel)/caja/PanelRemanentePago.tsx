@@ -14,6 +14,7 @@ export function PanelRemanentePago({
   tasaReferencia,
   proyeccion,
   modalidad,
+  deudaProductos = 0,
   acoplado = false,
 }: {
   lineas: LineaMostrada[];
@@ -30,18 +31,22 @@ export function PanelRemanentePago({
   // Determina el copy del mensaje y el título de la lista (ver diseño
   // acordado: en Total/Abono no se "distribuye" nada, es un solo canal).
   modalidad: "total" | "abono" | "combinado";
+  // Productos fiados que se cobran junto con esta membresía (0 = ninguno): suman al objetivo y a lo cubierto.
+  deudaProductos?: number;
   // true = va dentro de la columna lateral del asistente en vez de flotar abajo a la derecha.
   acoplado?: boolean;
 }) {
   const sumaLineas = lineas.reduce((suma, l) => suma + l.monto, 0);
+  const objetivoTotal = montoObjetivo + deudaProductos;
+  const cubierto = sumaLineas + deudaProductos;
   // Comparación simple y directa contra el precio del plan — nunca contra
   // proyeccion.saldoRemanente, que en Abono puede referirse al PRÓXIMO
   // período (un abono que adelanta ciclo siguiente es válido ahí). En
   // Total/Fraccionado la intención siempre es pagar el período actual
   // completo ahora mismo, así que lo único relevante es cuánto falta o
   // sobra respecto al monto de ESTE pago.
-  const remanente = Math.max(0, montoObjetivo - sumaLineas);
-  const excedente = Math.max(0, sumaLineas - montoObjetivo);
+  const remanente = Math.max(0, objetivoTotal - cubierto);
+  const excedente = Math.max(0, cubierto - objetivoTotal);
   // En Abono, un excedente puede ser un adelanto intencional del próximo
   // período (ver mensaje "Adelanta el próximo período..."), así que no se
   // marca como "excedente a favor" salvo que sobre más de lo que ese
@@ -71,6 +76,12 @@ export function PanelRemanentePago({
         {modalidad === "combinado" ? "Distribución del pago" : "Canal de pago"}
       </p>
       <div className="mt-2 flex flex-col gap-1">
+        {deudaProductos > 0 && (
+          <div className="flex justify-between text-sm">
+            <span style={{ color: "var(--gx-muted)" }}>Productos pendientes</span>
+            <span style={{ color: "var(--gx-ink)" }}>${deudaProductos.toFixed(2)}</span>
+          </div>
+        )}
         {lineas
           .filter((l) => l.monto > 0)
           .map((linea, indice) => (

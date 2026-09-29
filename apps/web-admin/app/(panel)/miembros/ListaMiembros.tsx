@@ -5,7 +5,6 @@ import Link from "next/link";
 import { Input } from "@gym-app/ui/components/Input";
 import { Button } from "@gym-app/ui/components/Button";
 import { Card } from "@gym-app/ui/components/Card";
-import { Badge } from "@gym-app/ui/components/Badge";
 import { EstadoToggle } from "./EstadoToggle";
 import { DiasDisponibles, diasHastaVencimiento } from "./vencimiento";
 import type { Miembro } from "@gym-app/domain/entities/Miembro";
@@ -15,6 +14,16 @@ import type { SucursalResumen } from "@gym-app/domain/entities/SucursalResumen";
 const MINIMO_CARACTERES_BUSQUEDA = 3;
 
 type ModoVista = "cards" | "lista";
+
+type FiltroProximoCobro = "todos" | "vencidos" | "7" | "15" | "30";
+
+const OPCIONES_PROXIMO_COBRO: { valor: FiltroProximoCobro; etiqueta: string }[] = [
+  { valor: "todos", etiqueta: "Todos" },
+  { valor: "vencidos", etiqueta: "Vencidos" },
+  { valor: "7", etiqueta: "Próximos 7 días" },
+  { valor: "15", etiqueta: "Próximos 15 días" },
+  { valor: "30", etiqueta: "Próximos 30 días" },
+];
 
 function iniciales(nombre: string): string {
   return nombre
@@ -27,10 +36,6 @@ function iniciales(nombre: string): string {
 
 function formatearFecha(fecha: Date): string {
   return new Date(fecha).toLocaleDateString("es-VE");
-}
-
-function estaVencido(fechaVencimiento: Date | null): boolean {
-  return fechaVencimiento !== null && diasHastaVencimiento(fechaVencimiento) < 0;
 }
 
 function Avatar({ fotoUrl, nombre, tamano }: { fotoUrl: string | null; nombre: string; tamano: number }) {
@@ -64,17 +69,22 @@ export function ListaMiembros({
   miembros,
   planes,
   sucursales,
+  accionesHeader,
 }: {
   miembros: Miembro[];
   planes: Plan[];
   sucursales: SucursalResumen[];
+  // Botón "Nuevo miembro" (o su versión deshabilitada) — vive en page.tsx
+  // porque depende de si hay turno de caja abierto, pero se renderiza acá
+  // arriba, junto al título y el toggle Cards/Lista (ver diseño acordado).
+  accionesHeader?: React.ReactNode;
 }) {
   const [modo, setModo] = useState<ModoVista>("cards");
   const [busqueda, setBusqueda] = useState("");
   const [inscritoDesde, setInscritoDesde] = useState("");
   const [venceHasta, setVenceHasta] = useState("");
   const [planFiltro, setPlanFiltro] = useState("");
-  const [proximoCobroFiltro, setProximoCobroFiltro] = useState<"" | "vencidos" | "7" | "15" | "30">("");
+  const [proximoCobroFiltro, setProximoCobroFiltro] = useState<FiltroProximoCobro>("todos");
 
   const planesPorId = useMemo(() => new Map(planes.map((plan) => [plan.id, plan])), [planes]);
   const sucursalesPorId = useMemo(() => new Map(sucursales.map((s) => [s.id, s.nombre])), [sucursales]);
@@ -108,7 +118,7 @@ export function ListaMiembros({
 
       if (planFiltro && miembro.planId !== planFiltro) return false;
 
-      if (proximoCobroFiltro) {
+      if (proximoCobroFiltro !== "todos") {
         if (!miembro.fechaVencimiento) return false;
         const dias = diasHastaVencimiento(miembro.fechaVencimiento);
         if (proximoCobroFiltro === "vencidos") {
@@ -128,11 +138,28 @@ export function ListaMiembros({
     setInscritoDesde("");
     setVenceHasta("");
     setPlanFiltro("");
-    setProximoCobroFiltro("");
+    setProximoCobroFiltro("todos");
   }
 
   return (
     <div>
+      <div className="mb-6 flex items-center justify-between gap-4 print:hidden">
+        <h1 className="text-2xl font-bold" style={{ color: "var(--gx-ink)" }}>
+          Miembros
+        </h1>
+        <div className="flex items-center gap-3">
+          <div className="hidden gap-1 rounded-lg border p-1 lg:flex" style={{ borderColor: "var(--gx-edge)" }}>
+            <Button type="button" variant={modo === "cards" ? "primario" : "fantasma"} onClick={() => setModo("cards")}>
+              Cards
+            </Button>
+            <Button type="button" variant={modo === "lista" ? "primario" : "fantasma"} onClick={() => setModo("lista")}>
+              Lista
+            </Button>
+          </div>
+          {accionesHeader}
+        </div>
+      </div>
+
       <div className="mb-6 flex flex-wrap items-end gap-4 print:hidden">
         <Input
           label="Nombre o cédula"
@@ -148,6 +175,7 @@ export function ListaMiembros({
           onChange={(e) => setInscritoDesde(e.target.value)}
         />
         <Input label="Vencidos hasta" type="date" value={venceHasta} onChange={(e) => setVenceHasta(e.target.value)} />
+
         <label className="flex flex-col gap-1.5 text-sm" style={{ color: "var(--gx-muted)" }}>
           Plan
           <select
@@ -164,41 +192,26 @@ export function ListaMiembros({
             ))}
           </select>
         </label>
+
         <label className="flex flex-col gap-1.5 text-sm" style={{ color: "var(--gx-muted)" }}>
           Próximo cobro
           <select
             value={proximoCobroFiltro}
-            onChange={(e) => setProximoCobroFiltro(e.target.value as typeof proximoCobroFiltro)}
+            onChange={(e) => setProximoCobroFiltro(e.target.value as FiltroProximoCobro)}
             className="min-h-11 rounded-lg border px-3 outline-none focus:border-[var(--gx-accent)]"
             style={{ background: "var(--gx-surface-2)", borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }}
           >
-            <option value="">Todos</option>
-            <option value="vencidos">Vencidos</option>
-            <option value="7">Próximos 7 días</option>
-            <option value="15">Próximos 15 días</option>
-            <option value="30">Próximos 30 días</option>
+            {OPCIONES_PROXIMO_COBRO.map((opcion) => (
+              <option key={opcion.valor} value={opcion.valor}>
+                {opcion.etiqueta}
+              </option>
+            ))}
           </select>
         </label>
-        <button type="button" onClick={limpiarFiltros} className="text-sm hover:underline" style={{ color: "var(--gx-muted)" }}>
-          Limpiar
-        </button>
 
-        <div className="ml-auto hidden lg:flex gap-1 rounded-lg border p-1" style={{ borderColor: "var(--gx-edge)" }}>
-          <Button
-            type="button"
-            variant={modo === "cards" ? "primario" : "fantasma"}
-            onClick={() => setModo("cards")}
-          >
-            Cards
-          </Button>
-          <Button
-            type="button"
-            variant={modo === "lista" ? "primario" : "fantasma"}
-            onClick={() => setModo("lista")}
-          >
-            Lista
-          </Button>
-        </div>
+        <Button type="button" variant="secundario" onClick={limpiarFiltros}>
+          Limpiar
+        </Button>
       </div>
 
       {/* Forzado a Cards por debajo de lg, sin importar el toggle (ver diseño acordado). */}
@@ -277,69 +290,35 @@ function VistaCards({ miembros }: { miembros: FilaMiembro[] }) {
   }
 
   return (
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-      {miembros.map((miembro) => {
-        const muestraEntrenador = miembro.plan?.incluyeEntrenador === true;
-        const vencido = estaVencido(miembro.fechaVencimiento);
-
-        return (
-          <Link key={miembro.id} href={`/miembros/${miembro.id}`}>
-            <Card className="flex h-full flex-col gap-3 transition-transform active:scale-[0.98]">
-              <div className="flex items-center gap-3">
-                <Avatar fotoUrl={miembro.fotoUrl} nombre={miembro.nombre} tamano={56} />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate font-medium" style={{ color: "var(--gx-ink)" }}>
-                    {miembro.nombre}
-                  </p>
-                  <p className="text-sm" style={{ color: "var(--gx-muted)" }}>
-                    {miembro.cedula}
-                  </p>
-                </div>
-                <div className="flex flex-col items-end gap-1">
-                  <EstadoToggle id={miembro.id} activo={miembro.activo} />
-                  {vencido && <Badge tono="rojo">VENCIDO</Badge>}
-                </div>
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      {miembros.map((miembro) => (
+        <Link key={miembro.id} href={`/miembros/${miembro.id}`}>
+          <Card className="flex h-full flex-col gap-3 transition-transform active:scale-[0.98]">
+            <div className="flex items-center gap-3">
+              <Avatar fotoUrl={miembro.fotoUrl} nombre={miembro.nombre} tamano={40} />
+              <div className="min-w-0 flex-1">
+                <p className="truncate font-medium" style={{ color: "var(--gx-ink)" }}>
+                  {miembro.nombre}
+                </p>
+                <p className="truncate text-sm" style={{ color: "var(--gx-muted)" }}>
+                  {miembro.plan?.nombre ?? "Sin plan"}
+                </p>
               </div>
+              <EstadoToggle id={miembro.id} activo={miembro.activo} />
+            </div>
 
-              <dl className="flex flex-col gap-1.5 text-sm">
-                <div className="flex justify-between gap-3">
-                  <dt style={{ color: "var(--gx-muted)" }}>Fecha de Vencimiento</dt>
-                  <dd style={{ color: "var(--gx-ink)" }}>
-                    {miembro.fechaVencimiento ? formatearFecha(miembro.fechaVencimiento) : "Sin pagos registrados"}
-                  </dd>
-                </div>
-                <div className="flex justify-between gap-3">
-                  <dt style={{ color: "var(--gx-muted)" }}>Próximo cobro</dt>
-                  <dd>
-                    <DiasDisponibles fechaVencimiento={miembro.fechaVencimiento} />
-                  </dd>
-                </div>
-                <div className="flex justify-between gap-3">
-                  <dt style={{ color: "var(--gx-muted)" }}>Plan</dt>
-                  <dd style={{ color: "var(--gx-ink)" }}>{miembro.plan?.nombre ?? "Sin plan"}</dd>
-                </div>
-                <div className="flex justify-between gap-3">
-                  <dt style={{ color: "var(--gx-muted)" }}>Sede</dt>
-                  <dd style={{ color: "var(--gx-ink)" }}>{miembro.sucursalNombre}</dd>
-                </div>
-                {muestraEntrenador && (
-                  <div className="flex justify-between gap-3">
-                    <dt style={{ color: "var(--gx-muted)" }}>Entrenador</dt>
-                    <dd style={{ color: "var(--gx-ink)" }}>{miembro.entrenadorNombre ?? "Sin asignar"}</dd>
-                  </div>
-                )}
-              </dl>
-
-              <span
-                className="mt-1 self-end text-sm font-medium hover:underline"
-                style={{ color: "var(--gx-accent)" }}
-              >
+            <div
+              className="flex items-center justify-between gap-3 border-t pt-3 text-sm"
+              style={{ borderColor: "var(--gx-edge)" }}
+            >
+              <DiasDisponibles fechaVencimiento={miembro.fechaVencimiento} />
+              <span className="font-medium hover:underline" style={{ color: "var(--gx-accent)" }}>
                 Editar
               </span>
-            </Card>
-          </Link>
-        );
-      })}
+            </div>
+          </Card>
+        </Link>
+      ))}
     </div>
   );
 }
@@ -387,10 +366,7 @@ function VistaLista({ miembros }: { miembros: FilaMiembro[] }) {
                   <DiasDisponibles fechaVencimiento={miembro.fechaVencimiento} />
                 </td>
                 <td className="py-2">
-                  <div className="flex items-center gap-2">
-                    <EstadoToggle id={miembro.id} activo={miembro.activo} />
-                    {estaVencido(miembro.fechaVencimiento) && <Badge tono="rojo">VENCIDO</Badge>}
-                  </div>
+                  <EstadoToggle id={miembro.id} activo={miembro.activo} />
                 </td>
                 <td className="py-2">
                   <Link

@@ -108,51 +108,52 @@ export default async function PaginaCaja() {
 
     return (
       <div className="flex flex-col gap-6 p-6 pb-24 lg:p-8 lg:pb-8">
-        <PageHeader>Turno activo</PageHeader>
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <PageHeader>Turno activo</PageHeader>
+          {esPropio && (
+            <div className="flex gap-2">
+              <BotonRegistrarPagoCaja
+                miembros={miembrosActivos}
+                planes={planesActivos}
+                metodosPago={metodosPago}
+                tasaActual={tasaActual}
+                reglasAbono={reglasAbono}
+                entrenadores={entrenadores}
+                accionCambiarPlan={cambiarPlanAction}
+              />
+              <BotonRegistrarEgreso accion={registrarEgresoAction} turnoId={resumen.turno.id} />
+            </div>
+          )}
+        </div>
 
-        {/* Layout compacto: una sola barra de estado + acciones arriba
-            (en vez de 3 cards del mismo ancho con la de "Registrar pago"
-            casi vacía — el botón ahora abre un modal, no necesita todo el
-            ancho de una card), resumen por método en grilla densa, pagos
-            y egresos lado a lado con scroll interno propio, arqueo al
-            final. Objetivo: que todo entre sin scroll excesivo (ver
-            mockup acordado). En mobile se apila igual que antes. */}
+        {/* Layout compacto: cuadro chico con el estado del turno (no
+            necesita todo el ancho para mostrar dos montos, ver diseño
+            acordado — los botones se movieron arriba, junto al título),
+            resumen por método en grilla densa, pagos y egresos lado a lado
+            con scroll interno propio, arqueo al final. Objetivo: que todo
+            entre sin scroll excesivo. En mobile se apila igual que antes. */}
         <div className="flex flex-col gap-4">
           {esPropio ? (
-            <Card className="flex flex-col gap-4 text-sm sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex flex-wrap gap-6">
-                <div>
-                  <p className="text-xs" style={{ color: "var(--gx-muted)" }}>
-                    Abierto desde
-                  </p>
-                  <p className="font-medium" style={{ color: "var(--gx-ink)" }}>
-                    {resumen.turno.abiertoEn.toLocaleString("es-VE")}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs" style={{ color: "var(--gx-muted)" }}>
-                    Fondo inicial en efectivo
-                  </p>
-                  <p className="font-medium" style={{ color: "var(--gx-ink)" }}>
-                    ${resumen.turno.fondoInicialEfectivoUSD.toFixed(2)} /{" "}
-                    {formatearBsConRef(
-                      resumen.turno.fondoInicialEfectivoBs,
-                      tasaActual !== null ? resumen.turno.fondoInicialEfectivoBs / tasaActual : null
-                    )}
-                  </p>
-                </div>
+            <Card className="flex w-fit flex-wrap gap-6 text-sm">
+              <div>
+                <p className="text-xs" style={{ color: "var(--gx-muted)" }}>
+                  Abierto desde
+                </p>
+                <p className="font-medium" style={{ color: "var(--gx-ink)" }}>
+                  {resumen.turno.abiertoEn.toLocaleString("es-VE")}
+                </p>
               </div>
-              <div className="flex gap-2">
-                <BotonRegistrarPagoCaja
-                  miembros={miembrosActivos}
-                  planes={planesActivos}
-                  metodosPago={metodosPago}
-                  tasaActual={tasaActual}
-                  reglasAbono={reglasAbono}
-                  entrenadores={entrenadores}
-                  accionCambiarPlan={cambiarPlanAction}
-                />
-                <BotonRegistrarEgreso accion={registrarEgresoAction} turnoId={resumen.turno.id} />
+              <div>
+                <p className="text-xs" style={{ color: "var(--gx-muted)" }}>
+                  Fondo inicial en efectivo
+                </p>
+                <p className="font-medium" style={{ color: "var(--gx-ink)" }}>
+                  ${resumen.turno.fondoInicialEfectivoUSD.toFixed(2)} /{" "}
+                  {formatearBsConRef(
+                    resumen.turno.fondoInicialEfectivoBs,
+                    tasaActual !== null ? resumen.turno.fondoInicialEfectivoBs / tasaActual : null
+                  )}
+                </p>
               </div>
             </Card>
           ) : (

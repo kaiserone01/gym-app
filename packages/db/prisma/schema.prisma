@@ -24,6 +24,7 @@ model Organizacion {
   miembros             Miembro[]
   planes               Plan[]
   productos            Producto[]
+  deudasProducto       DeudaProducto[]
   metodosPago          MetodoPago[]
   tema                 TemaOrganizacion?
   turnos               Turno[]
@@ -50,6 +51,7 @@ model Sucursal {
   usuariosConAcceso UsuarioSucursal[]
   miembros          Miembro[]
   sesiones          Sesion[]
+  deudasProducto    DeudaProducto[]
 }
 
 enum RolUsuario {
@@ -83,6 +85,9 @@ model UsuarioAdmin {
   sucursales             UsuarioSucursal[]
   miembrosEntrenados     Miembro[]             @relation("EntrenadorDeMiembro")
   cambiosPlanRegistrados CambioPlanAuditoria[]
+  deudasRegistradas      DeudaProducto[]       @relation("DeudasRegistradas")
+  deudasCobradas         DeudaProducto[]       @relation("DeudasCobradas")
+  deudasAnuladas         DeudaProducto[]       @relation("DeudasAnuladas")
 }
 
 enum ModuloPermiso {
@@ -148,6 +153,7 @@ model Miembro {
   checkIns             CheckIn[]
   suscripciones        Suscripcion[]
   cambiosPlanAuditoria CambioPlanAuditoria[]
+  deudasProducto       DeudaProducto[]
 
   @@unique([organizacionId, cedula])
 }
@@ -302,9 +308,49 @@ model Producto {
   activo         Boolean      @default(true)
   createdAt      DateTime     @default(now())
 
-  pagos Pago[]
+  pagos  Pago[]
+  deudas DeudaProducto[]
 
   @@index([organizacionId])
+}
+
+enum EstadoDeuda {
+  PENDIENTE
+  COBRADA
+  ANULADA
+}
+
+// Producto fiado a un miembro: se entrega ya, se cobra después en bloque
+// (ver CobrarDeudasMiembro). No es un Pago hasta que se cobra: así el
+// turno, el arqueo y el histórico no la ven mientras está pendiente.
+model DeudaProducto {
+  id                String       @id @default(cuid())
+  organizacionId    String
+  organizacion      Organizacion @relation(fields: [organizacionId], references: [id])
+  sucursalId        String
+  sucursal          Sucursal     @relation(fields: [sucursalId], references: [id])
+  miembroId         String
+  miembro           Miembro      @relation(fields: [miembroId], references: [id])
+  productoId        String?
+  producto          Producto?    @relation(fields: [productoId], references: [id], onDelete: SetNull)
+  productoNombre    String // copia del nombre al fiar
+  cantidad          Int
+  precioUnitarioUSD Decimal      @db.Decimal(10, 2) // congelado al fiar; los Bs se calculan al cobrar
+  estado            EstadoDeuda  @default(PENDIENTE)
+
+  registradaPorId String
+  registradaPor   UsuarioAdmin  @relation("DeudasRegistradas", fields: [registradaPorId], references: [id])
+  creadaEn        DateTime      @default(now())
+  cobradaEn       DateTime?
+  cobradaPorId    String?
+  cobradaPor      UsuarioAdmin? @relation("DeudasCobradas", fields: [cobradaPorId], references: [id])
+  grupoPagoId     String? // grupo de Pagos que la cubrió
+  anuladaEn       DateTime?
+  anuladaPorId    String?
+  anuladaPor      UsuarioAdmin? @relation("DeudasAnuladas", fields: [anuladaPorId], references: [id])
+
+  @@index([organizacionId, estado])
+  @@index([miembroId, estado])
 }
 
 enum ModoCambioPlanAuditoria {

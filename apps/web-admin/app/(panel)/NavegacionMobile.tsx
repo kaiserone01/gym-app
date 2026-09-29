@@ -5,22 +5,32 @@ import {
   UsersThree,
   CreditCard,
   Wallet,
-  ChartBar,
+  Barbell,
   DotsThreeCircle,
 } from "@phosphor-icons/react/dist/ssr";
 import { BottomTabBar, type ItemTab } from "@gym-app/ui/components/BottomTabBar";
 import { MasSheet } from "./MasSheet";
+import { ContadorEnSala } from "./en-sala/ContextoEnSala";
 
 export function NavegacionMobile({
   nombre,
   email,
   rol,
+  puedeVerEnSala,
 }: {
   nombre: string;
   email: string;
   rol: string;
+  puedeVerEnSala: boolean;
 }) {
   const [masAbierto, setMasAbierto] = useState(false);
+
+  const iconoEnSala = (peso: "regular" | "fill") => (
+    <span className="relative">
+      <Barbell size={24} weight={peso} />
+      <ContadorEnSala className="absolute -right-3 -top-1" />
+    </span>
+  );
 
   const items: ItemTab[] = [
     {
@@ -44,13 +54,17 @@ export function NavegacionMobile({
       icon: <CreditCard size={24} />,
       iconActivo: <CreditCard size={24} weight="fill" />,
     },
-    {
-      tipo: "link",
-      href: "/estadisticas",
-      label: "Estadísticas",
-      icon: <ChartBar size={24} />,
-      iconActivo: <ChartBar size={24} weight="fill" />,
-    },
+    ...(puedeVerEnSala
+      ? [
+          {
+            tipo: "link" as const,
+            href: "/en-sala",
+            label: "En sala",
+            icon: iconoEnSala("regular"),
+            iconActivo: iconoEnSala("fill"),
+          },
+        ]
+      : []),
     {
       tipo: "accion",
       label: "Más",

@@ -91,7 +91,7 @@ interface UsuarioAdminMinimo {
   id: string;
 }
 
-const MODULOS_PERMISO = ["MIEMBROS", "PAGOS", "PLANES", "CAJA", "USUARIOS", "SUCURSALES"] as const;
+const MODULOS_PERMISO = ["MIEMBROS", "PAGOS", "PLANES", "CAJA", "USUARIOS", "SUCURSALES", "EN_SALA"] as const;
 const ACCIONES_PERMISO = ["VER", "CREAR", "EDITAR", "ELIMINAR"] as const;
 
 // El admin de prueba es un SOCIO real: con MIGRACION_ADMIN_PASSWORD definida se le

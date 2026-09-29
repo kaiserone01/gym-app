@@ -1,4 +1,4 @@
-import { Suspense } from "react";
+import { Fragment, Suspense } from "react";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { obtenerUsuarioDeSesionActual } from "@/lib/sesion";
@@ -10,6 +10,8 @@ import { RelojYTasaConHistorial } from "./RelojYTasaConHistorial";
 import { BarraUsuario } from "./BarraUsuario";
 import { EncabezadoSidebar } from "./EncabezadoSidebar";
 import { NavegacionMobile } from "./NavegacionMobile";
+import { tienePermisoEnSala } from "@/lib/permisoEnSala";
+import { ProveedorEnSala, ContadorEnSala } from "./en-sala/ContextoEnSala";
 
 export default async function PanelLayout({ children }: { children: React.ReactNode }) {
   const sesion = await obtenerUsuarioDeSesionActual();
@@ -24,12 +26,17 @@ export default async function PanelLayout({ children }: { children: React.ReactN
     sucursalActivaId
   );
 
+  const puedeVerEnSala = await tienePermisoEnSala(usuario, "VER");
+  // Solo quien puede ver "En sala" monta el sondeo de check-ins (alertas de cobro en todo el panel).
+  const ConEnSala = puedeVerEnSala ? ProveedorEnSala : Fragment;
+
   return (
     <FeedbackProvider>
       <Suspense fallback={null}>
         <FeedbackDesdeUrl />
       </Suspense>
       <RelojYTasaConHistorial />
+      <ConEnSala>
       <div className="flex min-h-dvh flex-col lg:flex-row" style={{ background: "var(--gx-ground)" }}>
         <div className="hidden lg:block print:hidden">
           <Sidebar
@@ -38,7 +45,7 @@ export default async function PanelLayout({ children }: { children: React.ReactN
               { href: "/miembros", label: "Miembros" },
               { href: "/caja", label: "Caja" },
               { href: "/pagos", label: "Histórico de Pagos" },
-              { href: "/estadisticas", label: "Estadísticas" },
+              ...(puedeVerEnSala ? [{ href: "/en-sala", label: "En sala", extra: <ContadorEnSala /> }] : []),
               // Planes, Sucursales y Usuarios se administran desde las tabs
               // de Configuraciones (ver diseño acordado) — solo SOCIO llega
               // a ellas desde ahí.
@@ -54,9 +61,15 @@ export default async function PanelLayout({ children }: { children: React.ReactN
             página tenga que acordarse de dejarle margen. */}
         <main className="flex-1 pt-16 pb-16 lg:pb-0">{children}</main>
         <div className="print:hidden">
-          <NavegacionMobile nombre={usuario.nombre} email={usuario.email} rol={usuario.rol} />
+          <NavegacionMobile
+            nombre={usuario.nombre}
+            email={usuario.email}
+            rol={usuario.rol}
+            puedeVerEnSala={puedeVerEnSala}
+          />
         </div>
       </div>
+      </ConEnSala>
     </FeedbackProvider>
   );
 }

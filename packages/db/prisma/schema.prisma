@@ -91,6 +91,7 @@ enum ModuloPermiso {
   CAJA
   USUARIOS
   SUCURSALES
+  EN_SALA
 }
 
 enum AccionPermiso {
@@ -426,6 +427,9 @@ model CheckIn {
   miembro         Miembro  @relation(fields: [miembroId], references: [id])
   fechaHora       DateTime @default(now())
   estadoAlMomento String // "activo" | "vencido" — snapshot histórico, no cambia si luego el miembro paga
+  salidaAt        DateTime? // null = sigue "en sala"; se completa a mano desde /en-sala
+
+  @@index([sucursalId, fechaHora])
 }
 
 model TasaCambio {

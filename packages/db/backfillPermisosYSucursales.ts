@@ -10,12 +10,12 @@ const prisma = new PrismaClient({ adapter });
 
 const PERMISOS_POR_ROL: Record<string, Array<{ modulo: string; accion: string }>> = {
   SOCIO: [
-    ...["MIEMBROS", "PAGOS", "PLANES", "CAJA", "USUARIOS", "SUCURSALES"].flatMap((modulo) =>
+    ...["MIEMBROS", "PAGOS", "PLANES", "CAJA", "USUARIOS", "SUCURSALES", "EN_SALA"].flatMap((modulo) =>
       ["VER", "CREAR", "EDITAR", "ELIMINAR"].map((accion) => ({ modulo, accion }))
     ),
   ],
   GERENTE: [
-    ...["MIEMBROS", "PAGOS", "CAJA"].flatMap((modulo) =>
+    ...["MIEMBROS", "PAGOS", "CAJA", "EN_SALA"].flatMap((modulo) =>
       ["VER", "CREAR", "EDITAR", "ELIMINAR"].map((accion) => ({ modulo, accion }))
     ),
     { modulo: "PLANES", accion: "VER" },
@@ -33,6 +33,8 @@ const PERMISOS_POR_ROL: Record<string, Array<{ modulo: string; accion: string }>
     { modulo: "PLANES", accion: "VER" },
     { modulo: "CAJA", accion: "VER" },
     { modulo: "CAJA", accion: "CREAR" },
+    { modulo: "EN_SALA", accion: "VER" },
+    { modulo: "EN_SALA", accion: "EDITAR" },
   ],
   // Los entrenadores no operan el panel — sin permisos (ver CrearUsuarioAdmin.ts,
   // debe mantenerse igual acá).

@@ -1,6 +1,24 @@
 import type { PrismaClient } from "@gym-app/db/generated/prisma/client";
 import type { ICheckInRepository } from "@gym-app/domain/ports/ICheckInRepository";
-import type { CheckIn, EstadisticaCheckInPorSucursal, EstadoCheckIn } from "@gym-app/domain/entities/CheckIn";
+import type { CheckIn, CheckInEnSala, EstadoCheckIn } from "@gym-app/domain/entities/CheckIn";
+
+function aEntidad(checkIn: {
+  id: string;
+  sucursalId: string;
+  miembroId: string;
+  fechaHora: Date;
+  estadoAlMomento: string;
+  salidaAt: Date | null;
+}): CheckIn {
+  return {
+    id: checkIn.id,
+    sucursalId: checkIn.sucursalId,
+    miembroId: checkIn.miembroId,
+    fechaHora: checkIn.fechaHora,
+    estadoAlMomento: checkIn.estadoAlMomento as EstadoCheckIn,
+    salidaAt: checkIn.salidaAt,
+  };
+}
 
 export class PrismaCheckInRepository implements ICheckInRepository {
   constructor(private readonly prisma: PrismaClient) {}
@@ -15,49 +33,38 @@ export class PrismaCheckInRepository implements ICheckInRepository {
       orderBy: { fechaHora: "desc" },
     });
 
-    if (!checkIn) return null;
-
-    return {
-      id: checkIn.id,
-      sucursalId: checkIn.sucursalId,
-      miembroId: checkIn.miembroId,
-      fechaHora: checkIn.fechaHora,
-      estadoAlMomento: checkIn.estadoAlMomento as EstadoCheckIn,
-    };
+    return checkIn ? aEntidad(checkIn) : null;
   }
 
   async crear(datos: { sucursalId: string; miembroId: string; estadoAlMomento: EstadoCheckIn }): Promise<CheckIn> {
-    const checkIn = await this.prisma.checkIn.create({ data: datos });
-    return {
-      id: checkIn.id,
-      sucursalId: checkIn.sucursalId,
-      miembroId: checkIn.miembroId,
-      fechaHora: checkIn.fechaHora,
-      estadoAlMomento: checkIn.estadoAlMomento as EstadoCheckIn,
-    };
+    return aEntidad(await this.prisma.checkIn.create({ data: datos }));
   }
 
-  async contarPorSucursalYRangoDeFechas(
-    organizacionId: string,
-    desde: Date,
-    hasta: Date
-  ): Promise<EstadisticaCheckInPorSucursal[]> {
-    const sucursales = await this.prisma.sucursal.findMany({
-      where: { organizacionId },
-      select: { id: true, nombre: true },
-    });
-    const idsDeLaOrganizacion = sucursales.map((s) => s.id);
-    if (idsDeLaOrganizacion.length === 0) return [];
-
-    const conteos = await this.prisma.checkIn.groupBy({
-      by: ["sucursalId"],
-      where: { sucursalId: { in: idsDeLaOrganizacion }, fechaHora: { gte: desde, lte: hasta } },
-      _count: { _all: true },
+  async listarEnSala(sucursalId: string, desde: Date): Promise<CheckInEnSala[]> {
+    const filas = await this.prisma.checkIn.findMany({
+      where: { sucursalId, fechaHora: { gte: desde }, salidaAt: null },
+      orderBy: { fechaHora: "desc" },
+      include: { miembro: { include: { plan: { select: { nombre: true } } } } },
     });
 
-    return sucursales.map((s) => {
-      const encontrado = conteos.find((c) => c.sucursalId === s.id);
-      return { sucursalId: s.id, nombreSucursal: s.nombre, cantidad: encontrado?._count._all ?? 0 };
+    return filas.map((f) => ({
+      id: f.id,
+      miembroId: f.miembroId,
+      fechaHora: f.fechaHora,
+      miembro: {
+        nombre: f.miembro.nombre,
+        fotoUrl: f.miembro.fotoUrl,
+        sucursalId: f.miembro.sucursalId,
+        fechaVencimiento: f.miembro.fechaVencimiento,
+        planNombre: f.miembro.plan?.nombre ?? null,
+      },
+    }));
+  }
+
+  async marcarSalida(sucursalId: string, miembroId: string, desde: Date, salidaAt: Date): Promise<void> {
+    await this.prisma.checkIn.updateMany({
+      where: { sucursalId, miembroId, fechaHora: { gte: desde }, salidaAt: null },
+      data: { salidaAt },
     });
   }
 }

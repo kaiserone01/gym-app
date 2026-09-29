@@ -12,3 +12,8 @@ export function diaCalendarioCaracas(ahora: Date): Date {
 export function sumarDias(fecha: Date, dias: number): Date {
   return new Date(fecha.getTime() + dias * 86_400_000);
 }
+
+// Instante real en que empieza el día calendario de Caracas (UTC-4, sin horario de verano).
+export function inicioDelDiaCaracas(ahora: Date): Date {
+  return new Date(diaCalendarioCaracas(ahora).getTime() + 4 * 3_600_000);
+}

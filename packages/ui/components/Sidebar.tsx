@@ -6,6 +6,8 @@ import { usePathname } from "next/navigation";
 export interface ItemNav {
   href: string;
   label: string;
+  // Contenido opcional a la derecha del label (ej. un contador).
+  extra?: React.ReactNode;
 }
 
 export function Sidebar({
@@ -43,7 +45,7 @@ export function Sidebar({
               <li key={item.href}>
                 <Link
                   href={item.href}
-                  className="block min-h-11 content-center rounded-lg px-3 py-2 text-sm font-medium transition-colors duration-150"
+                  className="flex min-h-11 items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors duration-150"
                   style={
                     activo
                       ? { background: "var(--gx-accent)", color: "var(--gx-accent-ink)" }
@@ -51,6 +53,7 @@ export function Sidebar({
                   }
                 >
                   {item.label}
+                  {item.extra}
                 </Link>
               </li>
             );

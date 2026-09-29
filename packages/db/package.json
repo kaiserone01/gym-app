@@ -9,6 +9,7 @@
     "db:limpiar-miembros": "tsx limpiarMiembros.ts",
     "db:sembrar-prueba": "tsx sembrarMiembrosPrueba.ts",
     "db:quitar-permisos-entrenadores": "tsx quitarPermisosEntrenadores.ts",
+    "db:backfill-permisos-en-sala": "tsx backfillPermisosEnSala.ts",
     "db:migrar-excel-adrenalina": "tsx migrarExcelAdrenalina.ts",
     "db:migrar-excel-adrenalina:confirm": "tsx migrarExcelAdrenalina.ts --confirm",
     "db:limpiar-migracion-excel-prueba": "tsx limpiarMigracionExcelPrueba.ts",

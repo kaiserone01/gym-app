@@ -10,6 +10,7 @@ const MODULOS: { valor: ModuloPermiso; etiqueta: string }[] = [
   { valor: "CAJA", etiqueta: "Caja" },
   { valor: "USUARIOS", etiqueta: "Usuarios" },
   { valor: "SUCURSALES", etiqueta: "Sucursales" },
+  { valor: "EN_SALA", etiqueta: "En sala" },
 ];
 
 const ACCIONES: { valor: AccionPermiso; etiqueta: string }[] = [

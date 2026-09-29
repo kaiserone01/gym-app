@@ -83,7 +83,7 @@ Imports member data from `docs/xls/DATA ADRENALINA_.xlsm` into a disposable test
 - Check `packages/db/migracion-excel/` before implementing new normalize/classify logic — parts of this may already exist from a prior session.
 
 ## Next.js apps
-- `apps/web-admin/app` — App Router with a `(panel)` route group: `caja`, `cambiar-password`, `configuraciones`, `estadisticas`, `miembros`, `pagos`, `planes`, `sucursales`, `usuarios`; plus `app/login` and API route handlers under `app/api/{auth,caja,checkin,miembros,pagos,planes,tasa-cambio,usuarios}`.
+- `apps/web-admin/app` — App Router with a `(panel)` route group: `caja`, `cambiar-password`, `configuraciones`, `en-sala`, `miembros`, `pagos`, `planes`, `sucursales`, `usuarios`; plus `app/login` and API route handlers under `app/api/{auth,caja,checkin,miembros,pagos,planes,tasa-cambio,usuarios}`.
 - `apps/kiosk` — separate app for member check-in, authenticates via the `Sucursal` API key described above.
 
 ## Planning convention

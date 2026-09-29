@@ -39,7 +39,7 @@ export class SucursalInvalidaError extends Error {
   }
 }
 
-const MODULOS: ModuloPermiso[] = ["MIEMBROS", "PAGOS", "PLANES", "CAJA", "USUARIOS", "SUCURSALES"];
+const MODULOS: ModuloPermiso[] = ["MIEMBROS", "PAGOS", "PLANES", "CAJA", "USUARIOS", "SUCURSALES", "EN_SALA"];
 const ACCIONES: AccionPermiso[] = ["VER", "CREAR", "EDITAR", "ELIMINAR"];
 
 // Nota: esta matriz duplica deliberadamente la de packages/db/backfillPermisosYSucursales.ts
@@ -48,7 +48,7 @@ const ACCIONES: AccionPermiso[] = ["VER", "CREAR", "EDITAR", "ELIMINAR"];
 const PERMISOS_POR_ROL: Record<RolUsuario, Permiso[]> = {
   SOCIO: MODULOS.flatMap((modulo) => ACCIONES.map((accion) => ({ modulo, accion }))),
   GERENTE: [
-    ...(["MIEMBROS", "PAGOS", "CAJA"] as ModuloPermiso[]).flatMap((modulo) =>
+    ...(["MIEMBROS", "PAGOS", "CAJA", "EN_SALA"] as ModuloPermiso[]).flatMap((modulo) =>
       ACCIONES.map((accion) => ({ modulo, accion }))
     ),
     { modulo: "PLANES", accion: "VER" },
@@ -66,6 +66,8 @@ const PERMISOS_POR_ROL: Record<RolUsuario, Permiso[]> = {
     { modulo: "PLANES", accion: "VER" },
     { modulo: "CAJA", accion: "VER" },
     { modulo: "CAJA", accion: "CREAR" },
+    { modulo: "EN_SALA", accion: "VER" },
+    { modulo: "EN_SALA", accion: "EDITAR" },
   ],
   // Los entrenadores son un UsuarioAdmin solo para poder seleccionarse como
   // entrenador en Miembro (ver seed.ts) — no operan el panel, así que no

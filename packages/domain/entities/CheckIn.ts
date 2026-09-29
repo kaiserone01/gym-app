@@ -6,10 +6,19 @@ export interface CheckIn {
   miembroId: string;
   fechaHora: Date;
   estadoAlMomento: EstadoCheckIn;
+  salidaAt: Date | null;
 }
 
-export interface EstadisticaCheckInPorSucursal {
-  sucursalId: string;
-  nombreSucursal: string;
-  cantidad: number;
+// Check-in abierto (sin salida) junto con los datos del miembro necesarios para "En sala".
+export interface CheckInEnSala {
+  id: string;
+  miembroId: string;
+  fechaHora: Date;
+  miembro: {
+    nombre: string;
+    fotoUrl: string | null;
+    sucursalId: string | null;
+    fechaVencimiento: Date | null;
+    planNombre: string | null;
+  };
 }

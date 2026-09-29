@@ -46,7 +46,7 @@ export interface EstadoFormularioUsuario {
   ok?: string;
 }
 
-const MODULOS: ModuloPermiso[] = ["MIEMBROS", "PAGOS", "PLANES", "CAJA", "USUARIOS", "SUCURSALES"];
+const MODULOS: ModuloPermiso[] = ["MIEMBROS", "PAGOS", "PLANES", "CAJA", "USUARIOS", "SUCURSALES", "EN_SALA"];
 const ACCIONES: AccionPermiso[] = ["VER", "CREAR", "EDITAR", "ELIMINAR"];
 
 const SOLO_SOCIO = "Solo el socio puede administrar usuarios.";

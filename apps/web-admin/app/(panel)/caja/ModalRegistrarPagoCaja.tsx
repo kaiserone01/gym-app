@@ -8,7 +8,7 @@ import { Button } from "@gym-app/ui/components/Button";
 import { Input } from "@gym-app/ui/components/Input";
 import { CurrencyInput } from "@gym-app/ui/components/CurrencyInput";
 import { useFeedback, DURACION_MS } from "@gym-app/ui/components/FeedbackOverlay";
-import { BuscadorMiembro, type MiembroConPlan, type PlanParaModal } from "./SelectorMiembroModal";
+import { BuscadorMiembro, aMiembroConPlan, type MiembroConPlan, type PlanParaModal } from "./SelectorMiembroModal";
 import { calcularProyeccionRenovacion } from "./proyeccionRenovacion";
 import { DiasDisponibles } from "../miembros/vencimiento";
 import { formatearBs } from "../tasaBcvFija";
@@ -983,6 +983,7 @@ export function ModalRegistrarPagoCaja({
   reglasAbono,
   entrenadores,
   accionCambiarPlan,
+  miembroInicialId,
   onCerrar,
 }: {
   miembros: Miembro[];
@@ -992,10 +993,16 @@ export function ModalRegistrarPagoCaja({
   reglasAbono: ReglaAbonoPorFrecuencia[];
   entrenadores: EntrenadorParaCambio[];
   accionCambiarPlan: (estado: EstadoCambioPlan, formData: FormData) => Promise<EstadoCambioPlan>;
+  // Miembro ya identificado (ej. "Cobrar ahora" desde /en-sala): se salta el Paso 1.
+  miembroInicialId?: string;
   onCerrar: () => void;
 }) {
-  const [paso, setPaso] = useState<Paso>(1);
-  const [miembroElegido, setMiembroElegido] = useState<MiembroConPlan | null>(null);
+  const [miembroInicial] = useState(() => {
+    const encontrado = miembroInicialId ? miembros.find((m) => m.id === miembroInicialId) : undefined;
+    return encontrado ? aMiembroConPlan(encontrado, new Map(planes.map((p) => [p.id, p]))) : null;
+  });
+  const [paso, setPaso] = useState<Paso>(miembroInicial ? 2 : 1);
+  const [miembroElegido, setMiembroElegido] = useState<MiembroConPlan | null>(miembroInicial);
   const [planElegidoId, setPlanElegidoId] = useState<string | null>(null);
   const [modalidadElegida, setModalidadElegida] = useState<Modalidad>("total");
   const [confirmandoCierre, setConfirmandoCierre] = useState(false);

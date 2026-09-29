@@ -59,7 +59,8 @@ import { FormularioAbrirTurno } from "./FormularioAbrirTurno";
 import { FormularioArqueo } from "./FormularioArqueo";
 import { abrirTurnoAction, registrarEgresoAction, cerrarTurnoAction } from "./actions";
 
-export default async function PaginaCaja() {
+export default async function PaginaCaja({ searchParams }: { searchParams: Promise<{ cobrar?: string }> }) {
+  const { cobrar } = await searchParams;
   const sesion = await obtenerUsuarioDeSesionActual();
   if (!sesion) redirect("/login");
   const { usuario, sucursalActivaId } = sesion;
@@ -120,6 +121,7 @@ export default async function PaginaCaja() {
                 reglasAbono={reglasAbono}
                 entrenadores={entrenadores}
                 accionCambiarPlan={cambiarPlanAction}
+                miembroInicialId={cobrar}
               />
               <BotonRegistrarEgreso accion={registrarEgresoAction} turnoId={resumen.turno.id} />
             </div>

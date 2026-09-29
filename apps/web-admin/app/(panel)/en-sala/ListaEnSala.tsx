@@ -102,7 +102,7 @@ export function ListaEnSala({ puedeMarcarSalida }: { puedeMarcarSalida: boolean 
             <div className="flex w-full gap-2 sm:w-auto">
               {persona.requiereCobro && (
                 <Link
-                  href={`/miembros/${persona.miembroId}`}
+                  href={`/caja?cobrar=${persona.miembroId}`}
                   className="flex min-h-11 flex-1 items-center justify-center rounded-lg px-4 text-sm font-semibold sm:flex-none"
                   style={{ background: "var(--gx-bad)", color: "white" }}
                 >

@@ -70,6 +70,20 @@ export interface MiembroConPlan {
   saldoAFavorUSD: number;
 }
 
+export function aMiembroConPlan(m: Miembro, planesPorId: Map<string, PlanParaModal>): MiembroConPlan {
+  return {
+    id: m.id,
+    nombre: m.nombre,
+    cedula: m.cedula,
+    fotoUrl: m.fotoUrl,
+    fechaVencimiento: m.fechaVencimiento,
+    plan: m.planId ? planesPorId.get(m.planId) : undefined,
+    sucursalId: m.sucursalId,
+    entrenadorId: m.entrenadorId,
+    saldoAFavorUSD: m.saldoAFavorUSD,
+  };
+}
+
 /**
  * Contenido de búsqueda de miembro por nombre/cédula (mínimo 3
  * caracteres) con resultados en cards — usado tanto por
@@ -100,17 +114,7 @@ export function BuscadorMiembro({
     return miembros
       .filter((m) => `${m.nombre} ${m.cedula}`.toLowerCase().includes(busquedaAplicada))
       .slice(0, 20)
-      .map((m) => ({
-        id: m.id,
-        nombre: m.nombre,
-        cedula: m.cedula,
-        fotoUrl: m.fotoUrl,
-        fechaVencimiento: m.fechaVencimiento,
-        plan: m.planId ? planesPorId.get(m.planId) : undefined,
-        sucursalId: m.sucursalId,
-        entrenadorId: m.entrenadorId,
-        saldoAFavorUSD: m.saldoAFavorUSD,
-      }));
+      .map((m) => aMiembroConPlan(m, planesPorId));
   }, [miembros, busquedaAplicada, planesPorId]);
 
   const textoBase = grande ? "text-base" : "text-sm";

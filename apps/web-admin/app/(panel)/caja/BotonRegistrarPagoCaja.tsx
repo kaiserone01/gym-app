@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import type { Miembro } from "@gym-app/domain/entities/Miembro";
 import type { MetodoPago } from "@gym-app/domain/entities/MetodoPago";
 import type { ReglaAbonoPorFrecuencia } from "@gym-app/domain/entities/ReglaAbono";
@@ -18,6 +19,7 @@ export function BotonRegistrarPagoCaja({
   reglasAbono,
   entrenadores,
   accionCambiarPlan,
+  miembroInicialId,
 }: {
   miembros: Miembro[];
   planes: PlanParaModal[];
@@ -29,8 +31,11 @@ export function BotonRegistrarPagoCaja({
   // elegido incluye entrenador.
   entrenadores: EntrenadorResumen[];
   accionCambiarPlan: (estado: EstadoCambioPlan, formData: FormData) => Promise<EstadoCambioPlan>;
+  // Viene de /caja?cobrar=<id> ("Cobrar ahora" en En sala): abre el wizard con ese miembro ya elegido.
+  miembroInicialId?: string;
 }) {
-  const [modalAbierta, setModalAbierta] = useState(false);
+  const router = useRouter();
+  const [modalAbierta, setModalAbierta] = useState(!!miembroInicialId);
 
   return (
     <>
@@ -44,7 +49,12 @@ export function BotonRegistrarPagoCaja({
           reglasAbono={reglasAbono}
           entrenadores={entrenadores}
           accionCambiarPlan={accionCambiarPlan}
-          onCerrar={() => setModalAbierta(false)}
+          miembroInicialId={miembroInicialId}
+          onCerrar={() => {
+            setModalAbierta(false);
+            // Quita ?cobrar para que recargar la página no reabra el wizard.
+            if (miembroInicialId) router.replace("/caja");
+          }}
         />
       )}
     </>

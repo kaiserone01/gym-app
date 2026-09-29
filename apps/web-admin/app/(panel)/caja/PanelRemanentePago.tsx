@@ -14,6 +14,7 @@ export function PanelRemanentePago({
   tasaReferencia,
   proyeccion,
   modalidad,
+  acoplado = false,
 }: {
   lineas: LineaMostrada[];
   montoObjetivo: number;
@@ -29,6 +30,8 @@ export function PanelRemanentePago({
   // Determina el copy del mensaje y el título de la lista (ver diseño
   // acordado: en Total/Abono no se "distribuye" nada, es un solo canal).
   modalidad: "total" | "abono" | "combinado";
+  // true = va dentro de la columna lateral del asistente en vez de flotar abajo a la derecha.
+  acoplado?: boolean;
 }) {
   const sumaLineas = lineas.reduce((suma, l) => suma + l.monto, 0);
   // Comparación simple y directa contra el precio del plan — nunca contra
@@ -48,7 +51,7 @@ export function PanelRemanentePago({
 
   return (
     <div
-      className="fixed bottom-6 right-6 z-[60] w-72 rounded-xl border-2 p-4 shadow-2xl"
+      className={acoplado ? "rounded-xl border-2 p-4" : "fixed bottom-6 right-6 z-[60] w-72 rounded-xl border-2 p-4 shadow-2xl"}
       style={{ borderColor: "var(--gx-accent)", background: "var(--gx-surface)" }}
     >
       {proyeccion && (

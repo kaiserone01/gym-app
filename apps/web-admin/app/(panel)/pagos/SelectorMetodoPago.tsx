@@ -112,6 +112,7 @@ export function SelectorMetodoPago({
   grande = false,
   avisoServidor,
   ocultarNumeroOperacion = false,
+  compacto = false,
   numeroOperacion: numeroOperacionProp,
   onCambioNumeroOperacion: onCambioNumeroOperacionProp,
 }: {
@@ -143,6 +144,8 @@ export function SelectorMetodoPago({
   // estado — el padre pasa numeroOperacion/onCambioNumeroOperacion y
   // renderiza su propio <Input>, en el lugar que le convenga.
   ocultarNumeroOperacion?: boolean;
+  // Íconos y espaciados más chicos (mismo tamaño de texto) para que el asistente de Caja no haga scroll.
+  compacto?: boolean;
   numeroOperacion?: string;
   onCambioNumeroOperacion?: (valor: string) => void;
 }) {
@@ -254,7 +257,7 @@ export function SelectorMetodoPago({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-3 gap-2">
+      <div className={compacto ? "grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6" : "grid grid-cols-3 gap-2"}>
         {tiposDisponibles.map((tipo) => {
           const Icono = ICONO_TIPO[tipo];
           const seleccionado = tipoAbierto === tipo;
@@ -263,7 +266,7 @@ export function SelectorMetodoPago({
               key={tipo}
               type="button"
               onClick={() => elegirTipo(tipo)}
-              className="flex flex-col items-center gap-1.5 rounded-lg border-2 p-3 transition-colors duration-150 active:scale-95"
+              className={`flex items-center rounded-lg border-2 transition-colors duration-150 active:scale-95 ${compacto ? "flex-row gap-2 px-2 py-1.5 [&_svg]:h-5 [&_svg]:w-5" : "flex-col gap-1.5 p-3"}`}
               style={
                 seleccionado
                   ? { borderColor: "var(--gx-accent)", background: "color-mix(in srgb, var(--gx-accent) 12%, transparent)" }
@@ -273,7 +276,7 @@ export function SelectorMetodoPago({
               <span style={{ color: seleccionado ? "var(--gx-accent)" : "var(--gx-muted)" }}>
                 <Icono />
               </span>
-              <span className={`${textoTipo} font-medium text-center`} style={{ color: "var(--gx-ink)" }}>
+              <span className={`${textoTipo} font-medium ${compacto ? "text-left leading-tight" : "text-center"}`} style={{ color: "var(--gx-ink)" }}>
                 {ETIQUETA_TIPO_METODO_PAGO[tipo]}
               </span>
             </button>
@@ -282,13 +285,13 @@ export function SelectorMetodoPago({
       </div>
 
       {tipoAbierto && instanciasDelTipo.length > 1 && (
-        <div className="grid grid-cols-2 gap-2">
+        <div className={compacto ? "grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-4" : "grid grid-cols-2 gap-2"}>
           {instanciasDelTipo.map((instancia) => (
             <button
               key={instancia.id}
               type="button"
               onClick={() => setMetodoId(instancia.id)}
-              className="flex items-center gap-2 rounded-lg border-2 p-2.5 text-left transition-colors duration-150 active:scale-95"
+              className={`flex items-center gap-2 rounded-lg border-2 text-left transition-colors duration-150 active:scale-95 ${compacto ? "p-1.5" : "p-2.5"}`}
               style={
                 metodoId === instancia.id
                   ? { borderColor: "var(--gx-accent)", background: "color-mix(in srgb, var(--gx-accent) 12%, transparent)" }
@@ -351,7 +354,7 @@ export function SelectorMetodoPago({
 
       {esEnBs && tasa !== null && (
         <div
-          className={`rounded-lg border p-3 ${grande ? "text-base" : "text-sm"}`}
+          className={`rounded-lg border ${compacto ? "p-2" : "p-3"} ${grande ? "text-base" : "text-sm"}`}
           style={{ borderColor: "var(--gx-edge)", background: "var(--gx-surface-2)" }}
         >
           <div className="flex justify-between">

@@ -67,9 +67,9 @@ function Avatar({ fotoUrl, nombre }: { fotoUrl: string | null; nombre: string })
   );
 }
 
-function BarraProgreso({ paso }: { paso: Paso }) {
+function BarraProgreso({ paso, compacta = false }: { paso: Paso; compacta?: boolean }) {
   return (
-    <div className="mb-6 flex items-center gap-2">
+    <div className={`${compacta ? "mb-3" : "mb-6"} flex items-center gap-2`}>
       {([1, 2, 3, 4] as Paso[]).map((n) => (
         <div key={n} className="flex flex-1 items-center gap-2">
           <div
@@ -168,47 +168,26 @@ function ContenidoPaso2({
     !cambiandoPlan && planEfectivo ? calcularProyeccionRenovacion(miembro.fechaVencimiento, planEfectivo.diasCiclo) : null;
 
   return (
-    <div className="flex flex-col gap-5 text-base">
-      <div className="flex items-center gap-4">
-        <Avatar fotoUrl={miembro.fotoUrl} nombre={miembro.nombre} />
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-lg font-semibold" style={{ color: "var(--gx-ink)" }}>
-            {miembro.nombre}
+    <div className="flex min-h-0 flex-1 flex-col gap-4 text-base lg:flex-row lg:gap-6">
+      <div className="flex min-w-0 flex-col gap-4 lg:flex-1 lg:overflow-y-auto lg:pr-2">
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-lg font-semibold" style={{ color: "var(--gx-ink)" }}>
+            Plan y forma de pago
           </p>
-          <p style={{ color: "var(--gx-muted)" }}>{miembro.cedula}</p>
+          {miembro.plan && !cambiandoPlan && (
+            <button
+              type="button"
+              onClick={() => {
+                setCambiandoPlan(true);
+                setProyeccionCambioPlan(null);
+              }}
+              className="min-h-9 shrink-0 rounded-lg border px-3 text-sm font-medium"
+              style={{ borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }}
+            >
+              Cambiar plan
+            </button>
+          )}
         </div>
-        {/* Aprovecha el espacio vacío del bloque de identidad — permite
-            cambiar el plan de cualquier miembro desde acá (ver diseño
-            acordado), no solo asignar uno a quien no tiene ninguno. */}
-        {miembro.plan && !cambiandoPlan && (
-          <button
-            type="button"
-            onClick={() => {
-              setCambiandoPlan(true);
-              setProyeccionCambioPlan(null);
-            }}
-            className="min-h-9 shrink-0 rounded-lg border px-3 text-sm font-medium"
-            style={{ borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }}
-          >
-            Cambiar plan
-          </button>
-        )}
-      </div>
-
-      <div className="flex justify-between">
-        <span style={{ color: "var(--gx-muted)" }}>Vencimiento</span>
-        <DiasDisponibles fechaVencimiento={miembro.fechaVencimiento} />
-      </div>
-
-      {miembro.saldoAFavorUSD > 0 && (
-        <p
-          className="rounded-lg px-3 py-2 text-sm font-medium"
-          style={{ background: "color-mix(in srgb, var(--gx-accent) 15%, transparent)", color: "var(--gx-accent)" }}
-        >
-          Saldo a favor: ${miembro.saldoAFavorUSD.toFixed(2)} — se descuenta automáticamente del pago.
-        </p>
-      )}
-
       {cambiandoPlan && tieneCicloVigente && miembro.plan ? (
         <div className="flex flex-col gap-3 rounded-lg border p-4" style={{ borderColor: "var(--gx-accent)" }}>
           <p className="text-xs" style={{ color: "var(--gx-muted)" }}>
@@ -291,38 +270,6 @@ function ContenidoPaso2({
         </label>
       )}
 
-      {/* Cambiando de plan: un solo pronóstico, el del único camino de
-          cálculo — nunca el de renovación normal a la vez (corrige E6:
-          antes se mostraban dos números distintos, sin prorrateo acá y
-          prorrateado en el formulario). Sin plan nuevo elegido todavía, no
-          se muestra nada. */}
-      {cambiandoPlan && proyeccionCambioPlan && (
-        <div className="rounded-lg border p-4" style={{ borderColor: "var(--gx-accent)" }}>
-          <p style={{ color: "var(--gx-ink)" }}>
-            {proyeccionCambioPlan.resultado.montoCobradoCentavos > 0
-              ? `Se cobra $${(proyeccionCambioPlan.resultado.montoCobradoCentavos / 100).toFixed(2)} — `
-              : "Sin costo adicional — "}
-            nuevo vencimiento{" "}
-            <strong>{formatearFechaCorta(proyeccionCambioPlan.resultado.nuevoVencimiento)}</strong>.
-          </p>
-        </div>
-      )}
-
-      {!cambiandoPlan && proyeccionRenovacionNormal && (
-        <div className="rounded-lg border p-4" style={{ borderColor: "var(--gx-edge)" }}>
-          <p style={{ color: "var(--gx-ink)" }}>
-            Al pagar la renovación, disfrutará de <strong>{proyeccionRenovacionNormal.diasDelPlan} días</strong>
-            {proyeccionRenovacionNormal.adelantandoCuota && (
-              <> ({proyeccionRenovacionNormal.diasTotalesTrasPago} días en total, incluyendo los días restantes)</>
-            )}
-            .
-          </p>
-          <p className="mt-2" style={{ color: "var(--gx-muted)" }}>
-            Próximo vencimiento: {formatearFechaCorta(proyeccionRenovacionNormal.fechaProximoVencimiento)}
-          </p>
-        </div>
-      )}
-
       {planEfectivo && planEfectivo.precioUSD > 0 && (
         <div className="flex flex-col gap-2">
           <div className="flex gap-2">
@@ -375,7 +322,64 @@ function ContenidoPaso2({
         </div>
       )}
 
-      <div className="mt-2 flex gap-3">
+      </div>
+      <aside className="flex flex-col gap-4 lg:w-80 lg:shrink-0 lg:overflow-y-auto lg:border-l lg:pl-6" style={{ borderColor: "var(--gx-edge)" }}>
+        <div className="flex items-center gap-4">
+          <Avatar fotoUrl={miembro.fotoUrl} nombre={miembro.nombre} />
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-lg font-semibold" style={{ color: "var(--gx-ink)" }}>
+              {miembro.nombre}
+            </p>
+            <p style={{ color: "var(--gx-muted)" }}>{miembro.cedula}</p>
+          </div>
+        </div>
+      <div className="flex justify-between">
+        <span style={{ color: "var(--gx-muted)" }}>Vencimiento</span>
+        <DiasDisponibles fechaVencimiento={miembro.fechaVencimiento} />
+      </div>
+
+      {miembro.saldoAFavorUSD > 0 && (
+        <p
+          className="rounded-lg px-3 py-2 text-sm font-medium"
+          style={{ background: "color-mix(in srgb, var(--gx-accent) 15%, transparent)", color: "var(--gx-accent)" }}
+        >
+          Saldo a favor: ${miembro.saldoAFavorUSD.toFixed(2)} — se descuenta automáticamente del pago.
+        </p>
+      )}
+
+      {/* Cambiando de plan: un solo pronóstico, el del único camino de
+          cálculo — nunca el de renovación normal a la vez (corrige E6:
+          antes se mostraban dos números distintos, sin prorrateo acá y
+          prorrateado en el formulario). Sin plan nuevo elegido todavía, no
+          se muestra nada. */}
+      {cambiandoPlan && proyeccionCambioPlan && (
+        <div className="rounded-lg border p-4" style={{ borderColor: "var(--gx-accent)" }}>
+          <p style={{ color: "var(--gx-ink)" }}>
+            {proyeccionCambioPlan.resultado.montoCobradoCentavos > 0
+              ? `Se cobra $${(proyeccionCambioPlan.resultado.montoCobradoCentavos / 100).toFixed(2)} — `
+              : "Sin costo adicional — "}
+            nuevo vencimiento{" "}
+            <strong>{formatearFechaCorta(proyeccionCambioPlan.resultado.nuevoVencimiento)}</strong>.
+          </p>
+        </div>
+      )}
+
+      {!cambiandoPlan && proyeccionRenovacionNormal && (
+        <div className="rounded-lg border p-4" style={{ borderColor: "var(--gx-edge)" }}>
+          <p style={{ color: "var(--gx-ink)" }}>
+            Al pagar la renovación, disfrutará de <strong>{proyeccionRenovacionNormal.diasDelPlan} días</strong>
+            {proyeccionRenovacionNormal.adelantandoCuota && (
+              <> ({proyeccionRenovacionNormal.diasTotalesTrasPago} días en total, incluyendo los días restantes)</>
+            )}
+            .
+          </p>
+          <p className="mt-2" style={{ color: "var(--gx-muted)" }}>
+            Próximo vencimiento: {formatearFechaCorta(proyeccionRenovacionNormal.fechaProximoVencimiento)}
+          </p>
+        </div>
+      )}
+
+      <div className="mt-auto flex gap-3 pt-2">
         <Button type="button" variant="secundario" className="min-h-12 flex-1 text-base" onClick={onVolver}>
           Volver
         </Button>
@@ -388,6 +392,7 @@ function ContenidoPaso2({
           Continuar
         </Button>
       </div>
+      </aside>
     </div>
   );
 }
@@ -413,6 +418,8 @@ function nuevaLineaVacia(): LineaFormulario {
 }
 
 function ContenidoPaso3({
+  miembro,
+  planNombre,
   miembroId,
   planId,
   monto: montoSugerido,
@@ -430,6 +437,9 @@ function ContenidoPaso3({
   onVolver,
   onPagoRegistrado,
 }: {
+  // Para el resumen de la columna lateral.
+  miembro: MiembroConPlan;
+  planNombre: string;
   miembroId: string;
   planId: string;
   // Precio de lista del plan — punto de partida del monto objetivo, que
@@ -588,7 +598,7 @@ function ContenidoPaso3({
     : montoSugerido === 0 || (lineasParaEnviar.length > 0 && lineasParaEnviar.every((l) => l.metodoPagoId));
 
   return (
-    <form action={enviar} className="flex flex-col gap-4 text-base">
+    <form action={enviar} className="flex min-h-0 flex-1 flex-col gap-4 text-base lg:flex-row lg:gap-6">
       <input type="hidden" name="miembroId" value={miembroId} />
       <input type="hidden" name="planId" value={planId} />
       <input type="hidden" name="origen" value="caja" />
@@ -603,51 +613,7 @@ function ContenidoPaso3({
         )}
       />
 
-      {montoSugerido > 0 && deudaMiembro && (
-        <div
-          className="flex flex-col gap-2 rounded-lg border-2 px-3 py-3"
-          style={{ borderColor: "var(--gx-warn)", background: "color-mix(in srgb, var(--gx-warn) 8%, transparent)" }}
-        >
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <span className="flex flex-wrap items-center gap-2 text-sm font-semibold" style={{ color: "var(--gx-ink)" }}>
-              <Badge tono="ambar">Deuda pendiente</Badge>
-              Debe ${deudaMiembro.totalUSD.toFixed(2)} en productos
-            </span>
-            <button
-              type="button"
-              onClick={() => setDetalleDeudaAbierto(true)}
-              className="text-sm font-medium hover:underline"
-              style={{ color: "var(--gx-accent)" }}
-            >
-              Ver detalles
-            </button>
-          </div>
-          <label className="flex min-h-11 items-center gap-2 text-sm" style={{ color: "var(--gx-ink)" }}>
-            <input
-              type="checkbox"
-              checked={incluirDeudas}
-              onChange={(e) => setIncluirDeudas(e.target.checked)}
-              className="h-5 w-5 accent-[var(--gx-accent)]"
-            />
-            Cobrar también los productos pendientes
-          </label>
-          {incluirDeudas && (
-            <div className="flex flex-wrap justify-between gap-2 text-sm">
-              <span style={{ color: "var(--gx-muted)" }}>
-                Membresía ${montoObjetivo.toFixed(2)} + productos ${deudaMiembro.totalUSD.toFixed(2)}
-              </span>
-              <span className="font-semibold" style={{ color: "var(--gx-ink)" }}>
-                Total ${(montoObjetivo + deudaMiembro.totalUSD).toFixed(2)}
-                {tasaActual !== null && ` · Bs. ${formatearBs((montoObjetivo + deudaMiembro.totalUSD) * tasaActual)}`}
-              </span>
-            </div>
-          )}
-        </div>
-      )}
-      {detalleDeudaAbierto && deudaMiembro && (
-        <ModalDetalleDeuda grupo={deudaMiembro} tasaActual={tasaActual} onCerrar={() => setDetalleDeudaAbierto(false)} />
-      )}
-
+      <div className="flex min-w-0 flex-col gap-4 lg:flex-1 lg:overflow-y-auto lg:pr-2">
       {/* Total, y Combinado cuando el plan no admite abono: monto fijo, sin campo editable. */}
       {montoSugerido > 0 && !esAbono && (modalidad === "total" || montoObjetivoBloqueado) && (
         <div className="flex justify-between rounded-lg px-3 py-2 text-sm" style={{ background: "var(--gx-surface-2)" }}>
@@ -686,6 +652,7 @@ function ContenidoPaso3({
           monto para calcular la tasa en Bs, no como monto a cobrar. */}
       {esAbono && montoSugerido > 0 && (
         <SelectorMetodoPago
+          compacto
           metodos={metodosPago}
           monto={montoSugerido}
           onCambio={(seleccion) =>
@@ -773,6 +740,7 @@ function ContenidoPaso3({
 
       {montoObjetivo > 0 && !esAbono && modalidad !== "combinado" && (
         <SelectorMetodoPago
+          compacto
           metodos={metodosPago}
           monto={montoObjetivo + deudaAPagar}
           onCambio={(seleccion) => setLineaUnica((prev) => ({ ...prev, monto: String(montoObjetivo), seleccion }))}
@@ -839,6 +807,7 @@ function ContenidoPaso3({
                         precio del plan como referencia para calcular la
                         tasa en Bs. */}
                     <SelectorMetodoPago
+          compacto
                       metodos={metodosPago}
                       monto={montoLinea > 0 ? montoLinea : montoSugerido}
                       onCambio={(seleccion) =>
@@ -941,12 +910,81 @@ function ContenidoPaso3({
         </div>
       )}
 
+      {montoSugerido === 0 && (
+        <p className="text-sm" style={{ color: "var(--gx-muted)" }}>
+          Este plan no tiene costo — no hace falta elegir método de pago.
+        </p>
+      )}
+
+      </div>
+      <aside className="flex flex-col gap-4 lg:w-80 lg:shrink-0 lg:overflow-y-auto lg:border-l lg:pl-6" style={{ borderColor: "var(--gx-edge)" }}>
+        <div className="flex items-center gap-4">
+          <Avatar fotoUrl={miembro.fotoUrl} nombre={miembro.nombre} />
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-lg font-semibold" style={{ color: "var(--gx-ink)" }}>
+              {miembro.nombre}
+            </p>
+            <p style={{ color: "var(--gx-muted)" }}>{miembro.cedula}</p>
+          </div>
+        </div>
+        <div className="flex justify-between">
+          <span style={{ color: "var(--gx-muted)" }}>Plan</span>
+          <span className="font-medium" style={{ color: "var(--gx-ink)" }}>
+            {planNombre}
+          </span>
+        </div>
+      {montoSugerido > 0 && deudaMiembro && (
+        <div
+          className="flex flex-col gap-2 rounded-lg border-2 px-3 py-3"
+          style={{ borderColor: "var(--gx-warn)", background: "color-mix(in srgb, var(--gx-warn) 8%, transparent)" }}
+        >
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="flex flex-wrap items-center gap-2 text-sm font-semibold" style={{ color: "var(--gx-ink)" }}>
+              <Badge tono="ambar">Deuda pendiente</Badge>
+              Debe ${deudaMiembro.totalUSD.toFixed(2)} en productos
+            </span>
+            <button
+              type="button"
+              onClick={() => setDetalleDeudaAbierto(true)}
+              className="text-sm font-medium hover:underline"
+              style={{ color: "var(--gx-accent)" }}
+            >
+              Ver detalles
+            </button>
+          </div>
+          <label className="flex min-h-11 items-center gap-2 text-sm" style={{ color: "var(--gx-ink)" }}>
+            <input
+              type="checkbox"
+              checked={incluirDeudas}
+              onChange={(e) => setIncluirDeudas(e.target.checked)}
+              className="h-5 w-5 accent-[var(--gx-accent)]"
+            />
+            Cobrar también los productos pendientes
+          </label>
+          {incluirDeudas && (
+            <div className="flex flex-wrap justify-between gap-2 text-sm">
+              <span style={{ color: "var(--gx-muted)" }}>
+                Membresía ${montoObjetivo.toFixed(2)} + productos ${deudaMiembro.totalUSD.toFixed(2)}
+              </span>
+              <span className="font-semibold" style={{ color: "var(--gx-ink)" }}>
+                Total ${(montoObjetivo + deudaMiembro.totalUSD).toFixed(2)}
+                {tasaActual !== null && ` · Bs. ${formatearBs((montoObjetivo + deudaMiembro.totalUSD) * tasaActual)}`}
+              </span>
+            </div>
+          )}
+        </div>
+      )}
+      {detalleDeudaAbierto && deudaMiembro && (
+        <ModalDetalleDeuda grupo={deudaMiembro} tasaActual={tasaActual} onCerrar={() => setDetalleDeudaAbierto(false)} />
+      )}
+
       {/* Panel flotante — desacoplado del modal para las 3 modalidades (ver
           diseño acordado: evita saturar/refrescar el modal). En Total y
           Abono, lineasActivas ya resuelve a una sola línea equivalente
           (ver definición arriba); en Fraccionado, a las N fracciones. */}
       {montoSugerido > 0 && (
         <PanelRemanentePago
+          acoplado
           lineas={lineasActivas.map((l) => ({ metodo: l.seleccion.metodo, monto: Number(l.monto) || 0 }))}
           // El objetivo real a cubrir es el precio del plan — montoObjetivo
           // ya ES la suma de las fracciones en Fraccionado (ver diseño
@@ -962,13 +1000,7 @@ function ContenidoPaso3({
         />
       )}
 
-      {montoSugerido === 0 && (
-        <p className="text-sm" style={{ color: "var(--gx-muted)" }}>
-          Este plan no tiene costo — no hace falta elegir método de pago.
-        </p>
-      )}
-
-      <div className="mt-2 flex gap-3">
+      <div className="mt-auto flex gap-3 pt-2">
         <Button
           type="button"
           variant="secundario"
@@ -982,6 +1014,7 @@ function ContenidoPaso3({
           {enviando ? "Registrando..." : "Registrar pago"}
         </Button>
       </div>
+      </aside>
     </form>
   );
 }
@@ -1070,6 +1103,9 @@ export function ModalRegistrarPagoCaja({
   const [confirmandoCierre, setConfirmandoCierre] = useState(false);
   const [fechaFinCicloFinal, setFechaFinCicloFinal] = useState<Date | null>(null);
 
+  // Pasos 2 y 3: panel alto pegado al borde derecho, con columna lateral de contexto, para no hacer scroll.
+  const ancho = paso === 2 || paso === 3;
+
   function pedirCierre() {
     if (paso === 1 || paso === 4) {
       onCerrar();
@@ -1080,7 +1116,7 @@ export function ModalRegistrarPagoCaja({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      className={`fixed inset-0 z-50 flex ${ancho ? "items-stretch justify-end" : "items-center justify-center p-4"}`}
       style={{ background: "color-mix(in srgb, black 60%, transparent)" }}
       role="dialog"
       aria-modal="true"
@@ -1088,7 +1124,7 @@ export function ModalRegistrarPagoCaja({
       onClick={pedirCierre}
     >
       <div
-        className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-y-auto rounded-2xl border-2 p-8 text-base"
+        className={`flex w-full flex-col text-base ${ancho ? "h-dvh max-w-[72rem] overflow-y-auto border-l-2 p-4 sm:rounded-l-2xl lg:overflow-hidden lg:p-6" : "max-h-[90vh] max-w-2xl overflow-y-auto rounded-2xl border-2 p-8"}`}
         style={{ borderColor: "var(--gx-accent)", background: "var(--gx-surface)" }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -1107,7 +1143,7 @@ export function ModalRegistrarPagoCaja({
           </button>
         </div>
 
-        <BarraProgreso paso={paso} />
+        <BarraProgreso paso={paso} compacta={ancho} />
 
         {confirmandoCierre && (
           <div
@@ -1168,6 +1204,8 @@ export function ModalRegistrarPagoCaja({
 
         {paso === 3 && miembroElegido && planElegidoId && (
           <ContenidoPaso3
+            miembro={miembroElegido}
+            planNombre={(planes.find((p) => p.id === planElegidoId) ?? miembroElegido.plan)?.nombre ?? "—"}
             miembroId={miembroElegido.id}
             planId={planElegidoId}
             monto={

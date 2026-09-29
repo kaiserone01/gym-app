@@ -1,0 +1,262 @@
+[
+  {
+    "slug": "whey",
+    "nombre": "Proteína Whey 2 lb",
+    "descripcion": "Proteína de suero de leche para recuperación muscular.",
+    "costoUSD": 38,
+    "imagen": "imagenes/whey.webp",
+    "fuente": {
+      "titulo": "File:Apollo Vanilla Protein Powder.jpg",
+      "autor": "Kbaker22",
+      "licencia": "CC BY-SA 4.0",
+      "enlace": "https://commons.wikimedia.org/wiki/File:Apollo_Vanilla_Protein_Powder.jpg"
+    }
+  },
+  {
+    "slug": "creatina",
+    "nombre": "Creatina HMB 240 g",
+    "descripcion": "Creatina en polvo para fuerza y rendimiento.",
+    "costoUSD": 24,
+    "imagen": "imagenes/creatina.webp",
+    "fuente": {
+      "titulo": "HMB Creatine Adsense",
+      "autor": "Blonyx",
+      "licencia": "by 2.0",
+      "enlace": "https://www.flickr.com/photos/120714632@N04/24746368121"
+    }
+  },
+  {
+    "slug": "guantines",
+    "nombre": "Guantines de gimnasio",
+    "descripcion": "Guantes acolchados para pesas, talla única.",
+    "costoUSD": 12,
+    "imagen": "imagenes/guantines.webp",
+    "fuente": {
+      "titulo": "File:Bicycle glove.jpg",
+      "autor": "Paul Watson from Waterford, Ireland",
+      "licencia": "CC BY 2.0",
+      "enlace": "https://commons.wikimedia.org/wiki/File:Bicycle_glove.jpg"
+    }
+  },
+  {
+    "slug": "guantes-boxeo",
+    "nombre": "Guantes de boxeo 12 oz",
+    "descripcion": "Guantes de entrenamiento de cuero sintético.",
+    "costoUSD": 28,
+    "imagen": "imagenes/guantes-boxeo.webp",
+    "fuente": {
+      "titulo": "File:Boxing gloves.jpg",
+      "autor": "en:User:Andman8",
+      "licencia": "CC BY 2.5",
+      "enlace": "https://commons.wikimedia.org/wiki/File:Boxing_gloves.jpg"
+    }
+  },
+  {
+    "slug": "balsamo-analgesico",
+    "nombre": "Bálsamo analgésico muscular",
+    "descripcion": "Bálsamo para dolores musculares y articulares.",
+    "costoUSD": 5.5,
+    "imagen": "imagenes/balsamo-analgesico.webp",
+    "fuente": {
+      "titulo": "File:Tigerbalm.jpg",
+      "autor": "Steffen Buus Kristensen",
+      "licencia": "CC BY-SA 3.0",
+      "enlace": "https://commons.wikimedia.org/wiki/File:Tigerbalm.jpg"
+    }
+  },
+  {
+    "slug": "gatorade",
+    "nombre": "Gatorade 500 ml",
+    "descripcion": "Bebida hidratante con electrolitos.",
+    "costoUSD": 2,
+    "imagen": "imagenes/gatorade.webp",
+    "fuente": {
+      "titulo": "File:Gatorade4products.jpg",
+      "autor": "Jeff Taylor",
+      "licencia": "CC BY-SA 2.0",
+      "enlace": "https://commons.wikimedia.org/wiki/File:Gatorade4products.jpg"
+    }
+  },
+  {
+    "slug": "gatorade-polvo",
+    "nombre": "Gatorade en polvo (sobres)",
+    "descripcion": "Sobres para preparar bebida hidratante.",
+    "costoUSD": 1.5,
+    "imagen": "imagenes/gatorade-polvo.webp",
+    "fuente": {
+      "titulo": "File:FitSeries.jpg",
+      "autor": "Smalls5985",
+      "licencia": "CC BY-SA 3.0",
+      "enlace": "https://commons.wikimedia.org/wiki/File:FitSeries.jpg"
+    }
+  },
+  {
+    "slug": "barra-proteina",
+    "nombre": "Barra de proteína Larabar",
+    "descripcion": "Barra de frutas y nueces, sin gluten.",
+    "costoUSD": 3,
+    "imagen": "imagenes/barra-proteina.webp",
+    "fuente": {
+      "titulo": "File:Larabar.jpg",
+      "autor": "Bradley Stemke from Seattle, Washington, USA",
+      "licencia": "CC BY 2.0",
+      "enlace": "https://commons.wikimedia.org/wiki/File:Larabar.jpg"
+    }
+  },
+  {
+    "slug": "barra-energetica",
+    "nombre": "Barra energética Thorpedo",
+    "descripcion": "Barra nutritiva para antes del entrenamiento.",
+    "costoUSD": 2.5,
+    "imagen": "imagenes/barra-energetica.webp",
+    "fuente": {
+      "titulo": "File:Ian Thorpe Thorpedo - The brand energy bar.jpg",
+      "autor": "https://www.flickr.com/photos/stephanieasher/ S.C. Asher",
+      "licencia": "CC BY-SA 2.0",
+      "enlace": "https://commons.wikimedia.org/wiki/File:Ian_Thorpe_Thorpedo_-_The_brand_energy_bar.jpg"
+    }
+  },
+  {
+    "slug": "shaker",
+    "nombre": "Shaker mezclador 700 ml",
+    "descripcion": "Vaso mezclador con tapa y bola de acero.",
+    "costoUSD": 7,
+    "imagen": "imagenes/shaker.webp",
+    "fuente": {
+      "titulo": "Slinging #free #shaker bottles with every purchase this week! #absolutenutrition #metabolicnutrition #moreforyourmoney #blueknowsbest #youcanneverhavetoomany",
+      "autor": "absnutrition",
+      "licencia": "by 2.0",
+      "enlace": "https://www.flickr.com/photos/57064380@N06/8658577238"
+    }
+  },
+  {
+    "slug": "toalla",
+    "nombre": "Toalla deportiva naranja",
+    "descripcion": "Toalla de algodón de secado rápido.",
+    "costoUSD": 6,
+    "imagen": "imagenes/toalla.webp",
+    "fuente": {
+      "titulo": "File:Handtuch.jpg",
+      "autor": "Ryj",
+      "licencia": "Public domain",
+      "enlace": "https://commons.wikimedia.org/wiki/File:Handtuch.jpg"
+    }
+  },
+  {
+    "slug": "cuerda",
+    "nombre": "Cuerda de saltar",
+    "descripcion": "Cuerda con mangos antideslizantes.",
+    "costoUSD": 5,
+    "imagen": "imagenes/cuerda.webp",
+    "fuente": {
+      "titulo": "File:BeadedRope.jpg",
+      "autor": "",
+      "licencia": "CC BY-SA 3.0",
+      "enlace": "https://commons.wikimedia.org/wiki/File:BeadedRope.jpg"
+    }
+  },
+  {
+    "slug": "banda",
+    "nombre": "Bandas elásticas de resistencia",
+    "descripcion": "Bandas de látex para ejercicios de fuerza.",
+    "costoUSD": 8,
+    "imagen": "imagenes/banda.webp",
+    "fuente": {
+      "titulo": "Resistance Bands",
+      "autor": "tony.bell253",
+      "licencia": "by 2.0",
+      "enlace": "https://www.flickr.com/photos/201223056@N02/53919237325"
+    }
+  },
+  {
+    "slug": "munequera",
+    "nombre": "Muñequera de soporte",
+    "descripcion": "Muñequera con soporte rígido ajustable.",
+    "costoUSD": 9,
+    "imagen": "imagenes/munequera.webp",
+    "fuente": {
+      "titulo": "File:Wrist guard 2.jpg",
+      "autor": "Tiia Monto",
+      "licencia": "CC BY-SA 3.0",
+      "enlace": "https://commons.wikimedia.org/wiki/File:Wrist_guard_2.jpg"
+    }
+  },
+  {
+    "slug": "zma",
+    "nombre": "ZMA Zinc y Magnesio 90 cápsulas",
+    "descripcion": "Suplemento para descanso y recuperación.",
+    "costoUSD": 18,
+    "imagen": "imagenes/zma.webp",
+    "fuente": {
+      "titulo": "File:Bottle of ZMA (02171).jpg",
+      "autor": "User Supplements on en.wikipedia",
+      "licencia": "Copyrighted free use",
+      "enlace": "https://commons.wikimedia.org/wiki/File:Bottle_of_ZMA_(02171).jpg"
+    }
+  },
+  {
+    "slug": "bcaa",
+    "nombre": "BCAA Xtra 500 g",
+    "descripcion": "Aminoácidos ramificados en polvo.",
+    "costoUSD": 26,
+    "imagen": "imagenes/bcaa.webp",
+    "fuente": {
+      "titulo": "File:Amino kiseline.jpg",
+      "autor": "Dalibor2013 at Slovenian Wikipedia",
+      "licencia": "CC BY-SA 3.0",
+      "enlace": "https://commons.wikimedia.org/wiki/File:Amino_kiseline.jpg"
+    }
+  },
+  {
+    "slug": "energizante",
+    "nombre": "Bebida energizante 250 ml",
+    "descripcion": "Lata de bebida energética.",
+    "costoUSD": 2.5,
+    "imagen": "imagenes/energizante.webp",
+    "fuente": {
+      "titulo": "File:Boissons energisantes.jpg",
+      "autor": "Vintotal",
+      "licencia": "Copyrighted free use",
+      "enlace": "https://commons.wikimedia.org/wiki/File:Boissons_energisantes.jpg"
+    }
+  },
+  {
+    "slug": "vendas",
+    "nombre": "Vendas elásticas deportivas",
+    "descripcion": "Rollo de venda para muñecas y manos.",
+    "costoUSD": 4,
+    "imagen": "imagenes/vendas.webp",
+    "fuente": {
+      "titulo": "File:Bandage.jpg",
+      "autor": "Brian Snelson",
+      "licencia": "CC BY 2.0",
+      "enlace": "https://commons.wikimedia.org/wiki/File:Bandage.jpg"
+    }
+  },
+  {
+    "slug": "candado",
+    "nombre": "Candado de combinación para locker",
+    "descripcion": "Candado de clave para casilleros.",
+    "costoUSD": 4,
+    "imagen": "imagenes/candado.webp",
+    "fuente": {
+      "titulo": "Zero padlock",
+      "autor": "Henry Söderlund",
+      "licencia": "by 2.0",
+      "enlace": "https://www.flickr.com/photos/46563758@N04/51537870311"
+    }
+  },
+  {
+    "slug": "cinta-kinesio",
+    "nombre": "Cinta kinesiológica azul",
+    "descripcion": "Rollo de cinta elástica para soporte muscular.",
+    "costoUSD": 7.5,
+    "imagen": "imagenes/cinta-kinesio.webp",
+    "fuente": {
+      "titulo": "Kinesio Tape Blue MipMed",
+      "autor": "MipMed",
+      "licencia": "by-sa 2.0",
+      "enlace": "https://www.flickr.com/photos/138914636@N02/42620256872"
+    }
+  }
+]

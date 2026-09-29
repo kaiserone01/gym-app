@@ -8,6 +8,8 @@
     "db:seed": "prisma db seed",
     "db:limpiar-miembros": "tsx limpiarMiembros.ts",
     "db:sembrar-prueba": "tsx sembrarMiembrosPrueba.ts",
+    "db:sembrar-productos-prueba": "tsx sembrarProductosPrueba.ts",
+    "db:sembrar-productos-prueba:confirm": "tsx sembrarProductosPrueba.ts --confirm",
     "db:quitar-permisos-entrenadores": "tsx quitarPermisosEntrenadores.ts",
     "db:backfill-permisos-en-sala": "tsx backfillPermisosEnSala.ts",
     "db:migrar-excel-adrenalina": "tsx migrarExcelAdrenalina.ts",

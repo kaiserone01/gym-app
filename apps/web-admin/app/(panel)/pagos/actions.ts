@@ -12,6 +12,8 @@ import { PrismaTurnoRepository } from "@gym-app/infrastructure/persistence/prism
 import { PrismaPermisoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaPermisoRepository";
 import { PrismaSucursalRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaSucursalRepository";
 import { PrismaReglaAbonoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaReglaAbonoRepository";
+import type { PrismaClientOrTx } from "@gym-app/infrastructure/persistence/prisma/PrismaClientOrTx";
+import { PrismaDeudaProductoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaDeudaProductoRepository";
 import { PrismaCambioPlanAuditoriaRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaCambioPlanAuditoriaRepository";
 import { AuthorizationService } from "@gym-app/domain/services/AuthorizationService";
 import { validarTasaSiEsEnBs } from "@/lib/tasaBcv";
@@ -28,6 +30,12 @@ import {
   AbonoNoPermitidoError,
   AbonoMenorAlMinimoError,
 } from "@gym-app/domain/use-cases/RegistrarPago";
+import { registrarPagoConDeudas, MontoNoCubreDeudaError } from "@gym-app/domain/use-cases/RegistrarPagoConDeudas";
+import {
+  RolNoAutorizadoError as RolNoAutorizadoCobrarDeudas,
+  DeudasYaCobradasError,
+  SinTurnoAbiertoError,
+} from "@gym-app/domain/use-cases/CobrarDeudasMiembro";
 import {
   cambiarPlanConPago,
   MiembroNoEncontradoError as MiembroNoEncontradoErrorCambio,
@@ -74,6 +82,8 @@ export async function registrarPagoAction(
   const planId = formData.get("planId")?.toString();
   const lineasRaw = formData.get("lineas")?.toString();
   const origen = formData.get("origen")?.toString();
+  // Casilla "Cobrar también los productos pendientes" del wizard de Caja.
+  const incluirDeudas = formData.get("incluirDeudas")?.toString() === "1";
   // Sede elegida en el selector "Sede del pago" (ver SelectorMetodoPago);
   // si no vino (formularios viejos o sin selector visible), se cae a la
   // sede activa de la sesión.
@@ -146,27 +156,35 @@ export async function registrarPagoAction(
 
   let pagos;
   try {
-    pagos = await registrarPago(
-      {
-        pagos: new PrismaPagoRepository(prisma),
-        suscripciones: new PrismaSuscripcionRepository(prisma),
-        miembros: new PrismaMemberRepository(prisma),
-        planes: new PrismaPlanRepository(prisma),
-        turnos: new PrismaTurnoRepository(prisma),
-        sucursales: new PrismaSucursalRepository(prisma),
-        autorizacion: new AuthorizationService(new PrismaPermisoRepository(prisma)),
-        reglasAbono: new PrismaReglaAbonoRepository(prisma),
-      },
-      {
-        organizacionId: usuario.organizacionId,
-        miembroId,
-        planId,
-        lineas: lineasValidadas.map((linea) => ({ ...linea, metodo: linea.metodo || "Cortesía" })),
-        sucursalId: sucursalIdPago,
-        registradoPorId: usuario.id,
-        rolUsuario: usuario.rol,
-      }
-    );
+    const dependencias = (cliente: PrismaClientOrTx) => ({
+      pagos: new PrismaPagoRepository(cliente),
+      suscripciones: new PrismaSuscripcionRepository(cliente),
+      miembros: new PrismaMemberRepository(cliente),
+      planes: new PrismaPlanRepository(cliente),
+      turnos: new PrismaTurnoRepository(cliente),
+      sucursales: new PrismaSucursalRepository(cliente),
+      // Los permisos se leen con el cliente global: no necesitan estar dentro de la transacción.
+      autorizacion: new AuthorizationService(new PrismaPermisoRepository(prisma)),
+      reglasAbono: new PrismaReglaAbonoRepository(prisma),
+      deudas: new PrismaDeudaProductoRepository(cliente),
+    });
+    const datosPago = {
+      organizacionId: usuario.organizacionId,
+      miembroId,
+      planId,
+      lineas: lineasValidadas.map((linea) => ({ ...linea, metodo: linea.metodo || "Cortesía" })),
+      sucursalId: sucursalIdPago,
+      registradoPorId: usuario.id,
+      rolUsuario: usuario.rol,
+    };
+
+    // Con productos pendientes incluidos, cobrar las deudas y registrar la
+    // membresía van en una sola transacción: si una falla, la otra no queda hecha.
+    pagos = incluirDeudas
+      ? await prisma.$transaction((tx) => registrarPagoConDeudas(dependencias(tx), { ...datosPago, incluirDeudas: true }), {
+          timeout: 20000,
+        })
+      : await registrarPago(dependencias(prisma), datosPago);
   } catch (error) {
     if (
       error instanceof MiembroNoEncontradoError ||
@@ -177,7 +195,11 @@ export async function registrarPagoAction(
       error instanceof MontoInvalidoError ||
       error instanceof LineasDePagoInvalidasError ||
       error instanceof AbonoNoPermitidoError ||
-      error instanceof AbonoMenorAlMinimoError
+      error instanceof AbonoMenorAlMinimoError ||
+      error instanceof MontoNoCubreDeudaError ||
+      error instanceof DeudasYaCobradasError ||
+      error instanceof SinTurnoAbiertoError ||
+      error instanceof RolNoAutorizadoCobrarDeudas
     ) {
       return { error: error.message };
     }

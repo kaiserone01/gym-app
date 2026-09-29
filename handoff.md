@@ -75,6 +75,8 @@ Contexto: la tasa BCV mostrada en el panel estaba desactualizada 11 días (832.4
 
 **Vender producto en dos pasos (2026-09-29):** paso 1 elige uno o varios productos (carrito con cantidades y búsqueda); paso 2 elige "Cobrar ahora" (método de pago) o "Fiar a un miembro" (una deuda por producto, en `$transaction`). `VenderProducto` y `FiarProducto` reciben `items: [{ productoId, cantidad }]` (helper `use-cases/resolverItemsVenta.ts`); un carrito de un solo producto guarda `productoId` y `cantidad` en el `Pago`, con varios queda solo el concepto ("Agua × 2, Gatorade"). Sin migración. Tests del dominio: 86/86.
 
+**Cobrar deudas junto con la membresía (2026-09-29):** en "Registrar pago" (Caja), si el miembro tiene productos fiados en la sucursal, el paso de pago muestra un aviso "Deuda pendiente / Debe $X en productos" con botón "Ver detalles" (`ModalDetalleDeuda.tsx`) y la casilla "Cobrar también los productos pendientes", marcada por defecto. El cliente suma la deuda a la primera línea de pago; `registrarPagoAction` (con `incluirDeudas=1`) corre `registrarPagoConDeudas` en `$transaction` (timeout 20 s): `repartirLineasPago` (entities/Pago.ts) descuenta primero la deuda, en orden y partiendo la línea del límite, y el resto va a `registrarPago`. Los permisos y las reglas de abono se leen con el cliente global (esos repos no aceptan el cliente de transacción). Un plan de cortesía ($0) no ofrece la casilla; "Cambiar plan" no incluye deudas. Requiere turno abierto. Tests del dominio: 97/97.
+
 **Pendiente:** la migración `20260929200000_agrega_deuda_producto` no está aplicada en la base remota; sin ella `/caja` falla (la página consulta `DeudaProducto`). Ver sección 5.000.
 
 ## 3. Archivos y cambios (todas las sesiones recientes acumuladas)

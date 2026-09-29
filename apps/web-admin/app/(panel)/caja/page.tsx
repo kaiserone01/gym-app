@@ -131,6 +131,7 @@ export default async function PaginaCaja({ searchParams }: { searchParams: Promi
                 entrenadores={entrenadores}
                 accionCambiarPlan={cambiarPlanAction}
                 miembroInicialId={cobrar}
+                deudas={deudasPendientes}
               />
               <BotonVenderProducto
                 accion={venderProductoAction}

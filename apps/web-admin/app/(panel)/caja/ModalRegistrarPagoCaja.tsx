@@ -16,6 +16,9 @@ import { SelectorMetodoPago } from "../pagos/SelectorMetodoPago";
 import { registrarPagoAction, type EstadoCambioPlan } from "../pagos/actions";
 import { calcularProyeccionAbono } from "./proyeccionAbono";
 import { PanelRemanentePago } from "./PanelRemanentePago";
+import { ModalDetalleDeuda } from "./ModalDetalleDeuda";
+import { Badge } from "@gym-app/ui/components/Badge";
+import type { GrupoDeudasMiembro } from "@gym-app/domain/use-cases/ListarDeudasPendientes";
 import { formatearFechaCorta } from "./ProyeccionCiclosUI";
 import type { ReglaAbonoPorFrecuencia } from "@gym-app/domain/entities/ReglaAbono";
 import { FormularioCambiarPlan, type EntrenadorParaCambio, type ProyeccionCambioPlan } from "../miembros/FormularioCambiarPlan";
@@ -423,6 +426,7 @@ function ContenidoPaso3({
   modalidad,
   metodosPago,
   tasaActual,
+  deudaMiembro,
   onVolver,
   onPagoRegistrado,
 }: {
@@ -454,11 +458,16 @@ function ContenidoPaso3({
   // modalidad Abono (referencia) — el método elegido trae su propia tasa
   // para el campo de monto a abonar.
   tasaActual: number | null;
+  // Productos fiados pendientes de este miembro en la sucursal (null = no debe nada).
+  deudaMiembro: GrupoDeudasMiembro | null;
   onVolver: () => void;
   onPagoRegistrado: (fechaFinCicloISO: string | undefined) => void;
 }) {
   const [estado, enviar, enviando] = useActionState(registrarPagoAction, {});
   const { mostrarExito, mostrarError } = useFeedback();
+  // Con deuda, la casilla "Cobrar también los productos pendientes" viene marcada.
+  const [incluirDeudas, setIncluirDeudas] = useState(true);
+  const [detalleDeudaAbierto, setDetalleDeudaAbierto] = useState(false);
 
   // El monto objetivo queda fijo al precio del plan siempre que la
   // modalidad NO admita variar el total: en "total" siempre, y en
@@ -552,10 +561,14 @@ function ContenidoPaso3({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- solo debe reaccionar a un nuevo estado.ok, no a las funciones
   }, [estado.ok]);
 
+  // Deuda de productos a cobrar junto con la membresía (un plan de cortesía no la incluye).
+  // Se suma a la primera línea: el servidor descuenta la deuda primero y en orden, así que
+  // la membresía recibe exactamente lo que el cajero cargó en cada línea.
+  const deudaAPagar = montoSugerido > 0 && deudaMiembro && incluirDeudas ? deudaMiembro.totalUSD : 0;
   const lineasParaEnviar = lineasActivas
     .filter((l) => Number(l.monto) > 0)
-    .map((l) => ({
-      monto: Number(l.monto),
+    .map((l, i) => ({
+      monto: Math.round((Number(l.monto) + (i === 0 ? deudaAPagar : 0)) * 100) / 100,
       metodo: l.seleccion.metodo,
       metodoPagoId: l.seleccion.metodoPagoId,
       numeroOperacion: l.seleccion.numeroOperacion || null,
@@ -579,6 +592,7 @@ function ContenidoPaso3({
       <input type="hidden" name="miembroId" value={miembroId} />
       <input type="hidden" name="planId" value={planId} />
       <input type="hidden" name="origen" value="caja" />
+      {deudaAPagar > 0 && <input type="hidden" name="incluirDeudas" value="1" />}
       <input
         type="hidden"
         name="lineas"
@@ -588,6 +602,51 @@ function ContenidoPaso3({
             : lineasParaEnviar
         )}
       />
+
+      {montoSugerido > 0 && deudaMiembro && (
+        <div
+          className="flex flex-col gap-2 rounded-lg border-2 px-3 py-3"
+          style={{ borderColor: "var(--gx-warn)", background: "color-mix(in srgb, var(--gx-warn) 8%, transparent)" }}
+        >
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="flex flex-wrap items-center gap-2 text-sm font-semibold" style={{ color: "var(--gx-ink)" }}>
+              <Badge tono="ambar">Deuda pendiente</Badge>
+              Debe ${deudaMiembro.totalUSD.toFixed(2)} en productos
+            </span>
+            <button
+              type="button"
+              onClick={() => setDetalleDeudaAbierto(true)}
+              className="text-sm font-medium hover:underline"
+              style={{ color: "var(--gx-accent)" }}
+            >
+              Ver detalles
+            </button>
+          </div>
+          <label className="flex min-h-11 items-center gap-2 text-sm" style={{ color: "var(--gx-ink)" }}>
+            <input
+              type="checkbox"
+              checked={incluirDeudas}
+              onChange={(e) => setIncluirDeudas(e.target.checked)}
+              className="h-5 w-5 accent-[var(--gx-accent)]"
+            />
+            Cobrar también los productos pendientes
+          </label>
+          {incluirDeudas && (
+            <div className="flex flex-wrap justify-between gap-2 text-sm">
+              <span style={{ color: "var(--gx-muted)" }}>
+                Membresía ${montoObjetivo.toFixed(2)} + productos ${deudaMiembro.totalUSD.toFixed(2)}
+              </span>
+              <span className="font-semibold" style={{ color: "var(--gx-ink)" }}>
+                Total ${(montoObjetivo + deudaMiembro.totalUSD).toFixed(2)}
+                {tasaActual !== null && ` · Bs. ${formatearBs((montoObjetivo + deudaMiembro.totalUSD) * tasaActual)}`}
+              </span>
+            </div>
+          )}
+        </div>
+      )}
+      {detalleDeudaAbierto && deudaMiembro && (
+        <ModalDetalleDeuda grupo={deudaMiembro} tasaActual={tasaActual} onCerrar={() => setDetalleDeudaAbierto(false)} />
+      )}
 
       {/* Total, y Combinado cuando el plan no admite abono: monto fijo, sin campo editable. */}
       {montoSugerido > 0 && !esAbono && (modalidad === "total" || montoObjetivoBloqueado) && (
@@ -715,7 +774,7 @@ function ContenidoPaso3({
       {montoObjetivo > 0 && !esAbono && modalidad !== "combinado" && (
         <SelectorMetodoPago
           metodos={metodosPago}
-          monto={montoObjetivo}
+          monto={montoObjetivo + deudaAPagar}
           onCambio={(seleccion) => setLineaUnica((prev) => ({ ...prev, monto: String(montoObjetivo), seleccion }))}
           grande
           avisoServidor={{ tasaNueva: estado.tasaNueva, fallaTemporal: estado.fallaTemporal, tasaGuardada: estado.tasaGuardada }}
@@ -984,6 +1043,7 @@ export function ModalRegistrarPagoCaja({
   entrenadores,
   accionCambiarPlan,
   miembroInicialId,
+  deudas,
   onCerrar,
 }: {
   miembros: Miembro[];
@@ -995,6 +1055,8 @@ export function ModalRegistrarPagoCaja({
   accionCambiarPlan: (estado: EstadoCambioPlan, formData: FormData) => Promise<EstadoCambioPlan>;
   // Miembro ya identificado (ej. "Cobrar ahora" desde /en-sala): se salta el Paso 1.
   miembroInicialId?: string;
+  // Productos fiados pendientes por miembro (sucursal activa), para ofrecer cobrarlos junto con la membresía.
+  deudas: GrupoDeudasMiembro[];
   onCerrar: () => void;
 }) {
   const [miembroInicial] = useState(() => {
@@ -1130,6 +1192,7 @@ export function ModalRegistrarPagoCaja({
             reglasAbono={reglasAbono}
             modalidad={modalidadElegida}
             metodosPago={metodosPago}
+            deudaMiembro={deudas.find((g) => g.miembroId === miembroElegido.id) ?? null}
             tasaActual={tasaActual}
             onVolver={() => setPaso(2)}
             onPagoRegistrado={(fechaFinCicloISO) => {

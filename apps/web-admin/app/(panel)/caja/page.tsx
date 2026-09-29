@@ -15,6 +15,8 @@ import { listarMiembros } from "@gym-app/domain/use-cases/ListarMiembros";
 import { listarPlanes } from "@gym-app/domain/use-cases/ListarPlanes";
 import { PrismaProductoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaProductoRepository";
 import { listarProductos } from "@gym-app/domain/use-cases/ListarProductos";
+import { PrismaDeudaProductoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaDeudaProductoRepository";
+import { listarDeudasPendientes } from "@gym-app/domain/use-cases/ListarDeudasPendientes";
 import { Card } from "@gym-app/ui/components/Card";
 import { PageHeader } from "@gym-app/ui/components/PageHeader";
 import { PrismaMetodoPagoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaMetodoPagoRepository";
@@ -28,6 +30,7 @@ import { AvisoCajaAjena } from "./AvisoCajaAjena";
 import { BotonRegistrarPagoCaja } from "./BotonRegistrarPagoCaja";
 import { BotonRegistrarEgreso } from "./BotonRegistrarEgreso";
 import { BotonVenderProducto } from "./BotonVenderProducto";
+import { BotonCobrarDeudas } from "./BotonCobrarDeudas";
 import { cambiarPlanAction } from "../pagos/actions";
 
 // El método ahora se guarda como snapshot legible ("Pago Móvil - Banesco")
@@ -61,7 +64,7 @@ import { formatearBs, formatearBsConRef } from "../tasaBcvFija";
 import { inicioDelDia, finDelDia, inicioDeSemana, finDeSemana, inicioDeMes, finDeMes, formatearFechaISO } from "../fechas";
 import { FormularioAbrirTurno } from "./FormularioAbrirTurno";
 import { FormularioArqueo } from "./FormularioArqueo";
-import { abrirTurnoAction, registrarEgresoAction, cerrarTurnoAction, venderProductoAction, fiarProductoAction } from "./actions";
+import { abrirTurnoAction, registrarEgresoAction, cerrarTurnoAction, venderProductoAction, fiarProductoAction, cobrarDeudasAction, anularDeudaAction } from "./actions";
 
 export default async function PaginaCaja({ searchParams }: { searchParams: Promise<{ cobrar?: string }> }) {
   const { cobrar } = await searchParams;
@@ -80,7 +83,7 @@ export default async function PaginaCaja({ searchParams }: { searchParams: Promi
 
   if (turnoAbierto) {
     const esPropio = turnoAbierto.esPropio;
-    const [resumen, miembros, planes, productos, metodosPago, tasaCambio, reglasAbono, entrenadores] = await Promise.all([
+    const [resumen, miembros, planes, productos, deudasPendientes, metodosPago, tasaCambio, reglasAbono, entrenadores] = await Promise.all([
       obtenerResumenTurno(
         {
           turnos: turnoRepo,
@@ -92,6 +95,7 @@ export default async function PaginaCaja({ searchParams }: { searchParams: Promi
       listarMiembros({ miembros: new PrismaMemberRepository(prisma) }, usuario.organizacionId, sucursalActivaId),
       listarPlanes({ planes: new PrismaPlanRepository(prisma) }, usuario.organizacionId),
       listarProductos({ productos: new PrismaProductoRepository(prisma) }, usuario.organizacionId),
+      listarDeudasPendientes({ deudas: new PrismaDeudaProductoRepository(prisma) }, usuario.organizacionId),
       listarMetodosPagoActivos({ metodosPago: new PrismaMetodoPagoRepository(prisma) }, usuario.organizacionId),
       // Solo para mostrar la referencia en USD de la porción "fondo
       // inicial" de la línea en Bs (ver más abajo) — si no hay tasa
@@ -136,6 +140,13 @@ export default async function PaginaCaja({ searchParams }: { searchParams: Promi
                 tasaActual={tasaActual}
                 miembros={miembrosActivos}
                 planes={planesActivos}
+              />
+              <BotonCobrarDeudas
+                grupos={deudasPendientes}
+                metodosPago={metodosPago}
+                tasaActual={tasaActual}
+                accionCobrar={cobrarDeudasAction}
+                accionAnular={anularDeudaAction}
               />
               <BotonRegistrarEgreso accion={registrarEgresoAction} turnoId={resumen.turno.id} />
             </div>

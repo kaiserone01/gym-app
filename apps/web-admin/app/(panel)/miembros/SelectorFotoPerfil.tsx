@@ -4,6 +4,16 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@gym-app/ui/components/Button";
 import { comprimirAvatar } from "./comprimirImagen";
 
+// Teléfono o tableta (donde hay cámara frontal y trasera) vs. computadora, donde
+// el cambio de cámara no aplica. userAgentData existe en Chrome/Edge/Android; el
+// resto (Safari en iPhone/iPad) se detecta por el user agent y, para iPadOS que se
+// identifica como Mac, por la pantalla táctil.
+function detectarMovil(): boolean {
+  const nav = navigator as Navigator & { userAgentData?: { mobile?: boolean } };
+  if (typeof nav.userAgentData?.mobile === "boolean") return nav.userAgentData.mobile;
+  return /Android|iPhone|iPad|iPod|Mobile/i.test(nav.userAgent) || (/Macintosh/.test(nav.userAgent) && nav.maxTouchPoints > 1);
+}
+
 // Mantiene un <input type="file" name="foto"> oculto con la imagen ya
 // comprimida, para que siga viajando en el FormData del formulario.
 export function SelectorFotoPerfil({
@@ -28,6 +38,8 @@ export function SelectorFotoPerfil({
 
   const [camaraAbierta, setCamaraAbierta] = useState(false);
   const [camara, setCamara] = useState<"user" | "environment">(camaraInicial);
+  // Se decide al abrir la cámara (no al montar) para no tocar `navigator` en el servidor.
+  const [esMovil, setEsMovil] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [procesando, setProcesando] = useState(false);
 
@@ -42,7 +54,14 @@ export function SelectorFotoPerfil({
     if (!camaraAbierta) return;
     let cancelado = false;
     navigator.mediaDevices
-      ?.getUserMedia({ video: { facingMode: { ideal: camara }, width: { ideal: 720 }, height: { ideal: 720 } } })
+      ?.getUserMedia({
+        video: {
+          // En computadora se usa la cámara que haya, sin elegir frontal/trasera.
+          ...(esMovil ? { facingMode: { ideal: camara } } : {}),
+          width: { ideal: 720 },
+          height: { ideal: 720 },
+        },
+      })
       .then((stream) => {
         if (cancelado) {
           stream.getTracks().forEach((pista) => pista.stop());
@@ -59,7 +78,7 @@ export function SelectorFotoPerfil({
       cancelado = true;
       detenerCamara();
     };
-  }, [camaraAbierta, camara]);
+  }, [camaraAbierta, camara, esMovil]);
 
   function abrirCamara() {
     setError(null);
@@ -67,6 +86,7 @@ export function SelectorFotoPerfil({
       setError("Este navegador no permite usar la cámara. Usa \"Subir foto\".");
       return;
     }
+    setEsMovil(detectarMovil());
     setCamaraAbierta(true);
   }
 
@@ -145,7 +165,7 @@ export function SelectorFotoPerfil({
                 autoPlay
                 playsInline
                 muted
-                className={`h-full w-full object-cover ${camara === "user" ? "-scale-x-100" : ""}`}
+                className={`h-full w-full object-cover ${!esMovil || camara === "user" ? "-scale-x-100" : ""}`}
               />
               {/* Guía: el avatar es un círculo dentro del cuadrado; lo de afuera queda oscurecido. */}
               {guiaCircular && (
@@ -158,14 +178,16 @@ export function SelectorFotoPerfil({
             <p className="mt-2 text-center text-xs" style={{ color: "var(--gx-muted)" }}>
               {guiaCircular ? "Centra el rostro dentro del círculo." : "Centra el producto en el cuadro."}
             </p>
-            <Button
-              type="button"
-              variant="secundario"
-              className="mt-3 w-full"
-              onClick={() => setCamara((actual) => (actual === "user" ? "environment" : "user"))}
-            >
-              Cambiar cámara ({camara === "user" ? "frontal" : "trasera"})
-            </Button>
+            {esMovil && (
+              <Button
+                type="button"
+                variant="secundario"
+                className="mt-3 w-full"
+                onClick={() => setCamara((actual) => (actual === "user" ? "environment" : "user"))}
+              >
+                Cambiar cámara ({camara === "user" ? "frontal" : "trasera"})
+              </Button>
+            )}
             <div className="mt-3 flex gap-3">
               <Button type="button" variant="secundario" className="flex-1" onClick={() => setCamaraAbierta(false)}>
                 Cancelar

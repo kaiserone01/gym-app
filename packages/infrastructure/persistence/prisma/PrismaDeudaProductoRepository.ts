@@ -69,6 +69,14 @@ export class PrismaDeudaProductoRepository implements IDeudaProductoRepository {
     return resultado.count;
   }
 
+  async reabrirPorGrupo(grupoPagoId: string): Promise<number> {
+    const resultado = await this.prisma.deudaProducto.updateMany({
+      where: { grupoPagoId, estado: "COBRADA" },
+      data: { estado: "PENDIENTE", cobradaEn: null, cobradaPorId: null, grupoPagoId: null },
+    });
+    return resultado.count;
+  }
+
   async anular(organizacionId: string, id: string, sucursalId: string, anuladaPorId: string, anuladaEn: Date): Promise<number> {
     const resultado = await this.prisma.deudaProducto.updateMany({
       where: { id, organizacionId, sucursalId, estado: "PENDIENTE" },

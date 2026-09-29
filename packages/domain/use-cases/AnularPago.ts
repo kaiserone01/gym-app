@@ -2,6 +2,7 @@ import { IPagoRepository } from "../ports/IPagoRepository";
 import { Pago } from "../entities/Pago";
 import { RolUsuario } from "../entities/UsuarioAdmin";
 import { IAuthorizationService } from "../ports/IAuthorizationService";
+import { IDeudaProductoRepository } from "../ports/IDeudaProductoRepository";
 
 export class RolNoAutorizadoError extends Error {
   constructor() {
@@ -36,7 +37,7 @@ export interface DatosAnularPago {
 }
 
 export async function anularPago(
-  deps: { pagos: IPagoRepository; autorizacion: IAuthorizationService },
+  deps: { pagos: IPagoRepository; deudas: IDeudaProductoRepository; autorizacion: IAuthorizationService },
   input: DatosAnularPago
 ): Promise<Pago> {
   if (!(await deps.autorizacion.tienePermiso(input.anuladoPorId, "PAGOS", "ELIMINAR"))) {
@@ -55,5 +56,14 @@ export async function anularPago(
     throw new PagoYaAnuladoError();
   }
 
-  return deps.pagos.anular(input.organizacionId, input.pagoId, input.anuladoPorId, input.motivo.trim(), new Date());
+  const anulado = await deps.pagos.anular(input.organizacionId, input.pagoId, input.anuladoPorId, input.motivo.trim(), new Date());
+
+  // Si este Pago era (parte de) el cobro de deudas de productos fiados y ya
+  // no queda ninguna línea vigente de ese cobro, las deudas vuelven a estar
+  // pendientes: si no, el dinero salió del turno y la deuda desaparecería.
+  if (pago.grupoPagoId && (await deps.pagos.contarVigentesPorGrupo(input.organizacionId, pago.grupoPagoId)) === 0) {
+    await deps.deudas.reabrirPorGrupo(pago.grupoPagoId);
+  }
+
+  return anulado;
 }

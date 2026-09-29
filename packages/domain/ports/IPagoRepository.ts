@@ -7,5 +7,7 @@ export interface IPagoRepository {
   listarPorOrganizacionYRango(organizacionId: string, desde: Date, hasta: Date): Promise<Pago[]>;
   listarPorTurno(turnoId: string): Promise<Pago[]>;
   buscarPorId(organizacionId: string, id: string): Promise<Pago | null>;
+  // Filas de un mismo cobro (mismo grupoPagoId) que siguen sin anular.
+  contarVigentesPorGrupo(organizacionId: string, grupoPagoId: string): Promise<number>;
   anular(organizacionId: string, id: string, anuladoPorId: string, motivo: string, anuladoEn: Date): Promise<Pago>;
 }

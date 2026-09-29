@@ -69,6 +69,12 @@ Contexto: la tasa BCV mostrada en el panel estaba desactualizada 11 días (832.4
 
 **Bloqueado / pendiente:** la migración `20260929180000_agrega_productos_y_venta_en_pago` NO está aplicada en la base remota (`_prisma_migrations` la tiene marcada como revertida). Sin ella `/productos` y `/caja` fallan. No se hizo commit ni push por eso. Ver sección 4 y 5.
 
+## 2.3. Productos fiados (2026-09-29) — código listo, migración SIN aplicar
+
+**Hecho (`npm test --workspace packages/domain` 75/75, `tsc` y eslint sin errores nuevos):** en "Vender producto" (Caja) un interruptor "Fiar a un miembro" guarda la venta como `DeudaProducto` PENDIENTE; el botón "Cobrar deudas" lista miembros con saldo, cobra el total con `SelectorMetodoPago` (un solo pago, en transacción) y permite anular una deuda. Las deudas se cobran/anulan solo en la sucursal donde se fiaron. Anular el `Pago` de un cobro (si no queda ninguna línea vigente de ese `grupoPagoId`) devuelve las deudas a PENDIENTE. Spec: `docs/superpowers/specs/2026-09-29-productos-fiados-design.md`; plan: `docs/superpowers/plans/2026-09-29-productos-fiados.md`.
+
+**Pendiente:** la migración `20260929200000_agrega_deuda_producto` no está aplicada en la base remota; sin ella `/caja` falla (la página consulta `DeudaProducto`). Ver sección 5.000.
+
 ## 3. Archivos y cambios (todas las sesiones recientes acumuladas)
 - **Botón "Marcar salida" oculto en En sala (2026-09-29):** se quitó de `ListaEnSala.tsx` (y la prop/permiso `EDITAR` en `page.tsx`). Se conservan `en-sala/actions.ts` (`marcarSalidaAction`), `MarcarSalidaCheckIn.ts`, `CheckIn.salidaAt` y `marcarSalida` del repositorio para reactivarlo. Consecuencia: la lista solo se vacía al cambiar el día (Caracas).
 - **"Cobrar ahora" de En sala → Caja (2026-09-29):** el botón ahora enlaza a `/caja?cobrar=<miembroId>`. `caja/page.tsx` lee `cobrar` y lo pasa como `miembroInicialId` a `BotonRegistrarPagoCaja`, que abre el wizard solo; `ModalRegistrarPagoCaja` arranca en el Paso 2 (método/modalidad) con ese miembro elegido, saltando la búsqueda. Helper compartido `aMiembroConPlan` en `SelectorMiembroModal.tsx`. Al cerrar el wizard se limpia `?cobrar`. Limitación: si no hay turno abierto, `/caja` muestra abrir turno y el parámetro se pierde. Sin verificar en vivo.
@@ -341,6 +347,12 @@ Contexto: la tasa BCV mostrada en el panel estaba desactualizada 11 días (832.4
 - `apps/web-admin/lib/storageR2.ts` (extraído de 3 `actions.ts` duplicados) y `lib/tasaBcv.ts` (ahora exporta `validarTasaSiEsEnBs`, movido desde `pagos/actions.ts`).
 - `apps/web-admin/app/(panel)/productos/*` (lista, nuevo, editar, formulario, eliminar, acciones); `caja/{ModalVenderProducto,BotonVenderProducto}.tsx`, `caja/actions.ts` (`venderProductoAction`), `caja/page.tsx`; `layout.tsx` y `MasSheet.tsx` (menú); `pagos/page.tsx` (muestra el producto en vez del miembro); `miembros/SelectorFotoPerfil.tsx` (props `etiqueta` y `guiaCircular`).
 
+### Sesión 2026-09-29 — Productos fiados
+- `packages/db/prisma/schema.prisma` + migración `20260929200000_agrega_deuda_producto`: enum `EstadoDeuda`, modelo `DeudaProducto`.
+- `packages/domain`: `entities/DeudaProducto.ts`, `ports/IDeudaProductoRepository.ts`, use-cases `FiarProducto`, `CobrarDeudasMiembro`, `AnularDeuda`, `ListarDeudasPendientes` (+ tests); `AnularPago.ts` reabre deudas del cobro; `ports/IPagoRepository.ts` (`contarVigentesPorGrupo`).
+- `packages/infrastructure/persistence/prisma`: `PrismaDeudaProductoRepository.ts` nuevo; `PrismaPagoRepository.ts` (`contarVigentesPorGrupo`).
+- `apps/web-admin/app/(panel)/caja`: `actions.ts` (`fiarProductoAction`, `cobrarDeudasAction` en `$transaction`, `anularDeudaAction`, `anularPagoAction` ahora en `$transaction`), `ModalVenderProducto.tsx` (interruptor Fiar; modal al 98% con búsqueda), `ModalCobrarDeudas.tsx` y `BotonCobrarDeudas.tsx` nuevos, `BotonVenderProducto.tsx`, `page.tsx`.
+
 ## 4. Intentos fallidos
 - **Chrome DevTools MCP (`click`, `fill`, `press_key`) no simula bien eventos de teclado en inputs controlados de React en esta sesión** — el foco no quedaba realmente puesto (`document.activeElement` seguía en `<body>`), generando confusión sobre si `CurrencyInput` estaba roto cuando en realidad era el tooling de test. Se confirmó el fix real inyectando el valor vía `Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set` + `dispatchEvent(new Event('input', {bubbles:true}))`. **Lección: verificar `document.activeElement` antes de asumir que un input está roto; no usar Chrome DevTools MCP salvo pedido explícito (ya en `CLAUDE.md`).**
 - **Probar un fix de Server Action sin reiniciar el servidor de desarrollo tras `git pull`** llevó a pensar que el fix de `cerrarTurnoAction` no funcionaba (seguía guardando arqueo vacío) — Next.js/Turbopack no siempre recompila Server Actions en caliente cuando cambia qué campos de `FormData` lee. **Lección: reiniciar el servidor (parar y volver a levantar) después de cualquier pull que toque una Server Action.**
@@ -356,9 +368,16 @@ Contexto: la tasa BCV mostrada en el panel estaba desactualizada 11 días (832.4
 - **[Migración Excel] Conteo acumulado de vencidos "hace más de X"** no le sirvió al usuario para decidir; lo útil es el conteo por tramo exclusivo + "retenidas si corto aquí" (ver sección 2).
 - **[Productos, 2026-09-29] `prisma migrate deploy` contra la base remota se colgó y dejó la migración como fallida:** el `ALTER TABLE "Pago" DROP CONSTRAINT` esperaba un lock que tenía una transacción ajena "idle in transaction" (pid 78890, IP 186.92.3.99, 2 h, INSERT en `Miembro`, probablemente un script de migración del Excel colgado) y, mientras esperaba, encolaba y bloqueaba todas las lecturas de `Miembro` de la app. Se canceló solo el backend propio (`pg_cancel_backend`) y se hizo `migrate resolve --rolled-back`. Lección: antes de migrar, revisar `pg_stat_activity` por sesiones `idle in transaction`, y no lanzar migraciones en background con timeout.
 - **[Productos] Aplicar el SQL a mano contra la base remota con `pg` + `lock_timeout` fue denegado por la política del entorno** (despliegue a producción). No reintentar por otra vía; lo aplica el usuario o el arranque del contenedor.
+- **[Productos fiados, 2026-09-29] Comandos largos de Bash con heredocs y python embebido fallan al parsear (`unexpected EOF while looking for matching '`)** y no ejecutan nada: escribir los scripts de edición como archivo (Write) y correrlos con `python <archivo>` desde PowerShell.
+- **[Productos fiados] Deudas menores diferidas tras la revisión final:** (1) en `ModalVenderProducto`, `const error = estado.error ?? estadoFiar.error` puede ocultar el error de "Fiar" si antes falló una venta (mostrar según el modo activo); (2) `limpiarMiembros.ts` y `limpiarMigracionExcelPrueba.ts` deben borrar `DeudaProducto` antes de miembros/sucursales/usuarios (FK RESTRICT); (3) si el cobro falla por `DeudasYaCobradasError` no se hace `revalidatePath`, la lista del modal queda desactualizada hasta recargar.
 
 
 ## 5. Próximos pasos
+
+### 5.000. PRODUCTOS FIADOS — próximos pasos (2026-09-29)
+1. Aplicar la migración `20260929200000_agrega_deuda_producto` (el contenedor la aplica al arrancar con `docker-entrypoint.sh`, o `prisma migrate deploy --config prisma7.config.ts` desde `packages/db`). Antes revisar `pg_stat_activity` por sesiones `idle in transaction`.
+2. Probar en vivo: fiar un producto a un miembro → aparece en "Cobrar deudas" con su total en USD y Bs → cobrar en efectivo USD y con pago móvil en Bs → aparece en "Pagos del turno" con el nombre del producto → anular una deuda → anular el pago de un cobro y ver que la deuda vuelve a pendiente.
+3. Resolver las deudas menores listadas en la sección 4.
 
 ### 5.00. PRODUCTOS — próximos pasos (2026-09-29)
 1. Aplicar la migración `20260929180000_agrega_productos_y_venta_en_pago` (revisar antes `pg_stat_activity` por sesiones `idle in transaction`). El contenedor la aplica al arrancar (`docker-entrypoint.sh`), o `prisma migrate deploy --config prisma7.config.ts` desde `packages/db`. Si `_prisma_migrations` la sigue mostrando como fallida, primero `migrate resolve --rolled-back`.

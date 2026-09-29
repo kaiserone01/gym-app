@@ -275,12 +275,16 @@ export async function anularPagoAction(
   }
 
   try {
-    await anularPago(
-      {
-        pagos: new PrismaPagoRepository(prisma),
-        autorizacion: new AuthorizationService(new PrismaPermisoRepository(prisma)),
-      },
-      { organizacionId: usuario.organizacionId, pagoId, anuladoPorId: usuario.id, rolAnulador: usuario.rol, motivo }
+    // En transacción: anular el pago y reabrir las deudas que cubría van juntos.
+    await prisma.$transaction((tx) =>
+      anularPago(
+        {
+          pagos: new PrismaPagoRepository(tx),
+          deudas: new PrismaDeudaProductoRepository(tx),
+          autorizacion: new AuthorizationService(new PrismaPermisoRepository(tx)),
+        },
+        { organizacionId: usuario.organizacionId, pagoId, anuladoPorId: usuario.id, rolAnulador: usuario.rol, motivo }
+      )
     );
   } catch (error) {
     if (

@@ -120,6 +120,7 @@ function crearFakes(estadoInicial: { miembro: Miembro; suscripcion: Suscripcion;
     listarPorOrganizacion: async () => [],
     listarPorOrganizacionYRango: async () => [],
     listarPorTurno: async () => [],
+    contarVigentesPorGrupo: async () => 0,
     buscarPorId: async () => null,
     anular: async () => {
       throw new Error("no usado en este test");

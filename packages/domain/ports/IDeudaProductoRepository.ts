@@ -10,6 +10,8 @@ export interface IDeudaProductoRepository {
   // Solo afecta filas que siguen PENDIENTE; devuelve cuántas actualizó
   // (menos que ids.length = otra caja cobró a la vez).
   marcarCobradas(ids: string[], cobradaPorId: string, cobradaEn: Date, grupoPagoId: string): Promise<number>;
+  // Devuelve a PENDIENTE las deudas que cubrió un cobro (se anuló su pago).
+  reabrirPorGrupo(grupoPagoId: string): Promise<number>;
   // Solo si sigue PENDIENTE; devuelve 0 o 1.
   anular(organizacionId: string, id: string, sucursalId: string, anuladaPorId: string, anuladaEn: Date): Promise<number>;
 }

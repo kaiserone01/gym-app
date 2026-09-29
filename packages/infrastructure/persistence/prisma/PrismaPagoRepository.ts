@@ -131,6 +131,12 @@ export class PrismaPagoRepository implements IPagoRepository {
     return pago ? { ...mapear(pago), miembroNombre: pago.miembro?.nombre } : null;
   }
 
+  async contarVigentesPorGrupo(organizacionId: string, grupoPagoId: string): Promise<number> {
+    return this.prisma.pago.count({
+      where: { grupoPagoId, anuladoEn: null, sucursal: { organizacionId } },
+    });
+  }
+
   async anular(organizacionId: string, id: string, anuladoPorId: string, motivo: string, anuladoEn: Date): Promise<Pago> {
     const existente = await this.prisma.pago.findFirst({ where: { id, sucursal: { organizacionId } } });
     if (!existente) {

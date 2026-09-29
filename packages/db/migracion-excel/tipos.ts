@@ -61,7 +61,8 @@ export type MotivoFlagRevision =
   | "cedula-placeholder"
   | "fecha-vencimiento-placeholder"
   | "plan-legacy"
-  | "pago-aproximado";
+  | "pago-aproximado"
+  | "plan-aproximado";
 
 export type MotivoExclusion =
   | "sin-mapeo-plan-definido"
@@ -76,6 +77,7 @@ export interface DatosMiembroAMigrar {
   precioPlanUSD: number;
   planNombre: string;
   planLegacy: boolean;
+  precioPlanOriginalUSD?: number; // precio del Excel cuando el plan se aproximó a uno real
   estado: "ACTIVA" | "VENCIDA";
   fechaVencimiento: Date;
   fechaInicio: Date;

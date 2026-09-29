@@ -6,9 +6,8 @@
   {
     "valorExcel": "20*",
     "accion": "mapear",
-    "planNombreDestino": "Plan $20 (legacy)",
-    "precioPlanOverrideUSD": 20,
-    "planLegacy": true
+    "planNombreDestino": "Plan $20",
+    "precioPlanOverrideUSD": 20
   },
   {
     "valorExcel": "*",

@@ -268,3 +268,44 @@ describe("clasificarFila — duplicados de cedula", () => {
     }
   });
 });
+
+describe("clasificarFila — aproximacion de plan legacy", () => {
+  const mapeo: MapeoPlanEntry[] = [
+    { valorExcel: "15", accion: "mapear", planNombreDestino: "Plan $15 (legacy)", precioPlanOverrideUSD: 15, planLegacy: true },
+    { valorExcel: "0", accion: "mapear", planNombreDestino: "Cortesia", precioPlanOverrideUSD: 0, planLegacy: true },
+  ];
+  const hoy = new Date("2026-09-29T00:00:00.000Z");
+  const conPlan = (valor: string, fVenc: FilaNormalizada["fVenc"]) =>
+    filaNormalizadaBase({ plan: { tipo: "requiereMapeo", valorOriginal: valor }, fVenc });
+
+  test("vencido hace más de 2 meses → plan real más cercano, con precio original", () => {
+    const r = clasificarFila(conPlan("15", { tipo: "valida", fecha: new Date("2026-05-01T00:00:00.000Z") }), mapeo, reglasCedulaVacias, placeholderFecha, hoy);
+    expect(r.categoria).toBe("migrada");
+    if (r.categoria === "migrada") {
+      expect(r.datos.planNombre).toBe("Plan $20");
+      expect(r.datos.planLegacy).toBe(false);
+      expect(r.datos.precioPlanOriginalUSD).toBe(15);
+      expect(r.flags).toContain("plan-aproximado");
+      expect(r.flags).not.toContain("plan-legacy");
+    }
+  });
+
+  test("vencido hace menos de 2 meses → sigue como plan legacy", () => {
+    const r = clasificarFila(conPlan("15", { tipo: "valida", fecha: new Date("2026-08-20T00:00:00.000Z") }), mapeo, reglasCedulaVacias, placeholderFecha, hoy);
+    if (r.categoria === "migrada") {
+      expect(r.datos.planNombre).toBe("Plan $15 (legacy)");
+      expect(r.flags).toContain("plan-legacy");
+      expect(r.datos.precioPlanOriginalUSD).toBeUndefined();
+    }
+  });
+
+  test("sin fecha de vencimiento real → sigue como plan legacy", () => {
+    const r = clasificarFila(conPlan("15", { tipo: "invalida", motivo: "vacia", valorOriginal: null }), mapeo, reglasCedulaVacias, placeholderFecha, hoy);
+    if (r.categoria === "migrada") expect(r.datos.planNombre).toBe("Plan $15 (legacy)");
+  });
+
+  test("cortesía ($0) nunca se aproxima", () => {
+    const r = clasificarFila(conPlan("0", { tipo: "valida", fecha: new Date("2025-01-01T00:00:00.000Z") }), mapeo, reglasCedulaVacias, placeholderFecha, hoy);
+    if (r.categoria === "migrada") expect(r.datos.planNombre).toBe("Cortesia");
+  });
+});

@@ -11,11 +11,19 @@ function diasCicloMensual(): number {
   return 30;
 }
 
+const PRECIOS_PLANES_REALES = [8, 20, 22, 25, 30];
+const DIAS_VENCIDO_PARA_APROXIMAR_PLAN = 60;
+
+function precioRealMasCercano(precio: number): number {
+  return PRECIOS_PLANES_REALES.reduce((mejor, p) => (Math.abs(p - precio) < Math.abs(mejor - precio) ? p : mejor));
+}
+
 export function clasificarFila(
   fila: FilaNormalizada,
   mapeoPlan: MapeoPlanEntry[],
   reglasCedula: ReglasCedula,
   obtenerFechaPlaceholder: () => Date,
+  fechaReferencia: Date = new Date(),
 ): FilaClasificada {
   if (fila.estado === null) {
     return { categoria: "excluida", motivo: "status-sin-dato", numeroFila: fila.numeroFila };
@@ -54,6 +62,7 @@ export function clasificarFila(
   let precioPlanUSD: number;
   let planNombre: string;
   let planLegacy = false;
+  let precioPlanOriginalUSD: number | undefined;
 
   if (fila.plan.tipo === "dominante") {
     precioPlanUSD = fila.plan.valorUSD;
@@ -81,6 +90,17 @@ export function clasificarFila(
     }
     planNombre = entrada.planNombreDestino ?? `Plan (mapeado desde "${fila.plan.valorOriginal}")`;
     planLegacy = entrada.planLegacy ?? false;
+    // Plan legacy con vencimiento de más de 2 meses: se asigna el plan real de precio más
+    // cercano (conservando el precio original en el miembro); los recientes o sin fecha
+    // real quedan en su plan legacy. Cortesía ($0) no se aproxima.
+    const limite = new Date(fechaReferencia);
+    limite.setUTCDate(limite.getUTCDate() - DIAS_VENCIDO_PARA_APROXIMAR_PLAN);
+    if (planLegacy && precioPlanUSD > 0 && fila.fVenc.tipo === "valida" && fila.fVenc.fecha < limite) {
+      precioPlanOriginalUSD = precioPlanUSD;
+      planNombre = `Plan $${precioRealMasCercano(precioPlanUSD)}`;
+      planLegacy = false;
+      flags.push("plan-aproximado");
+    }
     if (planLegacy) flags.push("plan-legacy");
   }
 
@@ -116,6 +136,7 @@ export function clasificarFila(
     precioPlanUSD,
     planNombre,
     planLegacy,
+    ...(precioPlanOriginalUSD !== undefined ? { precioPlanOriginalUSD } : {}),
     estado: fila.estado,
     fechaVencimiento,
     fechaInicio,

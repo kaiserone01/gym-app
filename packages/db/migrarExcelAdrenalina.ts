@@ -141,7 +141,8 @@ async function migrarFilaConfirmada(
   );
   // Si el Plan ya existía, su precioUSD/activo reales mandan — nunca se sobreescriben
   // con lo computado por esta fila (ver obtenerOCrearPlanParaFila: reuse existing as-is).
-  const precioPlanParaMiembro = plan.precioUSD;
+  // Excepción: un plan aproximado conserva en el miembro el precio original del Excel.
+  const precioPlanParaMiembro = fila.datos.precioPlanOriginalUSD ?? plan.precioUSD;
 
   await prisma.$transaction(async (tx) => {
     const miembro = await tx.miembro.create({

@@ -56,6 +56,7 @@ function calcularRefUSD(
   const fondoRefUSD = fondoBs / tasaActual;
   return fondoRefUSD + linea.totalPagosUSD - linea.totalEgresosUSD;
 }
+import { conceptoPago } from "../pagos/conceptoPago";
 import { formatearBs, formatearBsConRef } from "../tasaBcvFija";
 import { inicioDelDia, finDelDia, inicioDeSemana, finDeSemana, inicioDeMes, finDeMes, formatearFechaISO } from "../fechas";
 import { FormularioAbrirTurno } from "./FormularioAbrirTurno";
@@ -222,7 +223,7 @@ export default async function PaginaCaja({ searchParams }: { searchParams: Promi
                           .map((pago) => (
                             <tr key={pago.id} className="border-b" style={{ borderColor: "var(--gx-edge)" }}>
                               <td className="py-2" style={{ color: "var(--gx-ink)" }}>
-                                {pago.miembroNombre ?? pago.miembroId}
+                                {conceptoPago(pago)}
                               </td>
                               <td className="py-2" style={{ color: "var(--gx-ink)" }}>
                                 {nombreMetodo(pago.metodo)}

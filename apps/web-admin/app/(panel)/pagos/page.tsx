@@ -9,6 +9,7 @@ import { obtenerReporteCaja } from "@gym-app/domain/use-cases/ObtenerReporteCaja
 import { obtenerDiasConActividad } from "@gym-app/domain/use-cases/ObtenerDiasConActividad";
 import { Card } from "@gym-app/ui/components/Card";
 import { PageHeader } from "@gym-app/ui/components/PageHeader";
+import { conceptoPago } from "./conceptoPago";
 import { formatearBs, formatearBsConRef } from "../tasaBcvFija";
 import { inicioDelDia, finDelDia } from "../fechas";
 import { FiltroFechasHistorico } from "./FiltroFechasHistorico";
@@ -132,7 +133,7 @@ export default async function PaginaHistoricoPagos({
                     {pago.fechaPago.toLocaleString("es-VE", { dateStyle: "short", timeStyle: "short" })}
                   </td>
                   <td className="py-1.5 print:text-black" style={{ color: "var(--gx-ink)" }}>
-                    {pago.productoNombre ? `${pago.productoNombre} × ${pago.cantidad ?? 1}` : (pago.miembroNombre ?? pago.miembroId)}
+                    {conceptoPago(pago)}
                   </td>
                   <td className="py-1.5 print:text-black" style={{ color: "var(--gx-ink)" }}>
                     {nombreMetodo(pago.metodo)}
@@ -202,7 +203,7 @@ export default async function PaginaHistoricoPagos({
                       .map((pago) => (
                         <tr key={pago.id}>
                           <td className="py-1" style={{ color: "var(--gx-ink)" }}>
-                            {pago.miembroNombre ?? pago.miembroId}
+                            {conceptoPago(pago)}
                           </td>
                           <td className="py-1" style={{ color: "var(--gx-ink)" }}>
                             {nombreMetodo(pago.metodo)}
@@ -278,7 +279,7 @@ export default async function PaginaHistoricoPagos({
               style={{ borderColor: "color-mix(in srgb, var(--gx-warn) 30%, transparent)" }}
             >
               <span style={{ color: "var(--gx-ink)" }}>
-                {pago.miembroNombre ?? pago.miembroId} — {nombreMetodo(pago.metodo)}
+                {conceptoPago(pago)} — {nombreMetodo(pago.metodo)}
               </span>
               <span className="flex gap-3" style={{ color: "var(--gx-ink)" }}>
                 <span>${pago.monto.toFixed(2)}</span>

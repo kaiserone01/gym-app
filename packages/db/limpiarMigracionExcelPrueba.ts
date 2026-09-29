@@ -25,6 +25,18 @@ async function main() {
 
   const miembroIds = (await prisma.miembro.findMany({ where: { organizacionId: organizacion.id }, select: { id: true } })).map((m) => m.id);
 
+  // Datos que aparecen si se inició sesión en el panel con el admin de prueba.
+  const usuarioIds = (await prisma.usuarioAdmin.findMany({ where: { organizacionId: organizacion.id }, select: { id: true } })).map((u) => u.id);
+  const turnoIds = (await prisma.turno.findMany({ where: { organizacionId: organizacion.id }, select: { id: true } })).map((t) => t.id);
+  await prisma.pago.deleteMany({ where: { turnoId: { in: turnoIds } } });
+  await prisma.egreso.deleteMany({ where: { turnoId: { in: turnoIds } } });
+  await prisma.arqueoLinea.deleteMany({ where: { turnoId: { in: turnoIds } } });
+  await prisma.turno.deleteMany({ where: { id: { in: turnoIds } } });
+  await prisma.registroAuditoria.deleteMany({ where: { usuarioId: { in: usuarioIds } } });
+  await prisma.sesion.deleteMany({ where: { usuarioId: { in: usuarioIds } } });
+  await prisma.permisoUsuario.deleteMany({ where: { usuarioId: { in: usuarioIds } } });
+  await prisma.usuarioSucursal.deleteMany({ where: { usuarioId: { in: usuarioIds } } });
+
   const checkIns = await prisma.checkIn.deleteMany({ where: { miembroId: { in: miembroIds } } });
   console.log(`🗑️  CheckIns borrados: ${checkIns.count}`);
 

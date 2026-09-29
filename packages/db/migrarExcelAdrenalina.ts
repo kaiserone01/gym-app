@@ -6,10 +6,12 @@
 // Uso (dry-run, no escribe nada):
 //   npm run db:migrar-excel-adrenalina --workspace packages/db
 // Uso (escribe en la base):
-//   npm run db:migrar-excel-adrenalina:confirm --workspace packages/db
+//   MIGRACION_ADMIN_PASSWORD=<clave> npm run db:migrar-excel-adrenalina:confirm --workspace packages/db
+// (la variable es opcional: habilita el login del admin de prueba para revisar en el panel)
 import { PrismaClient } from "./generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { config as configDotenv } from "dotenv";
+import bcrypt from "bcryptjs";
 import path from "node:path";
 import { writeFileSync } from "node:fs";
 import { leerFilasExcel } from "./migracion-excel/leerExcel";
@@ -87,18 +89,37 @@ interface UsuarioAdminMinimo {
   id: string;
 }
 
-async function obtenerOCrearAdminPrueba(organizacionId: string): Promise<UsuarioAdminMinimo> {
-  const existente = await prisma.usuarioAdmin.findFirst({ where: { organizacionId } });
-  if (existente) return existente;
-  return prisma.usuarioAdmin.create({
-    data: {
-      organizacionId,
-      nombre: "Admin Migración",
-      rol: "SOCIO",
-      email: `admin-${SLUG_ORGANIZACION_PRUEBA}@migracion.local`,
-      passwordHash: "no-usar-para-login",
-    },
-  });
+const MODULOS_PERMISO = ["MIEMBROS", "PAGOS", "PLANES", "CAJA", "USUARIOS", "SUCURSALES"] as const;
+const ACCIONES_PERMISO = ["VER", "CREAR", "EDITAR", "ELIMINAR"] as const;
+
+// El admin de prueba es un SOCIO real: con MIGRACION_ADMIN_PASSWORD definida se le
+// asigna contraseña, permisos y sucursal para poder entrar al panel y revisar la
+// migración (sin la variable queda como usuario sin login, solo para el FK de pagos).
+async function obtenerOCrearAdminPrueba(organizacionId: string, sucursalId: string): Promise<UsuarioAdminMinimo> {
+  let admin = await prisma.usuarioAdmin.findFirst({ where: { organizacionId } });
+  if (!admin) {
+    admin = await prisma.usuarioAdmin.create({
+      data: {
+        organizacionId,
+        sucursalId,
+        nombre: "Admin Migración",
+        rol: "SOCIO",
+        email: `admin-${SLUG_ORGANIZACION_PRUEBA}@migracion.local`,
+        passwordHash: "no-usar-para-login",
+      },
+    });
+  }
+  const password = process.env.MIGRACION_ADMIN_PASSWORD;
+  if (password) {
+    await prisma.usuarioAdmin.update({ where: { id: admin.id }, data: { passwordHash: await bcrypt.hash(password, 10) } });
+    await prisma.permisoUsuario.createMany({
+      data: MODULOS_PERMISO.flatMap((modulo) => ACCIONES_PERMISO.map((accion) => ({ usuarioId: admin.id, modulo, accion }))),
+      skipDuplicates: true,
+    });
+    await prisma.usuarioSucursal.createMany({ data: [{ usuarioId: admin.id, sucursalId }], skipDuplicates: true });
+    console.log(`Login de prueba habilitado: ${admin.email}`);
+  }
+  return admin;
 }
 
 async function migrarFilaConfirmada(
@@ -213,7 +234,7 @@ async function main() {
 
   const organizacion = await obtenerOCrearOrganizacionPrueba();
   const sucursal = await obtenerOCrearSucursalPrueba(organizacion.id);
-  const admin = await obtenerOCrearAdminPrueba(organizacion.id);
+  const admin = await obtenerOCrearAdminPrueba(organizacion.id, sucursal.id);
 
   let escritas = 0;
   let saltadas = 0;

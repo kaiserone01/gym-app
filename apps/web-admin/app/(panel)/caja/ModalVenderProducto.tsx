@@ -164,13 +164,13 @@ export function ModalVenderProducto({
                       background: "var(--gx-surface-2)",
                     }}
                   >
-                    <div className="aspect-square w-full overflow-hidden rounded-lg" style={{ background: "var(--gx-surface)" }}>
+                    <div className="h-20 w-full overflow-hidden rounded-lg" style={{ background: "var(--gx-surface)" }}>
                       {p.fotoUrl && (
                         // eslint-disable-next-line @next/next/no-img-element -- foto en R2 (dominio externo)
                         <img src={p.fotoUrl} alt="" className="h-full w-full object-cover" />
                       )}
                     </div>
-                    <span className="truncate text-sm font-medium" style={{ color: "var(--gx-ink)" }}>
+                    <span title={p.nombre} className="line-clamp-2 min-h-[2.5em] break-words text-sm font-medium leading-tight" style={{ color: "var(--gx-ink)" }}>
                       {p.nombre}
                     </span>
                     <span className="text-xs" style={{ color: "var(--gx-muted)" }}>

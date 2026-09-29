@@ -61,7 +61,7 @@ import { formatearBs, formatearBsConRef } from "../tasaBcvFija";
 import { inicioDelDia, finDelDia, inicioDeSemana, finDeSemana, inicioDeMes, finDeMes, formatearFechaISO } from "../fechas";
 import { FormularioAbrirTurno } from "./FormularioAbrirTurno";
 import { FormularioArqueo } from "./FormularioArqueo";
-import { abrirTurnoAction, registrarEgresoAction, cerrarTurnoAction, venderProductoAction } from "./actions";
+import { abrirTurnoAction, registrarEgresoAction, cerrarTurnoAction, venderProductoAction, fiarProductoAction } from "./actions";
 
 export default async function PaginaCaja({ searchParams }: { searchParams: Promise<{ cobrar?: string }> }) {
   const { cobrar } = await searchParams;
@@ -130,9 +130,12 @@ export default async function PaginaCaja({ searchParams }: { searchParams: Promi
               />
               <BotonVenderProducto
                 accion={venderProductoAction}
+                accionFiar={fiarProductoAction}
                 productos={productos.filter((p) => p.activo)}
                 metodosPago={metodosPago}
                 tasaActual={tasaActual}
+                miembros={miembrosActivos}
+                planes={planesActivos}
               />
               <BotonRegistrarEgreso accion={registrarEgresoAction} turnoId={resumen.turno.id} />
             </div>

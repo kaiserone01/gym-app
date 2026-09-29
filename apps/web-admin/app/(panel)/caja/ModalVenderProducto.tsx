@@ -5,9 +5,11 @@ import { Button } from "@gym-app/ui/components/Button";
 import { useFeedback } from "@gym-app/ui/components/FeedbackOverlay";
 import type { Producto } from "@gym-app/domain/entities/Producto";
 import type { MetodoPago } from "@gym-app/domain/entities/MetodoPago";
+import type { Miembro } from "@gym-app/domain/entities/Miembro";
 import { SelectorMetodoPago } from "../pagos/SelectorMetodoPago";
+import { BuscadorMiembro, type MiembroConPlan, type PlanParaModal } from "./SelectorMiembroModal";
 import { formatearBs } from "../tasaBcvFija";
-import type { EstadoVenderProducto } from "./actions";
+import type { EstadoVenderProducto, EstadoFiarProducto } from "./actions";
 
 const ID_FORMULARIO = "formulario-vender-producto";
 
@@ -34,32 +36,44 @@ function normalizar(texto: string): string {
 
 export function ModalVenderProducto({
   accion,
+  accionFiar,
   productos,
   metodosPago,
   tasaActual,
+  miembros,
+  planes,
   onCerrar,
 }: {
   accion: (estado: EstadoVenderProducto, formData: FormData) => Promise<EstadoVenderProducto>;
+  accionFiar: (estado: EstadoFiarProducto, formData: FormData) => Promise<EstadoFiarProducto>;
   productos: Producto[];
   metodosPago: MetodoPago[];
   tasaActual: number | null;
+  miembros: Miembro[];
+  planes: PlanParaModal[];
   onCerrar: () => void;
 }) {
   const [estado, enviar, enviando] = useActionState(accion, {});
+  const [estadoFiar, enviarFiar, fiando] = useActionState(accionFiar, {});
   const { mostrarExito, mostrarError } = useFeedback();
+  const [fiar, setFiar] = useState(false);
+  const [miembroFiado, setMiembroFiado] = useState<MiembroConPlan | null>(null);
+
+  const error = estado.error ?? estadoFiar.error;
+  const ok = estado.ok ?? estadoFiar.ok;
 
   useEffect(() => {
-    if (estado.error) mostrarError(estado.error);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- solo debe reaccionar a un nuevo estado.error, no a mostrarError
-  }, [estado.error]);
+    if (error) mostrarError(error);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- solo debe reaccionar a un nuevo error, no a mostrarError
+  }, [error]);
 
   useEffect(() => {
-    if (estado.ok) {
-      mostrarExito(estado.ok);
+    if (ok) {
+      mostrarExito(ok);
       onCerrar();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- solo debe reaccionar a un nuevo estado.ok, no a mostrarExito/onCerrar
-  }, [estado.ok]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- solo debe reaccionar a un nuevo ok, no a mostrarExito/onCerrar
+  }, [ok]);
 
   const [productoId, setProductoId] = useState<string | null>(null);
   const [cantidad, setCantidad] = useState(1);
@@ -74,7 +88,9 @@ export function ModalVenderProducto({
     : productos;
   const total = producto ? Math.round(producto.costoUSD * cantidad * 100) / 100 : 0;
   const numeroOperacionValido = !seleccion.requiereNumeroOperacion || /^\d{4}$/.test(seleccion.numeroOperacion);
-  const puedeEnviar = producto !== null && seleccion.metodoPagoId !== null && numeroOperacionValido;
+  const puedeEnviar = fiar
+    ? producto !== null && miembroFiado !== null
+    : producto !== null && seleccion.metodoPagoId !== null && numeroOperacionValido;
 
   const lineas = [
     {
@@ -108,10 +124,14 @@ export function ModalVenderProducto({
             No hay productos activos. Créalos en la sección Productos.
           </p>
         ) : (
-          <form id={ID_FORMULARIO} action={enviar} className="mt-4 flex min-h-0 flex-1 flex-col gap-4">
+          <form id={ID_FORMULARIO} action={fiar ? enviarFiar : enviar} className="mt-4 flex min-h-0 flex-1 flex-col gap-4">
             <input type="hidden" name="productoId" value={productoId ?? ""} />
             <input type="hidden" name="cantidad" value={cantidad} />
-            <input type="hidden" name="lineas" value={JSON.stringify(lineas)} />
+            {fiar ? (
+              <input type="hidden" name="miembroId" value={miembroFiado?.id ?? ""} />
+            ) : (
+              <input type="hidden" name="lineas" value={JSON.stringify(lineas)} />
+            )}
 
             <input
               type="search"
@@ -194,13 +214,41 @@ export function ModalVenderProducto({
                   </div>
                 </div>
 
-                <SelectorMetodoPago
-                  metodos={metodosPago}
-                  monto={total}
-                  idFormulario={ID_FORMULARIO}
-                  onCambio={setSeleccion}
-                  avisoServidor={{ tasaNueva: estado.tasaNueva, fallaTemporal: estado.fallaTemporal, tasaGuardada: estado.tasaGuardada }}
-                />
+                <label className="flex min-h-11 items-center gap-2 text-sm" style={{ color: "var(--gx-muted)" }}>
+                  <input
+                    type="checkbox"
+                    checked={fiar}
+                    onChange={(e) => {
+                      setFiar(e.target.checked);
+                      setMiembroFiado(null);
+                    }}
+                    className="h-5 w-5 accent-[var(--gx-accent)]"
+                  />
+                  Fiar a un miembro (cobrar después)
+                </label>
+
+                {fiar ? (
+                  miembroFiado ? (
+                    <div className="flex items-center justify-between rounded-lg px-3 py-2 text-sm" style={{ background: "var(--gx-surface-2)" }}>
+                      <span style={{ color: "var(--gx-ink)" }}>
+                        {miembroFiado.nombre} · {miembroFiado.cedula}
+                      </span>
+                      <button type="button" className="font-medium hover:underline" style={{ color: "var(--gx-accent)" }} onClick={() => setMiembroFiado(null)}>
+                        Cambiar
+                      </button>
+                    </div>
+                  ) : (
+                    <BuscadorMiembro miembros={miembros.filter((m) => m.activo)} planes={planes} onSeleccionar={setMiembroFiado} />
+                  )
+                ) : (
+                  <SelectorMetodoPago
+                    metodos={metodosPago}
+                    monto={total}
+                    idFormulario={ID_FORMULARIO}
+                    onCambio={setSeleccion}
+                    avisoServidor={{ tasaNueva: estado.tasaNueva, fallaTemporal: estado.fallaTemporal, tasaGuardada: estado.tasaGuardada }}
+                  />
+                )}
               </div>
             )}
           </form>
@@ -210,8 +258,8 @@ export function ModalVenderProducto({
           <Button type="button" variant="secundario" className="flex-1" onClick={onCerrar}>
             Cancelar
           </Button>
-          <Button type="submit" form={ID_FORMULARIO} className="flex-1" disabled={!puedeEnviar || enviando}>
-            {enviando ? "Registrando..." : "Registrar venta"}
+          <Button type="submit" form={ID_FORMULARIO} className="flex-1" disabled={!puedeEnviar || enviando || fiando}>
+            {enviando || fiando ? "Registrando..." : fiar ? "Fiar" : "Registrar venta"}
           </Button>
         </div>
       </div>

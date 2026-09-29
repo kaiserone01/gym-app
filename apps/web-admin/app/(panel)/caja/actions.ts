@@ -22,6 +22,29 @@ import {
   SinTurnoAbiertoError,
 } from "@gym-app/domain/use-cases/VenderProducto";
 import { LineasDePagoInvalidasError, MontoLineasNoCubreObjetivoError } from "@gym-app/domain/entities/Pago";
+import { PrismaMemberRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaMemberRepository";
+import { PrismaDeudaProductoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaDeudaProductoRepository";
+import {
+  fiarProducto,
+  RolNoAutorizadoError as RolNoAutorizadoFiar,
+  MiembroNoEncontradoError,
+  MiembroFueraDeSucursalError,
+  ProductoNoEncontradoError as ProductoNoEncontradoFiar,
+  ProductoInactivoError as ProductoInactivoFiar,
+  CantidadInvalidaError as CantidadInvalidaFiar,
+} from "@gym-app/domain/use-cases/FiarProducto";
+import {
+  cobrarDeudasMiembro,
+  RolNoAutorizadoError as RolNoAutorizadoCobrar,
+  SinDeudasPendientesError,
+  DeudasYaCobradasError,
+  SinTurnoAbiertoError as SinTurnoAbiertoCobrar,
+} from "@gym-app/domain/use-cases/CobrarDeudasMiembro";
+import {
+  anularDeuda,
+  RolNoAutorizadoError as RolNoAutorizadoAnularDeuda,
+  DeudaNoPendienteError,
+} from "@gym-app/domain/use-cases/AnularDeuda";
 import { abrirTurno, RolNoAutorizadoError as RolNoAutorizadoAbrir, TurnoYaAbiertoError, SucursalNoEncontradaError } from "@gym-app/domain/use-cases/AbrirTurno";
 import { registrarEgreso, RolNoAutorizadoError as RolNoAutorizadoEgreso, TurnoCerradoError, TurnoNoEncontradoError as TurnoNoEncontradoEgreso, MotivoRequeridoError, TasaRequeridaError as TasaRequeridaEgreso } from "@gym-app/domain/use-cases/RegistrarEgreso";
 import { cerrarTurno, RolNoAutorizadoError as RolNoAutorizadoCerrar, TurnoYaCerradoError, TurnoNoEncontradoError as TurnoNoEncontradoCerrar, NotaRequeridaError } from "@gym-app/domain/use-cases/CerrarTurno";
@@ -359,4 +382,171 @@ export async function venderProductoAction(
   revalidatePath("/caja");
   revalidatePath("/pagos");
   return { ok: "Venta registrada." };
+}
+
+export interface EstadoFiarProducto {
+  error?: string;
+  ok?: string;
+}
+
+export async function fiarProductoAction(
+  _estadoPrevio: EstadoFiarProducto,
+  formData: FormData
+): Promise<EstadoFiarProducto> {
+  const sesion = await obtenerUsuarioDeSesionActual();
+  if (!sesion) redirect("/login");
+  const { usuario, sucursalActivaId } = sesion;
+
+  const miembroId = formData.get("miembroId")?.toString();
+  const productoId = formData.get("productoId")?.toString();
+  if (!miembroId || !productoId) {
+    return { error: "Elige el miembro y el producto." };
+  }
+
+  try {
+    await fiarProducto(
+      {
+        deudas: new PrismaDeudaProductoRepository(prisma),
+        productos: new PrismaProductoRepository(prisma),
+        miembros: new PrismaMemberRepository(prisma),
+        sucursales: new PrismaSucursalRepository(prisma),
+        autorizacion: new AuthorizationService(new PrismaPermisoRepository(prisma)),
+      },
+      {
+        organizacionId: usuario.organizacionId,
+        miembroId,
+        productoId,
+        cantidad: Number(formData.get("cantidad")),
+        sucursalId: sucursalActivaId,
+        registradaPorId: usuario.id,
+      }
+    );
+  } catch (error) {
+    if (
+      error instanceof RolNoAutorizadoFiar ||
+      error instanceof MiembroNoEncontradoError ||
+      error instanceof MiembroFueraDeSucursalError ||
+      error instanceof ProductoNoEncontradoFiar ||
+      error instanceof ProductoInactivoFiar ||
+      error instanceof CantidadInvalidaFiar
+    ) {
+      return { error: error.message };
+    }
+    throw error;
+  }
+
+  revalidatePath("/caja");
+  return { ok: "Producto fiado." };
+}
+
+export interface EstadoCobrarDeudas {
+  error?: string;
+  ok?: string;
+  // Mismo aviso de tasa que EstadoVenderProducto.
+  tasaNueva?: number;
+  fallaTemporal?: boolean;
+  tasaGuardada?: number;
+}
+
+export async function cobrarDeudasAction(
+  _estadoPrevio: EstadoCobrarDeudas,
+  formData: FormData
+): Promise<EstadoCobrarDeudas> {
+  const sesion = await obtenerUsuarioDeSesionActual();
+  if (!sesion) redirect("/login");
+  const { usuario, sucursalActivaId } = sesion;
+
+  const miembroId = formData.get("miembroId")?.toString();
+  const lineasRaw = formData.get("lineas")?.toString();
+  if (!miembroId || !lineasRaw) {
+    return { error: "Elige un miembro y un método de pago." };
+  }
+
+  let lineas: Array<{
+    monto: number;
+    metodo: string;
+    metodoPagoId: string | null;
+    numeroOperacion: string | null;
+    tasaCambio: number | null;
+  }>;
+  try {
+    lineas = JSON.parse(lineasRaw);
+  } catch {
+    return { error: "No se pudo interpretar la información del pago." };
+  }
+  if (!Array.isArray(lineas) || lineas.length === 0 || lineas.some((linea) => !linea.metodoPagoId)) {
+    return { error: "Cada línea del pago necesita un monto y un método." };
+  }
+
+  const lineasValidadas: typeof lineas = [];
+  for (const linea of lineas) {
+    const validacionTasa = await validarTasaSiEsEnBs(linea.tasaCambio !== null ? String(linea.tasaCambio) : undefined);
+    if (!validacionTasa.ok) return validacionTasa.estado;
+    lineasValidadas.push({ ...linea, tasaCambio: validacionTasa.tasaCambio });
+  }
+
+  try {
+    // Transacción: si algo falla después de marcar las deudas como
+    // cobradas, no queda ninguna a medio escribir (mismo patrón que
+    // cambiarPlanAction en pagos/actions.ts).
+    await prisma.$transaction((tx) =>
+      cobrarDeudasMiembro(
+        {
+          deudas: new PrismaDeudaProductoRepository(tx),
+          pagos: new PrismaPagoRepository(tx),
+          turnos: new PrismaTurnoRepository(tx),
+          autorizacion: new AuthorizationService(new PrismaPermisoRepository(tx)),
+        },
+        {
+          organizacionId: usuario.organizacionId,
+          miembroId,
+          lineas: lineasValidadas,
+          sucursalId: sucursalActivaId,
+          registradoPorId: usuario.id,
+        }
+      )
+    );
+  } catch (error) {
+    if (
+      error instanceof RolNoAutorizadoCobrar ||
+      error instanceof SinDeudasPendientesError ||
+      error instanceof DeudasYaCobradasError ||
+      error instanceof SinTurnoAbiertoCobrar ||
+      error instanceof LineasDePagoInvalidasError ||
+      error instanceof MontoLineasNoCubreObjetivoError
+    ) {
+      return { error: error.message };
+    }
+    throw error;
+  }
+
+  revalidatePath("/caja");
+  revalidatePath("/pagos");
+  return { ok: "Deuda cobrada." };
+}
+
+// Devuelve el error en vez de lanzarlo: en producción Next oculta el
+// mensaje de una excepción de Server Action, y acá el cajero necesita leerlo.
+export async function anularDeudaAction(id: string): Promise<{ error?: string; ok?: string }> {
+  const sesion = await obtenerUsuarioDeSesionActual();
+  if (!sesion) redirect("/login");
+  const { usuario } = sesion;
+
+  try {
+    await anularDeuda(
+      {
+        deudas: new PrismaDeudaProductoRepository(prisma),
+        autorizacion: new AuthorizationService(new PrismaPermisoRepository(prisma)),
+      },
+      { organizacionId: usuario.organizacionId, id, anuladaPorId: usuario.id }
+    );
+  } catch (error) {
+    if (error instanceof RolNoAutorizadoAnularDeuda || error instanceof DeudaNoPendienteError) {
+      return { error: error.message };
+    }
+    throw error;
+  }
+
+  revalidatePath("/caja");
+  return { ok: "Deuda anulada." };
 }

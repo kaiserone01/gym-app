@@ -11,12 +11,15 @@ export function SelectorFotoPerfil({
   onCambio,
   etiqueta = "Foto de perfil",
   guiaCircular = true,
+  camaraInicial = "user",
 }: {
   tieneFoto: boolean;
   onCambio: (archivo: File) => void;
   etiqueta?: string;
   // La guía circular ayuda a centrar un rostro; para productos no aplica.
   guiaCircular?: boolean;
+  // Cámara con la que abre: "user" = frontal (selfies), "environment" = trasera (objetos).
+  camaraInicial?: "user" | "environment";
 }) {
   const inputFotoRef = useRef<HTMLInputElement>(null);
   const inputArchivoRef = useRef<HTMLInputElement>(null);
@@ -24,6 +27,7 @@ export function SelectorFotoPerfil({
   const streamRef = useRef<MediaStream | null>(null);
 
   const [camaraAbierta, setCamaraAbierta] = useState(false);
+  const [camara, setCamara] = useState<"user" | "environment">(camaraInicial);
   const [error, setError] = useState<string | null>(null);
   const [procesando, setProcesando] = useState(false);
 
@@ -38,7 +42,7 @@ export function SelectorFotoPerfil({
     if (!camaraAbierta) return;
     let cancelado = false;
     navigator.mediaDevices
-      ?.getUserMedia({ video: { facingMode: "user", width: { ideal: 720 }, height: { ideal: 720 } } })
+      ?.getUserMedia({ video: { facingMode: { ideal: camara }, width: { ideal: 720 }, height: { ideal: 720 } } })
       .then((stream) => {
         if (cancelado) {
           stream.getTracks().forEach((pista) => pista.stop());
@@ -55,7 +59,7 @@ export function SelectorFotoPerfil({
       cancelado = true;
       detenerCamara();
     };
-  }, [camaraAbierta]);
+  }, [camaraAbierta, camara]);
 
   function abrirCamara() {
     setError(null);
@@ -136,7 +140,13 @@ export function SelectorFotoPerfil({
               Tomar foto
             </h3>
             <div className="relative aspect-square w-full overflow-hidden rounded-xl bg-black">
-              <video ref={videoRef} autoPlay playsInline muted className="h-full w-full -scale-x-100 object-cover" />
+              <video
+                ref={videoRef}
+                autoPlay
+                playsInline
+                muted
+                className={`h-full w-full object-cover ${camara === "user" ? "-scale-x-100" : ""}`}
+              />
               {/* Guía: el avatar es un círculo dentro del cuadrado; lo de afuera queda oscurecido. */}
               {guiaCircular && (
                 <div
@@ -148,6 +158,14 @@ export function SelectorFotoPerfil({
             <p className="mt-2 text-center text-xs" style={{ color: "var(--gx-muted)" }}>
               {guiaCircular ? "Centra el rostro dentro del círculo." : "Centra el producto en el cuadro."}
             </p>
+            <Button
+              type="button"
+              variant="secundario"
+              className="mt-3 w-full"
+              onClick={() => setCamara((actual) => (actual === "user" ? "environment" : "user"))}
+            >
+              Cambiar cámara ({camara === "user" ? "frontal" : "trasera"})
+            </Button>
             <div className="mt-3 flex gap-3">
               <Button type="button" variant="secundario" className="flex-1" onClick={() => setCamaraAbierta(false)}>
                 Cancelar

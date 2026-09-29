@@ -62,6 +62,7 @@ export function FormularioProducto({
           onCambio={manejarCambioFoto}
           etiqueta="Foto del producto"
           guiaCircular={false}
+          camaraInicial="environment"
         />
       </div>
       <input type="hidden" name="fotoUrl" value={valoresIniciales?.fotoUrl ?? ""} />

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { validarLineasDePago, LineasDePagoInvalidasError, MontoLineasNoCubreObjetivoError } from "./Pago";
+import { validarLineasDePago, repartirLineasPago, LineasDePagoInvalidasError, MontoLineasNoCubreObjetivoError, MontoNoCubreDeudaError } from "./Pago";
 import type { DatosLineaPago } from "./Pago";
 
 function linea(datos: Partial<DatosLineaPago>): DatosLineaPago {
@@ -72,5 +72,44 @@ describe("validarLineasDePago — modo exacto (CambiarPlanConPago)", () => {
 
   test("rechaza una línea sin método o con monto <= 0", () => {
     expect(() => validarLineasDePago([linea({ monto: 0, metodo: "" })], "exacto", 21.67)).toThrow();
+  });
+});
+
+describe("repartirLineasPago", () => {
+  test("una línea: la primera parte toma el monto pedido y el resto queda para la segunda", () => {
+    const [primeras, segundas] = repartirLineasPago([linea({ monto: 35.25 })], 5.25);
+    expect(primeras.map((l) => l.monto)).toEqual([5.25]);
+    expect(segundas.map((l) => l.monto)).toEqual([30]);
+  });
+
+  test("varias líneas: consume en orden y parte la línea del límite conservando método, operación y tasa", () => {
+    const lineas = [
+      linea({ monto: 3, metodo: "Efectivo (USD)" }),
+      linea({ monto: 20, metodo: "Pago Móvil - Banesco", numeroOperacion: "1234", tasaCambio: 50 }),
+    ];
+    const [primeras, segundas] = repartirLineasPago(lineas, 5.25);
+
+    expect(primeras.map((l) => [l.metodo, l.monto])).toEqual([
+      ["Efectivo (USD)", 3],
+      ["Pago Móvil - Banesco", 2.25],
+    ]);
+    expect(segundas).toEqual([{ ...lineas[1], monto: 17.75 }]);
+    expect(primeras[1]).toMatchObject({ numeroOperacion: "1234", tasaCambio: 50 });
+  });
+
+  test("si el monto pedido coincide con el borde de una línea no deja líneas vacías", () => {
+    const [primeras, segundas] = repartirLineasPago([linea({ monto: 5 }), linea({ monto: 10 })], 5);
+    expect(primeras.map((l) => l.monto)).toEqual([5]);
+    expect(segundas.map((l) => l.monto)).toEqual([10]);
+  });
+
+  test("no acumula error de punto flotante (0.1 + 0.2 repartido en 0.3)", () => {
+    const [primeras, segundas] = repartirLineasPago([linea({ monto: 0.1 }), linea({ monto: 0.2 }), linea({ monto: 1 })], 0.3);
+    expect(primeras.map((l) => l.monto)).toEqual([0.1, 0.2]);
+    expect(segundas.map((l) => l.monto)).toEqual([1]);
+  });
+
+  test("rechaza si las líneas no alcanzan para cubrir el monto pedido", () => {
+    expect(() => repartirLineasPago([linea({ monto: 5 })], 5.25)).toThrow(MontoNoCubreDeudaError);
   });
 });

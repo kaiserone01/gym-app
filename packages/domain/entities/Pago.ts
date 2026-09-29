@@ -120,3 +120,44 @@ export function validarLineasDePago(
     }
   }
 }
+
+// El monto de las líneas no alcanza para cubrir primero la deuda de productos
+// y todavía dejar algo para la membresía (ver repartirLineasPago).
+export class MontoNoCubreDeudaError extends Error {
+  constructor() {
+    super("El monto no alcanza para cubrir la deuda de productos y la membresía.");
+  }
+}
+
+const aCentavos = (monto: number) => Math.round(monto * 100);
+
+// Reparte las líneas de un mismo cobro en dos grupos: las primeras suman
+// exactamente `montoPrimero` (se consumen en orden) y las segundas son el
+// resto. La línea del límite se parte en dos conservando método, número de
+// operación y tasa. Trabaja en centavos para no acumular error de punto
+// flotante. Lanza MontoNoCubreDeudaError si las líneas no llegan a `montoPrimero`.
+export function repartirLineasPago(lineas: DatosLineaPago[], montoPrimero: number): [DatosLineaPago[], DatosLineaPago[]] {
+  let pendiente = aCentavos(montoPrimero);
+  const primeras: DatosLineaPago[] = [];
+  const segundas: DatosLineaPago[] = [];
+
+  for (const linea of lineas) {
+    const centavos = aCentavos(linea.monto);
+    if (pendiente <= 0) {
+      segundas.push(linea);
+    } else if (centavos <= pendiente) {
+      primeras.push(linea);
+      pendiente -= centavos;
+    } else {
+      primeras.push({ ...linea, monto: pendiente / 100 });
+      segundas.push({ ...linea, monto: (centavos - pendiente) / 100 });
+      pendiente = 0;
+    }
+  }
+
+  if (pendiente > 0) {
+    throw new MontoNoCubreDeudaError();
+  }
+
+  return [primeras, segundas];
+}

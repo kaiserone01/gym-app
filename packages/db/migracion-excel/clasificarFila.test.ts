@@ -247,14 +247,24 @@ describe("clasificarFila — duplicados de cedula", () => {
     expect(resultado).toEqual({ categoria: "excluida", motivo: "duplicado-pendiente-revision", numeroFila: 812, detalle: "22969126" });
   });
 
-  test("par marcado fusionar:false → ambas filas excluidas", () => {
+  test("par marcado fusionar:false → ambas migran, la no ganadora con cédula placeholder", () => {
     const reglas: ReglasCedula = {
       vaciaAccion: "placeholder",
       duplicados: [{ cedula: "11111111", filaA: 100, filaB: 200, fusionar: false, filaGanadora: 200 }],
     };
     const filaA = filaNormalizadaBase({ numeroFila: 100, cedulaOriginal: "11111111" });
     const filaB = filaNormalizadaBase({ numeroFila: 200, cedulaOriginal: "11111111" });
-    expect(clasificarFila(filaA, mapeoVacio, reglas, placeholderFecha).categoria).toBe("excluida");
-    expect(clasificarFila(filaB, mapeoVacio, reglas, placeholderFecha).categoria).toBe("excluida");
+    const a = clasificarFila(filaA, mapeoVacio, reglas, placeholderFecha);
+    const b = clasificarFila(filaB, mapeoVacio, reglas, placeholderFecha);
+    expect(a.categoria).toBe("migrada");
+    expect(b.categoria).toBe("migrada");
+    if (a.categoria === "migrada" && b.categoria === "migrada") {
+      expect(a.datos.cedula).toBe("PLACEHOLDER-100");
+      expect(a.flags).toContain("cedula-placeholder");
+      expect(a.filaFusionadaDescartada).toBeUndefined();
+      expect(b.datos.cedula).toBe("11111111");
+      expect(b.flags).not.toContain("cedula-placeholder");
+      expect(b.filaFusionadaDescartada).toBeUndefined();
+    }
   });
 });

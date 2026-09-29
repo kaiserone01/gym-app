@@ -21,37 +21,29 @@ export function clasificarFila(
     return { categoria: "excluida", motivo: "status-sin-dato", numeroFila: fila.numeroFila };
   }
 
-  // Duplicados de cédula: resolver antes que cualquier otra cosa.
-  if (fila.cedulaOriginal !== null) {
-    const parDuplicado = reglasCedula.duplicados.find(
-      (d) => d.filaA === fila.numeroFila || d.filaB === fila.numeroFila,
-    );
-    if (parDuplicado) {
-      if (!parDuplicado.fusionar) {
-        return {
-          categoria: "excluida",
-          motivo: "duplicado-pendiente-revision",
-          numeroFila: fila.numeroFila,
-          detalle: parDuplicado.cedula,
-        };
-      }
-      if (parDuplicado.filaGanadora !== fila.numeroFila) {
-        return {
-          categoria: "excluida",
-          motivo: "duplicado-pendiente-revision",
-          numeroFila: fila.numeroFila,
-          detalle: parDuplicado.cedula,
-        };
-      }
-      // Es la fila ganadora: sigue el flujo normal, y al final se marca filaFusionadaDescartada.
-    }
+  // Duplicados de cédula: si fusionan, solo migra la ganadora. Si son personas distintas
+  // (fusionar:false), migran ambas y la que no es ganadora recibe cédula placeholder.
+  const parDuplicado =
+    fila.cedulaOriginal !== null
+      ? reglasCedula.duplicados.find((d) => d.filaA === fila.numeroFila || d.filaB === fila.numeroFila)
+      : undefined;
+  const esPerdedoraFusionada =
+    parDuplicado?.fusionar === true && parDuplicado.filaGanadora !== fila.numeroFila;
+  if (esPerdedoraFusionada) {
+    return {
+      categoria: "excluida",
+      motivo: "duplicado-pendiente-revision",
+      numeroFila: fila.numeroFila,
+      detalle: parDuplicado.cedula,
+    };
   }
+  const cedulaEnConflicto = parDuplicado?.fusionar === false && parDuplicado.filaGanadora !== fila.numeroFila;
 
   const flags: MotivoFlagRevision[] = [];
 
   // Cédula
   let cedula: string;
-  if (fila.cedulaOriginal !== null) {
+  if (fila.cedulaOriginal !== null && !cedulaEnConflicto) {
     cedula = fila.cedulaOriginal;
   } else {
     cedula = `PLACEHOLDER-${fila.numeroFila}`;
@@ -131,12 +123,10 @@ export function clasificarFila(
     pago,
   };
 
-  const parDuplicado = fila.cedulaOriginal
-    ? reglasCedula.duplicados.find((d) => d.filaGanadora === fila.numeroFila)
-    : undefined;
-  const filaFusionadaDescartada = parDuplicado
-    ? (parDuplicado.filaA === fila.numeroFila ? parDuplicado.filaB : parDuplicado.filaA)
-    : undefined;
+  const filaFusionadaDescartada =
+    parDuplicado?.fusionar === true
+      ? (parDuplicado.filaA === fila.numeroFila ? parDuplicado.filaB : parDuplicado.filaA)
+      : undefined;
 
   return {
     categoria: "migrada",

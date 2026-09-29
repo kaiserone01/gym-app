@@ -47,7 +47,7 @@
       "cedula": "22969126",
       "filaA": 1052,
       "filaB": 1076,
-      "fusionar": false,
+      "fusionar": true,
       "filaGanadora": 1052
     }
   ]

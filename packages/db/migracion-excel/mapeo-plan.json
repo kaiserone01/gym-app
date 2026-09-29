@@ -1,118 +1,180 @@
 [
   {
     "valorExcel": "",
-    "accion": "pendiente"
+    "accion": "excluir"
   },
   {
     "valorExcel": "20*",
-    "accion": "pendiente"
+    "accion": "mapear",
+    "planNombreDestino": "Plan $20 (legacy)",
+    "precioPlanOverrideUSD": 20,
+    "planLegacy": true
   },
   {
     "valorExcel": "*",
-    "accion": "pendiente"
+    "accion": "excluir"
   },
   {
     "valorExcel": "16",
-    "accion": "pendiente"
+    "accion": "mapear",
+    "planNombreDestino": "Plan $16 (legacy)",
+    "precioPlanOverrideUSD": 16,
+    "planLegacy": true
   },
   {
     "valorExcel": "15",
-    "accion": "pendiente"
+    "accion": "mapear",
+    "planNombreDestino": "Plan $15 (legacy)",
+    "precioPlanOverrideUSD": 15,
+    "planLegacy": true
   },
   {
     "valorExcel": "31",
-    "accion": "pendiente"
+    "accion": "mapear",
+    "planNombreDestino": "Plan $31 (legacy)",
+    "precioPlanOverrideUSD": 31,
+    "planLegacy": true
   },
   {
     "valorExcel": "5",
-    "accion": "pendiente"
+    "accion": "mapear",
+    "planNombreDestino": "Plan $5 (legacy)",
+    "precioPlanOverrideUSD": 5,
+    "planLegacy": true
   },
   {
     "valorExcel": "28",
-    "accion": "pendiente"
+    "accion": "mapear",
+    "planNombreDestino": "Plan $28 (legacy)",
+    "precioPlanOverrideUSD": 28,
+    "planLegacy": true
   },
   {
     "valorExcel": "15*",
-    "accion": "pendiente"
+    "accion": "mapear",
+    "planNombreDestino": "Plan $15 (legacy)",
+    "precioPlanOverrideUSD": 15,
+    "planLegacy": true
   },
   {
     "valorExcel": "6",
-    "accion": "pendiente"
+    "accion": "mapear",
+    "planNombreDestino": "Plan $6 (legacy)",
+    "precioPlanOverrideUSD": 6,
+    "planLegacy": true
   },
   {
     "valorExcel": "27",
-    "accion": "pendiente"
+    "accion": "mapear",
+    "planNombreDestino": "Plan $27 (legacy)",
+    "precioPlanOverrideUSD": 27,
+    "planLegacy": true
   },
   {
     "valorExcel": "4",
-    "accion": "pendiente"
+    "accion": "mapear",
+    "planNombreDestino": "Plan $4 (legacy)",
+    "precioPlanOverrideUSD": 4,
+    "planLegacy": true
   },
   {
     "valorExcel": "Pend",
-    "accion": "pendiente"
+    "accion": "excluir"
   },
   {
     "valorExcel": "25+5",
-    "accion": "pendiente"
+    "accion": "mapear",
+    "planNombreDestino": "Plan $30",
+    "precioPlanOverrideUSD": 30
   },
   {
     "valorExcel": "TV",
-    "accion": "pendiente"
+    "accion": "excluir"
   },
   {
     "valorExcel": "9",
-    "accion": "pendiente"
+    "accion": "mapear",
+    "planNombreDestino": "Plan $9 (legacy)",
+    "precioPlanOverrideUSD": 9,
+    "planLegacy": true
   },
   {
     "valorExcel": "7",
-    "accion": "pendiente"
+    "accion": "mapear",
+    "planNombreDestino": "Plan $7 (legacy)",
+    "precioPlanOverrideUSD": 7,
+    "planLegacy": true
   },
   {
     "valorExcel": "Radio",
-    "accion": "pendiente"
+    "accion": "excluir"
   },
   {
     "valorExcel": "0",
-    "accion": "pendiente"
+    "accion": "mapear",
+    "planNombreDestino": "Cortesia",
+    "precioPlanOverrideUSD": 0,
+    "planLegacy": true
   },
   {
     "valorExcel": "jorge",
-    "accion": "pendiente"
+    "accion": "excluir"
   },
   {
     "valorExcel": "+",
-    "accion": "pendiente"
+    "accion": "excluir"
   },
   {
     "valorExcel": "12",
-    "accion": "pendiente"
+    "accion": "mapear",
+    "planNombreDestino": "Plan $12 (legacy)",
+    "precioPlanOverrideUSD": 12,
+    "planLegacy": true
   },
   {
     "valorExcel": "23",
-    "accion": "pendiente"
+    "accion": "mapear",
+    "planNombreDestino": "Plan $23 (legacy)",
+    "precioPlanOverrideUSD": 23,
+    "planLegacy": true
   },
   {
     "valorExcel": "26",
-    "accion": "pendiente"
+    "accion": "mapear",
+    "planNombreDestino": "Plan $26 (legacy)",
+    "precioPlanOverrideUSD": 26,
+    "planLegacy": true
   },
   {
     "valorExcel": "10",
-    "accion": "pendiente"
+    "accion": "mapear",
+    "planNombreDestino": "Plan $10 (legacy)",
+    "precioPlanOverrideUSD": 10,
+    "planLegacy": true
   },
   {
     "valorExcel": "17.5",
-    "accion": "pendiente"
+    "accion": "mapear",
+    "planNombreDestino": "Plan $17.5 (legacy)",
+    "precioPlanOverrideUSD": 17.5,
+    "planLegacy": true
   },
   {
     "valorExcel": "Virgen",
-    "accion": "pendiente"
+    "accion": "excluir"
   },
   {
     "valorExcel": "18",
-    "accion": "pendiente"
+    "accion": "mapear",
+    "planNombreDestino": "Plan $18 (legacy)",
+    "precioPlanOverrideUSD": 18,
+    "planLegacy": true
   },
   {
     "valorExcel": "10*",
-    "accion": "pendiente"
+    "accion": "mapear",
+    "planNombreDestino": "Plan $10 (legacy)",
+    "precioPlanOverrideUSD": 10,
+    "planLegacy": true
   }
 ]

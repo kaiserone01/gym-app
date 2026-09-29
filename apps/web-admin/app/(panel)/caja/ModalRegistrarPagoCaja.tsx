@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useState, type ReactNode } from "react";
+import { useActionState, useEffect, useState } from "react";
 import type { Miembro } from "@gym-app/domain/entities/Miembro";
 import type { MetodoPago } from "@gym-app/domain/entities/MetodoPago";
 import type { FrecuenciaPago } from "@gym-app/domain/entities/Plan";
@@ -13,6 +13,8 @@ import { DiasDisponibles } from "../miembros/vencimiento";
 import { formatearBs } from "../tasaBcvFija";
 import { SelectorMetodoPago } from "../pagos/SelectorMetodoPago";
 import { CampoNumeroOperacion } from "../pagos/CampoNumeroOperacion";
+import { MetodoYCampos } from "../pagos/MetodoYCampos";
+import { TarjetaOpcion } from "./MarcoAsistente";
 import { registrarPagoAction, type EstadoCambioPlan } from "../pagos/actions";
 import { calcularProyeccionAbono } from "./proyeccionAbono";
 import { PanelRemanentePago } from "./PanelRemanentePago";
@@ -76,26 +78,6 @@ function CabeceraMiembro({ miembro }: { miembro: MiembroConPlan }) {
           {miembro.nombre}
         </p>
         <p style={{ color: "var(--gx-muted)" }}>{miembro.cedula}</p>
-      </div>
-    </div>
-  );
-}
-
-// Método de pago a la izquierda y, a la derecha, una tarjeta angosta con el monto y la referencia,
-// para que las casillas tengan un ancho acorde a lo que se escribe en ellas.
-function MetodoYCampos({ selector, campos, vacio }: { selector: ReactNode; campos: ReactNode; vacio: string }) {
-  return (
-    <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_18rem] xl:gap-6">
-      <div className="min-w-0">{selector}</div>
-      <div className="flex flex-col gap-4 rounded-xl border p-4 xl:self-start" style={{ borderColor: "var(--gx-edge)", background: "var(--gx-surface-2)" }}>
-        <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--gx-muted)" }}>
-          Monto y referencia
-        </p>
-        {campos || (
-          <p className="text-sm" style={{ color: "var(--gx-muted)" }}>
-            {vacio}
-          </p>
-        )}
       </div>
     </div>
   );
@@ -325,36 +307,16 @@ function ContenidoPaso2({
             Forma de pago
           </p>
           <div className="grid gap-3 sm:grid-cols-3">
-            {OPCIONES_MODALIDAD.map((opcion) => {
-              const deshabilitado = opcion.valor === "abono" && !planEfectivo.permitePagoParcial;
-              const elegida = modalidadElegida === opcion.valor;
-              return (
-                <button
-                  key={opcion.valor}
-                  type="button"
-                  disabled={deshabilitado}
-                  onClick={() => onCambiarModalidad(opcion.valor)}
-                  className="flex min-h-28 flex-col items-start gap-1.5 rounded-xl border-2 p-4 text-left transition-colors duration-150 disabled:opacity-40"
-                  style={
-                    elegida
-                      ? { borderColor: "var(--gx-accent)", background: "color-mix(in srgb, var(--gx-accent) 12%, transparent)" }
-                      : { borderColor: "var(--gx-edge)" }
-                  }
-                >
-                  <span className="flex w-full items-center justify-between gap-2 text-base font-semibold" style={{ color: "var(--gx-ink)" }}>
-                    {opcion.titulo}
-                    {elegida && (
-                      <span aria-hidden style={{ color: "var(--gx-accent)" }}>
-                        ✓
-                      </span>
-                    )}
-                  </span>
-                  <span className="text-sm" style={{ color: "var(--gx-muted)" }}>
-                    {opcion.descripcion}
-                  </span>
-                </button>
-              );
-            })}
+            {OPCIONES_MODALIDAD.map((opcion) => (
+              <TarjetaOpcion
+                key={opcion.valor}
+                titulo={opcion.titulo}
+                descripcion={opcion.descripcion}
+                elegida={modalidadElegida === opcion.valor}
+                deshabilitada={opcion.valor === "abono" && !planEfectivo.permitePagoParcial}
+                onClick={() => onCambiarModalidad(opcion.valor)}
+              />
+            ))}
           </div>
           {!planEfectivo.permitePagoParcial && (
             <p className="text-sm" style={{ color: "var(--gx-muted)" }}>

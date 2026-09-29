@@ -7,6 +7,9 @@ import type { MetodoPago } from "@gym-app/domain/entities/MetodoPago";
 import type { GrupoDeudasMiembro } from "@gym-app/domain/use-cases/ListarDeudasPendientes";
 import { totalDeudas } from "@gym-app/domain/entities/DeudaProducto";
 import { SelectorMetodoPago } from "../pagos/SelectorMetodoPago";
+import { CampoNumeroOperacion } from "../pagos/CampoNumeroOperacion";
+import { MetodoYCampos } from "../pagos/MetodoYCampos";
+import { ColumnaLateral, ColumnaPrincipal, MarcoAsistente, TituloSeccion } from "./MarcoAsistente";
 import { formatearBs } from "../tasaBcvFija";
 import type { EstadoCobrarDeudas } from "./actions";
 
@@ -86,119 +89,140 @@ export function ModalCobrarDeudas({
     });
   }
 
-  const bs = (usd: number) => (tasaActual !== null ? ` · Bs. ${formatearBs(usd * tasaActual)}` : "");
+  const bs = (usd: number) => (tasaActual !== null ? `Bs. ${formatearBs(usd * tasaActual)}` : null);
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: "color-mix(in srgb, black 60%, transparent)" }}
-      onClick={onCerrar}
-    >
-      <div
-        role="dialog"
-        aria-label="Cobrar deudas"
-        className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-y-auto rounded-2xl border-2 p-6"
-        style={{ borderColor: "var(--gx-accent)", background: "var(--gx-surface)" }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h3 className="text-lg font-bold" style={{ color: "var(--gx-ink)" }}>
-          Cobrar deudas
-        </h3>
-
-        {grupos.length === 0 ? (
-          <p className="mt-4 text-sm" style={{ color: "var(--gx-muted)" }}>
-            No hay productos pendientes de cobro.
-          </p>
-        ) : !grupo ? (
-          <ul className="mt-4 flex flex-col gap-2">
-            {grupos.map((g) => (
-              <li key={g.miembroId}>
-                <button
-                  type="button"
-                  onClick={() => setMiembroId(g.miembroId)}
-                  className="flex w-full items-center justify-between rounded-xl border-2 px-3 py-3 text-left"
-                  style={{ borderColor: "var(--gx-edge)", background: "var(--gx-surface-2)" }}
-                >
-                  <span className="font-medium" style={{ color: "var(--gx-ink)" }}>
-                    {g.miembroNombre}
-                  </span>
-                  <span className="text-sm" style={{ color: "var(--gx-muted)" }}>
-                    ${g.totalUSD.toFixed(2)}
-                    {bs(g.totalUSD)}
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <form id={ID_FORMULARIO} action={enviar} className="mt-4 flex flex-col gap-4">
+    <MarcoAsistente titulo="Cobrar deudas" etiqueta={grupo ? grupo.miembroNombre : "Elige un miembro"} onCerrar={onCerrar}>
+      {grupos.length === 0 ? (
+        <p className="text-sm" style={{ color: "var(--gx-muted)" }}>
+          No hay productos pendientes de cobro.
+        </p>
+      ) : !grupo ? (
+        <>
+          <ColumnaPrincipal>
+            <TituloSeccion>Miembros con productos pendientes</TituloSeccion>
+            <ul className="grid content-start gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              {grupos.map((g) => (
+                <li key={g.miembroId}>
+                  <button
+                    type="button"
+                    onClick={() => setMiembroId(g.miembroId)}
+                    className="flex w-full flex-col gap-1 rounded-xl border-2 p-4 text-left transition-colors duration-150 hover:border-[var(--gx-accent)]"
+                    style={{ borderColor: "var(--gx-edge)", background: "var(--gx-surface-2)" }}
+                  >
+                    <span className="text-lg font-semibold" style={{ color: "var(--gx-ink)" }}>
+                      {g.miembroNombre}
+                    </span>
+                    <span className="text-sm" style={{ color: "var(--gx-muted)" }}>
+                      {g.deudas.length} {g.deudas.length === 1 ? "producto" : "productos"}
+                    </span>
+                    <span className="text-xl font-bold" style={{ color: "var(--gx-accent)" }}>
+                      ${g.totalUSD.toFixed(2)}
+                      {bs(g.totalUSD) && (
+                        <span className="block text-sm font-normal" style={{ color: "var(--gx-muted)" }}>
+                          {bs(g.totalUSD)}
+                        </span>
+                      )}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </ColumnaPrincipal>
+          <ColumnaLateral>
+            <p className="text-sm" style={{ color: "var(--gx-muted)" }}>
+              Elige un miembro para ver lo que debe y cobrarlo en un solo pago.
+            </p>
+            <Button type="button" variant="secundario" className="mt-auto min-h-12 text-base" onClick={onCerrar}>
+              Cerrar
+            </Button>
+          </ColumnaLateral>
+        </>
+      ) : (
+        <>
+          <form id={ID_FORMULARIO} action={enviar} className="contents">
             <input type="hidden" name="miembroId" value={grupo.miembroId} />
             <input type="hidden" name="lineas" value={JSON.stringify(lineas)} />
+            <ColumnaPrincipal>
+              <TituloSeccion>Método de pago</TituloSeccion>
+              <MetodoYCampos
+                vacio={seleccion.metodoPagoId ? "Este método no requiere número de operación." : "Elige un método de pago."}
+                selector={
+                  <SelectorMetodoPago
+                    compacto
+                    grande
+                    metodos={metodosPago}
+                    monto={total}
+                    idFormulario={ID_FORMULARIO}
+                    onCambio={setSeleccion}
+                    avisoServidor={{ tasaNueva: estado.tasaNueva, fallaTemporal: estado.fallaTemporal, tasaGuardada: estado.tasaGuardada }}
+                    ocultarNumeroOperacion
+                    numeroOperacion={seleccion.numeroOperacion}
+                    onCambioNumeroOperacion={(valor) => setSeleccion((prev) => ({ ...prev, numeroOperacion: valor }))}
+                  />
+                }
+                campos={
+                  seleccion.requiereNumeroOperacion && (
+                    <CampoNumeroOperacion
+                      value={seleccion.numeroOperacion}
+                      onChange={(valor) => setSeleccion((prev) => ({ ...prev, numeroOperacion: valor }))}
+                    />
+                  )
+                }
+              />
+            </ColumnaPrincipal>
+          </form>
 
-            <div className="flex items-center justify-between">
-              <span className="font-semibold" style={{ color: "var(--gx-ink)" }}>
-                {grupo.miembroNombre}
-              </span>
+          <ColumnaLateral>
+            <div className="flex items-center justify-between gap-3">
+              <TituloSeccion>Productos que debe</TituloSeccion>
               <button type="button" className="text-sm font-medium hover:underline" style={{ color: "var(--gx-accent)" }} onClick={() => setMiembroId(null)}>
                 Otro miembro
               </button>
             </div>
-
-            <ul className="flex flex-col gap-1">
+            <ul className="flex flex-col gap-2 lg:flex-1 lg:overflow-y-auto">
               {grupo.deudas.map((d) => (
-                <li key={d.id} className="flex items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm" style={{ background: "var(--gx-surface-2)" }}>
-                  <span style={{ color: "var(--gx-ink)" }}>
+                <li key={d.id} className="flex items-center justify-between gap-3 rounded-xl p-3 text-sm" style={{ background: "var(--gx-surface-2)" }}>
+                  <span className="min-w-0 break-words" style={{ color: "var(--gx-ink)" }}>
                     {d.productoNombre}
                     {d.cantidad > 1 ? ` × ${d.cantidad}` : ""}
-                  </span>
-                  <span className="flex items-center gap-3">
-                    <span style={{ color: "var(--gx-muted)" }}>${totalDeudas([d]).toFixed(2)}</span>
                     <button
                       type="button"
                       disabled={anulando}
                       onClick={() => anular(d.id, d.productoNombre)}
-                      className="font-medium hover:underline disabled:opacity-50"
+                      className="mt-1 block text-xs font-medium hover:underline disabled:opacity-50"
                       style={{ color: "var(--gx-bad)" }}
                     >
                       Anular
                     </button>
                   </span>
+                  <span className="shrink-0 font-semibold" style={{ color: "var(--gx-ink)" }}>
+                    ${totalDeudas([d]).toFixed(2)}
+                  </span>
                 </li>
               ))}
             </ul>
-
-            <div className="flex justify-between rounded-lg px-3 py-2" style={{ background: "var(--gx-surface-2)" }}>
-              <span className="font-semibold" style={{ color: "var(--gx-ink)" }}>
+            <div className="flex items-baseline justify-between gap-3 border-t pt-3" style={{ borderColor: "var(--gx-edge)" }}>
+              <span className="text-lg font-semibold" style={{ color: "var(--gx-ink)" }}>
                 Total ${total.toFixed(2)}
               </span>
-              {tasaActual !== null && (
-                <span className="text-sm" style={{ color: "var(--gx-muted)" }}>
-                  Bs. {formatearBs(total * tasaActual)}
+              {bs(total) && (
+                <span className="text-sm" style={{ color: "var(--gx-accent)" }}>
+                  {bs(total)}
                 </span>
               )}
             </div>
-
-            <SelectorMetodoPago
-              metodos={metodosPago}
-              monto={total}
-              idFormulario={ID_FORMULARIO}
-              onCambio={setSeleccion}
-              avisoServidor={{ tasaNueva: estado.tasaNueva, fallaTemporal: estado.fallaTemporal, tasaGuardada: estado.tasaGuardada }}
-            />
-          </form>
-        )}
-
-        <div className="mt-4 flex gap-3">
-          <Button type="button" variant="secundario" className="flex-1" onClick={onCerrar}>
-            Cerrar
-          </Button>
-          {grupo && (
-            <Button type="submit" form={ID_FORMULARIO} className="flex-1" disabled={!puedeEnviar || enviando}>
-              {enviando ? "Cobrando..." : "Cobrar"}
-            </Button>
-          )}
-        </div>
-      </div>
-    </div>
+            <div className="flex gap-3">
+              <Button type="button" variant="secundario" className="min-h-12 flex-1 text-base" onClick={onCerrar}>
+                Cerrar
+              </Button>
+              <Button type="submit" form={ID_FORMULARIO} className="min-h-12 flex-1 text-base" disabled={!puedeEnviar || enviando}>
+                {enviando ? "Cobrando..." : "Cobrar"}
+              </Button>
+            </div>
+          </ColumnaLateral>
+        </>
+      )}
+    </MarcoAsistente>
   );
 }

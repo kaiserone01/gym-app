@@ -8,6 +8,9 @@ import type { MetodoPago } from "@gym-app/domain/entities/MetodoPago";
 import type { Miembro } from "@gym-app/domain/entities/Miembro";
 import { totalDeudas } from "@gym-app/domain/entities/DeudaProducto";
 import { SelectorMetodoPago } from "../pagos/SelectorMetodoPago";
+import { CampoNumeroOperacion } from "../pagos/CampoNumeroOperacion";
+import { MetodoYCampos } from "../pagos/MetodoYCampos";
+import { ColumnaLateral, ColumnaPrincipal, MarcoAsistente, TarjetaOpcion, TituloSeccion } from "./MarcoAsistente";
 import { BuscadorMiembro, type MiembroConPlan, type PlanParaModal } from "./SelectorMiembroModal";
 import { formatearBs } from "../tasaBcvFija";
 import type { EstadoVenderProducto, EstadoFiarProducto } from "./actions";
@@ -128,34 +131,28 @@ export function ModalVenderProducto({
 
   const bs = (usd: number) => (tasaActual !== null ? `Bs. ${formatearBs(usd * tasaActual)}` : null);
 
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-[1vmin]"
-      style={{ background: "color-mix(in srgb, black 60%, transparent)" }}
-      onClick={onCerrar}
-    >
-      <div
-        role="dialog"
-        aria-label="Vender producto"
-        className="flex h-[98dvh] w-[98vw] flex-col rounded-2xl border-2 p-4 sm:p-6"
-        style={{ borderColor: "var(--gx-accent)", background: "var(--gx-surface)" }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex shrink-0 items-baseline justify-between gap-3">
-          <h3 className="text-lg font-bold" style={{ color: "var(--gx-ink)" }}>
-            Vender producto
-          </h3>
-          <span className="text-sm" style={{ color: "var(--gx-muted)" }}>
-            Paso {paso} de 2 · {paso === 1 ? "Elige los productos" : "Cobrar o fiar"}
-          </span>
-        </div>
+  const etiquetaTotal = (
+    <div className="flex items-baseline justify-between gap-3 border-t pt-3" style={{ borderColor: "var(--gx-edge)" }}>
+      <span className="text-lg font-semibold" style={{ color: "var(--gx-ink)" }}>
+        Total ${total.toFixed(2)}
+      </span>
+      {bs(total) && (
+        <span className="text-sm" style={{ color: "var(--gx-accent)" }}>
+          {bs(total)}
+        </span>
+      )}
+    </div>
+  );
 
-        {productos.length === 0 ? (
-          <p className="mt-4 text-sm" style={{ color: "var(--gx-muted)" }}>
-            No hay productos activos. Créalos en la sección Productos.
-          </p>
-        ) : paso === 1 ? (
-          <div className="mt-4 flex min-h-0 flex-1 flex-col gap-4">
+  return (
+    <MarcoAsistente titulo="Vender producto" etiqueta={`Paso ${paso} de 2 · ${paso === 1 ? "Elige los productos" : "Cobrar o fiar"}`} onCerrar={onCerrar}>
+      {productos.length === 0 ? (
+        <p className="text-sm" style={{ color: "var(--gx-muted)" }}>
+          No hay productos activos. Créalos en la sección Productos.
+        </p>
+      ) : paso === 1 ? (
+        <>
+          <div className="flex min-h-0 min-w-0 flex-col gap-4 lg:flex-1">
             <input
               type="search"
               autoFocus
@@ -163,11 +160,11 @@ export function ModalVenderProducto({
               onChange={(e) => setBusqueda(e.target.value)}
               placeholder="Buscar producto..."
               aria-label="Buscar producto"
-              className="min-h-11 shrink-0 rounded-lg border px-3 outline-none transition-colors focus:border-[var(--gx-accent)]"
+              className="min-h-12 w-full shrink-0 rounded-lg border px-4 outline-none transition-colors focus:border-[var(--gx-accent)] lg:max-w-md"
               style={{ background: "var(--gx-surface-2)", borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }}
             />
 
-            <div className="grid min-h-40 flex-1 auto-rows-max grid-cols-2 content-start gap-2 overflow-y-auto sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8">
+            <div className="grid min-h-40 flex-1 auto-rows-max grid-cols-2 content-start gap-3 overflow-y-auto sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
               {productosFiltrados.length === 0 && (
                 <p className="col-span-full py-6 text-center text-sm" style={{ color: "var(--gx-muted)" }}>
                   Ningún producto coincide con &quot;{busqueda.trim()}&quot;.
@@ -181,21 +178,21 @@ export function ModalVenderProducto({
                     type="button"
                     onClick={() => cambiarCantidad(p.id, 1)}
                     aria-label={`Agregar ${p.nombre}`}
-                    className="relative flex flex-col gap-1 rounded-xl border-2 p-2 text-left transition-colors"
+                    className="relative flex flex-col gap-1.5 rounded-xl border-2 p-2.5 text-left transition-colors duration-150"
                     style={{
                       borderColor: cantidad > 0 ? "var(--gx-accent)" : "var(--gx-edge)",
-                      background: "var(--gx-surface-2)",
+                      background: cantidad > 0 ? "color-mix(in srgb, var(--gx-accent) 12%, transparent)" : "var(--gx-surface-2)",
                     }}
                   >
                     {cantidad > 0 && (
                       <span
-                        className="absolute right-1 top-1 z-10 min-w-6 rounded-full px-1.5 py-0.5 text-center text-xs font-bold"
-                        style={{ background: "var(--gx-accent)", color: "var(--gx-ground)" }}
+                        className="absolute right-1.5 top-1.5 z-10 min-w-6 rounded-full px-1.5 py-0.5 text-center text-xs font-bold"
+                        style={{ background: "var(--gx-accent)", color: "var(--gx-accent-ink)" }}
                       >
                         {cantidad}
                       </span>
                     )}
-                    <div className="h-20 w-full overflow-hidden rounded-lg" style={{ background: "var(--gx-surface)" }}>
+                    <div className="h-24 w-full overflow-hidden rounded-lg" style={{ background: "var(--gx-surface)" }}>
                       {p.fotoUrl && (
                         // eslint-disable-next-line @next/next/no-img-element -- foto en R2 (dominio externo)
                         <img src={p.fotoUrl} alt="" className="h-full w-full object-cover" />
@@ -208,28 +205,35 @@ export function ModalVenderProducto({
                     >
                       {p.nombre}
                     </span>
-                    <span className="text-xs" style={{ color: "var(--gx-muted)" }}>
+                    <span className="text-sm font-semibold" style={{ color: "var(--gx-accent)" }}>
                       ${p.costoUSD.toFixed(2)}
-                      {bs(p.costoUSD) && ` · ${bs(p.costoUSD)}`}
+                      {bs(p.costoUSD) && (
+                        <span className="block text-xs font-normal" style={{ color: "var(--gx-muted)" }}>
+                          {bs(p.costoUSD)}
+                        </span>
+                      )}
                     </span>
                   </button>
                 );
               })}
             </div>
+          </div>
 
-            <div className="flex max-h-[40%] shrink-0 flex-col gap-2 overflow-y-auto rounded-xl p-3" style={{ background: "var(--gx-surface-2)" }}>
+          <ColumnaLateral>
+            <TituloSeccion>Carrito{unidades > 0 ? ` · ${unidades}` : ""}</TituloSeccion>
+            <div className="flex min-h-24 flex-col gap-2 lg:flex-1 lg:overflow-y-auto">
               {renglones.length === 0 ? (
-                <p className="text-sm" style={{ color: "var(--gx-muted)" }}>
+                <p className="rounded-xl border border-dashed p-4 text-sm" style={{ borderColor: "var(--gx-edge)", color: "var(--gx-muted)" }}>
                   Toca un producto para agregarlo al carrito.
                 </p>
               ) : (
-                <>
-                  {renglones.map((r) => (
-                    <div key={r.producto.id} className="flex items-center justify-between gap-2 text-sm">
-                      <span className="line-clamp-2 min-w-0 flex-1 break-words leading-tight" style={{ color: "var(--gx-ink)" }}>
-                        {r.producto.nombre}
-                      </span>
-                      <span className="flex shrink-0 items-center gap-2">
+                renglones.map((r) => (
+                  <div key={r.producto.id} className="flex flex-col gap-2 rounded-xl p-3" style={{ background: "var(--gx-surface-2)" }}>
+                    <span className="line-clamp-2 break-words text-sm font-medium leading-tight" style={{ color: "var(--gx-ink)" }}>
+                      {r.producto.nombre}
+                    </span>
+                    <span className="flex items-center justify-between gap-2">
+                      <span className="flex items-center gap-2">
                         <Button type="button" variant="secundario" aria-label={`Quitar una unidad de ${r.producto.nombre}`} onClick={() => cambiarCantidad(r.producto.id, -1)}>
                           −
                         </Button>
@@ -239,32 +243,29 @@ export function ModalVenderProducto({
                         <Button type="button" variant="secundario" aria-label={`Agregar una unidad de ${r.producto.nombre}`} onClick={() => cambiarCantidad(r.producto.id, 1)}>
                           +
                         </Button>
-                        <span className="w-16 text-right" style={{ color: "var(--gx-muted)" }}>
-                          ${totalDeudas([r]).toFixed(2)}
-                        </span>
                       </span>
-                    </div>
-                  ))}
-                  <div className="flex justify-between border-t pt-2" style={{ borderColor: "var(--gx-edge)" }}>
-                    <span className="font-semibold" style={{ color: "var(--gx-ink)" }}>
-                      Total ${total.toFixed(2)}
+                      <span className="font-semibold" style={{ color: "var(--gx-ink)" }}>
+                        ${totalDeudas([r]).toFixed(2)}
+                      </span>
                     </span>
-                    {bs(total) && (
-                      <span className="text-sm" style={{ color: "var(--gx-muted)" }}>
-                        {bs(total)}
-                      </span>
-                    )}
                   </div>
-                </>
+                ))
               )}
             </div>
-          </div>
-        ) : (
-          <form
-            id={ID_FORMULARIO}
-            action={fiar ? enviarFiar : enviar}
-            className="mt-4 flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto"
-          >
+            {etiquetaTotal}
+            <div className="flex gap-3">
+              <Button type="button" variant="secundario" className="min-h-12 flex-1 text-base" onClick={onCerrar}>
+                Cancelar
+              </Button>
+              <Button type="button" className="min-h-12 flex-1 text-base" disabled={carrito.length === 0} onClick={() => setPaso(2)}>
+                Continuar
+              </Button>
+            </div>
+          </ColumnaLateral>
+        </>
+      ) : (
+        <>
+          <form id={ID_FORMULARIO} action={fiar ? enviarFiar : enviar} className="contents">
             <input type="hidden" name="items" value={JSON.stringify(items)} />
             {fiar ? (
               <input type="hidden" name="miembroId" value={miembroFiado?.id ?? ""} />
@@ -272,9 +273,86 @@ export function ModalVenderProducto({
               <input type="hidden" name="lineas" value={JSON.stringify(lineas)} />
             )}
 
-            <div className="flex flex-col gap-1 rounded-xl p-3" style={{ background: "var(--gx-surface-2)" }}>
+            <ColumnaPrincipal>
+              <TituloSeccion>Forma de pago</TituloSeccion>
+              <div className="grid gap-3 sm:grid-cols-2" role="group" aria-label="Forma de pago">
+                <TarjetaOpcion
+                  titulo="Cobrar ahora"
+                  descripcion="Registra la venta con un método de pago y suma al arqueo del turno."
+                  elegida={!fiar}
+                  onClick={() => {
+                    setFiar(false);
+                    setMiembroFiado(null);
+                  }}
+                />
+                <TarjetaOpcion
+                  titulo="Fiar a un miembro"
+                  descripcion="Queda como deuda del miembro y se cobra después desde Caja o junto con su membresía."
+                  elegida={fiar}
+                  onClick={() => {
+                    setFiar(true);
+                    setMiembroFiado(null);
+                  }}
+                />
+              </div>
+
+              {fiar ? (
+                <>
+                  <TituloSeccion>Miembro</TituloSeccion>
+                  {miembroFiado ? (
+                    <div className="flex items-center justify-between gap-3 rounded-xl border p-4" style={{ borderColor: "var(--gx-edge)", background: "var(--gx-surface-2)" }}>
+                      <span className="text-lg font-semibold" style={{ color: "var(--gx-ink)" }}>
+                        {miembroFiado.nombre}
+                        <span className="block text-sm font-normal" style={{ color: "var(--gx-muted)" }}>
+                          {miembroFiado.cedula}
+                        </span>
+                      </span>
+                      <button type="button" className="font-medium hover:underline" style={{ color: "var(--gx-accent)" }} onClick={() => setMiembroFiado(null)}>
+                        Cambiar
+                      </button>
+                    </div>
+                  ) : (
+                    <BuscadorMiembro miembros={miembros.filter((m) => m.activo)} planes={planes} onSeleccionar={setMiembroFiado} />
+                  )}
+                </>
+              ) : (
+                <>
+                  <TituloSeccion>Método de pago</TituloSeccion>
+                  <MetodoYCampos
+                    vacio={seleccion.metodoPagoId ? "Este método no requiere número de operación." : "Elige un método de pago."}
+                    selector={
+                      <SelectorMetodoPago
+                        compacto
+                        grande
+                        metodos={metodosPago}
+                        monto={total}
+                        idFormulario={ID_FORMULARIO}
+                        onCambio={setSeleccion}
+                        avisoServidor={{ tasaNueva: estado.tasaNueva, fallaTemporal: estado.fallaTemporal, tasaGuardada: estado.tasaGuardada }}
+                        ocultarNumeroOperacion
+                        numeroOperacion={seleccion.numeroOperacion}
+                        onCambioNumeroOperacion={(valor) => setSeleccion((prev) => ({ ...prev, numeroOperacion: valor }))}
+                      />
+                    }
+                    campos={
+                      seleccion.requiereNumeroOperacion && (
+                        <CampoNumeroOperacion
+                          value={seleccion.numeroOperacion}
+                          onChange={(valor) => setSeleccion((prev) => ({ ...prev, numeroOperacion: valor }))}
+                        />
+                      )
+                    }
+                  />
+                </>
+              )}
+            </ColumnaPrincipal>
+          </form>
+
+          <ColumnaLateral>
+            <TituloSeccion>Resumen</TituloSeccion>
+            <div className="flex flex-col gap-2 rounded-xl p-4 lg:flex-1 lg:overflow-y-auto" style={{ background: "var(--gx-surface-2)" }}>
               {renglones.map((r) => (
-                <div key={r.producto.id} className="flex justify-between gap-2 text-sm">
+                <div key={r.producto.id} className="flex justify-between gap-3 text-sm">
                   <span className="min-w-0 break-words" style={{ color: "var(--gx-ink)" }}>
                     {r.producto.nombre}
                     {r.cantidad > 1 ? ` × ${r.cantidad}` : ""}
@@ -284,90 +362,19 @@ export function ModalVenderProducto({
                   </span>
                 </div>
               ))}
-              <div className="mt-1 flex justify-between border-t pt-2" style={{ borderColor: "var(--gx-edge)" }}>
-                <span className="font-semibold" style={{ color: "var(--gx-ink)" }}>
-                  Total ${total.toFixed(2)}
-                </span>
-                {bs(total) && (
-                  <span className="text-sm" style={{ color: "var(--gx-muted)" }}>
-                    {bs(total)}
-                  </span>
-                )}
-              </div>
             </div>
-
-            <div className="grid grid-cols-2 gap-2" role="group" aria-label="Forma de pago">
-              {[
-                { valor: false, texto: "Cobrar ahora" },
-                { valor: true, texto: "Fiar a un miembro" },
-              ].map((opcion) => (
-                <button
-                  key={opcion.texto}
-                  type="button"
-                  aria-pressed={fiar === opcion.valor}
-                  onClick={() => {
-                    setFiar(opcion.valor);
-                    setMiembroFiado(null);
-                  }}
-                  className="min-h-11 rounded-xl border-2 px-3 text-sm font-semibold transition-colors"
-                  style={{
-                    borderColor: fiar === opcion.valor ? "var(--gx-accent)" : "var(--gx-edge)",
-                    background: "var(--gx-surface-2)",
-                    color: "var(--gx-ink)",
-                  }}
-                >
-                  {opcion.texto}
-                </button>
-              ))}
-            </div>
-
-            {fiar ? (
-              miembroFiado ? (
-                <div className="flex items-center justify-between rounded-lg px-3 py-2 text-sm" style={{ background: "var(--gx-surface-2)" }}>
-                  <span style={{ color: "var(--gx-ink)" }}>
-                    {miembroFiado.nombre} · {miembroFiado.cedula}
-                  </span>
-                  <button type="button" className="font-medium hover:underline" style={{ color: "var(--gx-accent)" }} onClick={() => setMiembroFiado(null)}>
-                    Cambiar
-                  </button>
-                </div>
-              ) : (
-                <BuscadorMiembro miembros={miembros.filter((m) => m.activo)} planes={planes} onSeleccionar={setMiembroFiado} />
-              )
-            ) : (
-              <SelectorMetodoPago
-                metodos={metodosPago}
-                monto={total}
-                idFormulario={ID_FORMULARIO}
-                onCambio={setSeleccion}
-                avisoServidor={{ tasaNueva: estado.tasaNueva, fallaTemporal: estado.fallaTemporal, tasaGuardada: estado.tasaGuardada }}
-              />
-            )}
-          </form>
-        )}
-
-        <div className="mt-4 flex shrink-0 gap-3">
-          {paso === 1 ? (
-            <>
-              <Button type="button" variant="secundario" className="flex-1" onClick={onCerrar}>
-                Cancelar
-              </Button>
-              <Button type="button" className="flex-1" disabled={carrito.length === 0} onClick={() => setPaso(2)}>
-                Continuar{unidades > 0 ? ` (${unidades})` : ""}
-              </Button>
-            </>
-          ) : (
-            <>
-              <Button type="button" variant="secundario" className="flex-1" onClick={() => setPaso(1)}>
+            {etiquetaTotal}
+            <div className="flex gap-3">
+              <Button type="button" variant="secundario" className="min-h-12 flex-1 text-base" onClick={() => setPaso(1)}>
                 Volver
               </Button>
-              <Button type="submit" form={ID_FORMULARIO} className="flex-1" disabled={!puedeEnviar || enviando || fiando}>
+              <Button type="submit" form={ID_FORMULARIO} className="min-h-12 flex-1 text-base" disabled={!puedeEnviar || enviando || fiando}>
                 {enviando || fiando ? "Registrando..." : fiar ? "Fiar" : "Registrar venta"}
               </Button>
-            </>
-          )}
-        </div>
-      </div>
-    </div>
+            </div>
+          </ColumnaLateral>
+        </>
+      )}
+    </MarcoAsistente>
   );
 }

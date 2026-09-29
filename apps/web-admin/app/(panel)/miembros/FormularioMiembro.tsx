@@ -12,6 +12,7 @@ import type { EstadoFormularioMiembro } from "./actions";
 import { SelectorMetodoPago } from "../pagos/SelectorMetodoPago";
 import { formatearBs } from "../tasaBcvFija";
 import { ProveedorCambiosSinGuardar } from "./ContextoCambiosSinGuardar";
+import { SelectorFotoPerfil } from "./SelectorFotoPerfil";
 import type { EntrenadorResumen } from "@gym-app/domain/entities/EntrenadorResumen";
 import type { SucursalResumen } from "@gym-app/domain/entities/SucursalResumen";
 import type { Plan, FrecuenciaPago } from "@gym-app/domain/entities/Plan";
@@ -293,8 +294,8 @@ export function FormularioMiembro({
     setMostrarTicket(true);
   }
 
-  function manejarCambioFoto(archivo: File | undefined) {
-    if (!archivo) return;
+  function manejarCambioFoto(archivo: File) {
+    if (fotoPreview?.startsWith("blob:")) URL.revokeObjectURL(fotoPreview);
     setFotoPreview(URL.createObjectURL(archivo));
   }
 
@@ -349,17 +350,7 @@ export function FormularioMiembro({
                 )}
               </div>
 
-              <label className="flex min-w-0 flex-col gap-1 text-sm" style={{ color: "var(--gx-muted)" }}>
-                Foto de perfil
-                <input
-                  type="file"
-                  name="foto"
-                  accept="image/*"
-                  onChange={(e) => manejarCambioFoto(e.target.files?.[0])}
-                  className="w-full text-sm file:mr-3 file:min-h-9 file:rounded-lg file:border-0 file:px-3 file:py-1.5 file:text-sm file:font-medium"
-                  style={{ color: "var(--gx-muted)" }}
-                />
-              </label>
+              <SelectorFotoPerfil tieneFoto={!!fotoPreview} onCambio={manejarCambioFoto} />
             </div>
 
             <Input

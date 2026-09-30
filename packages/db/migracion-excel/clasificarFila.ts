@@ -22,6 +22,8 @@ export const PLANES_REALES: Record<number, { nombre: string; frecuencia: "SEMANA
 };
 const PRECIOS_PLANES_REALES = Object.keys(PLANES_REALES).map(Number);
 const DIAS_VENCIDO_PARA_APROXIMAR_PLAN = 60;
+// Solo se migra a quien venció hace 90 días o menos (o tiene vencimiento futuro); el resto se descarta.
+const DIAS_CORTE_VENCIMIENTO = 90;
 
 function precioRealMasCercano(precio: number): number {
   return PRECIOS_PLANES_REALES.reduce((mejor, p) => (Math.abs(p - precio) < Math.abs(mejor - precio) ? p : mejor));
@@ -36,6 +38,18 @@ export function clasificarFila(
 ): FilaClasificada {
   if (fila.estado === null) {
     return { categoria: "excluida", motivo: "status-sin-dato", numeroFila: fila.numeroFila };
+  }
+
+  // Corte por vencimiento: fuera de los últimos 90 días (o sin fecha real) no se migra.
+  const corte = new Date(fechaReferencia);
+  corte.setUTCDate(corte.getUTCDate() - DIAS_CORTE_VENCIMIENTO);
+  if (fila.fVenc.tipo !== "valida" || fila.fVenc.fecha < corte) {
+    return {
+      categoria: "excluida",
+      motivo: "vencimiento-fuera-de-corte",
+      numeroFila: fila.numeroFila,
+      detalle: fila.fVenc.tipo === "valida" ? undefined : "sin-fecha-vencimiento",
+    };
   }
 
   // Duplicados de cédula: si fusionan, solo migra la ganadora. Si son personas distintas

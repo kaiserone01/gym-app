@@ -184,7 +184,7 @@ async function migrarFilaConfirmada(
         },
       });
     }
-  });
+  }, { timeout: 30000 });
 
   return { escrita: true };
 }

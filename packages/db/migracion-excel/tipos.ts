@@ -68,6 +68,7 @@ export type MotivoExclusion =
   | "sin-mapeo-plan-definido"
   | "status-sin-dato"
   | "duplicado-pendiente-revision"
+  | "vencimiento-fuera-de-corte"
   | "error-parseo";
 
 export interface DatosMiembroAMigrar {

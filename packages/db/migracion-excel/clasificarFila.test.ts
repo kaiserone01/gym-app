@@ -123,14 +123,10 @@ describe("clasificarFila — plan sin mapeo", () => {
 });
 
 describe("clasificarFila — fecha de vencimiento inválida", () => {
-  test("fVenc invalida → migrada con flag fecha-vencimiento-placeholder y fecha inyectada", () => {
+  test("fVenc invalida → excluida por corte de vencimiento (no se inventa una fecha)", () => {
     const fila = filaNormalizadaBase({ fVenc: { tipo: "invalida", motivo: "malformada", valorOriginal: "19-082026" } });
     const resultado = clasificarFila(fila, mapeoVacio, reglasCedulaVacias, placeholderFecha);
-    expect(resultado.categoria).toBe("migrada");
-    if (resultado.categoria === "migrada") {
-      expect(resultado.flags).toContain("fecha-vencimiento-placeholder");
-      expect(resultado.datos.fechaVencimiento).toEqual(FECHA_PLACEHOLDER);
-    }
+    expect(resultado).toEqual({ categoria: "excluida", motivo: "vencimiento-fuera-de-corte", numeroFila: 50, detalle: "sin-fecha-vencimiento" });
   });
 });
 
@@ -279,7 +275,7 @@ describe("clasificarFila — aproximacion de plan legacy", () => {
     filaNormalizadaBase({ plan: { tipo: "requiereMapeo", valorOriginal: valor }, fVenc });
 
   test("vencido hace más de 2 meses → plan real más cercano, con precio original", () => {
-    const r = clasificarFila(conPlan("15", { tipo: "valida", fecha: new Date("2026-05-01T00:00:00.000Z") }), mapeo, reglasCedulaVacias, placeholderFecha, hoy);
+    const r = clasificarFila(conPlan("15", { tipo: "valida", fecha: new Date("2026-07-20T00:00:00.000Z") }), mapeo, reglasCedulaVacias, placeholderFecha, hoy);
     expect(r.categoria).toBe("migrada");
     if (r.categoria === "migrada") {
       expect(r.datos.planNombre).toBe("Plan Viejo");
@@ -299,13 +295,24 @@ describe("clasificarFila — aproximacion de plan legacy", () => {
     }
   });
 
-  test("sin fecha de vencimiento real → sigue como plan legacy", () => {
+  test("sin fecha de vencimiento real → excluida por corte de vencimiento", () => {
     const r = clasificarFila(conPlan("15", { tipo: "invalida", motivo: "vacia", valorOriginal: null }), mapeo, reglasCedulaVacias, placeholderFecha, hoy);
-    if (r.categoria === "migrada") expect(r.datos.planNombre).toBe("Plan $15 (legacy)");
+    expect(r).toEqual({ categoria: "excluida", motivo: "vencimiento-fuera-de-corte", numeroFila: 50, detalle: "sin-fecha-vencimiento" });
+  });
+
+  test("vencido hace más de 90 días → excluida por corte de vencimiento", () => {
+    const r = clasificarFila(conPlan("15", { tipo: "valida", fecha: new Date("2026-06-30T00:00:00.000Z") }), mapeo, reglasCedulaVacias, placeholderFecha, hoy);
+    expect(r.categoria).toBe("excluida");
+    if (r.categoria === "excluida") expect(r.motivo).toBe("vencimiento-fuera-de-corte");
+  });
+
+  test("vencido hace justo menos de 90 días → se migra", () => {
+    const r = clasificarFila(conPlan("15", { tipo: "valida", fecha: new Date("2026-07-05T00:00:00.000Z") }), mapeo, reglasCedulaVacias, placeholderFecha, hoy);
+    expect(r.categoria).toBe("migrada");
   });
 
   test("cortesía ($0) nunca se aproxima", () => {
-    const r = clasificarFila(conPlan("0", { tipo: "valida", fecha: new Date("2025-01-01T00:00:00.000Z") }), mapeo, reglasCedulaVacias, placeholderFecha, hoy);
+    const r = clasificarFila(conPlan("0", { tipo: "valida", fecha: new Date("2026-07-25T00:00:00.000Z") }), mapeo, reglasCedulaVacias, placeholderFecha, hoy);
     if (r.categoria === "migrada") expect(r.datos.planNombre).toBe("Cortesia");
   });
 });

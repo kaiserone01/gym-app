@@ -106,6 +106,17 @@ export class PrismaMemberRepository implements IMemberRepository {
     return mapear(miembro);
   }
 
+  async eliminarConHistorial(organizacionId: string, id: string): Promise<void> {
+    await this.prisma.$transaction(async (tx) => {
+      await tx.checkIn.deleteMany({ where: { miembroId: id } });
+      await tx.cambioPlanAuditoria.deleteMany({ where: { miembroId: id } });
+      await tx.deudaProducto.deleteMany({ where: { miembroId: id } });
+      await tx.pago.deleteMany({ where: { miembroId: id } });
+      await tx.suscripcion.deleteMany({ where: { miembroId: id } });
+      await tx.miembro.deleteMany({ where: { id, organizacionId } });
+    });
+  }
+
   async actualizarFechasPago(id: string, fechaUltimoPago: Date, fechaVencimiento: Date): Promise<void> {
     await this.prisma.miembro.update({
       where: { id },

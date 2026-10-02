@@ -33,6 +33,7 @@ import {
   AbonoNoPermitidoError,
   AbonoMenorAlMinimoError,
 } from "@gym-app/domain/use-cases/RegistrarPago";
+import { eliminarMiembro } from "@gym-app/domain/use-cases/EliminarMiembro";
 import { conMensajeOk } from "../redirectConMensaje";
 
 export interface EstadoFormularioMiembro {
@@ -288,4 +289,24 @@ export async function reactivarAction(id: string): Promise<void> {
   );
 
   revalidatePath("/miembros");
+}
+
+// Borra al miembro con todo su historial. Los errores de dominio (en español)
+// se dejan propagar para que el cliente los muestre con useFeedback.
+export async function eliminarMiembroAction(id: string): Promise<void> {
+  const sesion = await obtenerUsuarioDeSesionActual();
+  if (!sesion) redirect("/login");
+  const { usuario, sucursalActivaId } = sesion;
+
+  await eliminarMiembro(
+    {
+      miembros: new PrismaMemberRepository(prisma),
+      sucursales: new PrismaSucursalRepository(prisma),
+      autorizacion: new AuthorizationService(new PrismaPermisoRepository(prisma)),
+    },
+    { organizacionId: usuario.organizacionId, id, sucursalActivaId, usuarioIdSolicitante: usuario.id }
+  );
+
+  revalidatePath("/miembros");
+  redirect(conMensajeOk("/miembros", "Miembro quitado del sistema."));
 }

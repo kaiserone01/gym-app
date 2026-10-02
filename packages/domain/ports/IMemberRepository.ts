@@ -6,5 +6,7 @@ export interface IMemberRepository {
   listarPorOrganizacion(organizacionId: string): Promise<Miembro[]>;
   crear(datos: DatosNuevoMiembro): Promise<Miembro>;
   actualizar(organizacionId: string, id: string, cambios: CambiosMiembro): Promise<Miembro | null>;
+  // Borrado físico del miembro junto con TODO su historial (pagos, suscripciones, check-ins, deudas y auditoría de cambios de plan).
+  eliminarConHistorial(organizacionId: string, id: string): Promise<void>;
   actualizarFechasPago(id: string, fechaUltimoPago: Date, fechaVencimiento: Date): Promise<void>;
 }

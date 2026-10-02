@@ -1,3 +1,4 @@
+import { BotonQuitarMiembro } from "../BotonQuitarMiembro";
 import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { obtenerUsuarioDeSesionActual } from "@/lib/sesion";
@@ -83,8 +84,9 @@ export default async function PaginaEditarMiembro({ params }: { params: Promise<
 
   return (
     <div className="max-w-7xl p-6 lg:px-8 lg:py-6">
-      <div className="mb-4">
+      <div className="mb-4 flex items-center justify-between gap-4">
         <PageHeader>Editar miembro</PageHeader>
+        <BotonQuitarMiembro id={id} nombre={miembro.nombre} totalPagos={pagos.length} />
       </div>
 
       <FormularioMiembro

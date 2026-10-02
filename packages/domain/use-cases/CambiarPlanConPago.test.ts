@@ -40,6 +40,9 @@ function crearFakes(estadoInicial: { miembro: Miembro; suscripcion: Suscripcion;
       miembros.set(id, actualizado);
       return actualizado;
     },
+    eliminarConHistorial: async (_org, id) => {
+      miembros.delete(id);
+    },
     actualizarFechasPago: async (id, fechaUltimoPago, fechaVencimiento) => {
       const actual = miembros.get(id);
       if (!actual) return;

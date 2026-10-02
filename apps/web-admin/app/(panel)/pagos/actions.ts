@@ -17,6 +17,7 @@ import { PrismaDeudaProductoRepository } from "@gym-app/infrastructure/persisten
 import { PrismaCambioPlanAuditoriaRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaCambioPlanAuditoriaRepository";
 import { AuthorizationService } from "@gym-app/domain/services/AuthorizationService";
 import { validarTasaSiEsEnBs } from "@/lib/tasaBcv";
+import { PrismaTasaCambioRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaTasaCambioRepository";
 import { conMensajeOk } from "../redirectConMensaje";
 import {
   registrarPago,
@@ -29,6 +30,10 @@ import {
   LineasDePagoInvalidasError,
   AbonoNoPermitidoError,
   AbonoMenorAlMinimoError,
+  PagoRetroactivoNoDisponibleError,
+  FechaPagoInvalidaError,
+  PagoRetroactivoIncompletoError,
+  SinTasaParaFechaError,
 } from "@gym-app/domain/use-cases/RegistrarPago";
 import { registrarPagoConDeudas, MontoNoCubreDeudaError } from "@gym-app/domain/use-cases/RegistrarPagoConDeudas";
 import {
@@ -84,6 +89,9 @@ export async function registrarPagoAction(
   const origen = formData.get("origen")?.toString();
   // Casilla "Cobrar también los productos pendientes" del wizard de Caja.
   const incluirDeudas = formData.get("incluirDeudas")?.toString() === "1";
+  // Fecha del pago (yyyy-mm-dd), solo con el aviso "Ajustar fecha o pago": un pago con fecha pasada regulariza
+  // el ciclo. Vacía = hoy. Se toma al mediodía para no caer en el día anterior por zona horaria.
+  const fechaPagoTexto = formData.get("fechaPago")?.toString();
   // Sede elegida en el selector "Sede del pago" (ver SelectorMetodoPago);
   // si no vino (formularios viejos o sin selector visible), se cae a la
   // sede activa de la sesión.
@@ -148,7 +156,13 @@ export async function registrarPagoAction(
     numeroOperacion: string | null;
     tasaCambio: number | null;
   }> = [];
+  const esPagoConFechaPasada =
+    !!fechaPagoTexto && new Date(`${fechaPagoTexto}T12:00:00`) < new Date(new Date().setHours(0, 0, 0, 0));
   for (const linea of lineas) {
+    if (esPagoConFechaPasada) {
+      lineasValidadas.push(linea);
+      continue;
+    }
     const validacionTasa = await validarTasaSiEsEnBs(linea.tasaCambio !== null ? String(linea.tasaCambio) : undefined);
     if (!validacionTasa.ok) return validacionTasa.estado;
     lineasValidadas.push({ ...linea, tasaCambio: validacionTasa.tasaCambio });
@@ -166,6 +180,7 @@ export async function registrarPagoAction(
       // Los permisos se leen con el cliente global: no necesitan estar dentro de la transacción.
       autorizacion: new AuthorizationService(new PrismaPermisoRepository(prisma)),
       reglasAbono: new PrismaReglaAbonoRepository(prisma),
+      tasas: new PrismaTasaCambioRepository(prisma),
       deudas: new PrismaDeudaProductoRepository(cliente),
     });
     const datosPago = {
@@ -176,11 +191,12 @@ export async function registrarPagoAction(
       sucursalId: sucursalIdPago,
       registradoPorId: usuario.id,
       rolUsuario: usuario.rol,
+      ...(fechaPagoTexto ? { fechaPago: new Date(`${fechaPagoTexto}T12:00:00`) } : {}),
     };
 
     // Con productos pendientes incluidos, cobrar las deudas y registrar la
     // membresía van en una sola transacción: si una falla, la otra no queda hecha.
-    pagos = incluirDeudas
+    pagos = incluirDeudas && !esPagoConFechaPasada
       ? await prisma.$transaction((tx) => registrarPagoConDeudas(dependencias(tx), { ...datosPago, incluirDeudas: true }), {
           timeout: 20000,
         })
@@ -196,6 +212,10 @@ export async function registrarPagoAction(
       error instanceof LineasDePagoInvalidasError ||
       error instanceof AbonoNoPermitidoError ||
       error instanceof AbonoMenorAlMinimoError ||
+      error instanceof PagoRetroactivoNoDisponibleError ||
+      error instanceof FechaPagoInvalidaError ||
+      error instanceof PagoRetroactivoIncompletoError ||
+      error instanceof SinTasaParaFechaError ||
       error instanceof MontoNoCubreDeudaError ||
       error instanceof DeudasYaCobradasError ||
       error instanceof SinTurnoAbiertoError ||

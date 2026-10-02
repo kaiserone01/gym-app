@@ -68,6 +68,8 @@ export interface MiembroConPlan {
   // CambiarPlanConPago) — se muestra como aviso informativo antes de
   // pagar, ya que se descuenta automáticamente del monto a cobrar.
   saldoAFavorUSD: number;
+  // Aviso "Ajustar fecha o pago": habilita registrar el pago con una fecha pasada.
+  ajustarFecha: boolean;
 }
 
 export function aMiembroConPlan(m: Miembro, planesPorId: Map<string, PlanParaModal>): MiembroConPlan {
@@ -81,6 +83,7 @@ export function aMiembroConPlan(m: Miembro, planesPorId: Map<string, PlanParaMod
     sucursalId: m.sucursalId,
     entrenadorId: m.entrenadorId,
     saldoAFavorUSD: m.saldoAFavorUSD,
+    ajustarFecha: m.ajustarFecha,
   };
 }
 

@@ -76,10 +76,14 @@ export class PrismaSuscripcionRepository implements ISuscripcionRepository {
     return mapear(suscripcion);
   }
 
-  async ajustarCicloMasReciente(miembroId: string, inicio: Date, fin: Date): Promise<void> {
+  async ajustarCicloMasReciente(miembroId: string, inicio: Date, fin: Date, planId?: string): Promise<boolean> {
     const reciente = await this.prisma.suscripcion.findFirst({ where: { miembroId }, orderBy: { fin: "desc" } });
-    if (!reciente) return;
-    await this.prisma.suscripcion.update({ where: { id: reciente.id }, data: { inicio, fin, estado: "ACTIVA" } });
+    if (!reciente) return false;
+    await this.prisma.suscripcion.update({
+      where: { id: reciente.id },
+      data: { inicio, fin, estado: "ACTIVA", ...(planId ? { planId } : {}) },
+    });
+    return true;
   }
 
   async cambiarPlan(id: string, planId: string): Promise<Suscripcion> {

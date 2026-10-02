@@ -6,7 +6,15 @@ import { IPlanRepository } from "../ports/IPlanRepository";
 import { ITurnoRepository } from "../ports/ITurnoRepository";
 import { ISucursalRepository } from "../ports/ISucursalRepository";
 import { IReglaAbonoRepository } from "../ports/IReglaAbonoRepository";
-import { Pago, pagosVigentesDelCiclo, totalPagado, validarLineasDePago, LineasDePagoInvalidasError } from "../entities/Pago";
+import { ITasaCambioRepository } from "../ports/ITasaCambioRepository";
+import {
+  Pago,
+  pagosVigentesDelCiclo,
+  totalPagado,
+  validarLineasDePago,
+  LineasDePagoInvalidasError,
+  MAX_DIAS_ATRAS_PAGO_RETROACTIVO,
+} from "../entities/Pago";
 import { RolUsuario } from "../entities/UsuarioAdmin";
 import { IAuthorizationService } from "../ports/IAuthorizationService";
 import { resolverReglaAbono, calcularMontoMinimoAbono, calcularFechaLimiteAbono } from "../entities/ReglaAbono";
@@ -68,6 +76,32 @@ export class AbonoMenorAlMinimoError extends Error {
   }
 }
 
+// Pago con fecha pasada fuera de lo permitido: solo con el aviso "Ajustar fecha o pago" activo.
+export class PagoRetroactivoNoDisponibleError extends Error {
+  constructor() {
+    super("Solo se puede registrar un pago con fecha pasada a un miembro con el aviso \"Ajustar fecha o pago\".");
+  }
+}
+
+export class FechaPagoInvalidaError extends Error {
+  constructor() {
+    super(`La fecha del pago debe estar entre hoy y los últimos ${MAX_DIAS_ATRAS_PAGO_RETROACTIVO} días.`);
+  }
+}
+
+// Un pago con fecha pasada reemplaza el ciclo: debe cubrir el precio del plan completo.
+export class PagoRetroactivoIncompletoError extends Error {
+  constructor() {
+    super("Un pago con fecha pasada debe cubrir el precio completo del plan (no admite abonos).");
+  }
+}
+
+export class SinTasaParaFechaError extends Error {
+  constructor() {
+    super("No hay tasa de cambio BCV registrada para esa fecha ni anterior: no se puede calcular el monto en bolívares.");
+  }
+}
+
 export interface RegistrarPagoDeps {
   pagos: IPagoRepository;
   suscripciones: ISuscripcionRepository;
@@ -77,6 +111,8 @@ export interface RegistrarPagoDeps {
   sucursales: ISucursalRepository;
   autorizacion: IAuthorizationService;
   reglasAbono: IReglaAbonoRepository;
+  // Solo para pagos retroactivos: tasa BCV de la fecha del pago.
+  tasas?: ITasaCambioRepository;
 }
 
 export interface DatosLineaPago {
@@ -99,6 +135,8 @@ export interface DatosRegistrarPago {
   sucursalId: string;
   registradoPorId: string;
   rolUsuario: RolUsuario;
+  // Pago con fecha pasada (solo con el aviso "Ajustar fecha o pago"). Si es de hoy, se ignora.
+  fechaPago?: Date;
 }
 
 export async function registrarPago(deps: RegistrarPagoDeps, input: DatosRegistrarPago): Promise<Pago[]> {
@@ -154,6 +192,23 @@ export async function registrarPago(deps: RegistrarPagoDeps, input: DatosRegistr
   }
 
   const ahora = new Date();
+
+  const inicioDeHoy = new Date(ahora);
+  inicioDeHoy.setHours(0, 0, 0, 0);
+  if (input.fechaPago && input.fechaPago < inicioDeHoy) {
+    return registrarPagoRetroactivo(deps, input, {
+      miembro,
+      plan,
+      huboCambioDePlan,
+      precioObjetivo,
+      montoTotal,
+      saldoAConsumir,
+      saldoDisponible,
+      fechaPago: input.fechaPago,
+      ahora,
+    });
+  }
+
   const activa = await deps.suscripciones.buscarActivaVigentePorMiembroYPlan(input.miembroId, input.planId, ahora);
 
   // Pagos fraccionados/mixtos ("abonos"): un ciclo puede juntar varios
@@ -286,5 +341,85 @@ export async function registrarPago(deps: RegistrarPagoDeps, input: DatosRegistr
     pagosCreados.push(pago);
   }
 
+  return pagosCreados;
+}
+
+// Pago con fecha pasada: regulariza el ciclo del último pago de un miembro migrado (aviso "Ajustar fecha o
+// pago"). Mismo flujo de siempre (líneas, métodos, monto) con una sola variación: la fecha. No se enlaza a
+// ningún turno (no entra en arqueos), la tasa de las líneas en Bs es la BCV de esa fecha y el ciclo nuevo
+// reemplaza al anterior: vencimiento = fecha del pago + días del plan. Apaga el aviso.
+async function registrarPagoRetroactivo(
+  deps: RegistrarPagoDeps,
+  input: DatosRegistrarPago,
+  ctx: {
+    miembro: { id: string; ajustarFecha: boolean };
+    plan: { diasCiclo: number; precioUSD: number };
+    huboCambioDePlan: boolean;
+    precioObjetivo: number;
+    montoTotal: number;
+    saldoAConsumir: number;
+    saldoDisponible: number;
+    fechaPago: Date;
+    ahora: Date;
+  }
+): Promise<Pago[]> {
+  if (!ctx.miembro.ajustarFecha) throw new PagoRetroactivoNoDisponibleError();
+
+  const limite = new Date(ctx.ahora);
+  limite.setDate(limite.getDate() - MAX_DIAS_ATRAS_PAGO_RETROACTIVO);
+  if (ctx.fechaPago < limite) throw new FechaPagoInvalidaError();
+
+  if (ctx.montoTotal + ctx.saldoAConsumir < ctx.precioObjetivo) throw new PagoRetroactivoIncompletoError();
+
+  // La tasa de cada línea en Bs se reemplaza por la BCV de la fecha del pago (la del formulario es la de hoy).
+  let tasaDelDia: number | null = null;
+  if (input.lineas.some((linea) => linea.tasaCambio !== null)) {
+    const tasa = await deps.tasas?.buscarMasCercanaAnterior(ctx.fechaPago);
+    if (!tasa) throw new SinTasaParaFechaError();
+    tasaDelDia = tasa.valor;
+  }
+
+  const fin = new Date(ctx.fechaPago);
+  fin.setDate(fin.getDate() + ctx.plan.diasCiclo);
+
+  const planId = input.planId;
+  const ajustada = await deps.suscripciones.ajustarCicloMasReciente(input.miembroId, ctx.fechaPago, fin, planId);
+  if (!ajustada) {
+    await deps.suscripciones.crear({ miembroId: input.miembroId, planId, inicio: ctx.fechaPago, fin, fechaLimiteAbono: null });
+  }
+  await deps.miembros.actualizar(input.organizacionId, input.miembroId, {
+    planId,
+    ...(ctx.huboCambioDePlan ? { precioPlan: ctx.plan.precioUSD } : {}),
+  });
+  await deps.miembros.actualizarFechasPago(input.miembroId, ctx.fechaPago, fin);
+  if (ctx.saldoAConsumir > 0) {
+    await deps.miembros.actualizar(input.organizacionId, input.miembroId, {
+      saldoAFavorUSD: ctx.saldoDisponible - ctx.saldoAConsumir,
+    });
+  }
+
+  const grupoPagoId = input.lineas.length > 1 ? randomUUID() : null;
+  const pagosCreados: Pago[] = [];
+  for (const linea of input.lineas) {
+    const tasaCambio = linea.tasaCambio !== null ? tasaDelDia : null;
+    pagosCreados.push(
+      await deps.pagos.crear({
+        miembroId: input.miembroId,
+        sucursalId: input.sucursalId,
+        turnoId: null,
+        registradoPorId: input.registradoPorId,
+        monto: linea.monto,
+        metodo: linea.metodo,
+        metodoPagoId: linea.metodoPagoId,
+        numeroOperacion: linea.numeroOperacion,
+        tasaCambio,
+        montoBs: tasaCambio !== null ? linea.monto * tasaCambio : null,
+        fechaInicioCiclo: ctx.fechaPago,
+        fechaFinCiclo: fin,
+        grupoPagoId,
+        fechaPago: ctx.fechaPago,
+      })
+    );
+  }
   return pagosCreados;
 }

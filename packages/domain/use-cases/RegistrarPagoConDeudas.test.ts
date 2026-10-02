@@ -56,7 +56,7 @@ function crearDeps(opciones: { deudas?: DeudaProducto[]; turnoAbierto?: boolean 
       buscarActivaVigentePorMiembroYPlan: async () => null,
       crear: async () => undefined,
       extenderFin: async () => undefined,
-      ajustarCicloMasReciente: async () => undefined,
+      ajustarCicloMasReciente: async () => false,
       actualizarFechaLimiteAbono: async () => undefined,
     },
     turnos: { buscarAbiertoPorSucursal: async () => (turnoAbierto ? { id: "turno1" } : null) },

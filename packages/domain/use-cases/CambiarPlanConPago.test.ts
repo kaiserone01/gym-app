@@ -58,7 +58,7 @@ function crearFakes(estadoInicial: { miembro: Miembro; suscripcion: Suscripcion;
       return s ?? null;
     },
     buscarActivaVigentePorMiembroYPlan: async () => null,
-    ajustarCicloMasReciente: async () => undefined,
+    ajustarCicloMasReciente: async () => false,
     listarActivasVigentesPorPlan: async () => [],
     extenderFin: async (id, nuevoFin) => {
       const actual = suscripciones.get(id)!;

@@ -115,6 +115,7 @@ export function SelectorMetodoPago({
   compacto = false,
   numeroOperacion: numeroOperacionProp,
   onCambioNumeroOperacion: onCambioNumeroOperacionProp,
+  fechaTasa,
 }: {
   metodos: MetodoPago[];
   monto: number;
@@ -148,6 +149,8 @@ export function SelectorMetodoPago({
   compacto?: boolean;
   numeroOperacion?: string;
   onCambioNumeroOperacion?: (valor: string) => void;
+  // yyyy-mm-dd: pago con fecha pasada — se usa la tasa BCV de ese día en vez de la vigente.
+  fechaTasa?: string;
 }) {
   const [tipoAbierto, setTipoAbierto] = useState<TipoMetodoPago | null>(null);
   const [metodoId, setMetodoId] = useState<string | null>(null);
@@ -181,7 +184,7 @@ export function SelectorMetodoPago({
   async function cargarTasa() {
     setErrorTasa(false);
     try {
-      const res = await fetch("/api/tasa-cambio");
+      const res = await fetch(fechaTasa ? `/api/tasa-cambio?fecha=${fechaTasa}` : "/api/tasa-cambio");
       const datos: RespuestaTasa = await res.json();
       if (!res.ok || datos.valor === undefined) {
         setErrorTasa(true);
@@ -194,12 +197,13 @@ export function SelectorMetodoPago({
     }
   }
 
+  // Se carga la tasa al elegir un método en Bs y de nuevo si cambia la fecha del pago (la tasa de otra fecha no sirve).
   useEffect(() => {
-    if (esEnBs && tasa === null) {
+    if (esEnBs && (tasa === null || fechaTasa !== undefined)) {
       cargarTasa();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- solo debe disparar cuando se elige un método en Bs
-  }, [esEnBs]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- solo debe disparar cuando se elige un método en Bs o cambia la fecha
+  }, [esEnBs, fechaTasa]);
 
   // Si el modal queda abierto más de 45 min con un método en Bs elegido,
   // se revalida la tasa una vez pasado ese intervalo (mismo throttle que
@@ -351,7 +355,7 @@ export function SelectorMetodoPago({
         >
           <div className="flex flex-col">
             <span className="text-xs" style={{ color: "var(--gx-muted)" }}>
-              Tasa BCV
+              Tasa BCV{fechaTasa ? ` del ${fechaTasa.split("-").reverse().join("/")}` : ""}
             </span>
             <span className="font-medium tabular-nums" style={{ color: "var(--gx-ink)" }}>
               Bs. {tasa}

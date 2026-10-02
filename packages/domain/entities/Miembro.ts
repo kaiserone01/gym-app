@@ -16,7 +16,7 @@ export interface Miembro {
   fechaUltimoPago: Date | null;
   fechaVencimiento: Date | null;
   activo: boolean;
-  ajustarFecha: boolean; // fecha de vencimiento no confiable (migración): el socio debe ajustar el último pago
+  ajustarFecha: boolean; // fecha de vencimiento no confiable (migración): el socio debe ajustarla o registrar un pago con la fecha real
   createdAt: Date;
 }
 
@@ -45,5 +45,7 @@ export interface CambiosMiembro {
   planId?: string | null;
   precioPlan?: number;
   saldoAFavorUSD?: number;
+  fechaVencimiento?: Date | null;
   activo?: boolean;
+  ajustarFecha?: boolean;
 }

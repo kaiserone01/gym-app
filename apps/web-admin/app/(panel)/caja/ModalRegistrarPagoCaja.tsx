@@ -4,6 +4,7 @@ import { useActionState, useEffect, useState } from "react";
 import type { Miembro } from "@gym-app/domain/entities/Miembro";
 import type { MetodoPago } from "@gym-app/domain/entities/MetodoPago";
 import type { FrecuenciaPago } from "@gym-app/domain/entities/Plan";
+import { MAX_DIAS_ATRAS_PAGO_RETROACTIVO } from "@gym-app/domain/entities/Pago";
 import { Button } from "@gym-app/ui/components/Button";
 import { CurrencyInput } from "@gym-app/ui/components/CurrencyInput";
 import { useFeedback, DURACION_MS } from "@gym-app/ui/components/FeedbackOverlay";
@@ -26,6 +27,12 @@ import type { ReglaAbonoPorFrecuencia } from "@gym-app/domain/entities/ReglaAbon
 import { FormularioCambiarPlan, type EntrenadorParaCambio, type ProyeccionCambioPlan } from "../miembros/FormularioCambiarPlan";
 
 type Paso = 1 | 2 | 3 | 4;
+
+function fechaALocalISO(fecha: Date): string {
+  const mes = String(fecha.getMonth() + 1).padStart(2, "0");
+  const dia = String(fecha.getDate()).padStart(2, "0");
+  return `${fecha.getFullYear()}-${mes}-${dia}`;
+}
 
 const TITULOS_PASO: Record<Paso, string> = {
   1: "Elegí un miembro",
@@ -426,8 +433,9 @@ function ContenidoPaso3({
   reglasAbono,
   modalidad,
   metodosPago,
-  tasaActual,
+  tasaActual: tasaVigente,
   deudaMiembro,
+  ajustarFecha,
   onVolver,
   onPagoRegistrado,
 }: {
@@ -461,10 +469,30 @@ function ContenidoPaso3({
   tasaActual: number | null;
   // Productos fiados pendientes de este miembro en la sucursal (null = no debe nada).
   deudaMiembro: GrupoDeudasMiembro | null;
+  // El miembro tiene el aviso "Ajustar fecha o pago": se puede fechar el pago hacia atrás.
+  ajustarFecha: boolean;
   onVolver: () => void;
   onPagoRegistrado: (fechaFinCicloISO: string | undefined) => void;
 }) {
   const [estado, enviar, enviando] = useActionState(registrarPagoAction, {});
+  // Fecha del pago (yyyy-mm-dd, "" = hoy). Con una fecha pasada, todo el cálculo en Bs usa la tasa BCV de ese día.
+  const [fechaPago, setFechaPago] = useState("");
+  const hoyISO = fechaALocalISO(new Date());
+  const minFechaISO = fechaALocalISO(new Date(Date.now() - MAX_DIAS_ATRAS_PAGO_RETROACTIVO * 24 * 60 * 60 * 1000));
+  const esFechaPasada = ajustarFecha && fechaPago !== "" && fechaPago < hoyISO;
+  const [tasaDelDia, setTasaDelDia] = useState<number | null>(null);
+  useEffect(() => {
+    setTasaDelDia(null);
+    if (!esFechaPasada) return;
+    let vigente = true;
+    fetch(`/api/tasa-cambio?fecha=${fechaPago}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((datos) => vigente && setTasaDelDia(datos?.valor ?? null));
+    return () => {
+      vigente = false;
+    };
+  }, [esFechaPasada, fechaPago]);
+  const tasaActual = esFechaPasada ? tasaDelDia : tasaVigente;
   const { mostrarExito, mostrarError } = useFeedback();
   // Con deuda, la casilla "Cobrar también los productos pendientes" viene marcada.
   const [incluirDeudas, setIncluirDeudas] = useState(true);
@@ -478,7 +506,7 @@ function ContenidoPaso3({
   // AbonoNoPermitidoError en RegistrarPago.ts, hallazgo de la revisión final).
   // Deuda de productos a cobrar junto con la membresía (un plan de cortesía no la incluye). Lo que
   // se carga en las líneas es el total pagado: la parte de la membresía es lo que excede a la deuda.
-  const deudaAPagar = montoSugerido > 0 && deudaMiembro && incluirDeudas ? deudaMiembro.totalUSD : 0;
+  const deudaAPagar = montoSugerido > 0 && deudaMiembro && incluirDeudas && !esFechaPasada ? deudaMiembro.totalUSD : 0;
   const menosDeuda = (total: number) => Math.max(0, Math.round((total - deudaAPagar) * 100) / 100);
 
   const montoObjetivoBloqueado = modalidad === "total" || (modalidad === "combinado" && !permitePagoParcial);
@@ -596,6 +624,7 @@ function ContenidoPaso3({
       <input type="hidden" name="miembroId" value={miembroId} />
       <input type="hidden" name="planId" value={planId} />
       <input type="hidden" name="origen" value="caja" />
+      {esFechaPasada && <input type="hidden" name="fechaPago" value={fechaPago} />}
       {deudaAPagar > 0 && <input type="hidden" name="incluirDeudas" value="1" />}
       <input
         type="hidden"
@@ -608,6 +637,29 @@ function ContenidoPaso3({
       />
 
       <div className="flex min-w-0 flex-col gap-4 lg:flex-1 lg:overflow-y-auto lg:pr-2">
+      {ajustarFecha && (
+        <div className="flex flex-col gap-2 rounded-xl border p-4" style={{ borderColor: "var(--gx-warn)" }}>
+          <label className="flex flex-col gap-1.5 text-sm" style={{ color: "var(--gx-muted)" }}>
+            Fecha del pago (aviso "Ajustar fecha o pago")
+            <input
+              type="date"
+              value={fechaPago}
+              min={minFechaISO}
+              max={hoyISO}
+              onChange={(e) => setFechaPago(e.target.value)}
+              className="titilar-fecha min-h-11 w-48 rounded-lg border px-3 outline-none"
+              style={{ background: "var(--gx-surface-2)", borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }}
+            />
+          </label>
+          <p className="text-xs" style={{ color: "var(--gx-muted)" }}>
+            {esFechaPasada
+              ? tasaDelDia !== null
+                ? `El pago se registra el ${fechaPago.split("-").reverse().join("/")} con la tasa BCV de ese día (Bs. ${tasaDelDia}); no entra en ningún turno de caja y no admite abonos.`
+                : "Buscando la tasa BCV de esa fecha…"
+              : "Déjala vacía para registrar el pago hoy. Si eliges una fecha anterior, se usa la tasa BCV de ese día."}
+          </p>
+        </div>
+      )}
       {/* Abono: el método se elige ANTES que el monto (ver diseño acordado) — se le pasa el precio
           del plan como referencia para la tasa en Bs, no como monto a cobrar. El monto a abonar y
           el número de operación viven en la tarjeta de la derecha. USD es la fuente de verdad;
@@ -618,6 +670,7 @@ function ContenidoPaso3({
           selector={
             <SelectorMetodoPago
               compacto
+              fechaTasa={esFechaPasada ? fechaPago : undefined}
               metodos={metodosPago}
               monto={montoSugerido + deudaAPagar}
               onCambio={(seleccion) =>
@@ -695,6 +748,7 @@ function ContenidoPaso3({
           selector={
             <SelectorMetodoPago
               compacto
+              fechaTasa={esFechaPasada ? fechaPago : undefined}
               metodos={metodosPago}
               monto={montoObjetivo + deudaAPagar}
               onCambio={(seleccion) => setLineaUnica((prev) => ({ ...prev, monto: String(montoObjetivo + deudaAPagar), seleccion }))}
@@ -778,6 +832,7 @@ function ContenidoPaso3({
                       selector={
                         <SelectorMetodoPago
                           compacto
+                          fechaTasa={esFechaPasada ? fechaPago : undefined}
                           metodos={metodosPago}
                           monto={montoLinea > 0 ? montoLinea : montoSugerido + deudaAPagar}
                           onCambio={(seleccion) =>
@@ -1178,6 +1233,7 @@ export function ModalRegistrarPagoCaja({
             modalidad={modalidadElegida}
             metodosPago={metodosPago}
             deudaMiembro={deudas.find((g) => g.miembroId === miembroElegido.id) ?? null}
+            ajustarFecha={miembroElegido.ajustarFecha}
             tasaActual={tasaActual}
             onVolver={() => setPaso(2)}
             onPagoRegistrado={(fechaFinCicloISO) => {

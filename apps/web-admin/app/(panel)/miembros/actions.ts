@@ -8,7 +8,6 @@ import { obtenerUsuarioDeSesionActual } from "@/lib/sesion";
 import { PrismaMemberRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaMemberRepository";
 import { PrismaPlanRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaPlanRepository";
 import { PrismaPagoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaPagoRepository";
-import { PrismaTasaCambioRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaTasaCambioRepository";
 import { PrismaSuscripcionRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaSuscripcionRepository";
 import { crearMiembro, CedulaDuplicadaError } from "@gym-app/domain/use-cases/CrearMiembro";
 import {
@@ -16,6 +15,7 @@ import {
   MiembroNoEncontradoError,
   MiembroFueraDeSucursalError,
   PlanNoEncontradoError as ActualizarPlanNoEncontradoError,
+  AjusteFechaNoDisponibleError,
 } from "@gym-app/domain/use-cases/ActualizarMiembro";
 import { PrismaTurnoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaTurnoRepository";
 import { PrismaPermisoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaPermisoRepository";
@@ -35,7 +35,6 @@ import {
   AbonoMenorAlMinimoError,
 } from "@gym-app/domain/use-cases/RegistrarPago";
 import { eliminarMiembro } from "@gym-app/domain/use-cases/EliminarMiembro";
-import { ajustarUltimoPago } from "@gym-app/domain/use-cases/AjustarUltimoPago";
 import { conMensajeOk } from "../redirectConMensaje";
 
 export interface EstadoFormularioMiembro {
@@ -203,6 +202,7 @@ export async function actualizarMiembroAction(
 
   const nombre = formData.get("nombre")?.toString().trim();
   const fechaInscripcionTexto = formData.get("fechaInscripcion")?.toString();
+  const fechaVencimientoTexto = formData.get("fechaVencimiento")?.toString();
   const sucursalId = formData.get("sucursalId")?.toString();
   const precioPlan = Number(formData.get("precioPlan"));
 
@@ -234,11 +234,17 @@ export async function actualizarMiembroAction(
           ...(planId ? { planId } : {}),
           precioPlan,
           ...(fotoUrl ? { fotoUrl } : {}),
+          // Solo si el socio cambió la fecha (distinta a la que cargó el formulario): así no se reescribe
+          // la hora del vencimiento ni se apaga el aviso en cada guardado.
+          ...(fechaVencimientoTexto && fechaVencimientoTexto !== formData.get("fechaVencimientoOriginal")?.toString()
+            ? { fechaVencimiento: new Date(`${fechaVencimientoTexto}T00:00:00`) }
+            : {}),
         },
       }
     );
   } catch (error) {
     if (
+      error instanceof AjusteFechaNoDisponibleError ||
       error instanceof MiembroNoEncontradoError ||
       error instanceof MiembroFueraDeSucursalError ||
       error instanceof ActualizarPlanNoEncontradoError
@@ -311,29 +317,4 @@ export async function eliminarMiembroAction(id: string): Promise<void> {
 
   revalidatePath("/miembros");
   redirect(conMensajeOk("/miembros", "Miembro quitado del sistema."));
-}
-
-// Solo con el aviso "Ajustar último pago" activo: registra un pago por el monto del plan, con fecha pasada
-// y la tasa BCV de ese día, y recalcula el vencimiento. Los errores de dominio (en español) se dejan propagar para mostrarlos en el cliente.
-export async function ajustarUltimoPagoAction(miembroId: string, diasAtras: number): Promise<void> {
-  const sesion = await obtenerUsuarioDeSesionActual();
-  if (!sesion) redirect("/login");
-  const { usuario, sucursalActivaId } = sesion;
-
-  await ajustarUltimoPago(
-    {
-      miembros: new PrismaMemberRepository(prisma),
-      planes: new PrismaPlanRepository(prisma),
-      suscripciones: new PrismaSuscripcionRepository(prisma),
-      sucursales: new PrismaSucursalRepository(prisma),
-      pagos: new PrismaPagoRepository(prisma),
-      tasas: new PrismaTasaCambioRepository(prisma),
-      autorizacion: new AuthorizationService(new PrismaPermisoRepository(prisma)),
-    },
-    { organizacionId: usuario.organizacionId, miembroId, sucursalActivaId, diasAtras, registradoPorId: usuario.id }
-  );
-
-  revalidatePath("/miembros");
-  revalidatePath(`/miembros/${miembroId}`);
-  redirect(conMensajeOk("/miembros", "Último pago ajustado."));
 }

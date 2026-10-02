@@ -42,19 +42,9 @@ export async function actualizarMiembro(
   const cambiaDePlan =
     input.cambios.planId !== undefined && input.cambios.planId !== null && input.cambios.planId !== antes.planId;
 
-  // Ajuste manual del vencimiento: se mantiene en sync con la Suscripcion (nunca
-  // por separado) y apaga el aviso "Ajustar fecha".
-  const ajustaVencimiento =
-    input.cambios.fechaVencimiento !== undefined && input.cambios.fechaVencimiento !== null;
-  const cambios = ajustaVencimiento ? { ...input.cambios, ajustarFecha: false } : input.cambios;
-
-  const actualizado = await deps.miembros.actualizar(input.organizacionId, input.id, cambios);
+  const actualizado = await deps.miembros.actualizar(input.organizacionId, input.id, input.cambios);
   if (!actualizado) {
     throw new MiembroNoEncontradoError();
-  }
-
-  if (ajustaVencimiento) {
-    await deps.suscripciones.ajustarFinMasReciente(input.id, input.cambios.fechaVencimiento as Date);
   }
 
   // Si el miembro cambió de Plan (sin que medie un pago nuevo) y tiene una

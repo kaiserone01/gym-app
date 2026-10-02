@@ -29,6 +29,9 @@ export interface Pago {
   cantidad?: number | null;
 }
 
+// Máximo de días hacia atrás para fechar el ajuste del último pago (ver AjustarUltimoPago).
+export const MAX_DIAS_ATRAS_ULTIMO_PAGO = 365;
+
 export interface DatosNuevoPago {
   miembroId: string | null;
   sucursalId: string;
@@ -43,6 +46,7 @@ export interface DatosNuevoPago {
   fechaInicioCiclo: Date | null;
   fechaFinCiclo: Date | null;
   grupoPagoId: string | null;
+  fechaPago?: Date; // solo para el ajuste del último pago (fecha pasada); por defecto, ahora
   productoId?: string | null;
   productoNombre?: string | null;
   cantidad?: number | null;

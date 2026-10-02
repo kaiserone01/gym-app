@@ -71,6 +71,7 @@ export class PrismaPagoRepository implements IPagoRepository {
         fechaInicioCiclo: datos.fechaInicioCiclo,
         fechaFinCiclo: datos.fechaFinCiclo,
         grupoPagoId: datos.grupoPagoId,
+        ...(datos.fechaPago ? { fechaPago: datos.fechaPago } : {}),
         productoId: datos.productoId ?? null,
         productoNombre: datos.productoNombre ?? null,
         cantidad: datos.cantidad ?? null,

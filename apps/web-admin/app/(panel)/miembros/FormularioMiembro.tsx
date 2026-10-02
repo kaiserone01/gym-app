@@ -13,6 +13,7 @@ import { SelectorMetodoPago } from "../pagos/SelectorMetodoPago";
 import { formatearBs } from "../tasaBcvFija";
 import { ProveedorCambiosSinGuardar } from "./ContextoCambiosSinGuardar";
 import { SelectorFotoPerfil } from "./SelectorFotoPerfil";
+import { AvisoAjustarPago } from "./AvisoAjustarPago";
 import type { EntrenadorResumen } from "@gym-app/domain/entities/EntrenadorResumen";
 import type { SucursalResumen } from "@gym-app/domain/entities/SucursalResumen";
 import type { Plan, FrecuenciaPago } from "@gym-app/domain/entities/Plan";
@@ -23,7 +24,6 @@ export interface ValoresFormularioMiembro {
   cedula: string;
   celular: string;
   fechaInscripcion: string; // yyyy-mm-dd
-  fechaVencimiento?: string; // yyyy-mm-dd, "" si no tiene
   sucursalId: string | null; // null = "Ambas"
   planId: string | null;
   precioPlan: number;
@@ -137,7 +137,7 @@ export function FormularioMiembro({
   // botones "Cambiar plan" haciendo cosas distintas al mismo tiempo (ver
   // diseño acordado). Solo relevante en edición; en alta siempre es true.
   tieneCicloVigente?: boolean;
-  // Fecha de vencimiento no confiable (migrada): el campo titila hasta que el socio la ajuste.
+  // Fecha de vencimiento no confiable (migrada): se muestra el aviso para ajustar el último pago.
   ajustarFecha?: boolean;
 }) {
   const [estado, enviar, enviando] = useActionState(accion, {});
@@ -304,7 +304,6 @@ export function FormularioMiembro({
   }
 
   const idFormulario = "formulario-miembro";
-  const [fechaVencimiento, setFechaVencimiento] = useState(valoresIniciales?.fechaVencimiento ?? "");
 
   return (
     <ProveedorCambiosSinGuardar value={hayCambiosSinGuardar}>
@@ -318,31 +317,7 @@ export function FormularioMiembro({
     )}
 
     {esEdicion && ajustarFecha && miembroId && (
-      <div
-        className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-lg border px-4 py-3 text-sm"
-        style={{ borderColor: "var(--gx-warn)", color: "var(--gx-ink)" }}
-      >
-        <span className="flex flex-wrap items-center gap-2">
-          <Badge tono="ambar">Ajustar fecha</Badge>
-          La fecha de vencimiento viene de la migración y no es confiable. Ajústala a mano o registra un pago.
-        </span>
-        <span className="flex gap-2">
-          <Button
-            type="button"
-            variant="secundario"
-            onClick={() => {
-              const campo = document.getElementById("campo-fecha-vencimiento");
-              campo?.scrollIntoView({ behavior: "smooth", block: "center" });
-              campo?.focus({ preventScroll: true });
-            }}
-          >
-            Ajustar fecha
-          </Button>
-          <Link href={`/caja?cobrar=${miembroId}`}>
-            <Button type="button">Registrar pago</Button>
-          </Link>
-        </span>
-      </div>
+      <AvisoAjustarPago miembroId={miembroId} diasCiclo={planSeleccionado?.diasCiclo ?? 30} />
     )}
 
     <div className={`grid grid-cols-1 gap-6 ${esEdicion && !mostrarTicket ? "lg:grid-cols-2" : "lg:grid-cols-3"}`}>
@@ -473,23 +448,6 @@ export function FormularioMiembro({
                 : "Determina en qué sucursal puede hacer check-in."}
             </span>
           </div>
-
-          {/* Campo de un solo uso: solo existe mientras el miembro tenga el aviso
-              "Ajustar fecha". Se apaga al guardar una fecha nueva o al registrar un pago. */}
-          {esEdicion && ajustarFecha && (
-            <div className="mb-4">
-              <input type="hidden" name="fechaVencimientoOriginal" value={valoresIniciales?.fechaVencimiento ?? ""} />
-              <Input
-                id="campo-fecha-vencimiento"
-                name="fechaVencimiento"
-                label="Fecha de vencimiento"
-                type="date"
-                value={fechaVencimiento}
-                onChange={(e) => setFechaVencimiento(e.target.value)}
-                className="titilar-fecha"
-              />
-            </div>
-          )}
 
           {esEdicion && !editandoPlan && (
             <div className="rounded-lg border p-4" style={{ borderColor: "var(--gx-edge)" }}>

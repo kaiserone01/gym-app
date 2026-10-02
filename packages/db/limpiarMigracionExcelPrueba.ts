@@ -61,6 +61,12 @@ async function main() {
   const sucursales = await prisma.sucursal.deleteMany({ where: { organizacionId: organizacion.id } });
   console.log(`🗑️  Sucursales borradas: ${sucursales.count}`);
 
+  // Configuración que se pudo haber creado desde el panel con el admin de prueba.
+  await prisma.metodoPago.deleteMany({ where: { organizacionId: organizacion.id } });
+  await prisma.reglaAbonoPorFrecuencia.deleteMany({ where: { organizacionId: organizacion.id } });
+  await prisma.temaOrganizacion.deleteMany({ where: { organizacionId: organizacion.id } });
+  await prisma.producto.deleteMany({ where: { organizacionId: organizacion.id } });
+
   await prisma.organizacion.delete({ where: { id: organizacion.id } });
   console.log(`✅ Organizacion de prueba "${SLUG_ORGANIZACION_PRUEBA}" borrada por completo.`);
 }

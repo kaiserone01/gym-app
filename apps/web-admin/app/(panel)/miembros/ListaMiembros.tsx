@@ -314,7 +314,7 @@ function VistaCards({ miembros }: { miembros: FilaMiembro[] }) {
             >
               <span className="flex flex-wrap items-center gap-2">
                 <DiasDisponibles fechaVencimiento={miembro.fechaVencimiento} />
-                {miembro.ajustarFecha && <Badge tono="ambar">Ajustar fecha</Badge>}
+                {miembro.ajustarFecha && <Badge tono="ambar">Ajustar fecha o pago</Badge>}
               </span>
               <span className="font-medium hover:underline" style={{ color: "var(--gx-accent)" }}>
                 Editar
@@ -369,7 +369,7 @@ function VistaLista({ miembros }: { miembros: FilaMiembro[] }) {
                 <td className="py-2">
                   <span className="flex flex-wrap items-center gap-2">
                     <DiasDisponibles fechaVencimiento={miembro.fechaVencimiento} />
-                    {miembro.ajustarFecha && <Badge tono="ambar">Ajustar fecha</Badge>}
+                    {miembro.ajustarFecha && <Badge tono="ambar">Ajustar fecha o pago</Badge>}
                   </span>
                 </td>
                 <td className="py-2">

@@ -317,6 +317,34 @@ export function FormularioMiembro({
       </p>
     )}
 
+    {esEdicion && ajustarFecha && miembroId && (
+      <div
+        className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-lg border px-4 py-3 text-sm"
+        style={{ borderColor: "var(--gx-warn)", color: "var(--gx-ink)" }}
+      >
+        <span className="flex flex-wrap items-center gap-2">
+          <Badge tono="ambar">Ajustar fecha</Badge>
+          La fecha de vencimiento viene de la migración y no es confiable. Ajústala a mano o registra un pago.
+        </span>
+        <span className="flex gap-2">
+          <Button
+            type="button"
+            variant="secundario"
+            onClick={() => {
+              const campo = document.getElementById("campo-fecha-vencimiento");
+              campo?.scrollIntoView({ behavior: "smooth", block: "center" });
+              campo?.focus({ preventScroll: true });
+            }}
+          >
+            Ajustar fecha
+          </Button>
+          <Link href={`/caja?cobrar=${miembroId}`}>
+            <Button type="button">Registrar pago</Button>
+          </Link>
+        </span>
+      </div>
+    )}
+
     <div className={`grid grid-cols-1 gap-6 ${esEdicion && !mostrarTicket ? "lg:grid-cols-2" : "lg:grid-cols-3"}`}>
       {/* display: contents — Datos personales y Plan de membresía quedan como
           celdas independientes de la grilla de 3 columnas, pero sus campos
@@ -446,16 +474,19 @@ export function FormularioMiembro({
             </span>
           </div>
 
-          {esEdicion && (
+          {/* Campo de un solo uso: solo existe mientras el miembro tenga el aviso
+              "Ajustar fecha". Se apaga al guardar una fecha nueva o al registrar un pago. */}
+          {esEdicion && ajustarFecha && (
             <div className="mb-4">
               <input type="hidden" name="fechaVencimientoOriginal" value={valoresIniciales?.fechaVencimiento ?? ""} />
               <Input
+                id="campo-fecha-vencimiento"
                 name="fechaVencimiento"
-                label={ajustarFecha ? "Fecha de vencimiento — ajústala" : "Fecha de vencimiento"}
+                label="Fecha de vencimiento"
                 type="date"
                 value={fechaVencimiento}
                 onChange={(e) => setFechaVencimiento(e.target.value)}
-                className={ajustarFecha ? "titilar-fecha" : ""}
+                className="titilar-fecha"
               />
             </div>
           )}

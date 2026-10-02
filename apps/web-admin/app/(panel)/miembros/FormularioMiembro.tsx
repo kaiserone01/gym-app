@@ -317,7 +317,7 @@ export function FormularioMiembro({
     )}
 
     {esEdicion && ajustarFecha && miembroId && (
-      <AvisoAjustarPago miembroId={miembroId} diasCiclo={planSeleccionado?.diasCiclo ?? 30} />
+      <AvisoAjustarPago miembroId={miembroId} diasCiclo={planSeleccionado?.diasCiclo ?? 30} monto={precioActual} />
     )}
 
     <div className={`grid grid-cols-1 gap-6 ${esEdicion && !mostrarTicket ? "lg:grid-cols-2" : "lg:grid-cols-3"}`}>

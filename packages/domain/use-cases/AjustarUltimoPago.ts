@@ -3,6 +3,7 @@ import { IPlanRepository } from "../ports/IPlanRepository";
 import { ISuscripcionRepository } from "../ports/ISuscripcionRepository";
 import { ISucursalRepository } from "../ports/ISucursalRepository";
 import { IPagoRepository } from "../ports/IPagoRepository";
+import { ITasaCambioRepository } from "../ports/ITasaCambioRepository";
 import { IAuthorizationService } from "../ports/IAuthorizationService";
 import { MAX_DIAS_ATRAS_ULTIMO_PAGO } from "../entities/Pago";
 import { MiembroFueraDeSucursalError } from "./ObtenerMiembro";
@@ -24,6 +25,12 @@ export class DiasAtrasInvalidosError extends Error {
   }
 }
 
+export class SinTasaParaFechaError extends Error {
+  constructor() {
+    super("No hay tasa de cambio BCV registrada para esa fecha ni anterior: no se puede calcular el monto en bolívares.");
+  }
+}
+
 export class MiembroSinPlanError extends Error {
   constructor() {
     super("El miembro no tiene un plan asignado: no se puede calcular el vencimiento.");
@@ -31,8 +38,9 @@ export class MiembroSinPlanError extends Error {
 }
 
 // Solo disponible mientras el miembro tenga el aviso "Ajustar último pago" (fecha migrada no confiable).
-// Registra, nominativamente y a nombre de quien lo hace, un pago de $0 con fecha pasada — sin turno ni
-// arqueo — y recalcula el ciclo: vencimiento = fecha del pago + días del plan. Apaga el aviso.
+// Registra, nominativamente y a nombre de quien lo hace, un pago con fecha pasada — sin turno ni arqueo —
+// por el monto del plan del miembro (Miembro.precioPlan), convertido a Bs con la tasa BCV de esa fecha (o la
+// más cercana anterior). Recalcula el ciclo: vencimiento = fecha del pago + días del plan. Apaga el aviso.
 export async function ajustarUltimoPago(
   deps: {
     miembros: IMemberRepository;
@@ -40,6 +48,7 @@ export async function ajustarUltimoPago(
     suscripciones: ISuscripcionRepository;
     sucursales: ISucursalRepository;
     pagos: IPagoRepository;
+    tasas: ITasaCambioRepository;
     autorizacion: IAuthorizationService;
   },
   input: {
@@ -72,17 +81,26 @@ export async function ajustarUltimoPago(
   const fechaPago = new Date(Date.now() - input.diasAtras * MS_POR_DIA);
   const fechaVencimiento = new Date(fechaPago.getTime() + plan.diasCiclo * MS_POR_DIA);
 
+  // Sin monto (cortesía) no hay nada que convertir. Si hay monto, la tasa es obligatoria: no se inventa.
+  const monto = miembro.precioPlan;
+  let tasaCambio: number | null = null;
+  if (monto > 0) {
+    const tasa = await deps.tasas.buscarMasCercanaAnterior(fechaPago);
+    if (!tasa) throw new SinTasaParaFechaError();
+    tasaCambio = tasa.valor;
+  }
+
   await deps.pagos.crear({
     miembroId: miembro.id,
     sucursalId: input.sucursalActivaId,
     turnoId: null,
     registradoPorId: input.registradoPorId,
-    monto: 0,
+    monto,
     metodo: METODO_AJUSTE_ULTIMO_PAGO,
     metodoPagoId: null,
     numeroOperacion: null,
-    tasaCambio: null,
-    montoBs: null,
+    tasaCambio,
+    montoBs: tasaCambio !== null ? monto * tasaCambio : null,
     fechaInicioCiclo: fechaPago,
     fechaFinCiclo: fechaVencimiento,
     grupoPagoId: null,

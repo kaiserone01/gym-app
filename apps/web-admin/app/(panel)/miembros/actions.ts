@@ -8,6 +8,7 @@ import { obtenerUsuarioDeSesionActual } from "@/lib/sesion";
 import { PrismaMemberRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaMemberRepository";
 import { PrismaPlanRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaPlanRepository";
 import { PrismaPagoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaPagoRepository";
+import { PrismaTasaCambioRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaTasaCambioRepository";
 import { PrismaSuscripcionRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaSuscripcionRepository";
 import { crearMiembro, CedulaDuplicadaError } from "@gym-app/domain/use-cases/CrearMiembro";
 import {
@@ -312,8 +313,8 @@ export async function eliminarMiembroAction(id: string): Promise<void> {
   redirect(conMensajeOk("/miembros", "Miembro quitado del sistema."));
 }
 
-// Solo con el aviso "Ajustar último pago" activo: registra un pago de $0 con fecha pasada y recalcula
-// el vencimiento. Los errores de dominio (en español) se dejan propagar para mostrarlos en el cliente.
+// Solo con el aviso "Ajustar último pago" activo: registra un pago por el monto del plan, con fecha pasada
+// y la tasa BCV de ese día, y recalcula el vencimiento. Los errores de dominio (en español) se dejan propagar para mostrarlos en el cliente.
 export async function ajustarUltimoPagoAction(miembroId: string, diasAtras: number): Promise<void> {
   const sesion = await obtenerUsuarioDeSesionActual();
   if (!sesion) redirect("/login");
@@ -326,6 +327,7 @@ export async function ajustarUltimoPagoAction(miembroId: string, diasAtras: numb
       suscripciones: new PrismaSuscripcionRepository(prisma),
       sucursales: new PrismaSucursalRepository(prisma),
       pagos: new PrismaPagoRepository(prisma),
+      tasas: new PrismaTasaCambioRepository(prisma),
       autorizacion: new AuthorizationService(new PrismaPermisoRepository(prisma)),
     },
     { organizacionId: usuario.organizacionId, miembroId, sucursalActivaId, diasAtras, registradoPorId: usuario.id }

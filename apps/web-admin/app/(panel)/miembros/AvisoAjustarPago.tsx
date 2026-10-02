@@ -16,8 +16,8 @@ function formatearFecha(fecha: Date): string {
 }
 
 // Solo se muestra mientras el miembro tenga el aviso "Ajustar último pago". Dos caminos:
-// ajustar el último pago a una fecha pasada (sin dinero, sin turno) o registrar un pago normal en Caja.
-export function AvisoAjustarPago({ miembroId, diasCiclo }: { miembroId: string; diasCiclo: number }) {
+// ajustar el último pago a una fecha pasada (por el monto del plan, sin turno) o registrar un pago normal en Caja.
+export function AvisoAjustarPago({ miembroId, diasCiclo, monto }: { miembroId: string; diasCiclo: number; monto: number }) {
   const [dias, setDias] = useState("");
   const [pendiente, iniciarTransicion] = useTransition();
   const { mostrarError } = useFeedback();
@@ -76,6 +76,8 @@ export function AvisoAjustarPago({ miembroId, diasCiclo }: { miembroId: string; 
         <p style={{ color: "var(--gx-muted)" }}>
           Último pago: <strong style={{ color: "var(--gx-ink)" }}>{formatearFecha(fechaPago)}</strong> — vencería el{" "}
           <strong style={{ color: "var(--gx-ink)" }}>{formatearFecha(fechaVencimiento)}</strong> ({diasCiclo} días de plan).
+          <br />
+          Se registra un pago de <strong style={{ color: "var(--gx-ink)" }}>${monto.toFixed(2)}</strong> con la tasa BCV de esa fecha.
         </p>
       )}
 

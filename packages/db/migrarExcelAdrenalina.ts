@@ -5,6 +5,9 @@
 //
 // Uso (dry-run, no escribe nada):
 //   npm run db:migrar-excel-adrenalina --workspace packages/db
+// Destino real (organización existente, sin crear nada): agregar
+//   --org=<slug> --sucursal="<nombre>" --admin=<email de un usuario existente de esa organización>
+// Sin --org el destino sigue siendo la organización de prueba desechable.
 // Uso (escribe en la base):
 //   MIGRACION_ADMIN_PASSWORD=<clave> npm run db:migrar-excel-adrenalina:confirm --workspace packages/db
 // (la variable es opcional: habilita el login del admin de prueba para revisar en el panel)
@@ -47,6 +50,25 @@ function ofuscarUrl(url: string | undefined): string {
   } catch {
     return "(url no parseable)";
   }
+}
+
+function argumento(nombre: string): string | undefined {
+  return process.argv.find((a) => a.startsWith(`--${nombre}=`))?.slice(nombre.length + 3);
+}
+
+// Destino real: la organización, la sucursal y el usuario (para registrar los pagos históricos) deben
+// existir ya — no se crea nada, y un dato mal escrito aborta antes de escribir.
+async function obtenerDestinoReal(slug: string) {
+  const nombreSucursal = argumento("sucursal");
+  const emailAdmin = argumento("admin");
+  if (!nombreSucursal || !emailAdmin) throw new Error('Con --org hacen falta también --sucursal="<nombre>" y --admin=<email>.');
+  const organizacion = await prisma.organizacion.findUnique({ where: { slug } });
+  if (!organizacion) throw new Error(`No existe la organización "${slug}".`);
+  const sucursal = await prisma.sucursal.findFirst({ where: { organizacionId: organizacion.id, nombre: nombreSucursal } });
+  if (!sucursal) throw new Error(`No existe la sucursal "${nombreSucursal}" en "${slug}".`);
+  const admin = await prisma.usuarioAdmin.findFirst({ where: { organizacionId: organizacion.id, email: emailAdmin } });
+  if (!admin) throw new Error(`No existe el usuario "${emailAdmin}" en "${slug}".`);
+  return { organizacion, sucursal, admin };
 }
 
 async function obtenerOCrearOrganizacionPrueba() {
@@ -195,6 +217,7 @@ async function main() {
 
   console.log(`Base de datos destino: ${ofuscarUrl(process.env.DATABASE_URL)}`);
   console.log(`Modo: ${confirmar ? "CONFIRM (va a escribir)" : "DRY-RUN (no escribe nada)"}`);
+  console.log(`Organización destino: ${argumento("org") ?? `${SLUG_ORGANIZACION_PRUEBA} (prueba)`}`);
 
   const filasCrudas = leerFilasExcel(RUTA_EXCEL);
   console.log(`Filas leídas del Excel: ${filasCrudas.length}`);
@@ -236,9 +259,15 @@ async function main() {
     return;
   }
 
-  const organizacion = await obtenerOCrearOrganizacionPrueba();
-  const sucursal = await obtenerOCrearSucursalPrueba(organizacion.id);
-  const admin = await obtenerOCrearAdminPrueba(organizacion.id, sucursal.id);
+  const slugReal = argumento("org");
+  const { organizacion, sucursal, admin } = slugReal
+    ? await obtenerDestinoReal(slugReal)
+    : await (async () => {
+        const organizacion = await obtenerOCrearOrganizacionPrueba();
+        const sucursal = await obtenerOCrearSucursalPrueba(organizacion.id);
+        return { organizacion, sucursal, admin: await obtenerOCrearAdminPrueba(organizacion.id, sucursal.id) };
+      })();
+  console.log(`Destino: ${organizacion.slug} / ${sucursal.nombre}`);
 
   let escritas = 0;
   let saltadas = 0;

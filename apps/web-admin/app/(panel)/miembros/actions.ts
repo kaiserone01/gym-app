@@ -201,6 +201,7 @@ export async function actualizarMiembroAction(
 
   const nombre = formData.get("nombre")?.toString().trim();
   const fechaInscripcionTexto = formData.get("fechaInscripcion")?.toString();
+  const fechaVencimientoTexto = formData.get("fechaVencimiento")?.toString();
   const sucursalId = formData.get("sucursalId")?.toString();
   const precioPlan = Number(formData.get("precioPlan"));
 
@@ -232,6 +233,11 @@ export async function actualizarMiembroAction(
           ...(planId ? { planId } : {}),
           precioPlan,
           ...(fotoUrl ? { fotoUrl } : {}),
+          // Solo si el socio cambió la fecha (distinta a la que cargó el formulario): así no se
+          // reescribe la hora del vencimiento ni se apaga el aviso "Ajustar fecha" en cada guardado.
+          ...(fechaVencimientoTexto && fechaVencimientoTexto !== formData.get("fechaVencimientoOriginal")?.toString()
+            ? { fechaVencimiento: new Date(`${fechaVencimientoTexto}T00:00:00`) }
+            : {}),
         },
       }
     );

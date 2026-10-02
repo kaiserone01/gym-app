@@ -7,6 +7,9 @@ export interface ISuscripcionRepository {
   // usado para el recálculo masivo al cambiar frecuencia/entrenador del Plan.
   listarActivasVigentesPorPlan(planId: string, fecha: Date): Promise<Suscripcion[]>;
   extenderFin(id: string, nuevoFin: Date): Promise<Suscripcion>;
+  // Ajuste manual del vencimiento: fija el fin de la Suscripcion más reciente del miembro (y la deja ACTIVA).
+  // No hace nada si el miembro no tiene ninguna.
+  ajustarFinMasReciente(miembroId: string, nuevoFin: Date): Promise<void>;
   crear(datos: { miembroId: string; planId: string; inicio: Date; fin: Date; fechaLimiteAbono: Date | null }): Promise<Suscripcion>;
   // Cambia el plan de una Suscripcion sin tocar inicio/fin — usado al subir
   // de plan cobrando solo la diferencia (ver CambiarPlanConPago), donde el

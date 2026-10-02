@@ -102,11 +102,13 @@ export default async function PaginaEditarMiembro({ params }: { params: Promise<
         tieneCicloVigente={tieneCicloVigente}
         saldoPendiente={saldoPendiente}
         totalPagos={pagos.length}
+        ajustarFecha={miembro.ajustarFecha}
         valoresIniciales={{
           nombre: miembro.nombre,
           cedula: miembro.cedula,
           celular: miembro.celular ?? "",
           fechaInscripcion: formatearFechaISO(miembro.fechaInscripcion ?? miembro.createdAt),
+          fechaVencimiento: miembro.fechaVencimiento ? formatearFechaISO(miembro.fechaVencimiento) : "",
           sucursalId: miembro.sucursalId,
           planId: miembro.planId,
           precioPlan: miembro.precioPlan,

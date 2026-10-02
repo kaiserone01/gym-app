@@ -20,6 +20,7 @@ type FilaMiembro = {
   fechaUltimoPago: Date | null;
   fechaVencimiento: Date | null;
   activo: boolean;
+  ajustarFecha: boolean;
   createdAt: Date;
 };
 
@@ -42,6 +43,7 @@ function mapear(miembro: FilaMiembro): Miembro {
     fechaUltimoPago: miembro.fechaUltimoPago,
     fechaVencimiento: miembro.fechaVencimiento,
     activo: miembro.activo,
+    ajustarFecha: miembro.ajustarFecha,
     createdAt: miembro.createdAt,
   };
 }
@@ -120,7 +122,8 @@ export class PrismaMemberRepository implements IMemberRepository {
   async actualizarFechasPago(id: string, fechaUltimoPago: Date, fechaVencimiento: Date): Promise<void> {
     await this.prisma.miembro.update({
       where: { id },
-      data: { fechaUltimoPago, fechaVencimiento },
+      // Un pago fija una fecha real: ya no hace falta ajustarla a mano.
+      data: { fechaUltimoPago, fechaVencimiento, ajustarFecha: false },
     });
   }
 }

@@ -15,6 +15,7 @@
     "db:migrar-excel-adrenalina": "tsx migrarExcelAdrenalina.ts",
     "db:migrar-excel-adrenalina:confirm": "tsx migrarExcelAdrenalina.ts --confirm",
     "db:limpiar-migracion-excel-prueba": "tsx limpiarMigracionExcelPrueba.ts",
+    "db:marcar-ajustar-fecha": "tsx marcarAjustarFecha.ts",
     "test": "vitest run"
   },
   "dependencies": {

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Input } from "@gym-app/ui/components/Input";
 import { Button } from "@gym-app/ui/components/Button";
 import { Card } from "@gym-app/ui/components/Card";
+import { Badge } from "@gym-app/ui/components/Badge";
 import { EstadoToggle } from "./EstadoToggle";
 import { DiasDisponibles, diasHastaVencimiento } from "./vencimiento";
 import type { Miembro } from "@gym-app/domain/entities/Miembro";
@@ -311,7 +312,10 @@ function VistaCards({ miembros }: { miembros: FilaMiembro[] }) {
               className="flex items-center justify-between gap-3 border-t pt-3 text-sm"
               style={{ borderColor: "var(--gx-edge)" }}
             >
-              <DiasDisponibles fechaVencimiento={miembro.fechaVencimiento} />
+              <span className="flex flex-wrap items-center gap-2">
+                <DiasDisponibles fechaVencimiento={miembro.fechaVencimiento} />
+                {miembro.ajustarFecha && <Badge tono="ambar">Ajustar fecha</Badge>}
+              </span>
               <span className="font-medium hover:underline" style={{ color: "var(--gx-accent)" }}>
                 Editar
               </span>
@@ -363,7 +367,10 @@ function VistaLista({ miembros }: { miembros: FilaMiembro[] }) {
                   {miembro.fechaVencimiento ? formatearFecha(miembro.fechaVencimiento) : "—"}
                 </td>
                 <td className="py-2">
-                  <DiasDisponibles fechaVencimiento={miembro.fechaVencimiento} />
+                  <span className="flex flex-wrap items-center gap-2">
+                    <DiasDisponibles fechaVencimiento={miembro.fechaVencimiento} />
+                    {miembro.ajustarFecha && <Badge tono="ambar">Ajustar fecha</Badge>}
+                  </span>
                 </td>
                 <td className="py-2">
                   <EstadoToggle id={miembro.id} activo={miembro.activo} />

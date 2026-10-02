@@ -19,6 +19,21 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Campo que el socio debe ajustar a mano: titila hasta que se guarde la fecha nueva. */
+@keyframes titilar-fecha {
+  0%, 100% { box-shadow: 0 0 0 0 transparent; border-color: var(--gx-edge); }
+  50% { box-shadow: 0 0 0 3px var(--gx-warn, #f5a524); border-color: var(--gx-warn, #f5a524); }
+}
+.titilar-fecha {
+  animation: titilar-fecha 1.2s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .titilar-fecha {
+    animation: none;
+    border-color: var(--gx-warn, #f5a524);
+  }
+}
+
 @media print {
   body {
     background: #ffffff;

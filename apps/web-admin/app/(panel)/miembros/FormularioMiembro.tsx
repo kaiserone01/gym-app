@@ -23,6 +23,7 @@ export interface ValoresFormularioMiembro {
   cedula: string;
   celular: string;
   fechaInscripcion: string; // yyyy-mm-dd
+  fechaVencimiento?: string; // yyyy-mm-dd, "" si no tiene
   sucursalId: string | null; // null = "Ambas"
   planId: string | null;
   precioPlan: number;
@@ -96,6 +97,7 @@ export function FormularioMiembro({
   totalPagos,
   valoresIniciales,
   tieneCicloVigente,
+  ajustarFecha = false,
 }: {
   accion: (estado: EstadoFormularioMiembro, formData: FormData) => Promise<EstadoFormularioMiembro>;
   // Entrenadores disponibles por cada sucursal visible — el elegible
@@ -135,6 +137,8 @@ export function FormularioMiembro({
   // botones "Cambiar plan" haciendo cosas distintas al mismo tiempo (ver
   // diseño acordado). Solo relevante en edición; en alta siempre es true.
   tieneCicloVigente?: boolean;
+  // Fecha de vencimiento no confiable (migrada): el campo titila hasta que el socio la ajuste.
+  ajustarFecha?: boolean;
 }) {
   const [estado, enviar, enviando] = useActionState(accion, {});
   const esEdicion = !!valoresIniciales;
@@ -300,6 +304,7 @@ export function FormularioMiembro({
   }
 
   const idFormulario = "formulario-miembro";
+  const [fechaVencimiento, setFechaVencimiento] = useState(valoresIniciales?.fechaVencimiento ?? "");
 
   return (
     <ProveedorCambiosSinGuardar value={hayCambiosSinGuardar}>
@@ -440,6 +445,20 @@ export function FormularioMiembro({
                 : "Determina en qué sucursal puede hacer check-in."}
             </span>
           </div>
+
+          {esEdicion && (
+            <div className="mb-4">
+              <input type="hidden" name="fechaVencimientoOriginal" value={valoresIniciales?.fechaVencimiento ?? ""} />
+              <Input
+                name="fechaVencimiento"
+                label={ajustarFecha ? "Fecha de vencimiento — ajústala" : "Fecha de vencimiento"}
+                type="date"
+                value={fechaVencimiento}
+                onChange={(e) => setFechaVencimiento(e.target.value)}
+                className={ajustarFecha ? "titilar-fecha" : ""}
+              />
+            </div>
+          )}
 
           {esEdicion && !editandoPlan && (
             <div className="rounded-lg border p-4" style={{ borderColor: "var(--gx-edge)" }}>

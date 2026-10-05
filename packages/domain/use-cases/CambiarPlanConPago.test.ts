@@ -96,6 +96,7 @@ function crearFakes(estadoInicial: { miembro: Miembro; suscripcion: Suscripcion;
   };
 
   const pagoRepo: IPagoRepository = {
+    listarConCicloAbierto: async () => [],
     crear: async (datos) => {
       pagosCreados.push(datos);
       const pago: Pago = {

@@ -80,6 +80,13 @@ export class PrismaPagoRepository implements IPagoRepository {
     return mapear(pago);
   }
 
+  async listarConCicloAbierto(organizacionId: string, ahora: Date): Promise<Pago[]> {
+    const pagos = await this.prisma.pago.findMany({
+      where: { miembro: { organizacionId }, anuladoEn: null, fechaFinCiclo: { gt: ahora } },
+    });
+    return pagos.map(mapear);
+  }
+
   async listarPorMiembro(miembroId: string): Promise<Pago[]> {
     const pagos = await this.prisma.pago.findMany({
       where: { miembroId },

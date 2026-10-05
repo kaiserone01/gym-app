@@ -31,6 +31,7 @@ import { BotonRegistrarPagoCaja } from "./BotonRegistrarPagoCaja";
 import { BotonRegistrarEgreso } from "./BotonRegistrarEgreso";
 import { BotonVenderProducto } from "./BotonVenderProducto";
 import { BotonCobrarDeudas } from "./BotonCobrarDeudas";
+import { listarAbonosPendientes } from "@gym-app/domain/use-cases/ListarAbonosPendientes";
 import { cambiarPlanAction } from "../pagos/actions";
 
 // El método ahora se guarda como snapshot legible ("Pago Móvil - Banesco")
@@ -115,6 +116,8 @@ export default async function PaginaCaja({ searchParams }: { searchParams: Promi
 
     const miembrosActivos = miembros.filter((m) => m.activo);
     const planesActivos = planes.filter((p) => p.activo);
+    // Saldos de membresía (abonos pendientes) de los miembros de esta sucursal: cuentas por cobrar junto a los productos fiados.
+    const abonosPendientes = await listarAbonosPendientes({ pagos: new PrismaPagoRepository(prisma) }, miembros, planes);
 
     return (
       <div className="flex flex-col gap-6 p-6 pb-24 lg:p-8 lg:pb-8">
@@ -144,6 +147,7 @@ export default async function PaginaCaja({ searchParams }: { searchParams: Promi
               />
               <BotonCobrarDeudas
                 grupos={deudasPendientes}
+                abonos={abonosPendientes}
                 metodosPago={metodosPago}
                 tasaActual={tasaActual}
                 accionCobrar={cobrarDeudasAction}

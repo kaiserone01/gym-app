@@ -23,6 +23,11 @@ import {
   SinTurnoAbiertoError,
 } from "@gym-app/domain/use-cases/VenderProducto";
 import { LineasDePagoInvalidasError, MontoLineasNoCubreObjetivoError } from "@gym-app/domain/entities/Pago";
+import { PrismaPlanRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaPlanRepository";
+import { PrismaReglaAbonoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaReglaAbonoRepository";
+import { PrismaSuscripcionRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaSuscripcionRepository";
+import { cobrarAbonoPendiente, SinAbonoPendienteError, MontoNoCoincideConLoPendienteError } from "@gym-app/domain/use-cases/CobrarAbonoPendiente";
+import { AbonoMenorAlMinimoError } from "@gym-app/domain/use-cases/RegistrarPago";
 import { PrismaMemberRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaMemberRepository";
 import { PrismaDeudaProductoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaDeudaProductoRepository";
 import {
@@ -509,12 +514,37 @@ export async function cobrarDeudasAction(
     lineasValidadas.push({ ...linea, tasaCambio: validacionTasa.tasaCambio });
   }
 
+  // Membresía con saldo pendiente (abono): se cobra junto con los productos en un solo pago.
+  const incluirMembresia = formData.get("incluirMembresia")?.toString() === "1";
+
   try {
     // Transacción: si algo falla después de marcar las deudas como
     // cobradas, no queda ninguna a medio escribir (mismo patrón que
     // cambiarPlanAction en pagos/actions.ts).
     await prisma.$transaction((tx) =>
-      cobrarDeudasMiembro(
+      incluirMembresia
+        ? cobrarAbonoPendiente(
+            {
+              pagos: new PrismaPagoRepository(tx),
+              suscripciones: new PrismaSuscripcionRepository(tx),
+              miembros: new PrismaMemberRepository(tx),
+              planes: new PrismaPlanRepository(tx),
+              turnos: new PrismaTurnoRepository(tx),
+              sucursales: new PrismaSucursalRepository(tx),
+              autorizacion: new AuthorizationService(new PrismaPermisoRepository(prisma)),
+              reglasAbono: new PrismaReglaAbonoRepository(prisma),
+              deudas: new PrismaDeudaProductoRepository(tx),
+            },
+            {
+              organizacionId: usuario.organizacionId,
+              miembroId,
+              lineas: lineasValidadas,
+              sucursalId: sucursalActivaId,
+              registradoPorId: usuario.id,
+              rolUsuario: usuario.rol,
+            }
+          )
+        : cobrarDeudasMiembro(
         {
           deudas: new PrismaDeudaProductoRepository(tx),
           pagos: new PrismaPagoRepository(tx),
@@ -532,6 +562,9 @@ export async function cobrarDeudasAction(
     );
   } catch (error) {
     if (
+      error instanceof SinAbonoPendienteError ||
+      error instanceof MontoNoCoincideConLoPendienteError ||
+      error instanceof AbonoMenorAlMinimoError ||
       error instanceof RolNoAutorizadoCobrar ||
       error instanceof SinDeudasPendientesError ||
       error instanceof DeudasYaCobradasError ||
@@ -546,7 +579,8 @@ export async function cobrarDeudasAction(
 
   revalidatePath("/caja");
   revalidatePath("/pagos");
-  return { ok: "Deuda cobrada." };
+  revalidatePath(`/miembros/${miembroId}`);
+  return { ok: incluirMembresia ? "Cuenta cobrada." : "Deuda cobrada." };
 }
 
 // Devuelve el error en vez de lanzarlo: en producción Next oculta el

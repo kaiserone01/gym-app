@@ -10,6 +10,10 @@ function iniciales(nombre: string): string {
     .join("");
 }
 
+function formatearFecha(iso: string | null): string {
+  return iso ? new Date(iso).toLocaleDateString("es-VE", { day: "2-digit", month: "2-digit", year: "numeric" }) : "—";
+}
+
 const ETIQUETA_ESTADO: Record<ResultadoCheckIn["estado"], string> = {
   activo: "Acceso permitido",
   en_gracia: "Membresía vencida — período de gracia",
@@ -114,12 +118,20 @@ export function AccessCard({ resultado, hora }: { resultado: ResultadoCheckIn; h
                         : "Acercate a recepción a renovar tu plan."}
                 </p>
               )}
-              <div className="grid grid-cols-2 gap-4 border-t pt-4" style={{ borderColor: "var(--gx-edge)" }}>
+              <div className="grid grid-cols-3 gap-4 border-t pt-4" style={{ borderColor: "var(--gx-edge)" }}>
                 <div className="flex flex-col gap-1">
                   <span className="text-xs font-bold uppercase" style={{ letterSpacing: "0.1em", color: "var(--gx-muted-dim)" }}>
                     Entrada
                   </span>
                   <span className="text-xl font-semibold" style={{ color: "var(--gx-ink)" }}>{hora}</span>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <span className="text-xs font-bold uppercase" style={{ letterSpacing: "0.1em", color: "var(--gx-muted-dim)" }}>
+                    Vence
+                  </span>
+                  <span className="text-xl font-semibold" style={{ color: activo ? "var(--gx-ink)" : "var(--gx-warn)" }}>
+                    {formatearFecha(resultado.fechaVencimiento)}
+                  </span>
                 </div>
                 <div className="flex flex-col gap-1">
                   <span className="text-xs font-bold uppercase" style={{ letterSpacing: "0.1em", color: "var(--gx-muted-dim)" }}>

@@ -25,6 +25,8 @@ export interface RegistrarCheckInResultado {
   nombre: string;
   fotoUrl: string | null;
   entrenadorNombre: string | null;
+  // Vencimiento del plan del miembro — el kiosco lo muestra en la tarjeta de acceso.
+  fechaVencimiento: Date | null;
   estado: EstadoCheckIn;
   // Sede asignada al miembro — se informa siempre, pero cobra sentido en
   // el kiosco cuando estado === "sucursal_incorrecta" ("Acceso denegado,
@@ -70,6 +72,7 @@ export async function registrarCheckIn(
     nombre: miembro.nombre,
     fotoUrl: miembro.fotoUrl,
     entrenadorNombre: miembro.entrenadorNombre,
+    fechaVencimiento: miembro.fechaVencimiento,
     // Sin sucursalId (miembro "Ambas") no hay una sede única que informar
     // en un eventual mensaje de acceso denegado — de hecho nunca se
     // deniega por sede a este miembro, ver validarAccesoSucursal.

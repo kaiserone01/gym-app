@@ -69,6 +69,7 @@ export async function POST(req: NextRequest) {
         nombre: resultado.nombre,
         fotoUrl: resultado.fotoUrl,
         entrenador: resultado.entrenadorNombre,
+        fechaVencimiento: resultado.fechaVencimiento,
         estado: resultado.estado,
         sucursalAsignadaNombre: resultado.sucursalAsignadaNombre,
         sucursalAsignadaDireccion: resultado.sucursalAsignadaDireccion,

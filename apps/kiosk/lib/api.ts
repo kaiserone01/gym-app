@@ -6,6 +6,8 @@ export interface ResultadoCheckIn {
   nombre: string;
   fotoUrl: string | null;
   entrenador: string | null;
+  // ISO 8601 (viaja como JSON); null si el miembro no tiene vencimiento registrado.
+  fechaVencimiento: string | null;
   estado: EstadoCheckIn;
   sucursalAsignadaNombre: string;
   sucursalAsignadaDireccion: string | null;

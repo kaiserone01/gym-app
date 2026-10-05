@@ -516,6 +516,17 @@ export async function cobrarDeudasAction(
 
   // Membresía con saldo pendiente (abono): se cobra junto con los productos en un solo pago.
   const incluirMembresia = formData.get("incluirMembresia")?.toString() === "1";
+  // Productos marcados en pantalla para cobrar ahora; los demás quedan pendientes.
+  let deudaIds: string[] | undefined;
+  try {
+    const bruto = formData.get("deudaIds")?.toString();
+    deudaIds = bruto ? JSON.parse(bruto) : undefined;
+  } catch {
+    return { error: "No se pudo interpretar los productos elegidos." };
+  }
+  if (!incluirMembresia && deudaIds !== undefined && deudaIds.length === 0) {
+    return { error: "Marca al menos un producto para cobrar." };
+  }
 
   try {
     // Transacción: si algo falla después de marcar las deudas como
@@ -542,6 +553,7 @@ export async function cobrarDeudasAction(
               sucursalId: sucursalActivaId,
               registradoPorId: usuario.id,
               rolUsuario: usuario.rol,
+              deudaIds,
             }
           )
         : cobrarDeudasMiembro(
@@ -557,6 +569,7 @@ export async function cobrarDeudasAction(
           lineas: lineasValidadas,
           sucursalId: sucursalActivaId,
           registradoPorId: usuario.id,
+          deudaIds,
         }
       )
     );

@@ -2,7 +2,7 @@ import { IDeudaProductoRepository } from "../ports/IDeudaProductoRepository";
 import { Pago, repartirLineasPago, MontoNoCubreDeudaError } from "../entities/Pago";
 import { totalDeudas } from "../entities/DeudaProducto";
 import { registrarPago, RegistrarPagoDeps, DatosRegistrarPago } from "./RegistrarPago";
-import { cobrarDeudasMiembro } from "./CobrarDeudasMiembro";
+import { cobrarDeudasMiembro, seleccionarDeudas } from "./CobrarDeudasMiembro";
 
 export { MontoNoCubreDeudaError };
 
@@ -12,6 +12,8 @@ export interface RegistrarPagoConDeudasDeps extends RegistrarPagoDeps {
 
 export interface DatosRegistrarPagoConDeudas extends DatosRegistrarPago {
   incluirDeudas: boolean;
+  // Solo estos productos (los marcados en pantalla); sin esto, todos los pendientes.
+  deudaIds?: string[];
 }
 
 // Paga la membresía y, opcionalmente, los productos fiados del miembro en un
@@ -24,12 +26,15 @@ export async function registrarPagoConDeudas(
   deps: RegistrarPagoConDeudasDeps,
   input: DatosRegistrarPagoConDeudas
 ): Promise<Pago[]> {
-  const { incluirDeudas, ...datosPago } = input;
+  const { incluirDeudas, deudaIds, ...datosPago } = input;
   if (!incluirDeudas) {
     return registrarPago(deps, datosPago);
   }
 
-  const deudas = await deps.deudas.listarPendientesPorMiembro(input.organizacionId, input.miembroId, input.sucursalId);
+  const deudas = seleccionarDeudas(
+    await deps.deudas.listarPendientesPorMiembro(input.organizacionId, input.miembroId, input.sucursalId),
+    deudaIds
+  );
   if (deudas.length === 0) {
     return registrarPago(deps, datosPago);
   }
@@ -48,6 +53,7 @@ export async function registrarPagoConDeudas(
       lineas: lineasDeuda,
       sucursalId: input.sucursalId,
       registradoPorId: input.registradoPorId,
+      deudaIds: deudas.map((d) => d.id),
     }
   );
 

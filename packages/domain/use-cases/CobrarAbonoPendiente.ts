@@ -5,6 +5,7 @@ import { totalDeudas } from "../entities/DeudaProducto";
 import { RolUsuario } from "../entities/UsuarioAdmin";
 import { calcularAbonosPendientes } from "./ListarAbonosPendientes";
 import { registrarPagoConDeudas, RegistrarPagoConDeudasDeps } from "./RegistrarPagoConDeudas";
+import { seleccionarDeudas } from "./CobrarDeudasMiembro";
 import { MiembroNoEncontradoError } from "./ActualizarMiembro";
 import { DatosLineaPago } from "./RegistrarPago";
 
@@ -20,7 +21,7 @@ export class MontoNoCoincideConLoPendienteError extends Error {
   }
 }
 
-// Cobra el saldo pendiente de la membresía del miembro (y, si tiene, sus productos fiados) en UN solo pago.
+// Cobra el saldo pendiente de la membresía del miembro (y los productos fiados marcados, o todos) en UN solo pago.
 // El saldo lo calcula el servidor; el cliente solo manda las líneas, que deben sumar exactamente lo pendiente.
 // Debe correr dentro de una transacción (ver cobrarDeudasAction).
 export async function cobrarAbonoPendiente(
@@ -32,6 +33,8 @@ export async function cobrarAbonoPendiente(
     sucursalId: string;
     registradoPorId: string;
     rolUsuario: RolUsuario;
+    // Productos marcados para cobrar junto con la membresía (vacío = solo la membresía); sin esto, todos.
+    deudaIds?: string[];
   }
 ): Promise<Pago[]> {
   const miembro = await deps.miembros.buscarPorId(input.organizacionId, input.miembroId);
@@ -46,7 +49,10 @@ export async function cobrarAbonoPendiente(
   const [abono] = calcularAbonosPendientes([miembro], [plan], pagosDelMiembro, ahora);
   if (!abono) throw new SinAbonoPendienteError();
 
-  const deudas = await deps.deudas.listarPendientesPorMiembro(input.organizacionId, input.miembroId, input.sucursalId);
+  const deudas = seleccionarDeudas(
+    await deps.deudas.listarPendientesPorMiembro(input.organizacionId, input.miembroId, input.sucursalId),
+    input.deudaIds
+  );
   const esperado = Math.round((abono.saldoUSD + totalDeudas(deudas)) * 100) / 100;
   if (Math.abs(input.lineas.reduce((suma, linea) => suma + linea.monto, 0) - esperado) >= 0.01) {
     throw new MontoNoCoincideConLoPendienteError(esperado);
@@ -61,5 +67,6 @@ export async function cobrarAbonoPendiente(
     registradoPorId: input.registradoPorId,
     rolUsuario: input.rolUsuario,
     incluirDeudas: deudas.length > 0,
+    deudaIds: deudas.map((d) => d.id),
   });
 }

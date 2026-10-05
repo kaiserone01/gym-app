@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useState, useTransition } from "react";
+import { useActionState, useEffect, useState, useTransition, type ReactNode } from "react";
 import { Button } from "@gym-app/ui/components/Button";
 import { useFeedback } from "@gym-app/ui/components/FeedbackOverlay";
 import type { MetodoPago } from "@gym-app/domain/entities/MetodoPago";
@@ -16,6 +16,50 @@ import { formatearFechaCorta } from "./ProyeccionCiclosUI";
 import type { EstadoCobrarDeudas } from "./actions";
 
 const ID_FORMULARIO = "formulario-cobrar-deudas";
+const CLAVE_MEMBRESIA = "membresia";
+
+// Fila de "Lo que debe": un clic la marca para cobrarla ahora, otro la desmarca (queda pendiente).
+function FilaCobrable({
+  marcada,
+  onAlternar,
+  importe,
+  pie,
+  children,
+}: {
+  marcada: boolean;
+  onAlternar: () => void;
+  importe: string;
+  pie?: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <li
+      className="rounded-xl border-2 text-sm transition-colors duration-150"
+      style={{ background: "var(--gx-surface-2)", borderColor: marcada ? "var(--gx-accent)" : "var(--gx-edge)", opacity: marcada ? 1 : 0.6 }}
+    >
+      <button type="button" role="checkbox" aria-checked={marcada} onClick={onAlternar} className="flex w-full cursor-pointer items-center gap-3 p-3 text-left">
+        <span
+          aria-hidden
+          className="flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 text-xs font-bold"
+          style={{
+            borderColor: marcada ? "var(--gx-accent)" : "var(--gx-muted)",
+            background: marcada ? "var(--gx-accent)" : "transparent",
+            color: "var(--gx-accent-ink, #0b0f08)",
+          }}
+        >
+          {marcada ? "✓" : ""}
+        </span>
+        <span className="min-w-0 flex-1 break-words" style={{ color: "var(--gx-ink)" }}>
+          {children}
+        </span>
+        <span className="shrink-0 font-semibold" style={{ color: "var(--gx-ink)" }}>
+          {importe}
+        </span>
+      </button>
+      {pie && <div className="px-3 pb-3 pl-11">{pie}</div>}
+    </li>
+  );
+}
 
 interface CuentaPorCobrar {
   miembroId: string;
@@ -96,9 +140,24 @@ export function ModalCobrarDeudas({
     .sort((a, b) => a.miembroNombre.localeCompare(b.miembroNombre, "es"));
 
   const grupo = grupos.find((g) => g.miembroId === miembroId) ?? null;
-  const total = grupo ? grupo.totalUSD : 0;
+
+  // Lo marcado para cobrar ahora (al elegir un miembro arranca todo marcado); lo desmarcado queda pendiente.
+  const [marcados, setMarcados] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    setMarcados(grupo ? new Set([...(grupo.abono ? [CLAVE_MEMBRESIA] : []), ...grupo.deudas.map((d) => d.id)]) : new Set());
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- solo al cambiar de miembro; si se anula un producto, su marca sobrante es inofensiva
+  }, [miembroId]);
+  const alternar = (clave: string) =>
+    setMarcados((prev) => {
+      const siguiente = new Set(prev);
+      if (!siguiente.delete(clave)) siguiente.add(clave);
+      return siguiente;
+    });
+  const membresiaMarcada = !!grupo?.abono && marcados.has(CLAVE_MEMBRESIA);
+  const deudasMarcadas = grupo ? grupo.deudas.filter((d) => marcados.has(d.id)) : [];
+  const total = (membresiaMarcada ? grupo!.abono!.saldoUSD : 0) + totalDeudas(deudasMarcadas);
   const numeroOperacionValido = !seleccion.requiereNumeroOperacion || /^\d{4}$/.test(seleccion.numeroOperacion);
-  const puedeEnviar = grupo !== null && seleccion.metodoPagoId !== null && numeroOperacionValido;
+  const puedeEnviar = grupo !== null && total > 0 && seleccion.metodoPagoId !== null && numeroOperacionValido;
 
   const lineas = [
     {
@@ -182,7 +241,8 @@ export function ModalCobrarDeudas({
         <>
           <form id={ID_FORMULARIO} action={enviar} className="contents">
             <input type="hidden" name="miembroId" value={grupo.miembroId} />
-            {grupo.abono && <input type="hidden" name="incluirMembresia" value="1" />}
+            {membresiaMarcada && <input type="hidden" name="incluirMembresia" value="1" />}
+            <input type="hidden" name="deudaIds" value={JSON.stringify(deudasMarcadas.map((d) => d.id))} />
             <input type="hidden" name="lineas" value={JSON.stringify(lineas)} />
             <ColumnaPrincipal>
               <TituloSeccion>Método de pago</TituloSeccion>
@@ -223,48 +283,45 @@ export function ModalCobrarDeudas({
             </div>
             <ul className="flex flex-col gap-2 lg:flex-1 lg:overflow-y-auto">
               {grupo.abono && (
-                <li className="flex items-center justify-between gap-3 rounded-xl p-3 text-sm" style={{ background: "var(--gx-surface-2)" }}>
-                  <span className="min-w-0 break-words" style={{ color: "var(--gx-ink)" }}>
-                    Membresía {grupo.abono.planNombre}
-                    <span className="mt-1 block text-xs" style={{ color: "var(--gx-muted)" }}>
-                      Abonado ${grupo.abono.pagadoUSD.toFixed(2)} de ${grupo.abono.precioUSD.toFixed(2)}
-                    </span>
-                    <span className="block text-xs" style={{ color: "var(--gx-muted)" }}>
-                      Ciclo hasta {formatearFechaCorta(grupo.abono.finCiclo)}
-                    </span>
-                    <span className="block text-xs font-medium" style={{ color: "var(--gx-accent)" }}>
-                      Próximo abono: {formatearFechaCorta(grupo.abono.fechaProximoAbono)}
-                    </span>
+                <FilaCobrable marcada={membresiaMarcada} onAlternar={() => alternar(CLAVE_MEMBRESIA)} importe={`$${grupo.abono.saldoUSD.toFixed(2)}`}>
+                  Membresía {grupo.abono.planNombre}
+                  <span className="mt-1 block text-xs" style={{ color: "var(--gx-muted)" }}>
+                    Abonado ${grupo.abono.pagadoUSD.toFixed(2)} de ${grupo.abono.precioUSD.toFixed(2)}
                   </span>
-                  <span className="shrink-0 font-semibold" style={{ color: "var(--gx-ink)" }}>
-                    ${grupo.abono.saldoUSD.toFixed(2)}
+                  <span className="block text-xs" style={{ color: "var(--gx-muted)" }}>
+                    Ciclo hasta {formatearFechaCorta(grupo.abono.finCiclo)}
                   </span>
-                </li>
+                  <span className="block text-xs font-medium" style={{ color: "var(--gx-accent)" }}>
+                    Próximo abono: {formatearFechaCorta(grupo.abono.fechaProximoAbono)}
+                  </span>
+                </FilaCobrable>
               )}
               {grupo.deudas.map((d) => (
-                <li key={d.id} className="flex items-center justify-between gap-3 rounded-xl p-3 text-sm" style={{ background: "var(--gx-surface-2)" }}>
-                  <span className="min-w-0 break-words" style={{ color: "var(--gx-ink)" }}>
-                    {d.productoNombre}
-                    {d.cantidad > 1 ? ` × ${d.cantidad}` : ""}
+                <FilaCobrable
+                  key={d.id}
+                  marcada={marcados.has(d.id)}
+                  onAlternar={() => alternar(d.id)}
+                  importe={`$${totalDeudas([d]).toFixed(2)}`}
+                  pie={
                     <button
                       type="button"
                       disabled={anulando}
                       onClick={() => anular(d.id, d.productoNombre)}
-                      className="mt-1 block text-xs font-medium hover:underline disabled:opacity-50"
+                      className="text-xs font-medium hover:underline disabled:opacity-50"
                       style={{ color: "var(--gx-bad)" }}
                     >
                       Anular
                     </button>
-                  </span>
-                  <span className="shrink-0 font-semibold" style={{ color: "var(--gx-ink)" }}>
-                    ${totalDeudas([d]).toFixed(2)}
-                  </span>
-                </li>
+                  }
+                >
+                  {d.productoNombre}
+                  {d.cantidad > 1 ? ` × ${d.cantidad}` : ""}
+                </FilaCobrable>
               ))}
             </ul>
             <div className="flex items-baseline justify-between gap-3 border-t pt-3" style={{ borderColor: "var(--gx-edge)" }}>
               <span className="text-lg font-semibold" style={{ color: "var(--gx-ink)" }}>
-                Total ${total.toFixed(2)}
+                Total a cobrar ${total.toFixed(2)}
               </span>
               {bs(total) && (
                 <span className="text-sm" style={{ color: "var(--gx-accent)" }}>

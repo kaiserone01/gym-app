@@ -27,6 +27,15 @@ export class DeudasYaCobradasError extends Error {
   }
 }
 
+// Si el cobro es solo de algunos productos (el cliente marcó cuáles), se queda con esos; un id que ya no está
+// pendiente (cobrado o anulado desde otra caja) invalida el cobro. Sin ids, todas las pendientes.
+export function seleccionarDeudas<T extends { id: string }>(pendientes: T[], deudaIds?: string[]): T[] {
+  if (!deudaIds) return pendientes;
+  const elegidas = pendientes.filter((d) => deudaIds.includes(d.id));
+  if (elegidas.length !== new Set(deudaIds).size) throw new DeudasYaCobradasError();
+  return elegidas;
+}
+
 export interface CobrarDeudasMiembroDeps {
   deudas: IDeudaProductoRepository;
   pagos: IPagoRepository;
@@ -40,6 +49,8 @@ export interface DatosCobrarDeudas {
   lineas: DatosLineaPago[];
   sucursalId: string;
   registradoPorId: string;
+  // Solo estos productos (los marcados en pantalla); sin esto, todos los pendientes del miembro.
+  deudaIds?: string[];
 }
 
 // Debe correr dentro de una transacción (ver cobrarDeudasAction): si falla
@@ -49,7 +60,10 @@ export async function cobrarDeudasMiembro(deps: CobrarDeudasMiembroDeps, input: 
     throw new RolNoAutorizadoError();
   }
 
-  const deudas = await deps.deudas.listarPendientesPorMiembro(input.organizacionId, input.miembroId, input.sucursalId);
+  const deudas = seleccionarDeudas(
+    await deps.deudas.listarPendientesPorMiembro(input.organizacionId, input.miembroId, input.sucursalId),
+    input.deudaIds
+  );
   if (deudas.length === 0) {
     throw new SinDeudasPendientesError();
   }

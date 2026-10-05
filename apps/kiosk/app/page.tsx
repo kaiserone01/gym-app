@@ -81,7 +81,7 @@ export default function PaginaCheckIn() {
 
   return (
     <main
-      className="marca-agua-pagina min-h-screen flex flex-col items-center gap-6 p-8 pt-10"
+      className="marca-agua-pagina marca-agua-completa min-h-screen flex flex-col items-center gap-6 p-8 pt-10"
       style={{ background: "var(--gx-ground)", color: "var(--gx-ink)" }}
     >
       {pendientes > 0 && (

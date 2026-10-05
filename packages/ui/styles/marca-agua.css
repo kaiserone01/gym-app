@@ -29,6 +29,11 @@
   opacity: 0.06;
 }
 
+/* Variante sin marca de agua: el logo se ve al 100% (kiosco). */
+.marca-agua-completa::before {
+  opacity: 1;
+}
+
 @media print {
   .marca-agua-pagina::before {
     display: none;

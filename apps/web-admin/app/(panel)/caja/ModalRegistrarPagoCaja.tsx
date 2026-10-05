@@ -1128,7 +1128,7 @@ export function ModalRegistrarPagoCaja({
       onClick={pedirCierre}
     >
       <div
-        className={`flex w-full flex-col text-base ${ancho ? "h-full overflow-y-auto rounded-2xl border-2 p-4 lg:overflow-hidden lg:p-6" : "max-h-[90vh] max-w-2xl overflow-y-auto rounded-2xl border-2 p-8"}`}
+        className={`marca-agua-modal flex w-full flex-col text-base ${ancho ? "h-full overflow-y-auto rounded-2xl border-2 p-4 lg:overflow-hidden lg:p-6" : "max-h-[90vh] max-w-2xl overflow-y-auto rounded-2xl border-2 p-8"}`}
         style={{ borderColor: "var(--gx-accent)", background: "var(--gx-surface)" }}
         onClick={(e) => e.stopPropagation()}
       >

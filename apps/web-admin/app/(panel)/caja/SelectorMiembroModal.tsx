@@ -224,7 +224,7 @@ export function SelectorMiembroModal({
       onClick={onCerrar}
     >
       <div
-        className="flex max-h-[80vh] w-full max-w-lg flex-col rounded-2xl border-2 p-6"
+        className="marca-agua-modal flex max-h-[80vh] w-full max-w-lg flex-col rounded-2xl border-2 p-6"
         style={{ borderColor: "var(--gx-accent)", background: "var(--gx-surface)" }}
         onClick={(e) => e.stopPropagation()}
       >

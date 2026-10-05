@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @source "../../../packages/ui/**/*.{ts,tsx}";
+@import "../../../packages/ui/styles/marca-agua.css";
 
 * {
   touch-action: manipulation;

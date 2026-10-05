@@ -153,7 +153,7 @@ export function SelectorFotoPerfil({
           style={{ background: "color-mix(in srgb, black 60%, transparent)" }}
         >
           <div
-            className="w-full max-w-sm rounded-2xl border p-4"
+            className="marca-agua-modal w-full max-w-sm rounded-2xl border p-4"
             style={{ borderColor: "var(--gx-edge)", background: "var(--gx-surface)" }}
           >
             <h3 className="mb-3 text-lg font-bold" style={{ color: "var(--gx-ink)" }}>

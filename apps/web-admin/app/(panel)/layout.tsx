@@ -37,7 +37,7 @@ export default async function PanelLayout({ children }: { children: React.ReactN
       </Suspense>
       <RelojYTasaConHistorial />
       <ConEnSala>
-      <div className="flex min-h-dvh flex-col lg:flex-row" style={{ background: "var(--gx-ground)" }}>
+      <div className="marca-agua-pagina flex min-h-dvh flex-col lg:flex-row" style={{ background: "var(--gx-ground)" }}>
         <div className="hidden lg:block print:hidden">
           <Sidebar
             encabezado={<EncabezadoSidebar sucursalNombre={sucursalActiva?.nombre ?? "—"} />}

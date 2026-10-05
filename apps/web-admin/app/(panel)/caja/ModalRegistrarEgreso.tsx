@@ -117,7 +117,7 @@ export function ModalRegistrarEgreso({
       onClick={onCerrar}
     >
       <div
-        className="flex max-h-[90vh] w-full max-w-md flex-col overflow-y-auto rounded-2xl border-2 p-6"
+        className="marca-agua-modal flex max-h-[90vh] w-full max-w-md flex-col overflow-y-auto rounded-2xl border-2 p-6"
         style={{ borderColor: "var(--gx-accent)", background: "var(--gx-surface)" }}
         onClick={(e) => e.stopPropagation()}
       >

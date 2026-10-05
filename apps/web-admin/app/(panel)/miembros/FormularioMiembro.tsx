@@ -532,7 +532,7 @@ export function FormularioMiembro({
               style={{ background: "color-mix(in srgb, black 60%, transparent)" }}
             >
               <div
-                className="w-full max-w-sm rounded-2xl border-2 p-6"
+                className="marca-agua-modal w-full max-w-sm rounded-2xl border-2 p-6"
                 style={{ borderColor: "var(--gx-accent)", background: "var(--gx-surface)" }}
               >
                 <h3 className="text-lg font-bold" style={{ color: "var(--gx-ink)" }}>

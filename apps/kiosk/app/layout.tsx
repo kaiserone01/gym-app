@@ -24,7 +24,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           rel="stylesheet"
         />
       </head>
-      <body className="min-h-full" style={{ background: "var(--gx-ground)", color: "var(--gx-ink)" }}>
+      <body className="marca-agua-pagina min-h-full" style={{ background: "var(--gx-ground)", color: "var(--gx-ink)" }}>
         <ThemeStyleTag tema={temaAdrenalinaXtreme} />
         {children}
         <RegistrarServiceWorker />

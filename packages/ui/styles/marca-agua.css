@@ -1,0 +1,36 @@
+/* Marca de agua con el logo del gimnasio (public/branding/adrenalina-gym-bg.png de cada app).
+   Se pinta detrás del contenido: .marca-agua-pagina en el fondo de la pantalla (fija al viewport) y
+   .marca-agua-modal en el panel de cada modal. */
+.marca-agua-pagina,
+.marca-agua-modal {
+  position: relative;
+  isolation: isolate;
+}
+
+.marca-agua-pagina::before,
+.marca-agua-modal::before {
+  content: "";
+  z-index: -1;
+  pointer-events: none;
+  background: url("/branding/adrenalina-gym-bg.png") center / contain no-repeat;
+}
+
+.marca-agua-pagina::before {
+  position: fixed;
+  inset: 0;
+  background-size: min(70vmin, 640px);
+  opacity: 0.08;
+}
+
+.marca-agua-modal::before {
+  position: absolute;
+  inset: 0;
+  background-size: min(70%, 420px);
+  opacity: 0.06;
+}
+
+@media print {
+  .marca-agua-pagina::before {
+    display: none;
+  }
+}

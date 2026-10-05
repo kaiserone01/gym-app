@@ -449,7 +449,7 @@ export function ModalFallaTemporalTasa({
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
       style={{ background: "color-mix(in srgb, black 60%, transparent)" }}
     >
-      <div className="w-full max-w-sm rounded-2xl border-2 p-6" style={{ borderColor: "var(--gx-accent)", background: "var(--gx-surface)" }}>
+      <div className="marca-agua-modal w-full max-w-sm rounded-2xl border-2 p-6" style={{ borderColor: "var(--gx-accent)", background: "var(--gx-surface)" }}>
         <h3 className="text-lg font-bold" style={{ color: "var(--gx-ink)" }}>
           No se pudo verificar la tasa BCV
         </h3>
@@ -512,7 +512,7 @@ export function ModalIngresoManualTasa({ onCerrar, onGuardado }: { onCerrar: () 
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
       style={{ background: "color-mix(in srgb, black 60%, transparent)" }}
     >
-      <div className="w-full max-w-sm rounded-2xl border-2 p-6" style={{ borderColor: "var(--gx-accent)", background: "var(--gx-surface)" }}>
+      <div className="marca-agua-modal w-full max-w-sm rounded-2xl border-2 p-6" style={{ borderColor: "var(--gx-accent)", background: "var(--gx-surface)" }}>
         <h3 className="text-lg font-bold" style={{ color: "var(--gx-ink)" }}>
           Ingresar tasa manualmente
         </h3>
@@ -571,7 +571,7 @@ function ModalDatosPago({ metodo, onCerrar }: { metodo: MetodoPago; onCerrar: ()
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
       style={{ background: "color-mix(in srgb, black 60%, transparent)" }}
     >
-      <div className="w-full max-w-sm rounded-2xl border-2 p-6" style={{ borderColor: "var(--gx-accent)", background: "var(--gx-surface)" }}>
+      <div className="marca-agua-modal w-full max-w-sm rounded-2xl border-2 p-6" style={{ borderColor: "var(--gx-accent)", background: "var(--gx-surface)" }}>
         <div className="flex items-center gap-3">
           {metodo.logoUrl && (
             // eslint-disable-next-line @next/next/no-img-element -- logo servido desde R2

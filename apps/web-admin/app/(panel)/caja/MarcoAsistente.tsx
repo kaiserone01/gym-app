@@ -22,7 +22,7 @@ export function MarcoAsistente({
       <div
         role="dialog"
         aria-label={titulo}
-        className="flex h-full w-full flex-col overflow-y-auto rounded-2xl border-2 p-4 text-base lg:overflow-hidden lg:p-6"
+        className="marca-agua-modal flex h-full w-full flex-col overflow-y-auto rounded-2xl border-2 p-4 text-base lg:overflow-hidden lg:p-6"
         style={{ borderColor: "var(--gx-accent)", background: "var(--gx-surface)" }}
         onClick={(e) => e.stopPropagation()}
       >

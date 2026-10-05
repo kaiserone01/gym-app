@@ -17,6 +17,7 @@
     "db:limpiar-migracion-excel-prueba": "tsx limpiarMigracionExcelPrueba.ts",
     "db:marcar-ajustar-fecha": "tsx marcarAjustarFecha.ts",
     "db:limpiar-organizacion": "tsx limpiarOrganizacionParaMigracion.ts",
+    "db:sembrar-zip-gym": "tsx sembrarOrganizacionZipGym.ts",
     "test": "vitest run"
   },
   "dependencies": {

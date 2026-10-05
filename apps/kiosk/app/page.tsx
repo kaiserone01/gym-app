@@ -15,6 +15,9 @@ type Estado =
   | { tipo: "pendiente" }
   | { tipo: "error"; mensaje: string };
 
+// Cuánto tiempo se queda la ficha de acceso en pantalla antes de desaparecer sola.
+const DURACION_FICHA_MS = 30_000;
+
 export default function PaginaCheckIn() {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -56,6 +59,14 @@ export default function PaginaCheckIn() {
   useEffect(() => {
     inputRef.current?.focus();
   });
+
+  // La ficha del check-in se oculta sola a los 30 s; un check-in nuevo (o escribir la siguiente
+  // cédula) la reemplaza antes y reinicia el conteo.
+  useEffect(() => {
+    if (estado.tipo !== "resultado") return;
+    const temporizador = setTimeout(() => setEstado({ tipo: "esperando" }), DURACION_FICHA_MS);
+    return () => clearTimeout(temporizador);
+  }, [estado]);
 
   async function enviar() {
     if (!apiKey || !cedula || estado.tipo === "procesando") return;
@@ -102,8 +113,8 @@ export default function PaginaCheckIn() {
           ref={inputRef}
           value={cedula}
           onChange={(evento) => {
-            // Escribir la siguiente cédula limpia la ficha del check-in
-            // anterior — reemplaza al viejo auto-ocultar por temporizador.
+            // Escribir la siguiente cédula limpia la ficha del check-in anterior
+            // sin esperar a que se oculte sola (ver DURACION_FICHA_MS).
             if (estado.tipo !== "esperando" && estado.tipo !== "procesando") {
               setEstado({ tipo: "esperando" });
             }

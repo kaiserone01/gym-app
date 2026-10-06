@@ -773,6 +773,16 @@ public sealed class ConfigHostTests : IDisposable
         Assert.Equal("completa", config.Ventana.Modo);
     }
 
+    [Theory]
+    [InlineData("""{ "dispositivo": { "ruta": null, "vid": "1A2B", "pid": "3C4D" } }""")]
+    [InlineData("""{ "dispositivo": { "ruta": "  ", "vid": "1A2B", "pid": "3C4D" } }""")]
+    [InlineData("""{ "dispositivo": { "vid": "1A2B", "pid": "3C4D" } }""")]
+    public void Dispositivo_sin_ruta_se_trata_como_sin_vincular(string json)
+    {
+        File.WriteAllText(Ruta, json);
+        Assert.Null(ConfigHost.Cargar(Ruta).Dispositivo);
+    }
+
     [Fact]
     public void Guardar_en_una_carpeta_inexistente_devuelve_false_sin_lanzar()
     {
@@ -918,6 +928,8 @@ internal sealed class ConfigHost
         {
             var config = JsonSerializer.Deserialize<ConfigHost>(File.ReadAllText(ruta), Opciones) ?? new ConfigHost();
             config.Ventana ??= new UbicacionVentana();
+            // Un "dispositivo" editado a mano sin ruta no sirve para vincular: equivale a no tener numpad.
+            if (string.IsNullOrWhiteSpace(config.Dispositivo?.Ruta)) config.Dispositivo = null;
             return config;
         }
         catch (JsonException)
@@ -962,7 +974,7 @@ internal sealed class ConfigHost
 - [ ] **Paso 4: Ejecutar y ver que pasa**
 
 Run: `$env:PATH = "$env:LOCALAPPDATA\Microsoft\dotnet;$env:PATH"; dotnet test apps/kiosk-host/KioskHost.sln`
-Esperado: todas correctas (53 + 23 = 76), 0 fallidas.
+Esperado: todas correctas (53 + 26 = 79), 0 fallidas.
 
 - [ ] **Paso 5: Commit y push**
 
@@ -1295,25 +1307,35 @@ internal sealed class VentanaKiosco : Form
         base.OnLoad(e);
         AvisarEstadoInicial();
 
-        var datos = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "KioskHost", "WebView2");
-        var entorno = await CoreWebView2Environment.CreateAsync(userDataFolder: datos);
-        await webView.EnsureCoreWebView2Async(entorno);
-
-        var ajustes = webView.CoreWebView2.Settings;
-        ajustes.AreDefaultContextMenusEnabled = false;
-        ajustes.AreDevToolsEnabled = false;
-        ajustes.IsZoomControlEnabled = false;
-        ajustes.IsPinchZoomEnabled = false;
-        ajustes.IsStatusBarEnabled = false;
-        ajustes.AreBrowserAcceleratorKeysEnabled = false;
-
-        webView.CoreWebView2.NewWindowRequested += (_, evento) => evento.Handled = true;
-        webView.CoreWebView2.NavigationStarting += (_, evento) =>
+        // OnLoad es async void: una excepción aquí cerraría la app sin explicación.
+        try
         {
-            if (!Uri.TryCreate(evento.Uri, UriKind.Absolute, out var destino) || !ConfigHost.MismoOrigen(destino, url))
-                evento.Cancel = true;
-        };
-        webView.CoreWebView2.Navigate(url.ToString());
+            var datos = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "KioskHost", "WebView2");
+            var entorno = await CoreWebView2Environment.CreateAsync(userDataFolder: datos);
+            await webView.EnsureCoreWebView2Async(entorno);
+
+            var ajustes = webView.CoreWebView2.Settings;
+            ajustes.AreDefaultContextMenusEnabled = false;
+            ajustes.AreDevToolsEnabled = false;
+            ajustes.IsZoomControlEnabled = false;
+            ajustes.IsPinchZoomEnabled = false;
+            ajustes.IsStatusBarEnabled = false;
+            ajustes.AreBrowserAcceleratorKeysEnabled = false;
+
+            webView.CoreWebView2.NewWindowRequested += (_, evento) => evento.Handled = true;
+            webView.CoreWebView2.NavigationStarting += (_, evento) =>
+            {
+                if (!Uri.TryCreate(evento.Uri, UriKind.Absolute, out var destino) || !ConfigHost.MismoOrigen(destino, url))
+                    evento.Cancel = true;
+            };
+            webView.CoreWebView2.Navigate(url.ToString());
+        }
+        catch (Exception error)
+        {
+            MessageBox.Show(
+                $"No se pudo iniciar el navegador del kiosco:\n\n{error.Message}\n\nCierra el kiosco desde la bandeja (Salir) y vuelve a abrirlo. Si se repite, reinstala el runtime de WebView2.",
+                "Kiosco", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
     }
 
     private void AvisarEstadoInicial()
@@ -1431,7 +1453,7 @@ internal static class Program
 - [ ] **Paso 5: Compilar y correr los tests**
 
 Run: `$env:PATH = "$env:LOCALAPPDATA\Microsoft\dotnet;$env:PATH"; dotnet build apps/kiosk-host/KioskHost.sln; dotnet test apps/kiosk-host/KioskHost.sln`
-Esperado: compilación sin errores ni advertencias de nulabilidad nuevas; 76 tests correctos.
+Esperado: compilación sin errores ni advertencias de nulabilidad nuevas; 79 tests correctos.
 
 - [ ] **Paso 6: Prueba de humo (arranca y carga WebView2)**
 
@@ -1600,7 +1622,12 @@ internal static class Program
         using var ventana = new VentanaKiosco(config, rutaConfig, url);
         using var bandeja = new Bandeja(ventana);
         var espera = ThreadPool.RegisterWaitForSingleObject(
-            mostrar, (_, _) => ventana.BeginInvoke(new Action(ventana.Mostrar)), null, Timeout.Infinite, executeOnlyOnce: false);
+            mostrar,
+            (_, _) =>
+            {
+                if (ventana.IsHandleCreated) ventana.BeginInvoke(new Action(ventana.Mostrar));
+            },
+            null, Timeout.Infinite, executeOnlyOnce: false);
 
         Application.Run(ventana);
         espera.Unregister(null);
@@ -1611,7 +1638,7 @@ internal static class Program
 - [ ] **Paso 3: Compilar y correr los tests**
 
 Run: `$env:PATH = "$env:LOCALAPPDATA\Microsoft\dotnet;$env:PATH"; dotnet build apps/kiosk-host/KioskHost.sln; dotnet test apps/kiosk-host/KioskHost.sln`
-Esperado: compilación sin errores; 76 tests correctos.
+Esperado: compilación sin errores; 79 tests correctos.
 
 - [ ] **Paso 4: Prueba de humo de instancia única**
 
@@ -1853,12 +1880,16 @@ Esperado: sin salida (0 errores, 0 advertencias).
 Run: `npm run build --workspace apps/kiosk`
 Esperado: `✓ Compiled successfully` y exportación de `/` y `/config` sin errores.
 
-- [ ] **Paso 9: Modo dev sin host (verificación manual del usuario)**
+- [ ] **Paso 9: Modo dev sin host — DETENERSE y esperar la verificación del usuario**
 
 Run: `npm run dev` desde la raíz y abrir `http://localhost:3001/` en un navegador normal.
 Esperado: el input sigue enfocado; teclear dígitos, Enter envía, Escape borra, clic afuera devuelve el foco — igual que antes del cambio.
 
-- [ ] **Paso 10: Commit y push**
+**No hacer commit ni push hasta que el usuario confirme explícitamente esta verificación**: un push a `main` puede desplegar el kiosco en producción. Si el usuario reporta un problema, corregirlo y volver al Paso 7.
+
+`enviar` solo se llama desde el `onKeyDown` del input (verificado: no hay `onClick`/`onSubmit` en `page.tsx` ni en `components/`), así que el cambio de firma a `enviar(cedula: string)` no recibe eventos por error.
+
+- [ ] **Paso 10: Commit y push (solo tras la confirmación del Paso 9)**
 
 ```bash
 git add apps/kiosk/lib/useEntradaCedula.ts apps/kiosk/app/page.tsx
@@ -1951,9 +1982,10 @@ dotnet publish apps/kiosk-host/src/KioskHost -c Release -r win-x64 --self-contai
 1. Si no hay numpad vinculado, el kiosco abre en **modo ventana** con el título *"Para vincular el
    teclado numérico pulsa 1, 2, 3 y Enter en él"*. Para re-vincular: bandeja → **Re-vincular teclado
    numérico**.
-2. En el teclado numérico, pulsar **1, 2, 3, Enter**. Se vincula el primer teclado que complete la
+2. **Arrastrar la ventana al monitor del kiosco** (al vincular se maximiza en el monitor donde esté).
+3. En el teclado numérico, pulsar **1, 2, 3, Enter**. Se vincula el primer teclado que complete la
    secuencia: no la tecleen en el numpad del teclado grande.
-3. Aparece el globo *"Teclado numérico vinculado (VID xxxx, PID yyyy)"*, la bandeja muestra
+4. Aparece el globo *"Teclado numérico vinculado (VID xxxx, PID yyyy)"*, la bandeja muestra
    *"Estado: vinculado VID xxxx PID yyyy"* y el kiosco vuelve a pantalla completa.
 
 Si se enchufa el numpad en **otro puerto USB**, el kiosco lo reconoce solo (mismo modelo e interfaz,
@@ -2004,8 +2036,9 @@ La X de la ventana y Alt+F4 solo la ocultan en la bandeja; para cerrar el kiosco
 5. Las teclas multimedia abren su app detrás del kiosco.
 6. Pantalla completa no se puede mover ni achicar; modo ventana sí; se recuerda al reiniciar.
 7. `npm run dev` de `apps/kiosk` sin el host sigue funcionando con el teclado normal.
-8. Vincular con 1, 2, 3, Enter muestra el globo con VID/PID y la línea de estado; intercalar teclas del
-   teclado grande no interrumpe la secuencia del numpad. Sin vincular, arranca en modo ventana.
+8. Sin vincular, arranca en modo ventana. Arrastrar la ventana al monitor del kiosco antes de pulsar
+   1, 2, 3, Enter: muestra el globo con VID/PID y la línea de estado, y se maximiza en ese monitor;
+   intercalar teclas del teclado grande no interrumpe la secuencia del numpad.
 9. Teclear en el numpad durante "Verificando…" no agrega dígitos ni provoca un segundo envío.
 10. Abrir el exe por segunda vez trae al frente la ventana existente, también si estaba oculta en la bandeja.
 11. "Abrir configuración" lleva a `/config` y, tras guardar, vuelve al kiosco.
@@ -2014,7 +2047,7 @@ La X de la ventana y Alt+F4 solo la ocultan en la bandeja; para cerrar el kiosco
 
 - [ ] **Paso 4: Actualizar `handoff.md`** (respetando sus 5 secciones; en "Intentos fallidos" solo agregar, nunca borrar)
   - **Objetivo:** sumar una línea: host Windows `apps/kiosk-host` (WinForms + WebView2 + Raw Input) para que el numpad K-601 alimente solo al kiosco.
-  - **Estado actual:** host implementado y con 76 tests en verde; hook `useEntradaCedula` en `apps/kiosk`; resultado real de la verificación de `WebView2Loader.dll` del Paso 2; **pendiente** el checklist manual del README con el K-601 y el deploy del kiosco (el cambio web solo tiene efecto dentro del host, en navegador es idéntico a antes).
+  - **Estado actual:** host implementado y con 79 tests en verde; hook `useEntradaCedula` en `apps/kiosk`; resultado real de la verificación de `WebView2Loader.dll` del Paso 2; **pendiente** el checklist manual del README con el K-601 y el deploy del kiosco (el cambio web solo tiene efecto dentro del host, en navegador es idéntico a antes).
   - **Archivos y cambios:** los de las Tareas 1-8.
   - **Intentos fallidos:** agregar: WebHID/WebUSB, Electron/Tauri sin código nativo y eventos DOM no distinguen teclados (estudio de factibilidad); `winget install Microsoft.DotNet.SDK.8` requiere admin → se usa `dotnet-install.ps1` por usuario; el `dotnet.exe` de `Program Files` no tiene SDK y va antes en el PATH; y, si ocurrió en el Paso 2, el fallo del single-file con `WebView2Loader.dll`.
   - **Próximos pasos:** 1) correr el checklist del README en el PC del kiosco con el K-601; 2) desplegar `apps/kiosk` con el hook; 3) instalar el exe en `%LOCALAPPDATA%\KioskHost\` con "Iniciar con Windows".

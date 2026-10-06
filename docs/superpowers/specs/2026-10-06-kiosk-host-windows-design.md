@@ -43,7 +43,7 @@ Teclado 102 ──┤─► Windows (ambos fluyen ┤     ├ filtro: hDevice = 
 | `src/KioskHost/VentanaKiosco.cs` | `Form` con WebView2; modos pantalla completa / ventana; guarda/restaura posición; `WndProc` recibe `WM_INPUT` y `WM_INPUT_DEVICE_CHANGE`; modo aprender. |
 | `src/KioskHost/RawInput.cs` | P/Invoke de `user32`: `RegisterRawInputDevices`, `GetRawInputData`, `GetRawInputDeviceInfo` (`RIDI_DEVICENAME`), `GetRawInputDeviceList`. Sin lógica. |
 | `src/KioskHost/MapeoTeclas.cs` | **Puro.** `(makeCode, e0, soltar) → TeclaKiosco?` y serialización del mensaje JSON. |
-| `src/KioskHost/Vinculacion.cs` | **Puro.** Extrae VID/PID de la ruta; decide si un dispositivo es el vinculado. |
+| `src/KioskHost/Vinculacion.cs` | **Puro.** Extrae VID/PID de la ruta; decide si un dispositivo es el vinculado; `SecuenciaVinculacion` (1, 2, 3, Enter por `hDevice`) para el modo aprender. |
 | `src/KioskHost/ConfigHost.cs` | **Puro** (salvo E/S de archivo inyectable por ruta). Lee/escribe `kiosk-host.json`; resuelve la URL. |
 | `src/KioskHost/Bandeja.cs` | `NotifyIcon` y su menú. |
 | `tests/KioskHost.Tests/KioskHost.Tests.csproj` | xUnit `net8.0-windows`, referencia a `KioskHost`. |
@@ -55,7 +55,7 @@ Teclado 102 ──┤─► Windows (ambos fluyen ┤     ├ filtro: hDevice = 
 
 1. **Registro** al crear el handle de la ventana: `RegisterRawInputDevices` con UsagePage `0x01`, Usage `0x06` (teclado), flags `RIDEV_INPUTSINK | RIDEV_DEVNOTIFY`, `hwndTarget` = handle de la ventana. **Sin** `RIDEV_NOLEGACY` (pasivo).
 2. **`WM_INPUT`**: `GetRawInputData` → `hDevice`, `MakeCode`, `Flags` (`RI_KEY_E0`, `RI_KEY_BREAK`). El nombre del dispositivo se pide una vez por `hDevice` (`RIDI_DEVICENAME`) y se cachea; la caché se invalida con `WM_INPUT_DEVICE_CHANGE`.
-3. **Filtro**: se descarta si el dispositivo no es el vinculado, si es "soltar" (`RI_KEY_BREAK`) o si es **autorepetición** (un "pulsar" de un scan code que ya estaba pulsado; se lleva un conjunto de teclas pulsadas que se limpia en el "soltar").
+3. **Filtro**: se descarta si el dispositivo no es el vinculado, si es "soltar" (`RI_KEY_BREAK`) o si es **autorepetición** (un "pulsar" de un scan code que ya estaba pulsado; se lleva un conjunto de teclas pulsadas que se limpia en el "soltar" y **se vacía entero al recibir `WM_INPUT_DEVICE_CHANGE`**, para que una tecla que quedó "pulsada" al desconectar el numpad no bloquee su siguiente pulsación).
 4. **Mapeo** (`MapeoTeclas`, independiente de VKey → igual con NumLock encendido o apagado):
 
 | Tecla K-601 | MakeCode | E0 | Mensaje |
@@ -82,8 +82,12 @@ Teclado 102 ──┤─► Windows (ambos fluyen ┤     ├ filtro: hDevice = 
 
 ### Modo aprender
 - Se entra si no hay `dispositivo` en el json o al elegir "Re-vincular teclado numérico" en la bandeja.
-- La web muestra lo de siempre; el host no reenvía teclas. El título de la ventana (visible en modo ventana) y un globo de la bandeja dicen: *"Pulsa Enter en el teclado numérico para vincularlo"*.
-- Vincula con el **primer "pulsar" que `MapeoTeclas` traduzca a `enter`**, de cualquier teclado; guarda ruta + VID/PID y sale del modo. El README pide no usar el teclado grande durante la vinculación.
+- La web muestra lo de siempre; el host no reenvía teclas. El título de la ventana (visible en modo ventana) y un globo de la bandeja dicen: *"Para vincular el teclado numérico pulsa 1, 2, 3 y Enter en él"*.
+- Vincula solo tras la **secuencia `1`, `2`, `3`, `Enter` completa desde el mismo `hDevice`** (traducida por `MapeoTeclas`). La lógica es pura y testeable (`SecuenciaVinculacion` en `Vinculacion.cs`):
+  - lleva el avance **por `hDevice`**; las teclas de un dispositivo no afectan el avance de otro;
+  - una tecla mapeada que no es la esperada reinicia el avance de ese dispositivo (si es `1`, cuenta como inicio de una secuencia nueva);
+  - las teclas no mapeadas (letras del teclado grande, etc.) se ignoran sin reiniciar.
+- Al completarse: guarda ruta + VID/PID, sale del modo aprender y muestra un globo de confirmación *"Teclado numérico vinculado (VID xxxx, PID yyyy)"*.
 
 ## Ventana y WebView2 (host)
 
@@ -96,7 +100,7 @@ Teclado 102 ──┤─► Windows (ambos fluyen ┤     ├ filtro: hDevice = 
 - `NewWindowRequested` → `Handled = true` (no abre ventanas). `NavigationStarting` → cancela si el origen no es el de la URL configurada.
 
 ### Menú de bandeja (`Bandeja`)
-Mostrar kiosco · Pantalla completa / Modo ventana (configuración) · Re-vincular teclado numérico · Recargar página · Iniciar con Windows (casilla: escribe/borra `HKCU\...\Run\KioskHost` con la ruta del exe) · Salir.
+Mostrar kiosco · Pantalla completa / Modo ventana (configuración) · Re-vincular teclado numérico · **Abrir configuración** (navega a `{origen de la URL}/config`, la pantalla de API key de `apps/kiosk`, ya que el host no tiene barra de direcciones; misma navegación permitida por estar en el mismo origen) · Recargar página · Iniciar con Windows (casilla: escribe/borra `HKCU\...\Run\KioskHost` con la ruta del exe) · Salir.
 
 ### Configuración (`ConfigHost`)
 Archivo `kiosk-host.json` junto al exe (`AppContext.BaseDirectory`):
@@ -112,12 +116,19 @@ Archivo `kiosk-host.json` junto al exe (`AppContext.BaseDirectory`):
 - URL efectiva: `KIOSK_URL` (si no está vacía) > `url` > `https://kiosco.zipnegocios.com/`.
 - Si el archivo no existe se crea con esos valores. Si es JSON inválido: aviso en un `MessageBox`, se usan los valores por defecto en memoria y **no** se sobrescribe el archivo (para no perder lo que el usuario editó).
 
+### Distribución
+- Publicación: `dotnet publish src/KioskHost -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true`.
+- `WebView2Loader.dll` es nativa (`runtimes/win-x64/native` del paquete `Microsoft.Web.WebView2`). Sin `IncludeNativeLibrariesForSelfExtract=true`, un single-file deja las nativas sueltas junto al exe. **Se verifica en la tarea de publicación**: copiar solo el exe publicado a una carpeta limpia y arrancarlo. Si WebView2 no encuentra el loader, se publica sin esa propiedad, se distribuye `WebView2Loader.dll` junto al exe y el README lo documenta. El resultado verificado queda escrito en el README.
+- El exe **no está firmado**. El README explica:
+  - si se descargó (navegador, chat, correo), Windows lo marca con *Mark of the Web*: quitarlo con `Unblock-File .\KioskHost.exe` en PowerShell o en Propiedades → casilla "Desbloquear";
+  - al primer arranque **SmartScreen** puede mostrar "Windows protegió su PC": "Más información" → "Ejecutar de todas formas". No requiere admin.
+
 ## Errores
 | Caso | Comportamiento |
 |---|---|
 | Falta el runtime de WebView2 (`CoreWebView2Environment.GetAvailableBrowserVersionString` lanza) | `MessageBox` con el enlace oficial del instalador Evergreen y la app termina. |
 | Sin red al arrancar | Si ya hubo una carga previa, el service worker del kiosco sirve desde caché. Si es la primera vez, WebView2 muestra su página de error; "Recargar página" en la bandeja. |
-| Segunda instancia | El Mutex lo detecta; la nueva instancia termina (la existente sigue). |
+| Segunda instancia | El Mutex lo detecta. La nueva instancia señala un `EventWaitHandle` con nombre (`KioskHost.Mostrar`) y termina. La existente lo espera con `ThreadPool.RegisterWaitForSingleObject` y, al recibirlo, vuelve al hilo de UI (`BeginInvoke`) para mostrar la ventana aunque estuviera oculta en la bandeja, restaurar su modo y traerla al frente. |
 | Numpad desconectado | Se ignora; al reconectarlo se reconoce por ruta o VID/PID. |
 | `PostWebMessageAsJson` antes de que `CoreWebView2` esté listo | La tecla se descarta (no se encola). |
 
@@ -126,14 +137,15 @@ Archivo `kiosk-host.json` junto al exe (`AppContext.BaseDirectory`):
 ### Nuevo `lib/useEntradaCedula.ts`
 - Detecta el host con `useSyncExternalStore` sobre `window.chrome?.webview` (snapshot de servidor `false` → sin desajuste de hidratación en el export estático).
 - Estado `cedula` + ref espejo (para que "dígito + Enter" muy seguidos lean el valor actual).
-- Recibe `{ alEscribir: () => void, alEnviar: (cedula: string) => void }`; los guarda en un ref actualizado en cada render.
+- Recibe `{ alEscribir: () => void, alEnviar: (cedula: string) => void, ocupado: boolean }`; los guarda en un ref actualizado en cada render. `page.tsx` pasa `ocupado = estado.tipo === "procesando"`.
 - Devuelve `{ cedula, limpiar, nativo, propsInput }`.
 - **Fuente nativa**: `chrome.webview.addEventListener("message")`:
   - `digit` (valor `/^\d$/`) → `alEscribir()` y agrega el dígito;
   - `backspace` → `alEscribir()` y quita el último;
   - `clear` → `alEscribir()` y vacía;
   - `enter` → `alEnviar(valorActual)`;
-  - otra forma → se ignora.
+  - otra forma → se ignora;
+  - **mientras `ocupado` sea `true`, se ignoran los cuatro tipos**. Evita el doble envío y que se pierdan dígitos tecleados durante "Verificando…" (que hoy borra el `limpiar()` final de `enviar`). Es una mejora del modo nativo: en el modo DOM el input no se deshabilita hoy y se deja como está.
 - **Fuente DOM** (navegador normal / dev): `propsInput` reproduce lo actual — `onChange` filtra `\D` y llama `alEscribir()`, `Enter` → `alEnviar`, `Escape` → vacía, `autoFocus`, re-enfoque en `onBlur` y en cada render.
 
 ### `app/page.tsx`
@@ -145,7 +157,7 @@ Archivo `kiosk-host.json` junto al exe (`AppContext.BaseDirectory`):
 ## Verificación
 - **Host**: `dotnet build` y `dotnet test` (xUnit):
   - `MapeoTeclas`: los 10 dígitos; `Enter` con y sin E0; `←`; `.`/Del; 0x47–0x53 con E0 ignoradas; "soltar" ignorado; teclas no mapeadas ignoradas; JSON exacto de cada mensaje.
-  - `Vinculacion`: extracción de VID/PID (mayúsculas/minúsculas, ruta sin VID); ruta exacta; cambio de puerto con un único candidato; dos candidatos → ninguno; cero candidatos → ninguno.
+  - `Vinculacion`: extracción de VID/PID (mayúsculas/minúsculas, ruta sin VID); ruta exacta; cambio de puerto con un único candidato; dos candidatos → ninguno; cero candidatos → ninguno. `SecuenciaVinculacion`: 1,2,3,Enter del mismo dispositivo vincula; intercalar teclas de otro dispositivo no rompe la secuencia; una tecla mapeada equivocada reinicia (y `1` reinicia contando como inicio); teclas no mapeadas no reinician; repetir la secuencia completa en dos dispositivos vincula el primero que la termina.
   - `ConfigHost`: prioridad `KIOSK_URL` > `url` > defecto; `KIOSK_URL` vacía se ignora; archivo ausente → se crea; JSON inválido → defaults sin sobrescribir; ida y vuelta de `dispositivo` y `ventana`.
 - **Web**: `tsc --noEmit` y `eslint` en `apps/kiosk`; `npm run dev` en navegador normal.
 - **Checklist manual con el K-601 real** (en el README):
@@ -156,6 +168,11 @@ Archivo `kiosk-host.json` junto al exe (`AppContext.BaseDirectory`):
   5. Las teclas multimedia abren su app detrás del kiosco (limitación conocida).
   6. Modo pantalla completa no se puede mover ni achicar; modo ventana sí; se recuerda al reiniciar.
   7. `npm run dev` de `apps/kiosk` sin host sigue funcionando con el teclado normal.
+  8. Vincular con 1, 2, 3, Enter en el numpad muestra el globo con VID/PID; teclear lo mismo en el teclado grande mientras tanto no lo vincula a él.
+  9. Teclear en el numpad durante "Verificando…" no agrega dígitos ni provoca un segundo envío.
+  10. Abrir el exe por segunda vez trae al frente la ventana existente, también si estaba oculta en la bandeja.
+  11. "Abrir configuración" lleva a `/config` y, tras guardar, vuelve al kiosco.
+  12. El exe publicado, copiado solo a una carpeta limpia, arranca (comprueba `WebView2Loader.dll`).
 
 ## Fuera de alcance
 - Bloquear las teclas del numpad para otras apps o bloquear las teclas multimedia (requiere driver).

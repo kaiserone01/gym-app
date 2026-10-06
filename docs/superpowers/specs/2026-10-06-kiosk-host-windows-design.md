@@ -88,6 +88,10 @@ Teclado 102 ──┤─► Windows (ambos fluyen ┤     ├ filtro: hDevice = 
   - una tecla mapeada que no es la esperada reinicia el avance de ese dispositivo (si es `1`, cuenta como inicio de una secuencia nueva);
   - las teclas no mapeadas (letras del teclado grande, etc.) se ignoran sin reiniciar.
 - Al completarse: guarda ruta + VID/PID, sale del modo aprender y muestra un globo de confirmación *"Teclado numérico vinculado (VID xxxx, PID yyyy)"*.
+- **Visibilidad**: en pantalla completa el título no se ve y el globo puede quedar oculto, así que:
+  - mientras el modo aprender esté activo, la ventana se muestra en **modo ventana** (sin cambiar el `modo` guardado en el json); al vincular vuelve al modo guardado;
+  - el menú de bandeja tiene una primera línea fija, no clicable: *"Estado: sin vincular"* o *"Estado: vinculado VID xxxx PID yyyy"*.
+- Límite asumido: la secuencia identifica al primer teclado que la complete. Si alguien la completa antes con el numpad del teclado grande, se vincula ese; se corrige con "Re-vincular".
 
 ## Ventana y WebView2 (host)
 
@@ -100,7 +104,7 @@ Teclado 102 ──┤─► Windows (ambos fluyen ┤     ├ filtro: hDevice = 
 - `NewWindowRequested` → `Handled = true` (no abre ventanas). `NavigationStarting` → cancela si el origen no es el de la URL configurada.
 
 ### Menú de bandeja (`Bandeja`)
-Mostrar kiosco · Pantalla completa / Modo ventana (configuración) · Re-vincular teclado numérico · **Abrir configuración** (navega a `{origen de la URL}/config`, la pantalla de API key de `apps/kiosk`, ya que el host no tiene barra de direcciones; misma navegación permitida por estar en el mismo origen) · Recargar página · Iniciar con Windows (casilla: escribe/borra `HKCU\...\Run\KioskHost` con la ruta del exe) · Salir.
+Estado (línea fija, ver Modo aprender) · Mostrar kiosco · Pantalla completa / Modo ventana (configuración) · Re-vincular teclado numérico · **Abrir configuración** (navega a `{origen de la URL}/config`, la pantalla de API key de `apps/kiosk`, ya que el host no tiene barra de direcciones; misma navegación permitida por estar en el mismo origen) · Recargar página · Iniciar con Windows (casilla: escribe/borra `HKCU\...\Run\KioskHost` con la ruta del exe) · Salir.
 
 ### Configuración (`ConfigHost`)
 Archivo `kiosk-host.json` junto al exe (`AppContext.BaseDirectory`):
@@ -168,7 +172,7 @@ Archivo `kiosk-host.json` junto al exe (`AppContext.BaseDirectory`):
   5. Las teclas multimedia abren su app detrás del kiosco (limitación conocida).
   6. Modo pantalla completa no se puede mover ni achicar; modo ventana sí; se recuerda al reiniciar.
   7. `npm run dev` de `apps/kiosk` sin host sigue funcionando con el teclado normal.
-  8. Vincular con 1, 2, 3, Enter en el numpad muestra el globo con VID/PID; teclear lo mismo en el teclado grande mientras tanto no lo vincula a él.
+  8. Vincular con 1, 2, 3, Enter en el numpad muestra el globo con VID/PID y la línea de estado de la bandeja; intercalar teclas del teclado grande no interrumpe la secuencia del numpad. Sin vincular, el host arranca en modo ventana.
   9. Teclear en el numpad durante "Verificando…" no agrega dígitos ni provoca un segundo envío.
   10. Abrir el exe por segunda vez trae al frente la ventana existente, también si estaba oculta en la bandeja.
   11. "Abrir configuración" lleva a `/config` y, tras guardar, vuelve al kiosco.

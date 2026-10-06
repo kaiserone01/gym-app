@@ -39,7 +39,7 @@ internal sealed class Bandeja : IDisposable
         });
         menu.Opening += (_, _) => Actualizar();
 
-        icono = new NotifyIcon { Icon = SystemIcons.Application, Text = "Kiosco", ContextMenuStrip = menu, Visible = true };
+        icono = new NotifyIcon { Icon = Icon.ExtractAssociatedIcon(Environment.ProcessPath!) ?? SystemIcons.Application, Text = "Kiosco", ContextMenuStrip = menu, Visible = true };
         icono.DoubleClick += (_, _) => ventana.Mostrar();
 
         ventana.Aviso += texto => icono.ShowBalloonTip(8000, "Kiosco", texto, ToolTipIcon.Info);

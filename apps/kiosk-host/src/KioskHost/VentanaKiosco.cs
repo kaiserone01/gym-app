@@ -28,6 +28,7 @@ internal sealed class VentanaKiosco : Form
         this.config = config;
         this.rutaConfig = rutaConfig;
         this.url = url;
+        Icon = Icon.ExtractAssociatedIcon(Environment.ProcessPath!) ?? Icon;
         StartPosition = FormStartPosition.Manual;
         TopMost = true;
         Controls.Add(webView);

@@ -7,6 +7,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
+    <ApplicationIcon>Recursos/kiosco.ico</ApplicationIcon>
     <RootNamespace>KioskHost</RootNamespace>
     <AssemblyName>KioskHost</AssemblyName>
     <!-- El paquete WebView2 referencia también su Microsoft.Web.WebView2.Wpf.dll (WindowsBase 5.0): conflicto inofensivo, el host solo usa WinForms. -->

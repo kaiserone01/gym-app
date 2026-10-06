@@ -1,12 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { obtenerApiKey } from "@/lib/config";
 import { registrarCheckIn, ErrorCheckIn, type ResultadoCheckIn } from "@/lib/api";
 import { encolar, listarPendientes } from "@/lib/colaPendientes";
 import { reintentarPendientes } from "@/lib/reintentarPendientes";
 import { AccessCard } from "@/components/AccessCard";
+import { useEntradaCedula } from "@/lib/useEntradaCedula";
 
 type Estado =
   | { tipo: "esperando" }
@@ -20,10 +21,18 @@ const DURACION_FICHA_MS = 30_000;
 
 export default function PaginaCheckIn() {
   const router = useRouter();
-  const inputRef = useRef<HTMLInputElement>(null);
   const [apiKey, setApiKey] = useState<string | null>(null);
-  const [cedula, setCedula] = useState("");
   const [estado, setEstado] = useState<Estado>({ tipo: "esperando" });
+  const { cedula, limpiar, nativo, propsInput } = useEntradaCedula({
+    // Escribir la siguiente cédula limpia la ficha del check-in anterior
+    // sin esperar a que se oculte sola (ver DURACION_FICHA_MS).
+    alEscribir: () => {
+      if (estado.tipo !== "esperando" && estado.tipo !== "procesando") {
+        setEstado({ tipo: "esperando" });
+      }
+    },
+    alEnviar: enviar,
+  });
   const [pendientes, setPendientes] = useState(0);
 
   useEffect(() => {
@@ -53,13 +62,6 @@ export default function PaginaCheckIn() {
     return () => window.removeEventListener("online", alReconectar);
   }, [apiKey, actualizarPendientes]);
 
-  // El kiosco tiene un teclado numérico físico, no pantalla táctil (ADR
-  // v1 §2.5) — el input siempre debe estar enfocado para capturarlo sin
-  // que el staff tenga que tocar nada.
-  useEffect(() => {
-    inputRef.current?.focus();
-  });
-
   // La ficha del check-in se oculta sola a los 30 s; un check-in nuevo (o escribir la siguiente
   // cédula) la reemplaza antes y reinicia el conteo.
   useEffect(() => {
@@ -68,7 +70,7 @@ export default function PaginaCheckIn() {
     return () => clearTimeout(temporizador);
   }, [estado]);
 
-  async function enviar() {
+  async function enviar(cedula: string) {
     if (!apiKey || !cedula || estado.tipo === "procesando") return;
 
     setEstado({ tipo: "procesando" });
@@ -87,7 +89,7 @@ export default function PaginaCheckIn() {
       }
     }
 
-    setCedula("");
+    limpiar();
   }
 
   return (
@@ -109,27 +111,21 @@ export default function PaginaCheckIn() {
           Ingresa tu cédula
         </h1>
 
-        <input
-          ref={inputRef}
-          value={cedula}
-          onChange={(evento) => {
-            // Escribir la siguiente cédula limpia la ficha del check-in anterior
-            // sin esperar a que se oculte sola (ver DURACION_FICHA_MS).
-            if (estado.tipo !== "esperando" && estado.tipo !== "procesando") {
-              setEstado({ tipo: "esperando" });
-            }
-            setCedula(evento.target.value.replace(/\D/g, ""));
-          }}
-          onKeyDown={(evento) => {
-            if (evento.key === "Enter") enviar();
-            if (evento.key === "Escape") setCedula("");
-          }}
-          onBlur={() => inputRef.current?.focus()}
-          inputMode="numeric"
-          autoFocus
-          className="w-full max-w-sm text-center text-3xl tracking-widest bg-transparent border-b-2 py-2 outline-none"
-          style={{ borderColor: "var(--gx-accent)", color: "var(--gx-ink)" }}
-        />
+        {nativo ? (
+          // Dentro de apps/kiosk-host la cédula llega por mensajes nativos: no hace falta foco.
+          <div
+            className="w-full max-w-sm min-h-[3.25rem] text-center text-3xl tracking-widest border-b-2 py-2"
+            style={{ borderColor: "var(--gx-accent)", color: "var(--gx-ink)" }}
+          >
+            {cedula}
+          </div>
+        ) : (
+          <input
+            {...propsInput}
+            className="w-full max-w-sm text-center text-3xl tracking-widest bg-transparent border-b-2 py-2 outline-none"
+            style={{ borderColor: "var(--gx-accent)", color: "var(--gx-ink)" }}
+          />
+        )}
       </div>
 
       <div className="flex w-full flex-1 items-center justify-center text-center">

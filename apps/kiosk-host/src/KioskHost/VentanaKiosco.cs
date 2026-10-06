@@ -5,7 +5,7 @@ using Microsoft.Web.WebView2.WinForms;
 namespace KioskHost;
 
 // Muestra apps/kiosk en WebView2 y le reenvía, como mensajes, solo las teclas del teclado numérico
-// vinculado. Raw Input es pasivo: Windows y las demás apps siguen recibiendo todas las teclas.
+// vinculado. Raw Input es pasivo; TecladoAislado reserva además las teclas exclusivas del numpad.
 internal sealed class VentanaKiosco : Form
 {
     private const string MensajeAprender = "Para vincular el teclado numérico pulsa 1, 2, 3 y Enter en él";
@@ -18,6 +18,7 @@ internal sealed class VentanaKiosco : Form
     private readonly SecuenciaVinculacion secuencia = new();
     private readonly Dictionary<nint, string?> nombres = new();
     private List<string>? conectados;
+    private TecladoAislado? aislado;
     private bool saliendo;
 
     public event Action<string>? Aviso;
@@ -141,6 +142,9 @@ internal sealed class VentanaKiosco : Form
         try
         {
             RawInput.Registrar(Handle);
+            aislado = new TecladoAislado(() => config.Dispositivo is not null, tecla => webView.CoreWebView2?.PostWebMessageAsJson(tecla.AJson()));
+            if (!aislado.Activo)
+                Aviso?.Invoke("No se pudo reservar el teclado numérico: sus teclas también llegarán a otras ventanas.");
         }
         catch (Win32Exception error)
         {
@@ -243,6 +247,12 @@ internal sealed class VentanaKiosco : Form
         Aviso?.Invoke(guardado
             ? $"Teclado numérico vinculado (VID {dispositivo.Vid ?? "?"}, PID {dispositivo.Pid ?? "?"})"
             : "Teclado numérico vinculado solo hasta cerrar el kiosco: no se pudo guardar kiosk-host.json (revisa que la carpeta del exe permita escribir y que el archivo sea JSON válido).");
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing) aislado?.Dispose();
+        base.Dispose(disposing);
     }
 
     private string? Nombre(nint dispositivo)

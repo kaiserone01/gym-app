@@ -26,6 +26,20 @@ public class MapeoTeclasTests
         Assert.Equal(new TeclaKiosco(TipoTecla.Enter), MapeoTeclas.Traducir(0x1C, e0));
     }
 
+    [Theory]
+    [InlineData(0x52, false, true)]
+    [InlineData(0x47, false, true)]
+    [InlineData(0x53, false, true)]
+    [InlineData(0x1C, true, true)]
+    [InlineData(0x1C, false, false)]
+    [InlineData(0x0E, false, false)]
+    [InlineData(0x47, true, false)]
+    [InlineData(0x02, false, false)]
+    public void Solo_se_reservan_las_teclas_exclusivas_del_numpad(int makeCode, bool e0, bool esperado)
+    {
+        Assert.Equal(esperado, MapeoTeclas.EsExclusivaDelNumpad((ushort)makeCode, e0));
+    }
+
     [Fact]
     public void Flecha_izquierda_del_K601_es_retroceso()
     {

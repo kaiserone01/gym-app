@@ -25,6 +25,11 @@ internal static class MapeoTeclas
         [0x4C] = '5', [0x4D] = '6', [0x47] = '7', [0x48] = '8', [0x49] = '9',
     };
 
+    // Teclas que solo existen en un numpad: dígitos, punto/Supr sin E0 y el Enter con E0. Retroceso y el Enter
+    // sin E0 también están en el teclado principal, así que no se pueden reservar sin romperlo.
+    public static bool EsExclusivaDelNumpad(ushort makeCode, bool e0) =>
+        e0 ? makeCode == 0x1C : makeCode == 0x53 || Digitos.ContainsKey(makeCode);
+
     public static TeclaKiosco? Traducir(ushort makeCode, bool e0)
     {
         // Enter con o sin E0: algunos numpads baratos envían el Enter principal.

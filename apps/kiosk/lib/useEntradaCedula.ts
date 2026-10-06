@@ -18,7 +18,9 @@ function obtenerWebView(): WebView2 | undefined {
   return (window as unknown as { chrome?: { webview?: WebView2 } }).chrome?.webview;
 }
 
-const sinSuscripcion = () => () => {};
+const TIEMPO_INACTIVIDAD_MS = 10_000;
+
+const sinSuscripcion =() => () => {};
 const hayHostNativo = () => obtenerWebView() !== undefined;
 const sinHostEnServidor = () => false;
 
@@ -83,6 +85,13 @@ export function useEntradaCedula({ alEscribir, alEnviar }: Opciones) {
     webview.addEventListener("message", alRecibir);
     return () => webview.removeEventListener("message", alRecibir);
   }, [nativo, asignar]);
+
+  // Una cédula a medias que nadie termina de teclear no debe quedar a la vista del siguiente socio.
+  useEffect(() => {
+    if (!cedula) return;
+    const temporizador = setTimeout(() => asignar(""), TIEMPO_INACTIVIDAD_MS);
+    return () => clearTimeout(temporizador);
+  }, [cedula, asignar]);
 
   // Sin host, el kiosco tiene un teclado numérico físico y no pantalla táctil (ADR v1 §2.5): el input
   // siempre debe estar enfocado para capturarlo sin que el staff toque nada.

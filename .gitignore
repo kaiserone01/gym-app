@@ -55,3 +55,7 @@ apps/web-admin/public/uploads/
 packages/db/migracion-excel/reporte-migracion-*.json
 # archivo fuente real de la migración — PII; el análisis en .md sí se versiona
 docs/xls/*.xlsm
+
+# apps/kiosk-host (.NET)
+apps/kiosk-host/**/bin/
+apps/kiosk-host/**/obj/

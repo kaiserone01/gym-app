@@ -4,9 +4,21 @@ namespace KioskHost;
 
 internal static class Program
 {
+    private const string NombreInstancia = @"Local\KioskHost.Instancia";
+    private const string NombreMostrar = @"Local\KioskHost.Mostrar";
+
     [STAThread]
     private static void Main()
     {
+        using var instancia = new Mutex(initiallyOwned: true, NombreInstancia, out var esPrimera);
+        using var mostrar = new EventWaitHandle(false, EventResetMode.AutoReset, NombreMostrar);
+        if (!esPrimera)
+        {
+            // Ya hay un kiosco abierto: que se muestre (aunque esté oculto en la bandeja) y salir.
+            mostrar.Set();
+            return;
+        }
+
         ApplicationConfiguration.Initialize();
 
         try
@@ -32,6 +44,16 @@ internal static class Program
 
         var url = config.UrlEfectiva(Environment.GetEnvironmentVariable("KIOSK_URL"));
         using var ventana = new VentanaKiosco(config, rutaConfig, url);
+        using var bandeja = new Bandeja(ventana);
+        var espera = ThreadPool.RegisterWaitForSingleObject(
+            mostrar,
+            (_, _) =>
+            {
+                if (ventana.IsHandleCreated) ventana.BeginInvoke(new Action(ventana.Mostrar));
+            },
+            null, Timeout.Infinite, executeOnlyOnce: false);
+
         Application.Run(ventana);
+        espera.Unregister(null);
     }
 }

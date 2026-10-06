@@ -9,10 +9,16 @@
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
     <RootNamespace>KioskHost</RootNamespace>
     <AssemblyName>KioskHost</AssemblyName>
+    <!-- El paquete WebView2 referencia también su Microsoft.Web.WebView2.Wpf.dll (WindowsBase 5.0): conflicto inofensivo, el host solo usa WinForms. -->
+    <NoWarn>$(NoWarn);MSB3277</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
     <InternalsVisibleTo Include="KioskHost.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4258.31" />
   </ItemGroup>
 
 </Project>

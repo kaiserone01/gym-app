@@ -22,7 +22,6 @@ internal sealed class Bandeja : IDisposable
         modoVentana.Click += (_, _) => ventana.CambiarModo("ventana");
         iniciarConWindows.Checked = IniciaConWindows();
         iniciarConWindows.Click += (_, _) => CambiarInicioConWindows(iniciarConWindows.Checked);
-
         var menu = new ContextMenuStrip();
         menu.Items.AddRange(new ToolStripItem[]
         {
@@ -62,11 +61,19 @@ internal sealed class Bandeja : IDisposable
         return clave?.GetValue(NombreInicio) is string;
     }
 
-    private static void CambiarInicioConWindows(bool activar)
+    private void CambiarInicioConWindows(bool activar)
     {
-        using var clave = Registry.CurrentUser.CreateSubKey(ClaveInicio);
-        if (activar) clave.SetValue(NombreInicio, $"\"{Environment.ProcessPath}\"");
-        else clave.DeleteValue(NombreInicio, throwOnMissingValue: false);
+        try
+        {
+            using var clave = Registry.CurrentUser.CreateSubKey(ClaveInicio);
+            if (activar) clave.SetValue(NombreInicio, $"\"{Environment.ProcessPath}\"");
+            else clave.DeleteValue(NombreInicio, throwOnMissingValue: false);
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or System.Security.SecurityException)
+        {
+            iniciarConWindows.Checked = IniciaConWindows();
+            icono.ShowBalloonTip(8000, "Kiosco", $"No se pudo cambiar el inicio con Windows: {error.Message}", ToolTipIcon.Warning);
+        }
     }
 
     public void Dispose()

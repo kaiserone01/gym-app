@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.WinForms;
 
@@ -136,7 +137,14 @@ internal sealed class VentanaKiosco : Form
     protected override void OnHandleCreated(EventArgs e)
     {
         base.OnHandleCreated(e);
-        RawInput.Registrar(Handle);
+        try
+        {
+            RawInput.Registrar(Handle);
+        }
+        catch (Win32Exception error)
+        {
+            Aviso?.Invoke($"No se pudo registrar el teclado numérico (Raw Input): {error.Message}. Cierra el kiosco desde la bandeja (Salir) y vuelve a abrirlo.");
+        }
     }
 
     protected override async void OnLoad(EventArgs e)

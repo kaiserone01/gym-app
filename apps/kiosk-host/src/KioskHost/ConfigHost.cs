@@ -47,7 +47,7 @@ internal sealed class ConfigHost
     public DispositivoVinculado? Dispositivo { get; set; }
     public UbicacionVentana Ventana { get; set; } = new();
 
-    // true si el archivo no era JSON válido: se usan los valores por defecto y no se sobrescribe,
+    // true si el archivo no se pudo leer o no era JSON válido: se usan los valores por defecto y no se sobrescribe,
     // para no perder lo que el usuario editó a mano.
     [JsonIgnore]
     public bool SoloLectura { get; private set; }
@@ -68,22 +68,26 @@ internal sealed class ConfigHost
             if (string.IsNullOrWhiteSpace(config.Dispositivo?.Ruta)) config.Dispositivo = null;
             return config;
         }
-        catch (JsonException)
+        catch (Exception error) when (error is JsonException or IOException or UnauthorizedAccessException)
         {
             return new ConfigHost { SoloLectura = true };
         }
     }
 
+    // Escribe a un temporal y lo mueve encima: un corte de luz a mitad de escritura no deja el JSON truncado.
     public bool Guardar(string ruta)
     {
         if (SoloLectura) return false;
+        var temporal = ruta + ".tmp";
         try
         {
-            File.WriteAllText(ruta, JsonSerializer.Serialize(this, Opciones));
+            File.WriteAllText(temporal, JsonSerializer.Serialize(this, Opciones));
+            File.Move(temporal, ruta, overwrite: true);
             return true;
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException)
         {
+            try { File.Delete(temporal); } catch (Exception) { }
             return false;
         }
     }

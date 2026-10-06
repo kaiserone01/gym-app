@@ -38,7 +38,7 @@ internal static class Program
         if (config.SoloLectura)
         {
             MessageBox.Show(
-                $"{rutaConfig} no es un JSON válido. Se usan los valores por defecto y no se guardarán cambios hasta que lo corrijas o lo borres.",
+                $"{rutaConfig} no se pudo leer o no es un JSON válido. Se usan los valores por defecto y no se guardarán cambios hasta que lo corrijas o lo borres.",
                 "Kiosco", MessageBoxButtons.OK, MessageBoxIcon.Warning);
         }
 
@@ -49,7 +49,12 @@ internal static class Program
             mostrar,
             (_, _) =>
             {
-                if (ventana.IsHandleCreated) ventana.BeginInvoke(new Action(ventana.Mostrar));
+                // Corre en un hilo del pool: si la ventana se destruye al cerrar, BeginInvoke lanza y mataría el proceso.
+                try
+                {
+                    if (ventana.IsHandleCreated && !ventana.IsDisposed) ventana.BeginInvoke(new Action(ventana.Mostrar));
+                }
+                catch (Exception error) when (error is InvalidOperationException or ObjectDisposedException) { }
             },
             null, Timeout.Infinite, executeOnlyOnce: false);
 

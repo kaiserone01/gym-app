@@ -57,7 +57,7 @@ verificado copiando solo el exe a una carpeta vacía.
 3. En el teclado numérico, pulsar **1, 2, 3, Enter**. Se vincula el primer teclado que complete la
    secuencia: no la tecleen en el numpad del teclado grande.
 4. Aparece el globo *"Teclado numérico vinculado (VID xxxx, PID yyyy)"*, la bandeja muestra
-   *"Estado: vinculado VID xxxx PID yyyy"* y el kiosco vuelve a pantalla completa.
+   *"Estado: vinculado VID xxxx PID yyyy"* y el kiosco vuelve al modo guardado (pantalla completa por defecto).
 
 Si se enchufa el numpad en **otro puerto USB**, el kiosco lo reconoce solo (mismo modelo e interfaz,
 único conectado). Si hay dos numpads idénticos conectados, avisa y hay que re-vincular.
@@ -65,7 +65,7 @@ Si se enchufa el numpad en **otro puerto USB**, el kiosco lo reconoce solo (mism
 ## Teclas (RAIKU K-601)
 | Tecla | Acción |
 |---|---|
-| `0`–`9` | dígito (igual con Num Lock encendido o apagado) |
+| `0`–`9` | dígito (igual con Num Lock encendido o apagado (verificar con el checklist, punto 3)) |
 | `Enter` | enviar |
 | `←` | borrar un dígito |
 | `.` / Del | borrar todo |
@@ -85,7 +85,7 @@ Si se enchufa el numpad en **otro puerto USB**, el kiosco lo reconoce solo (mism
     para los procesos que se abran después);
   - desarrollo: `$env:KIOSK_URL = "http://localhost:3001/"; dotnet run --project apps/kiosk-host/src/KioskHost`.
 - `dispositivo` y `ventana` los escribe el kiosco; no hace falta editarlos.
-- Si el archivo no es JSON válido, el kiosco avisa, usa los valores por defecto y no lo sobrescribe.
+- Si el archivo no se puede leer o no es JSON válido, el kiosco avisa, usa los valores por defecto y no lo sobrescribe.
 - Los datos del navegador (API key, cola offline) viven en `%LOCALAPPDATA%\KioskHost\WebView2`.
 
 ## Menú de la bandeja
@@ -114,3 +114,4 @@ La X de la ventana y Alt+F4 solo la ocultan en la bandeja; para cerrar el kiosco
 10. Abrir el exe por segunda vez trae al frente la ventana existente, también si estaba oculta en la bandeja.
 11. "Abrir configuración" lleva a `/config` y, tras guardar, vuelve al kiosco.
 12. El exe publicado, copiado solo a una carpeta limpia, arranca.
+13. Truncar a mano `kiosk-host.json` (dejarlo como JSON inválido) y abrir el kiosco: arranca con valores por defecto y avisa; borrar el archivo y volver a vincular lo recupera.

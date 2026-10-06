@@ -58,6 +58,35 @@ public sealed class ConfigHostTests : IDisposable
     }
 
     [Fact]
+    public void Archivo_bloqueado_usa_valores_por_defecto_sin_lanzar()
+    {
+        File.WriteAllText(Ruta, "{}");
+        using var bloqueo = new FileStream(Ruta, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
+        var config = ConfigHost.Cargar(Ruta);
+        Assert.True(config.SoloLectura);
+        Assert.Equal(ConfigHost.UrlPorDefecto, config.Url);
+    }
+
+    [Fact]
+    public void Guardar_sobrescribe_el_archivo_y_no_deja_temporal()
+    {
+        File.WriteAllText(Ruta, "{ \"url\": \"https://viejo.ejemplo/\" }");
+        var config = new ConfigHost { Url = "https://nuevo.ejemplo/" };
+        Assert.True(config.Guardar(Ruta));
+        Assert.False(File.Exists(Ruta + ".tmp"));
+        Assert.Equal("https://nuevo.ejemplo/", ConfigHost.Cargar(Ruta).Url);
+    }
+
+    [Fact]
+    public void Guardar_fallido_no_deja_temporal()
+    {
+        File.WriteAllText(Ruta + ".tmp", "basura");
+        using var bloqueo = new FileStream(Ruta + ".tmp", FileMode.Open, FileAccess.ReadWrite, FileShare.None);
+        Assert.False(new ConfigHost().Guardar(Ruta));
+        Assert.False(File.Exists(Ruta));
+    }
+
+    [Fact]
     public void Campos_faltantes_o_nulos_toman_valores_por_defecto()
     {
         File.WriteAllText(Ruta, """{ "url": "https://otro.ejemplo/", "ventana": null }""");

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@gym-app/ui/components/Button";
-import { comprimirAvatar, filtroLuz, LUZ_NEUTRA } from "./comprimirImagen";
+import { comprimirAvatar, filtroLuz } from "./comprimirImagen";
 
 // Teléfono o tableta (donde hay cámara frontal y trasera) vs. computadora, donde
 // el cambio de cámara no aplica. userAgentData existe en Chrome/Edge/Android; el
@@ -85,7 +85,7 @@ export function SelectorFotoPerfil({
   // Zoom del encuadre y desplazamiento (fracción del ancho de la vista previa) al arrastrar.
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
-  const [luz, setLuz] = useState(LUZ_NEUTRA);
+  const [luz, setLuz] = useState(1);
   const arrastre = useRef<{ x: number; y: number } | null>(null);
 
   const espejo = camaraAbierta && (!esMovil || camara === "user");
@@ -147,7 +147,7 @@ export function SelectorFotoPerfil({
     setEsMovil(detectarMovil());
     setZoom(1);
     setPan({ x: 0, y: 0 });
-    setLuz(LUZ_NEUTRA);
+    setLuz(1);
     setCamaraAbierta(true);
   }
 
@@ -155,7 +155,7 @@ export function SelectorFotoPerfil({
     setError(null);
     setZoom(1);
     setPan({ x: 0, y: 0 });
-    setLuz(LUZ_NEUTRA);
+    setLuz(1);
     setAjustando(true);
   }
 
@@ -302,9 +302,7 @@ export function SelectorFotoPerfil({
               )}
             </div>
             <Deslizador etiqueta="Zoom" min={1} max={4} valor={zoom} onCambio={cambiarZoom} formato={(v) => `${v.toFixed(1)}x`} />
-            <Deslizador etiqueta="Brillo" min={0.5} max={1.5} valor={luz.brillo} onCambio={(v) => setLuz({ ...luz, brillo: v })} />
-            <Deslizador etiqueta="Contraste" min={0.5} max={1.5} valor={luz.contraste} onCambio={(v) => setLuz({ ...luz, contraste: v })} />
-            <Deslizador etiqueta="Saturación" min={0} max={2} valor={luz.saturacion} onCambio={(v) => setLuz({ ...luz, saturacion: v })} />
+            <Deslizador etiqueta="Luz" min={0.5} max={2} valor={luz} onCambio={setLuz} />
             <p className="mt-2 text-center text-xs" style={{ color: "var(--gx-muted)" }}>
               {guiaCircular
                 ? "Acerca con el zoom y arrastra la imagen hasta centrar el rostro dentro del círculo."

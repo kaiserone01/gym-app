@@ -2,15 +2,12 @@ const LADO_AVATAR = 384;
 
 // Zona a recortar del cuadrado central de la fuente: `zoom` ≥ 1 y centro (cx, cy)
 // como fracción 0..1 de ese cuadrado. Por defecto, el cuadrado completo.
-// `luz` corrige exposición: brillo, contraste y saturación (1 = sin cambio).
-export type Luz = { brillo: number; contraste: number; saturacion: number };
-export type Recorte = { zoom: number; cx: number; cy: number; luz?: Luz };
-
-export const LUZ_NEUTRA: Luz = { brillo: 1, contraste: 1, saturacion: 1 };
+// `luz` corrige la exposición (1 = sin cambio): subirla aclara un rostro a contraluz.
+export type Recorte = { zoom: number; cx: number; cy: number; luz?: number };
 
 // Mismo filtro para la vista previa (CSS) y para el canvas, así lo que se ve es lo que se guarda.
-export function filtroLuz({ brillo, contraste, saturacion }: Luz): string {
-  return `brightness(${brillo}) contrast(${contraste}) saturate(${saturacion})`;
+export function filtroLuz(luz: number): string {
+  return `brightness(${luz})`;
 }
 
 function aCanvasCuadrado(fuente: CanvasImageSource, ancho: number, alto: number, recorte?: Recorte): HTMLCanvasElement {

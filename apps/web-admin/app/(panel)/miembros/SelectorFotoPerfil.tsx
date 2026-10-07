@@ -42,6 +42,23 @@ export function SelectorFotoPerfil({
   const [esMovil, setEsMovil] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [procesando, setProcesando] = useState(false);
+  // Zoom del encuadre y desplazamiento (fracción del ancho de la vista previa) al arrastrar.
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const arrastre = useRef<{ x: number; y: number } | null>(null);
+
+  const espejo = !esMovil || camara === "user";
+
+  // El desplazamiento no puede dejar bordes vacíos: máximo (zoom - 1) / 2.
+  function limitarPan(p: { x: number; y: number }, z: number) {
+    const max = (z - 1) / 2;
+    return { x: Math.max(-max, Math.min(max, p.x)), y: Math.max(-max, Math.min(max, p.y)) };
+  }
+
+  function cambiarZoom(z: number) {
+    setZoom(z);
+    setPan((p) => limitarPan(p, z));
+  }
 
   function detenerCamara() {
     streamRef.current?.getTracks().forEach((pista) => pista.stop());
@@ -87,6 +104,8 @@ export function SelectorFotoPerfil({
       return;
     }
     setEsMovil(detectarMovil());
+    setZoom(1);
+    setPan({ x: 0, y: 0 });
     setCamaraAbierta(true);
   }
 
@@ -94,7 +113,13 @@ export function SelectorFotoPerfil({
     setProcesando(true);
     setError(null);
     try {
-      const archivo = await comprimirAvatar(fuente);
+      // La vista previa está en espejo (cámara frontal): el eje X se invierte hacia la imagen real.
+      const recorte = {
+        zoom,
+        cx: 0.5 + (espejo ? pan.x : -pan.x) / zoom,
+        cy: 0.5 - pan.y / zoom,
+      };
+      const archivo = await comprimirAvatar(fuente, recorte);
       if (inputFotoRef.current) {
         const transferencia = new DataTransfer();
         transferencia.items.add(archivo);
@@ -159,14 +184,35 @@ export function SelectorFotoPerfil({
             <h3 className="mb-3 text-lg font-bold" style={{ color: "var(--gx-ink)" }}>
               Tomar foto
             </h3>
-            <div className="relative aspect-square w-full overflow-hidden rounded-xl bg-black">
-              <video
-                ref={videoRef}
-                autoPlay
-                playsInline
-                muted
-                className={`h-full w-full object-cover ${!esMovil || camara === "user" ? "-scale-x-100" : ""}`}
-              />
+            <div
+              className="relative aspect-square w-full cursor-grab touch-none select-none overflow-hidden rounded-xl bg-black active:cursor-grabbing"
+              onPointerDown={(e) => {
+                e.currentTarget.setPointerCapture(e.pointerId);
+                arrastre.current = { x: e.clientX, y: e.clientY };
+              }}
+              onPointerMove={(e) => {
+                if (!arrastre.current) return;
+                const ancho = e.currentTarget.clientWidth;
+                const dx = (e.clientX - arrastre.current.x) / ancho;
+                const dy = (e.clientY - arrastre.current.y) / ancho;
+                arrastre.current = { x: e.clientX, y: e.clientY };
+                setPan((p) => limitarPan({ x: p.x + dx, y: p.y + dy }, zoom));
+              }}
+              onPointerUp={() => (arrastre.current = null)}
+              onPointerCancel={() => (arrastre.current = null)}
+            >
+              <div
+                className="h-full w-full"
+                style={{ transform: `translate(${pan.x * 100}%, ${pan.y * 100}%) scale(${zoom})` }}
+              >
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  playsInline
+                  muted
+                  className={`h-full w-full object-cover ${espejo ? "-scale-x-100" : ""}`}
+                />
+              </div>
               {/* Guía: el avatar es un círculo dentro del cuadrado; lo de afuera queda oscurecido. */}
               {guiaCircular && (
                 <div
@@ -175,8 +221,24 @@ export function SelectorFotoPerfil({
                 />
               )}
             </div>
+            <label className="mt-3 flex items-center gap-3 text-xs" style={{ color: "var(--gx-muted)" }}>
+              Zoom
+              <input
+                type="range"
+                min={1}
+                max={4}
+                step={0.05}
+                value={zoom}
+                onChange={(e) => cambiarZoom(Number(e.target.value))}
+                className="min-w-0 flex-1"
+                style={{ accentColor: "var(--gx-accent)" }}
+              />
+              {zoom.toFixed(1)}x
+            </label>
             <p className="mt-2 text-center text-xs" style={{ color: "var(--gx-muted)" }}>
-              {guiaCircular ? "Centra el rostro dentro del círculo." : "Centra el producto en el cuadro."}
+              {guiaCircular
+                ? "Acerca con el zoom y arrastra la imagen hasta centrar el rostro dentro del círculo."
+                : "Centra el producto en el cuadro."}
             </p>
             {esMovil && (
               <Button

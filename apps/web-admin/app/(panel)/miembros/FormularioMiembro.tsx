@@ -143,7 +143,7 @@ export function FormularioMiembro({
   const [estado, enviar, enviando] = useActionState(accion, {});
   const esEdicion = !!valoresIniciales;
   const formRef = useRef<HTMLFormElement>(null);
-  const { mostrarError } = useFeedback();
+  const { mostrarError, mostrarExito } = useFeedback();
 
   useEffect(() => {
     if (estado.error) mostrarError(estado.error);
@@ -307,10 +307,16 @@ export function FormularioMiembro({
     if (!miembroId) return;
     const datos = new FormData();
     datos.set("foto", archivo);
-    const resultado = await actualizarFotoMiembroAction(miembroId, datos);
-    if (!resultado.fotoUrl) throw new Error(resultado.error);
-    if (fotoPreview?.startsWith("blob:")) URL.revokeObjectURL(fotoPreview);
-    setFotoPreview(resultado.fotoUrl);
+    try {
+      const resultado = await actualizarFotoMiembroAction(miembroId, datos);
+      if (!resultado.fotoUrl) throw new Error(resultado.error ?? "No se pudo guardar el encuadre.");
+      if (fotoPreview?.startsWith("blob:")) URL.revokeObjectURL(fotoPreview);
+      setFotoPreview(resultado.fotoUrl);
+      mostrarExito("Encuadre guardado.");
+    } catch (error) {
+      mostrarError(error instanceof Error ? error.message : "No se pudo guardar el encuadre.");
+      throw error;
+    }
   }
 
   const idFormulario = "formulario-miembro";

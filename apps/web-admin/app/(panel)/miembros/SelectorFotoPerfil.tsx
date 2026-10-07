@@ -167,7 +167,8 @@ export function SelectorFotoPerfil({
       const respuesta = await fetch(origen);
       if (!respuesta.ok) throw new Error();
       await aplicar(await respuesta.blob(), alGuardarAjuste);
-    } catch {
+    } catch (error) {
+      console.error("Ajustar encuadre:", error);
       setError("No se pudo cargar la foto para ajustarla.");
     }
   }
@@ -197,7 +198,8 @@ export function SelectorFotoPerfil({
       }
       setCamaraAbierta(false);
       setAjustando(false);
-    } catch {
+    } catch (error) {
+      console.error("Procesar foto:", error);
       setError(guardarYa ? "No se pudo guardar la foto. Intenta de nuevo." : "No se pudo procesar la imagen. Intenta con otra.");
     } finally {
       setProcesando(false);
@@ -317,6 +319,11 @@ export function SelectorFotoPerfil({
               >
                 Cambiar cámara ({camara === "user" ? "frontal" : "trasera"})
               </Button>
+            )}
+            {error && (
+              <p className="mt-2 text-center text-xs" style={{ color: "var(--gx-bad)" }}>
+                {error}
+              </p>
             )}
             <div className="mt-3 flex gap-3">
               <Button

@@ -40,7 +40,7 @@ export async function comprimirAvatar(fuente: Blob | HTMLVideoElement, recorte?:
     canvas = aCanvasCuadrado(fuente, fuente.videoWidth, fuente.videoHeight, recorte);
   } else {
     const bitmap = await createImageBitmap(fuente, { imageOrientation: "from-image" });
-    canvas = aCanvasCuadrado(bitmap, bitmap.width, bitmap.height);
+    canvas = aCanvasCuadrado(bitmap, bitmap.width, bitmap.height, recorte);
     bitmap.close();
   }
 

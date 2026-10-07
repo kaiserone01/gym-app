@@ -18,7 +18,7 @@ function obtenerWebView(): WebView2 | undefined {
   return (window as unknown as { chrome?: { webview?: WebView2 } }).chrome?.webview;
 }
 
-const TIEMPO_INACTIVIDAD_MS = 10_000;
+const TIEMPO_INACTIVIDAD_MS = 7_000;
 
 const sinSuscripcion =() => () => {};
 const hayHostNativo = () => obtenerWebView() !== undefined;

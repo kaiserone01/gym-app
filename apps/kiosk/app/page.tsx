@@ -19,6 +19,10 @@ type Estado =
 // Cuánto tiempo se queda la ficha de acceso en pantalla antes de desaparecer sola.
 const DURACION_FICHA_MS = 30_000;
 
+// Recuadro del campo de cédula, igual con y sin host nativo.
+const CLASES_CAMPO_CEDULA = "w-full max-w-xl text-center text-5xl tracking-widest rounded-xl border-2 px-6 py-4";
+const ESTILO_CAMPO_CEDULA = { borderColor: "var(--gx-accent)", color: "var(--gx-ink)" };
+
 export default function PaginaCheckIn() {
   const router = useRouter();
   const [apiKey, setApiKey] = useState<string | null>(null);
@@ -107,24 +111,17 @@ export default function PaginaCheckIn() {
       )}
 
       <div className="flex flex-col items-center gap-2">
-        <h1 className="text-xl" style={{ fontFamily: '"Bebas Neue", sans-serif', letterSpacing: "0.02em" }}>
+        <h1 className="text-5xl" style={{ fontFamily: '"Bebas Neue", sans-serif', letterSpacing: "0.02em" }}>
           Ingresa tu cédula
         </h1>
 
         {nativo ? (
           // Dentro de apps/kiosk-host la cédula llega por mensajes nativos: no hace falta foco.
-          <div
-            className="w-full max-w-sm min-h-[3.25rem] text-center text-3xl tracking-widest border-b-2 py-2"
-            style={{ borderColor: "var(--gx-accent)", color: "var(--gx-ink)" }}
-          >
+          <div className={`${CLASES_CAMPO_CEDULA} min-h-[4.5rem]`} style={ESTILO_CAMPO_CEDULA}>
             {cedula}
           </div>
         ) : (
-          <input
-            {...propsInput}
-            className="w-full max-w-sm text-center text-3xl tracking-widest bg-transparent border-b-2 py-2 outline-none"
-            style={{ borderColor: "var(--gx-accent)", color: "var(--gx-ink)" }}
-          />
+          <input {...propsInput} className={`${CLASES_CAMPO_CEDULA} bg-transparent outline-none`} style={ESTILO_CAMPO_CEDULA} />
         )}
       </div>
 

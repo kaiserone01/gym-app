@@ -383,7 +383,7 @@ export function FormularioMiembro({
                 )}
               </div>
 
-              <SelectorFotoPerfil tieneFoto={!!fotoPreview} onCambio={manejarCambioFoto} />
+              <SelectorFotoPerfil tieneFoto={!!fotoPreview} fotoActualUrl={fotoPreview} onCambio={manejarCambioFoto} />
             </div>
 
             <Input

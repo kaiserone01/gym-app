@@ -18,12 +18,15 @@ function detectarMovil(): boolean {
 // comprimida, para que siga viajando en el FormData del formulario.
 export function SelectorFotoPerfil({
   tieneFoto,
+  fotoActualUrl,
   onCambio,
   etiqueta = "Foto de perfil",
   guiaCircular = true,
   camaraInicial = "user",
 }: {
   tieneFoto: boolean;
+  // Si se pasa, aparece "Ajustar encuadre" para recortar la foto ya existente.
+  fotoActualUrl?: string | null;
   onCambio: (archivo: File) => void;
   etiqueta?: string;
   // La guía circular ayuda a centrar un rostro; para productos no aplica.
@@ -37,6 +40,7 @@ export function SelectorFotoPerfil({
   const streamRef = useRef<MediaStream | null>(null);
 
   const [camaraAbierta, setCamaraAbierta] = useState(false);
+  const [ajustando, setAjustando] = useState(false);
   const [camara, setCamara] = useState<"user" | "environment">(camaraInicial);
   // Se decide al abrir la cámara (no al montar) para no tocar `navigator` en el servidor.
   const [esMovil, setEsMovil] = useState(false);
@@ -47,7 +51,7 @@ export function SelectorFotoPerfil({
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const arrastre = useRef<{ x: number; y: number } | null>(null);
 
-  const espejo = !esMovil || camara === "user";
+  const espejo = camaraAbierta && (!esMovil || camara === "user");
 
   // El desplazamiento no puede dejar bordes vacíos: máximo (zoom - 1) / 2.
   function limitarPan(p: { x: number; y: number }, z: number) {
@@ -109,6 +113,26 @@ export function SelectorFotoPerfil({
     setCamaraAbierta(true);
   }
 
+  function abrirAjuste() {
+    setError(null);
+    setZoom(1);
+    setPan({ x: 0, y: 0 });
+    setAjustando(true);
+  }
+
+  async function aplicarAjuste() {
+    if (!fotoActualUrl) return;
+    try {
+      // Las fotos del bucket pasan por el proxy del mismo origen (sin CORS no se pueden recortar).
+      const origen = fotoActualUrl.startsWith("blob:") ? fotoActualUrl : `/api/foto-proxy?url=${encodeURIComponent(fotoActualUrl)}`;
+      const respuesta = await fetch(origen);
+      if (!respuesta.ok) throw new Error();
+      await aplicar(await respuesta.blob());
+    } catch {
+      setError("No se pudo cargar la foto para ajustarla.");
+    }
+  }
+
   async function aplicar(fuente: Blob | HTMLVideoElement) {
     setProcesando(true);
     setError(null);
@@ -127,6 +151,7 @@ export function SelectorFotoPerfil({
       }
       onCambio(archivo);
       setCamaraAbierta(false);
+      setAjustando(false);
     } catch {
       setError("No se pudo procesar la imagen. Intenta con otra.");
     } finally {
@@ -161,6 +186,11 @@ export function SelectorFotoPerfil({
         <Button type="button" variant="secundario" disabled={procesando} onClick={abrirCamara}>
           Tomar foto
         </Button>
+        {fotoActualUrl && (
+          <Button type="button" variant="secundario" disabled={procesando} onClick={abrirAjuste}>
+            Ajustar encuadre
+          </Button>
+        )}
       </div>
 
       <p className="text-xs" style={{ color: "var(--gx-muted-dim)" }}>
@@ -172,7 +202,7 @@ export function SelectorFotoPerfil({
         </p>
       )}
 
-      {camaraAbierta && (
+      {(camaraAbierta || ajustando) && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4"
           style={{ background: "color-mix(in srgb, black 60%, transparent)" }}
@@ -182,7 +212,7 @@ export function SelectorFotoPerfil({
             style={{ borderColor: "var(--gx-edge)", background: "var(--gx-surface)" }}
           >
             <h3 className="mb-3 text-lg font-bold" style={{ color: "var(--gx-ink)" }}>
-              Tomar foto
+              {ajustando ? "Ajustar encuadre" : "Tomar foto"}
             </h3>
             <div
               className="relative aspect-square w-full cursor-grab touch-none select-none overflow-hidden rounded-xl bg-black active:cursor-grabbing"
@@ -205,13 +235,18 @@ export function SelectorFotoPerfil({
                 className="h-full w-full"
                 style={{ transform: `translate(${pan.x * 100}%, ${pan.y * 100}%) scale(${zoom})` }}
               >
-                <video
-                  ref={videoRef}
-                  autoPlay
-                  playsInline
-                  muted
-                  className={`h-full w-full object-cover ${espejo ? "-scale-x-100" : ""}`}
-                />
+                {ajustando ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={fotoActualUrl ?? ""} alt="" draggable={false} className="h-full w-full object-cover" />
+                ) : (
+                  <video
+                    ref={videoRef}
+                    autoPlay
+                    playsInline
+                    muted
+                    className={`h-full w-full object-cover ${espejo ? "-scale-x-100" : ""}`}
+                  />
+                )}
               </div>
               {/* Guía: el avatar es un círculo dentro del cuadrado; lo de afuera queda oscurecido. */}
               {guiaCircular && (
@@ -240,7 +275,7 @@ export function SelectorFotoPerfil({
                 ? "Acerca con el zoom y arrastra la imagen hasta centrar el rostro dentro del círculo."
                 : "Centra el producto en el cuadro."}
             </p>
-            {esMovil && (
+            {esMovil && !ajustando && (
               <Button
                 type="button"
                 variant="secundario"
@@ -251,16 +286,24 @@ export function SelectorFotoPerfil({
               </Button>
             )}
             <div className="mt-3 flex gap-3">
-              <Button type="button" variant="secundario" className="flex-1" onClick={() => setCamaraAbierta(false)}>
+              <Button
+                type="button"
+                variant="secundario"
+                className="flex-1"
+                onClick={() => {
+                  setCamaraAbierta(false);
+                  setAjustando(false);
+                }}
+              >
                 Cancelar
               </Button>
               <Button
                 type="button"
                 className="flex-1"
                 disabled={procesando}
-                onClick={() => videoRef.current && void aplicar(videoRef.current)}
+                onClick={() => (ajustando ? void aplicarAjuste() : videoRef.current && void aplicar(videoRef.current))}
               >
-                Capturar
+                {ajustando ? "Aplicar" : "Capturar"}
               </Button>
             </div>
           </div>

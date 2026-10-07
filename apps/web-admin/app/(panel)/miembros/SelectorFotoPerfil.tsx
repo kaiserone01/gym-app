@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@gym-app/ui/components/Button";
-import { comprimirAvatar } from "./comprimirImagen";
+import { comprimirAvatar, filtroLuz, LUZ_NEUTRA } from "./comprimirImagen";
 
 // Teléfono o tableta (donde hay cámara frontal y trasera) vs. computadora, donde
 // el cambio de cámara no aplica. userAgentData existe en Chrome/Edge/Android; el
@@ -12,6 +12,39 @@ function detectarMovil(): boolean {
   const nav = navigator as Navigator & { userAgentData?: { mobile?: boolean } };
   if (typeof nav.userAgentData?.mobile === "boolean") return nav.userAgentData.mobile;
   return /Android|iPhone|iPad|iPod|Mobile/i.test(nav.userAgent) || (/Macintosh/.test(nav.userAgent) && nav.maxTouchPoints > 1);
+}
+
+function Deslizador({
+  etiqueta,
+  min,
+  max,
+  valor,
+  onCambio,
+  formato = (v) => `${Math.round(v * 100)}%`,
+}: {
+  etiqueta: string;
+  min: number;
+  max: number;
+  valor: number;
+  onCambio: (valor: number) => void;
+  formato?: (valor: number) => string;
+}) {
+  return (
+    <label className="mt-2 flex items-center gap-3 text-xs" style={{ color: "var(--gx-muted)" }}>
+      <span className="w-16 shrink-0">{etiqueta}</span>
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={0.05}
+        value={valor}
+        onChange={(e) => onCambio(Number(e.target.value))}
+        className="min-w-0 flex-1"
+        style={{ accentColor: "var(--gx-accent)" }}
+      />
+      <span className="w-10 shrink-0 text-right">{formato(valor)}</span>
+    </label>
+  );
 }
 
 // Mantiene un <input type="file" name="foto"> oculto con la imagen ya
@@ -49,6 +82,7 @@ export function SelectorFotoPerfil({
   // Zoom del encuadre y desplazamiento (fracción del ancho de la vista previa) al arrastrar.
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [luz, setLuz] = useState(LUZ_NEUTRA);
   const arrastre = useRef<{ x: number; y: number } | null>(null);
 
   const espejo = camaraAbierta && (!esMovil || camara === "user");
@@ -110,6 +144,7 @@ export function SelectorFotoPerfil({
     setEsMovil(detectarMovil());
     setZoom(1);
     setPan({ x: 0, y: 0 });
+    setLuz(LUZ_NEUTRA);
     setCamaraAbierta(true);
   }
 
@@ -117,6 +152,7 @@ export function SelectorFotoPerfil({
     setError(null);
     setZoom(1);
     setPan({ x: 0, y: 0 });
+    setLuz(LUZ_NEUTRA);
     setAjustando(true);
   }
 
@@ -142,6 +178,7 @@ export function SelectorFotoPerfil({
         zoom,
         cx: 0.5 + (espejo ? pan.x : -pan.x) / zoom,
         cy: 0.5 - pan.y / zoom,
+        luz,
       };
       const archivo = await comprimirAvatar(fuente, recorte);
       if (inputFotoRef.current) {
@@ -208,7 +245,7 @@ export function SelectorFotoPerfil({
           style={{ background: "color-mix(in srgb, black 60%, transparent)" }}
         >
           <div
-            className="marca-agua-modal w-full max-w-sm rounded-2xl border p-4"
+            className="marca-agua-modal max-h-full w-full max-w-sm overflow-y-auto rounded-2xl border p-4"
             style={{ borderColor: "var(--gx-edge)", background: "var(--gx-surface)" }}
           >
             <h3 className="mb-3 text-lg font-bold" style={{ color: "var(--gx-ink)" }}>
@@ -233,7 +270,7 @@ export function SelectorFotoPerfil({
             >
               <div
                 className="h-full w-full"
-                style={{ transform: `translate(${pan.x * 100}%, ${pan.y * 100}%) scale(${zoom})` }}
+                style={{ transform: `translate(${pan.x * 100}%, ${pan.y * 100}%) scale(${zoom})`, filter: filtroLuz(luz) }}
               >
                 {ajustando ? (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -256,20 +293,10 @@ export function SelectorFotoPerfil({
                 />
               )}
             </div>
-            <label className="mt-3 flex items-center gap-3 text-xs" style={{ color: "var(--gx-muted)" }}>
-              Zoom
-              <input
-                type="range"
-                min={1}
-                max={4}
-                step={0.05}
-                value={zoom}
-                onChange={(e) => cambiarZoom(Number(e.target.value))}
-                className="min-w-0 flex-1"
-                style={{ accentColor: "var(--gx-accent)" }}
-              />
-              {zoom.toFixed(1)}x
-            </label>
+            <Deslizador etiqueta="Zoom" min={1} max={4} valor={zoom} onCambio={cambiarZoom} formato={(v) => `${v.toFixed(1)}x`} />
+            <Deslizador etiqueta="Brillo" min={0.5} max={1.5} valor={luz.brillo} onCambio={(v) => setLuz({ ...luz, brillo: v })} />
+            <Deslizador etiqueta="Contraste" min={0.5} max={1.5} valor={luz.contraste} onCambio={(v) => setLuz({ ...luz, contraste: v })} />
+            <Deslizador etiqueta="Saturación" min={0} max={2} valor={luz.saturacion} onCambio={(v) => setLuz({ ...luz, saturacion: v })} />
             <p className="mt-2 text-center text-xs" style={{ color: "var(--gx-muted)" }}>
               {guiaCircular
                 ? "Acerca con el zoom y arrastra la imagen hasta centrar el rostro dentro del círculo."

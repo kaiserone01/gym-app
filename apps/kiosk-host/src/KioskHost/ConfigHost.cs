@@ -19,6 +19,15 @@ internal sealed class UbicacionVentana
         set => (X, Y, Ancho, Alto) = (value.X, value.Y, value.Width, value.Height);
     }
 
+    // Ubicación de la ventana (1024x768, recortada si el monitor es menor) centrada en el área de trabajo de
+    // un monitor concreto; al maximizarla en pantalla completa, Windows la lleva a ese monitor.
+    public static Rectangle CentradaEn(Rectangle area)
+    {
+        var ancho = Math.Min(1024, area.Width);
+        var alto = Math.Min(768, area.Height);
+        return new Rectangle(area.X + (area.Width - ancho) / 2, area.Y + (area.Height - alto) / 2, ancho, alto);
+    }
+
     // Si los límites guardados no caen en ningún monitor conectado (p. ej. se desconectó el segundo
     // monitor), centra la ventana en el principal.
     public static Rectangle Ajustar(Rectangle guardado, IReadOnlyCollection<Rectangle> areas, Rectangle principal)

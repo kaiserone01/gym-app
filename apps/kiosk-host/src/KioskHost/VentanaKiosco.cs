@@ -60,6 +60,16 @@ internal sealed class VentanaKiosco : Form
         EstadoCambiado?.Invoke();
     }
 
+    // Pantalla completa en el monitor elegido en el menú de la bandeja.
+    public void PantallaCompleta(Screen pantalla)
+    {
+        config.Ventana.Limites = UbicacionVentana.CentradaEn(pantalla.WorkingArea);
+        config.Ventana.Modo = "completa";
+        config.Guardar(rutaConfig);
+        AplicarModo();
+        EstadoCambiado?.Invoke();
+    }
+
     public void Revincular()
     {
         config.Dispositivo = null;

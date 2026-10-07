@@ -18,7 +18,11 @@ internal sealed class Bandeja : IDisposable
     {
         this.ventana = ventana;
 
-        pantallaCompleta.Click += (_, _) => ventana.CambiarModo("completa");
+        // Con varios monitores el ítem es un submenú (un clic en el padre solo lo despliega).
+        pantallaCompleta.Click += (_, _) =>
+        {
+            if (!pantallaCompleta.HasDropDownItems) ventana.CambiarModo("completa");
+        };
         modoVentana.Click += (_, _) => ventana.CambiarModo("ventana");
         iniciarConWindows.Checked = IniciaConWindows();
         iniciarConWindows.Click += (_, _) => CambiarInicioConWindows(iniciarConWindows.Checked);
@@ -52,6 +56,38 @@ internal sealed class Bandeja : IDisposable
         estado.Text = ventana.EstadoVinculacion;
         pantallaCompleta.Checked = ventana.Modo == "completa";
         modoVentana.Checked = ventana.Modo == "ventana";
+        ActualizarPantallas();
+    }
+
+    // Se reconstruye cada vez que se abre el menú, así detecta monitores conectados o desconectados.
+    private void ActualizarPantallas()
+    {
+        pantallaCompleta.DropDownItems.Clear();
+        var pantallas = Screen.AllScreens;
+        if (pantallas.Length < 2) return;
+
+        var actual = Screen.FromRectangle(ventana.Bounds).DeviceName;
+        foreach (var pantalla in pantallas.OrderBy(NumeroPantalla))
+        {
+            var elegida = pantalla;
+            var item = new ToolStripMenuItem(EtiquetaPantalla(pantalla))
+            {
+                Checked = ventana.Modo == "completa" && pantalla.DeviceName == actual,
+            };
+            item.Click += (_, _) => ventana.PantallaCompleta(elegida);
+            pantallaCompleta.DropDownItems.Add(item);
+        }
+    }
+
+    // Número que Windows muestra en Configuración > Pantalla (`\\.\DISPLAY2` -> 2).
+    private static int NumeroPantalla(Screen pantalla) =>
+        int.TryParse(new string(pantalla.DeviceName.Where(char.IsDigit).ToArray()), out var numero) ? numero : int.MaxValue;
+
+    private static string EtiquetaPantalla(Screen pantalla)
+    {
+        var numero = NumeroPantalla(pantalla);
+        var nombre = numero == int.MaxValue ? "Pantalla" : $"Pantalla {numero}";
+        return $"{nombre}{(pantalla.Primary ? " (principal)" : "")} — {pantalla.Bounds.Width}×{pantalla.Bounds.Height}";
     }
 
     // HKCU: no requiere permisos de administrador.

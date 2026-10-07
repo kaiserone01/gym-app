@@ -93,6 +93,12 @@ Estado · Mostrar kiosco · Pantalla completa · Modo ventana (configuración) �
 Abrir configuración · Recargar página · Iniciar con Windows · Salir.
 La X de la ventana y Alt+F4 solo la ocultan en la bandeja; para cerrar el kiosco: **Salir**.
 
+**Elegir el monitor:** con más de un monitor conectado, **Pantalla completa** es un submenú con una entrada por
+monitor (`Pantalla 1 (principal) — 1920×1080`, `Pantalla 2 — …`; la numeración es la de Windows en
+Configuración > Pantalla). Al elegir una, el kiosco se maximiza en ese monitor y lo recuerda al reiniciar. La
+lista se actualiza cada vez que se abre el menú, así que detecta monitores conectados o desconectados. Con un solo
+monitor es un ítem simple. Si el monitor guardado ya no está conectado, el kiosco pasa al principal.
+
 ## Limitaciones conocidas (no se usan drivers)
 - Las teclas del numpad **también** llegan a la app que tenga el foco de Windows (Raw Input es pasivo).
 - Las 3 teclas multimedia de la fila superior del K-601 (inicio, correo, calculadora) las ejecuta Windows:
@@ -114,4 +120,5 @@ La X de la ventana y Alt+F4 solo la ocultan en la bandeja; para cerrar el kiosco
 10. Abrir el exe por segunda vez trae al frente la ventana existente, también si estaba oculta en la bandeja.
 11. "Abrir configuración" lleva a `/config` y, tras guardar, vuelve al kiosco.
 12. El exe publicado, copiado solo a una carpeta limpia, arranca.
-13. Truncar a mano `kiosk-host.json` (dejarlo como JSON inválido) y abrir el kiosco: arranca con valores por defecto y avisa; borrar el archivo y volver a vincular lo recupera.
+13. Con dos monitores, **Pantalla completa** muestra "Pantalla 1" y "Pantalla 2"; elegir cada una maximiza el kiosco en ese monitor, la entrada actual aparece marcada y se recuerda al reiniciar. Desconectar el segundo monitor y reiniciar lleva el kiosco al principal.
+14. Truncar a mano `kiosk-host.json` (dejarlo como JSON inválido) y abrir el kiosco: arranca con valores por defecto y avisa; borrar el archivo y volver a vincular lo recupera.

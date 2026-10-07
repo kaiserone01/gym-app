@@ -174,4 +174,35 @@ public class UbicacionVentanaTests
     {
         Assert.Equal(new Rectangle(100, 100, 1024, 768), UbicacionVentana.Ajustar(new Rectangle(100, 100, 0, 0), [Principal], Principal));
     }
+
+    [Fact]
+    public void CentradaEn_centra_1024x768_en_el_monitor_elegido()
+    {
+        Assert.Equal(new Rectangle(448, 136, 1024, 768), UbicacionVentana.CentradaEn(Principal));
+        Assert.Equal(new Rectangle(2048, 108, 1024, 768), UbicacionVentana.CentradaEn(Segundo));
+    }
+
+    // Un monitor a la izquierda o arriba del principal tiene coordenadas negativas.
+    [Fact]
+    public void CentradaEn_respeta_monitores_con_coordenadas_negativas()
+    {
+        var izquierda = new Rectangle(-1366, 0, 1366, 728);
+        Assert.Equal(new Rectangle(-1195, 0, 1024, 728), UbicacionVentana.CentradaEn(izquierda));
+    }
+
+    [Fact]
+    public void CentradaEn_no_se_sale_de_un_monitor_pequeno()
+    {
+        var pequeno = new Rectangle(0, 0, 800, 600);
+        Assert.Equal(pequeno, UbicacionVentana.CentradaEn(pequeno));
+    }
+
+    // La ventana centrada debe caer dentro de ese monitor y no en otro: Ajustar la deja tal cual.
+    [Fact]
+    public void CentradaEn_cae_dentro_del_monitor_elegido()
+    {
+        var ubicacion = UbicacionVentana.CentradaEn(Segundo);
+        Assert.True(Segundo.Contains(ubicacion));
+        Assert.Equal(ubicacion, UbicacionVentana.Ajustar(ubicacion, [Principal, Segundo], Principal));
+    }
 }

@@ -2,6 +2,11 @@
 @source "../../../packages/ui/**/*.{ts,tsx}";
 @import "../../../packages/ui/styles/marca-agua.css";
 
+/* Con la ficha del miembro en pantalla el logo de fondo se oculta: no debe asomar por detrás de la ficha. */
+.marca-agua-pagina.sin-logo::before {
+  opacity: 0;
+}
+
 body {
   font-family: Arial, Helvetica, sans-serif;
 }

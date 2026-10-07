@@ -23,6 +23,10 @@ const DURACION_FICHA_MS = 30_000;
 const CLASES_CAMPO_CEDULA = "w-full max-w-xl text-center text-5xl tracking-widest rounded-xl border-2 px-6 py-4";
 const ESTILO_CAMPO_CEDULA = { borderColor: "var(--gx-accent)", color: "var(--gx-ink)" };
 
+// Mensajes de estado sobre fondo sólido: el logo de fondo (marca-agua-completa) no debe cruzar el texto.
+const CLASES_MENSAJE = "max-w-3xl rounded-xl px-6 py-4 text-2xl";
+const ESTILO_MENSAJE = { background: "var(--gx-surface)" };
+
 export default function PaginaCheckIn() {
   const router = useRouter();
   const [apiKey, setApiKey] = useState<string | null>(null);
@@ -98,7 +102,7 @@ export default function PaginaCheckIn() {
 
   return (
     <main
-      className="marca-agua-pagina marca-agua-completa min-h-screen flex flex-col items-center gap-6 p-8 pt-10"
+      className={`marca-agua-pagina marca-agua-completa${estado.tipo === "resultado" ? " sin-logo" : ""} min-h-screen flex flex-col items-center gap-6 p-8 pt-10`}
       style={{ background: "var(--gx-ground)", color: "var(--gx-ink)" }}
     >
       {pendientes > 0 && (
@@ -126,17 +130,17 @@ export default function PaginaCheckIn() {
       </div>
 
       <div className="flex w-full flex-1 items-center justify-center text-center">
-        {estado.tipo === "procesando" && <p className="text-2xl" style={{ color: "var(--gx-muted)" }}>Verificando…</p>}
+        {estado.tipo === "procesando" && <p className={CLASES_MENSAJE} style={{ ...ESTILO_MENSAJE, color: "var(--gx-muted)" }}>Verificando…</p>}
 
         {estado.tipo === "resultado" && <AccessCard resultado={estado.resultado} hora={estado.hora} />}
 
         {estado.tipo === "pendiente" && (
-          <p className="text-2xl" style={{ color: "var(--gx-bad)" }}>
+          <p className={CLASES_MENSAJE} style={{ ...ESTILO_MENSAJE, color: "var(--gx-bad)" }}>
             Sin conexión — el check-in se guardó y se enviará solo cuando vuelva la red.
           </p>
         )}
 
-        {estado.tipo === "error" && <p className="text-2xl" style={{ color: "var(--gx-bad)" }}>{estado.mensaje}</p>}
+        {estado.tipo === "error" && <p className={CLASES_MENSAJE} style={{ ...ESTILO_MENSAJE, color: "var(--gx-bad)" }}>{estado.mensaje}</p>}
       </div>
     </main>
   );

@@ -8,7 +8,7 @@ import { CurrencyInput } from "@gym-app/ui/components/CurrencyInput";
 import { Card } from "@gym-app/ui/components/Card";
 import { Badge } from "@gym-app/ui/components/Badge";
 import { useFeedback } from "@gym-app/ui/components/FeedbackOverlay";
-import type { EstadoFormularioMiembro } from "./actions";
+import { actualizarFotoMiembroAction, type EstadoFormularioMiembro } from "./actions";
 import { SelectorMetodoPago } from "../pagos/SelectorMetodoPago";
 import { formatearBs } from "../tasaBcvFija";
 import { ProveedorCambiosSinGuardar } from "./ContextoCambiosSinGuardar";
@@ -303,6 +303,16 @@ export function FormularioMiembro({
     setFotoPreview(URL.createObjectURL(archivo));
   }
 
+  async function guardarAjusteFoto(archivo: File) {
+    if (!miembroId) return;
+    const datos = new FormData();
+    datos.set("foto", archivo);
+    const resultado = await actualizarFotoMiembroAction(miembroId, datos);
+    if (!resultado.fotoUrl) throw new Error(resultado.error);
+    if (fotoPreview?.startsWith("blob:")) URL.revokeObjectURL(fotoPreview);
+    setFotoPreview(resultado.fotoUrl);
+  }
+
   const idFormulario = "formulario-miembro";
   const [fechaVencimiento, setFechaVencimiento] = useState(valoresIniciales?.fechaVencimiento ?? "");
 
@@ -383,7 +393,7 @@ export function FormularioMiembro({
                 )}
               </div>
 
-              <SelectorFotoPerfil tieneFoto={!!fotoPreview} fotoActualUrl={fotoPreview} onCambio={manejarCambioFoto} />
+              <SelectorFotoPerfil tieneFoto={!!fotoPreview} fotoActualUrl={fotoPreview} alGuardarAjuste={esEdicion ? guardarAjusteFoto : undefined} onCambio={manejarCambioFoto} />
             </div>
 
             <Input

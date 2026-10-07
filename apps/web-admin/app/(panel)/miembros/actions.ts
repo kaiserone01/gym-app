@@ -263,6 +263,41 @@ export async function actualizarMiembroAction(
   redirect(conMensajeOk(`/miembros/${id}`, "Cambios guardados."));
 }
 
+// Guarda solo la foto (sin tocar el resto de la ficha) y devuelve su URL pública.
+// Lo usa "Ajustar encuadre" para persistir el recorte al instante.
+export async function actualizarFotoMiembroAction(
+  id: string,
+  formData: FormData
+): Promise<{ fotoUrl?: string; error?: string }> {
+  const sesion = await obtenerUsuarioDeSesionActual();
+  if (!sesion) redirect("/login");
+  const { usuario, sucursalActivaId } = sesion;
+
+  const fotoUrl = await guardarFoto(formData.get("foto"));
+  if (!fotoUrl) return { error: "No se recibió la foto." };
+
+  try {
+    await actualizarMiembro(
+      {
+        miembros: new PrismaMemberRepository(prisma),
+        planes: new PrismaPlanRepository(prisma),
+        suscripciones: new PrismaSuscripcionRepository(prisma),
+        sucursales: new PrismaSucursalRepository(prisma),
+      },
+      { organizacionId: usuario.organizacionId, id, sucursalActivaId, cambios: { fotoUrl } }
+    );
+  } catch (error) {
+    if (error instanceof MiembroNoEncontradoError || error instanceof MiembroFueraDeSucursalError) {
+      return { error: error.message };
+    }
+    throw error;
+  }
+
+  revalidatePath("/miembros");
+  revalidatePath(`/miembros/${id}`);
+  return { fotoUrl };
+}
+
 export async function darDeBajaAction(id: string): Promise<void> {
   const sesion = await obtenerUsuarioDeSesionActual();
   if (!sesion) redirect("/login");

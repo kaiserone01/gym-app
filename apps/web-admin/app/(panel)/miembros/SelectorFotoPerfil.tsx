@@ -52,6 +52,7 @@ function Deslizador({
 export function SelectorFotoPerfil({
   tieneFoto,
   fotoActualUrl,
+  alGuardarAjuste,
   onCambio,
   etiqueta = "Foto de perfil",
   guiaCircular = true,
@@ -60,6 +61,8 @@ export function SelectorFotoPerfil({
   tieneFoto: boolean;
   // Si se pasa, aparece "Ajustar encuadre" para recortar la foto ya existente.
   fotoActualUrl?: string | null;
+  // Si se pasa, "Ajustar encuadre" guarda el recorte en cuanto se aplica, sin esperar al "Guardar" del formulario.
+  alGuardarAjuste?: (archivo: File) => Promise<void>;
   onCambio: (archivo: File) => void;
   etiqueta?: string;
   // La guía circular ayuda a centrar un rostro; para productos no aplica.
@@ -163,13 +166,14 @@ export function SelectorFotoPerfil({
       const origen = fotoActualUrl.startsWith("blob:") ? fotoActualUrl : `/api/foto-proxy?url=${encodeURIComponent(fotoActualUrl)}`;
       const respuesta = await fetch(origen);
       if (!respuesta.ok) throw new Error();
-      await aplicar(await respuesta.blob());
+      await aplicar(await respuesta.blob(), alGuardarAjuste);
     } catch {
       setError("No se pudo cargar la foto para ajustarla.");
     }
   }
 
-  async function aplicar(fuente: Blob | HTMLVideoElement) {
+  // Con `guardarYa` el archivo se persiste al instante y no viaja en el formulario.
+  async function aplicar(fuente: Blob | HTMLVideoElement, guardarYa?: (archivo: File) => Promise<void>) {
     setProcesando(true);
     setError(null);
     try {
@@ -181,16 +185,20 @@ export function SelectorFotoPerfil({
         luz,
       };
       const archivo = await comprimirAvatar(fuente, recorte);
-      if (inputFotoRef.current) {
-        const transferencia = new DataTransfer();
-        transferencia.items.add(archivo);
-        inputFotoRef.current.files = transferencia.files;
+      if (guardarYa) {
+        await guardarYa(archivo);
+      } else {
+        if (inputFotoRef.current) {
+          const transferencia = new DataTransfer();
+          transferencia.items.add(archivo);
+          inputFotoRef.current.files = transferencia.files;
+        }
+        onCambio(archivo);
       }
-      onCambio(archivo);
       setCamaraAbierta(false);
       setAjustando(false);
     } catch {
-      setError("No se pudo procesar la imagen. Intenta con otra.");
+      setError(guardarYa ? "No se pudo guardar la foto. Intenta de nuevo." : "No se pudo procesar la imagen. Intenta con otra.");
     } finally {
       setProcesando(false);
     }

@@ -5,8 +5,9 @@ import { ISucursalRepository } from "../ports/ISucursalRepository";
 import { Miembro, CambiosMiembro } from "../entities/Miembro";
 import { prorratearVencimiento } from "./CalcularVencimientoPlan";
 import { MiembroFueraDeSucursalError } from "./ObtenerMiembro";
+import { CedulaDuplicadaError } from "./CrearMiembro";
 
-export { MiembroFueraDeSucursalError };
+export { MiembroFueraDeSucursalError, CedulaDuplicadaError };
 
 export class MiembroNoEncontradoError extends Error {
   constructor() {
@@ -43,6 +44,14 @@ export async function actualizarMiembro(
   if (antes.sucursalId !== null && antes.sucursalId !== input.sucursalActivaId) {
     const sucursal = await deps.sucursales.buscarPorId(input.organizacionId, antes.sucursalId);
     throw new MiembroFueraDeSucursalError(sucursal?.nombre ?? "otra sucursal");
+  }
+
+  // La cédula es única por organización: si cambia, no puede ser la de otro miembro.
+  if (input.cambios.cedula !== undefined && input.cambios.cedula !== antes.cedula) {
+    const existente = await deps.miembros.buscarPorOrganizacionYCedula(input.organizacionId, input.cambios.cedula);
+    if (existente && existente.id !== input.id) {
+      throw new CedulaDuplicadaError();
+    }
   }
 
   const cambiaDePlan =

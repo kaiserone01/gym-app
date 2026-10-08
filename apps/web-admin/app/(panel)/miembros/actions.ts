@@ -201,13 +201,14 @@ export async function actualizarMiembroAction(
   const { usuario, sucursalActivaId } = sesion;
 
   const nombre = formData.get("nombre")?.toString().trim();
+  const cedula = formData.get("cedula")?.toString().trim();
   const fechaInscripcionTexto = formData.get("fechaInscripcion")?.toString();
   const fechaVencimientoTexto = formData.get("fechaVencimiento")?.toString();
   const sucursalId = formData.get("sucursalId")?.toString();
   const precioPlan = Number(formData.get("precioPlan"));
 
-  if (!nombre || !fechaInscripcionTexto || !sucursalId || Number.isNaN(precioPlan)) {
-    return { error: "Nombre, fecha de inscripción, sede y precio del plan son requeridos." };
+  if (!nombre || !cedula || !fechaInscripcionTexto || !sucursalId || Number.isNaN(precioPlan)) {
+    return { error: "Nombre, cédula, fecha de inscripción, sede y precio del plan son requeridos." };
   }
 
   const planId = resolverPlanId(formData);
@@ -227,6 +228,7 @@ export async function actualizarMiembroAction(
         sucursalActivaId,
         cambios: {
           nombre,
+          cedula,
           sucursalId: resolverSucursalId(sucursalId),
           fechaInscripcion: new Date(`${fechaInscripcionTexto}T00:00:00`),
           celular: formData.get("celular")?.toString() || null,
@@ -244,6 +246,7 @@ export async function actualizarMiembroAction(
     );
   } catch (error) {
     if (
+      error instanceof CedulaDuplicadaError ||
       error instanceof AjusteFechaNoDisponibleError ||
       error instanceof MiembroNoEncontradoError ||
       error instanceof MiembroFueraDeSucursalError ||

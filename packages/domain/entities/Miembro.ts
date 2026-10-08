@@ -36,6 +36,7 @@ export interface DatosNuevoMiembro {
 
 export interface CambiosMiembro {
   nombre?: string;
+  cedula?: string;
   sucursalId?: string | null;
   fechaInscripcion?: Date | null;
   fechaNacimiento?: Date | null;

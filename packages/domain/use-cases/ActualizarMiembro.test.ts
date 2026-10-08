@@ -1,13 +1,14 @@
 import { describe, expect, test } from "vitest";
-import { actualizarMiembro, AjusteFechaNoDisponibleError } from "./ActualizarMiembro";
+import { actualizarMiembro, AjusteFechaNoDisponibleError, CedulaDuplicadaError } from "./ActualizarMiembro";
 import type { CambiosMiembro } from "../entities/Miembro";
 
-function crearDeps(ajustarFecha = true) {
+function crearDeps(ajustarFecha = true, cedulaOcupadaPor: string | null = null) {
   const cambiosGuardados: CambiosMiembro[] = [];
   const ciclos: { inicio: Date; fin: Date }[] = [];
   const deps = {
     miembros: {
-      buscarPorId: async () => ({ id: "m1", sucursalId: null, planId: "p1", ajustarFecha }),
+      buscarPorId: async () => ({ id: "m1", sucursalId: null, planId: "p1", cedula: "111", ajustarFecha }),
+      buscarPorOrganizacionYCedula: async () => (cedulaOcupadaPor ? { id: cedulaOcupadaPor } : null),
       actualizar: async (_org: string, _id: string, cambios: CambiosMiembro) => {
         cambiosGuardados.push(cambios);
         return { id: "m1" };
@@ -50,5 +51,25 @@ describe("actualizarMiembro — ajuste manual del vencimiento", () => {
     await actualizarMiembro(deps, { ...base, cambios: { nombre: "Otro" } });
     expect(cambiosGuardados[0]).toEqual({ nombre: "Otro" });
     expect(ciclos).toEqual([]);
+  });
+});
+
+describe("actualizarMiembro — cédula", () => {
+  test("permite cambiar la cédula si nadie más la tiene", async () => {
+    const { deps, cambiosGuardados } = crearDeps();
+    await actualizarMiembro(deps, { ...base, cambios: { cedula: "222" } });
+    expect(cambiosGuardados[0]).toEqual({ cedula: "222" });
+  });
+
+  test("rechaza una cédula que ya tiene otro miembro", async () => {
+    const { deps, cambiosGuardados } = crearDeps(true, "otro");
+    await expect(actualizarMiembro(deps, { ...base, cambios: { cedula: "222" } })).rejects.toBeInstanceOf(CedulaDuplicadaError);
+    expect(cambiosGuardados).toEqual([]);
+  });
+
+  test("guardar con la misma cédula no consulta duplicados", async () => {
+    const { deps, cambiosGuardados } = crearDeps(true, "otro");
+    await actualizarMiembro(deps, { ...base, cambios: { cedula: "111" } });
+    expect(cambiosGuardados).toHaveLength(1);
   });
 });

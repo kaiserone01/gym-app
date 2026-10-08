@@ -415,7 +415,6 @@ export function FormularioMiembro({
                 name="cedula"
                 label="Cédula"
                 required
-                disabled={esEdicion}
                 value={cedula}
                 onChange={(e) => setCedula(e.target.value)}
               />

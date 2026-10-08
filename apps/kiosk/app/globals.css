@@ -10,3 +10,99 @@
 body {
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Flip 3D de la ficha: dos caras en la misma celda; cada giro suma 180°. Solo transform. */
+.flip-escena {
+  perspective: 1600px;
+}
+.flip-tarjeta {
+  display: grid;
+  transform-style: preserve-3d;
+  transition: transform 700ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.flip-cara {
+  grid-area: 1 / 1;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+.flip-cara-trasera {
+  transform: rotateY(180deg);
+}
+
+/* Barra de cuenta regresiva de la ficha real. */
+.barra-cuenta {
+  transform-origin: left;
+  animation-name: cuenta-regresiva;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+@keyframes cuenta-regresiva {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
+
+/* Cambio de frase del reposo (la duración de la salida debe coincidir con SALIDA_MS en useFraseRotativa). */
+.frase-entrada {
+  animation: frase-entrada 300ms ease-out;
+}
+.frase-salida {
+  opacity: 0;
+  transform: translateY(-0.75rem);
+  transition: opacity 300ms ease-in, transform 300ms ease-in;
+}
+@keyframes frase-entrada {
+  from {
+    opacity: 0;
+    transform: translateY(0.75rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Destello radial sobre el video al validar una cédula (verde, ámbar o rojo). */
+.destello {
+  position: fixed;
+  inset: 0;
+  z-index: -10;
+  pointer-events: none;
+  opacity: 0;
+  animation: destello 1200ms ease-out;
+}
+.destello-verde {
+  background: radial-gradient(circle at center, rgba(147, 232, 58, 0.55) 0%, transparent 65%);
+}
+.destello-ambar {
+  background: radial-gradient(circle at center, rgba(245, 166, 35, 0.55) 0%, transparent 65%);
+}
+.destello-rojo {
+  background: radial-gradient(circle at center, rgba(255, 59, 78, 0.55) 0%, transparent 65%);
+}
+@keyframes destello {
+  0% {
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flip-tarjeta {
+    transition-duration: 1ms;
+  }
+  .frase-entrada {
+    animation: none;
+  }
+  .destello {
+    animation: none;
+  }
+}

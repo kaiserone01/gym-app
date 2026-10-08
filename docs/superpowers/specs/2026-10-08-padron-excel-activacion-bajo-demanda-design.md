@@ -10,7 +10,7 @@ La migración del 2026-10-03 solo cargó a quien vencía hace ≤90 días (216 d
 
 ## 2. Alcance
 
-Incluye: tabla-padrón, importador CLI, caso de uso de activación, enganche en kiosco y panel, menú "Excel" de consulta, y reemplazo del aviso "Ajustar fecha o pago" por "Por regularizar".
+Incluye: tabla-padrón, importador CLI, caso de uso de activación, enganche en kiosco y panel, menú "Excel" de consulta y edición de filas del padrón, y reemplazo del aviso "Ajustar fecha o pago" por "Por regularizar".
 
 No incluye: subir el Excel desde el panel, sincronizar cambios del Excel hacia miembros ya activados, activar desde otras sedes, recuperar filas sin cédula o con cédula repetida (se registran a mano como miembros nuevos).
 
@@ -28,6 +28,7 @@ Espejo fiel del Excel, un registro por cédula. Clave única `(organizacionId, c
 | Columnas crudas | `nombre`, `status`, `fNacimiento`, `celular`, `fVenc`, `fechaPago`, `plan` — como texto (`String?`), tal cual vienen. Es lo que muestra el menú "Excel" |
 | Normalizadas | `fechaVencimiento DateTime?`, `fechaUltimoPago DateTime?`, `fechaNacimiento DateTime?`, `planNombre String?`, `precioPlanUSD Decimal?` — calculadas con `normalizarFila`/`clasificarFila`; `null` si no hay dato confiable |
 | `archivoOrigen`, `importadoAt` | qué Excel y cuándo se cargó por última vez |
+| `camposEditados String[]`, `editadoAt`, `editadoPor` | ediciones manuales hechas desde el menú "Excel" (§7): qué columnas crudas se tocaron, cuándo y quién (nombre del usuario). Vacío si la fila es tal cual el Excel |
 
 No guarda un enlace a `Miembro`: "ya activado" se calcula por join de cédula (el padrón nunca se sincroniza con `Miembro`).
 
@@ -44,7 +45,7 @@ Renombrado mecánico en ~20 archivos (domain, infra, web-admin, `marcarAjustarFe
 - Argumentos: `--archivo=<ruta>` (por defecto el `*_hoy.xlsm`), `--org=<slug>`, `--sucursal="<nombre>"` (Sede Principal). Aborta si alguno no existe.
 - Reutiliza `leerExcel.ts`, `normalizarFila.ts` y `PLANES_REALES`/resolución de plan de `clasificarFila.ts`. Se **elimina** de ese flujo el corte de 90 días y la creación de Plan/Suscripción/Pago.
 - Reglas de elegibilidad (puras, con tests): se excluye la fila si la cédula está vacía o no contiene dígitos (`S/C`, `G`), o si la cédula (recortada) aparece en más de una fila (se excluyen **todas** las repetidas). Cédulas con letra y dígitos (`E-3880506`) entran.
-- Dry-run por defecto: imprime y escribe un reporte JSON con altas, cambios (campo viejo → nuevo), sin cambios y excluidas por motivo. `--confirm` hace upsert por `(organizacionId, cedula)`, una transacción por lote; el Excel más nuevo sobrescribe. Es idempotente.
+- Dry-run por defecto: imprime y escribe un reporte JSON con altas, cambios (campo viejo → nuevo), sin cambios y excluidas por motivo. `--confirm` hace upsert por `(organizacionId, cedula)`; es idempotente. El archivo de trabajo es único (`DATA ADRENALINA_hoy.xlsm`) y puede reimportarse varias veces mientras se editan filas desde el menú: **los campos editados a mano (`camposEditados`) se respetan** (se conserva el valor del padrón y se recalculan las columnas normalizadas), y el reporte los lista como "conflicto" (valor del Excel vs. valor editado) para que se decida a mano. Los campos no editados se actualizan con el Excel.
 - No toca `Miembro`, `Plan`, `Suscripcion` ni `Pago`.
 - Se retiran `migrarExcelAdrenalina.ts` y su configuración (`mapeo-plan.json`, `reglas-cedula.json`) en el plan de implementación, una vez reutilizado lo necesario; `limpiarMigracionExcelPrueba.ts` se conserva solo si sigue siendo útil.
 
@@ -68,9 +69,13 @@ Si el padrón no trae vencimiento, el miembro se crea sin `fechaVencimiento` y e
 
 **Panel.** En `/miembros`, al buscar una cédula sin resultado y con la sucursal activa = Sede Principal, se ofrece "Activar desde Excel" (misma función, server action nueva); al terminar lleva a la ficha, con el aviso "Por regularizar". Requiere permiso `MIEMBROS`/`CREAR`.
 
-## 7. Menú "Excel" (solo lectura)
+## 7. Menú "Excel" (consulta y edición)
 
-Ruta `apps/web-admin/app/(panel)/excel`, entrada en `layout.tsx` y `NavegacionMobile.tsx`, visible solo si la sucursal activa es la del padrón; permiso `MIEMBROS`/`VER` (sin enum nuevo). Tabla paginada en el servidor con **todas las columnas crudas** más "N° fila" y "Estado en el sistema" (no es miembro / ya es miembro → enlace a la ficha). Búsqueda por cédula (coincidencia parcial) y filtros por nombre, status, plan, rango de vencimiento y "estado en el sistema". Sin edición ni activación desde aquí.
+Ruta `apps/web-admin/app/(panel)/excel`, entrada en `layout.tsx` y `NavegacionMobile.tsx`, visible solo si la sucursal activa es la del padrón; permiso `MIEMBROS`/`VER` (sin enum nuevo). Tabla paginada en el servidor con **todas las columnas crudas** más "N° fila" y "Estado en el sistema" (no es miembro / ya es miembro → enlace a la ficha). Búsqueda por cédula (coincidencia parcial) y filtros por nombre, status, plan, rango de vencimiento y "estado en el sistema". Sin activación desde aquí.
+
+**Visor del estado.** La última columna dice "No es miembro" o "Ya es miembro". Si la cédula ya existe como `Miembro`, la fila queda **bloqueada** (solo lectura) con el aviso "Ajusta sus datos en la ficha del miembro" y un enlace a la ficha: el padrón nunca modifica `Miembro` y la ficha es la única fuente de verdad de quien ya fue activado.
+
+**Edición (microajustes en tiempo real).** En las filas de quien aún no es miembro, "Editar" convierte la fila en campos editables y "Guardar" actualiza solo el padrón, para corregir casos puntuales sin reimportar. Editables: nombre, status, f. nacimiento, celular, f. vencimiento, fecha de pago y plan; la cédula no (es la clave). `f. nacimiento` y `f. vencimiento` aceptan vacío, `aaaa-mm-dd` o `dd-mm-aaaa` (cualquier otra cosa se rechaza, porque editar es la oportunidad de corregir una fecha mal escrita); `fecha de pago` admite texto libre (en el Excel a veces es una nota). Al guardar se recalculan las columnas normalizadas (vencimiento, último pago, nacimiento, plan y precio) con la misma lógica del importador, y se registra `camposEditados`/`editadoAt`/`editadoPor`. Las filas editadas llevan una marca "Editado" con los campos tocados. Requiere permiso `MIEMBROS`/`EDITAR`. Una edición vale para la activación futura (la usa tal cual el kiosco y el panel) y sobrevive a reimportar el Excel (§4).
 
 ## 8. Qué pasa con lo existente
 
@@ -83,6 +88,7 @@ Ruta `apps/web-admin/app/(panel)/excel`, entrada en `layout.tsx` y `NavegacionMo
 - Una cédula tecleada en el kiosco crea un miembro sin verificar identidad; el Excel puede estar desactualizado y el kiosco puede permitir acceso con un vencimiento erróneo. Mitigación: `porRegularizar` visible en recepción y panel.
 - ~39 filas (sin cédula/repetidas) no se pueden activar desde el padrón.
 - Cédulas alfanuméricas solo se activan desde el panel (el numpad del kiosco solo teclea dígitos).
+- Las ediciones manuales del padrón y el Excel pueden divergir; mientras el archivo siga cambiando habrá que reimportar y revisar los conflictos del reporte. Un editor con permiso `MIEMBROS`/`EDITAR` puede introducir un dato erróneo que el kiosco usará para decidir acceso hasta que el miembro se regularice.
 
 ## 10. Pruebas y despliegue
 
@@ -95,4 +101,5 @@ Ruta `apps/web-admin/app/(panel)/excel`, entrada en `layout.tsx` y `NavegacionMo
 
 1. Foto y nacimiento faltantes no bloquean apagar "Por regularizar" (el brief inicial los incluía como parte de "completar").
 2. Renombrar la columna `ajustarFecha` → `porRegularizar` (alternativa más barata: dejar el nombre de columna y cambiar solo los textos de UI).
-3. Permiso del menú "Excel" reutiliza `MIEMBROS`/`VER`.
+3. Permiso del menú "Excel" reutiliza `MIEMBROS`/`VER` (ver) y `MIEMBROS`/`EDITAR` (editar filas).
+4. Supuesto: al reimportar el mismo archivo, lo editado a mano **se respeta** y se reporta como conflicto (la alternativa, que el Excel pise las ediciones, perdería los microajustes).

@@ -1,0 +1,96 @@
+name: Compilar APK del kiosco
+
+# El repositorio es público: un artefacto lo puede descargar cualquiera. Un APK con la clave de la sucursal
+# dentro SOLO se publica cifrado (7-Zip AES-256). Sin clave (prueba) se publica el APK genérico.
+on:
+  workflow_dispatch:
+    inputs:
+      sucursal:
+        description: "Nombre corto de la sucursal (minúsculas, números y _). Su clave es el secreto KIOSCO_CLAVE_<SUCURSAL>"
+        required: true
+        default: principal
+      kiosco_url:
+        description: "URL del kiosco"
+        required: true
+        default: https://kiosco.zipnegocios.com
+
+permissions:
+  contents: read
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    env:
+      SUCURSAL: ${{ inputs.sucursal }}
+      KIOSCO_URL: ${{ inputs.kiosco_url }}
+      KIOSCO_CLAVE: ${{ secrets[format('KIOSCO_CLAVE_{0}', inputs.sucursal)] }}
+      APK_PASSWORD: ${{ secrets.KIOSCO_APK_PASSWORD }}
+    steps:
+      - name: Validar la sucursal
+        run: |
+          if ! [[ "$SUCURSAL" =~ ^[a-z0-9_]+$ ]]; then
+            echo "Sucursal inválida: usa solo minúsculas, números y _"
+            exit 1
+          fi
+
+      - name: Enmascarar la clave en los logs
+        run: |
+          if [ -n "$KIOSCO_CLAVE" ]; then echo "::add-mask::$KIOSCO_CLAVE"; fi
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/kiosk-tv/capacitor/package-lock.json
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Instalar dependencias de Capacitor
+        working-directory: apps/kiosk-tv/capacitor
+        run: npm ci
+
+      - name: Probar los scripts
+        working-directory: apps/kiosk-tv/capacitor
+        run: npm test
+
+      - name: Preparar y sincronizar (inyecta la URL y la clave)
+        working-directory: apps/kiosk-tv/capacitor
+        run: npm run sync
+
+      - name: Compilar el APK de debug
+        working-directory: apps/kiosk-tv/capacitor/android
+        run: ./gradlew assembleDebug --no-daemon
+
+      - name: Preparar el archivo a publicar
+        working-directory: apps/kiosk-tv/capacitor
+        run: |
+          mkdir -p salida
+          cp android/app/build/outputs/apk/debug/app-debug.apk "salida/kiosco-${SUCURSAL}.apk"
+          if [ -n "$KIOSCO_CLAVE" ]; then
+            if [ -z "$APK_PASSWORD" ]; then
+              echo "Falta el secreto KIOSCO_APK_PASSWORD: no se publica un APK con clave sin cifrar."
+              exit 1
+            fi
+            sudo apt-get install -y -q p7zip-full
+            (cd salida && 7z a -t7z -mhe=on -p"$APK_PASSWORD" "kiosco-${SUCURSAL}.7z" "kiosco-${SUCURSAL}.apk" > /dev/null && rm "kiosco-${SUCURSAL}.apk")
+            # Guarda de seguridad: con clave no puede quedar ningún .apk sin cifrar para subir.
+            if ls salida/*.apk > /dev/null 2>&1; then
+              echo "Quedó un APK sin cifrar en salida/: se aborta."
+              exit 1
+            fi
+          fi
+          ls -l salida
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kiosco-${{ inputs.sucursal }}
+          path: apps/kiosk-tv/capacitor/salida/*
+          retention-days: 7
+          if-no-files-found: error

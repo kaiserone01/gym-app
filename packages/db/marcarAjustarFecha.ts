@@ -1,5 +1,5 @@
 // Función de UN SOLO USO: marca a todos los miembros de la migración del Excel
-// (organización de prueba "migracion-adrenalina-test") con el aviso "Ajustar fecha",
+// (organización de prueba "migracion-adrenalina-test") con el aviso "Por regularizar",
 // porque ninguna fecha de vencimiento migrada es la real. El aviso se apaga solo
 // cuando el socio ajusta la fecha en la ficha o se registra un pago.
 // (Las migraciones nuevas ya marcan a cada miembro al crearlo — ver migrarExcelAdrenalina.ts.)
@@ -23,10 +23,10 @@ async function main() {
     return;
   }
   const { count } = await prisma.miembro.updateMany({
-    where: { organizacionId: organizacion.id, ajustarFecha: false },
-    data: { ajustarFecha: true },
+    where: { organizacionId: organizacion.id, porRegularizar: false },
+    data: { porRegularizar: true },
   });
-  console.log(`✅ ${count} miembros marcados con "Ajustar fecha" en "${SLUG_ORGANIZACION_PRUEBA}".`);
+  console.log(`✅ ${count} miembros marcados con "Por regularizar" en "${SLUG_ORGANIZACION_PRUEBA}".`);
 }
 
 main()

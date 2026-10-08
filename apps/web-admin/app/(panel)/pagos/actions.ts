@@ -89,7 +89,7 @@ export async function registrarPagoAction(
   const origen = formData.get("origen")?.toString();
   // Casilla "Cobrar también los productos pendientes" del wizard de Caja.
   const incluirDeudas = formData.get("incluirDeudas")?.toString() === "1";
-  // Fecha del pago (yyyy-mm-dd), solo con el aviso "Ajustar fecha o pago": un pago con fecha pasada regulariza
+  // Fecha del pago (yyyy-mm-dd), solo con el aviso "Por regularizar": un pago con fecha pasada regulariza
   // el ciclo. Vacía = hoy. Se toma al mediodía para no caer en el día anterior por zona horaria.
   const fechaPagoTexto = formData.get("fechaPago")?.toString();
   // Sede elegida en el selector "Sede del pago" (ver SelectorMetodoPago);

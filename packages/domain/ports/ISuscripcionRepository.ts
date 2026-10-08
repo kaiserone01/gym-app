@@ -7,7 +7,7 @@ export interface ISuscripcionRepository {
   // usado para el recálculo masivo al cambiar frecuencia/entrenador del Plan.
   listarActivasVigentesPorPlan(planId: string, fecha: Date): Promise<Suscripcion[]>;
   extenderFin(id: string, nuevoFin: Date): Promise<Suscripcion>;
-  // Regularización de fechas (aviso "Ajustar fecha o pago"): fija inicio/fin de la Suscripcion más reciente
+  // Regularización de fechas (aviso "Por regularizar"): fija inicio/fin de la Suscripcion más reciente
   // del miembro (y la deja ACTIVA), opcionalmente con otro plan. Devuelve false si el miembro no tiene ninguna.
   ajustarCicloMasReciente(miembroId: string, inicio: Date, fin: Date, planId?: string): Promise<boolean>;
   crear(datos: { miembroId: string; planId: string; inicio: Date; fin: Date; fechaLimiteAbono: Date | null }): Promise<Suscripcion>;

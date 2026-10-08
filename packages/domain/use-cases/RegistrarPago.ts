@@ -76,10 +76,10 @@ export class AbonoMenorAlMinimoError extends Error {
   }
 }
 
-// Pago con fecha pasada fuera de lo permitido: solo con el aviso "Ajustar fecha o pago" activo.
+// Pago con fecha pasada fuera de lo permitido: solo con el aviso "Por regularizar" activo.
 export class PagoRetroactivoNoDisponibleError extends Error {
   constructor() {
-    super("Solo se puede registrar un pago con fecha pasada a un miembro con el aviso \"Ajustar fecha o pago\".");
+    super("Solo se puede registrar un pago con fecha pasada a un miembro con el aviso \"Por regularizar\".");
   }
 }
 
@@ -135,7 +135,7 @@ export interface DatosRegistrarPago {
   sucursalId: string;
   registradoPorId: string;
   rolUsuario: RolUsuario;
-  // Pago con fecha pasada (solo con el aviso "Ajustar fecha o pago"). Si es de hoy, se ignora.
+  // Pago con fecha pasada (solo con el aviso "Por regularizar"). Si es de hoy, se ignora.
   fechaPago?: Date;
 }
 
@@ -344,15 +344,15 @@ export async function registrarPago(deps: RegistrarPagoDeps, input: DatosRegistr
   return pagosCreados;
 }
 
-// Pago con fecha pasada: regulariza el ciclo del último pago de un miembro migrado (aviso "Ajustar fecha o
-// pago"). Mismo flujo de siempre (líneas, métodos, monto) con una sola variación: la fecha. No se enlaza a
+// Pago con fecha pasada: regulariza el ciclo del último pago de un miembro migrado (aviso "Por
+// regularizar"). Mismo flujo de siempre (líneas, métodos, monto) con una sola variación: la fecha. No se enlaza a
 // ningún turno (no entra en arqueos), la tasa de las líneas en Bs es la BCV de esa fecha y el ciclo nuevo
 // reemplaza al anterior: vencimiento = fecha del pago + días del plan. Apaga el aviso.
 async function registrarPagoRetroactivo(
   deps: RegistrarPagoDeps,
   input: DatosRegistrarPago,
   ctx: {
-    miembro: { id: string; ajustarFecha: boolean };
+    miembro: { id: string; porRegularizar: boolean };
     plan: { diasCiclo: number; precioUSD: number };
     huboCambioDePlan: boolean;
     precioObjetivo: number;
@@ -363,7 +363,7 @@ async function registrarPagoRetroactivo(
     ahora: Date;
   }
 ): Promise<Pago[]> {
-  if (!ctx.miembro.ajustarFecha) throw new PagoRetroactivoNoDisponibleError();
+  if (!ctx.miembro.porRegularizar) throw new PagoRetroactivoNoDisponibleError();
 
   const limite = new Date(ctx.ahora);
   limite.setDate(limite.getDate() - MAX_DIAS_ATRAS_PAGO_RETROACTIVO);

@@ -155,7 +155,7 @@ model Miembro {
   fechaUltimoPago  DateTime?
   fechaVencimiento DateTime?
   activo           Boolean       @default(true) // baja lógica del miembro
-  ajustarFecha     Boolean       @default(false) // fecha de vencimiento migrada y no confiable: el socio debe ajustarla a mano (badge "Ajustar fecha"); se limpia al ajustarla o al registrar un pago
+  porRegularizar   Boolean       @default(false) // los datos de fecha/pago vienen de una fuente externa (Excel/padrón) sin verificar: el socio debe ajustar el vencimiento o registrar un pago (badge "Por regularizar"); se limpia al ajustar la fecha o al registrar un pago
   genero           Genero? // solo para saludar en el kiosco ("Bienvenido" / "Bienvenida"); null = no definido
   createdAt        DateTime      @default(now())
 

@@ -23,7 +23,7 @@ export class PlanNoEncontradoError extends Error {
 
 export class AjusteFechaNoDisponibleError extends Error {
   constructor() {
-    super("Solo se puede ajustar la fecha de vencimiento a un miembro con el aviso \"Ajustar fecha o pago\".");
+    super("Solo se puede ajustar la fecha de vencimiento a un miembro con el aviso \"Por regularizar\".");
   }
 }
 
@@ -57,13 +57,13 @@ export async function actualizarMiembro(
   const cambiaDePlan =
     input.cambios.planId !== undefined && input.cambios.planId !== null && input.cambios.planId !== antes.planId;
 
-  // Ajuste manual del vencimiento (solo con el aviso "Ajustar fecha o pago"): se mantiene en sync con la
+  // Ajuste manual del vencimiento (solo con el aviso "Por regularizar"): se mantiene en sync con la
   // Suscripcion (nunca por separado) y apaga el aviso.
   const nuevoVencimiento = input.cambios.fechaVencimiento ?? null;
-  if (nuevoVencimiento && !antes.ajustarFecha) {
+  if (nuevoVencimiento && !antes.porRegularizar) {
     throw new AjusteFechaNoDisponibleError();
   }
-  const cambios = nuevoVencimiento ? { ...input.cambios, ajustarFecha: false } : input.cambios;
+  const cambios = nuevoVencimiento ? { ...input.cambios, porRegularizar: false } : input.cambios;
 
   const actualizado = await deps.miembros.actualizar(input.organizacionId, input.id, cambios);
   if (!actualizado) {

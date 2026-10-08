@@ -2,12 +2,12 @@ import { describe, expect, test } from "vitest";
 import { actualizarMiembro, AjusteFechaNoDisponibleError, CedulaDuplicadaError } from "./ActualizarMiembro";
 import type { CambiosMiembro } from "../entities/Miembro";
 
-function crearDeps(ajustarFecha = true, cedulaOcupadaPor: string | null = null) {
+function crearDeps(porRegularizar = true, cedulaOcupadaPor: string | null = null) {
   const cambiosGuardados: CambiosMiembro[] = [];
   const ciclos: { inicio: Date; fin: Date }[] = [];
   const deps = {
     miembros: {
-      buscarPorId: async () => ({ id: "m1", sucursalId: null, planId: "p1", cedula: "111", ajustarFecha, genero: null }),
+      buscarPorId: async () => ({ id: "m1", sucursalId: null, planId: "p1", cedula: "111", porRegularizar, genero: null }),
       buscarPorOrganizacionYCedula: async () => (cedulaOcupadaPor ? { id: cedulaOcupadaPor } : null),
       actualizar: async (_org: string, _id: string, cambios: CambiosMiembro) => {
         cambiosGuardados.push(cambios);
@@ -34,7 +34,7 @@ describe("actualizarMiembro — ajuste manual del vencimiento", () => {
     const { deps, cambiosGuardados, ciclos } = crearDeps();
     const nueva = new Date("2026-11-15T00:00:00.000Z");
     await actualizarMiembro(deps, { ...base, cambios: { fechaVencimiento: nueva } });
-    expect(cambiosGuardados[0]).toEqual({ fechaVencimiento: nueva, ajustarFecha: false });
+    expect(cambiosGuardados[0]).toEqual({ fechaVencimiento: nueva, porRegularizar: false });
     expect(ciclos).toEqual([{ inicio: new Date(nueva.getTime() - 30 * DIA), fin: nueva }]);
   });
 

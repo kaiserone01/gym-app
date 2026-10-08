@@ -435,7 +435,7 @@ function ContenidoPaso3({
   metodosPago,
   tasaActual: tasaVigente,
   deudaMiembro,
-  ajustarFecha,
+  porRegularizar,
   onVolver,
   onPagoRegistrado,
 }: {
@@ -469,8 +469,8 @@ function ContenidoPaso3({
   tasaActual: number | null;
   // Productos fiados pendientes de este miembro en la sucursal (null = no debe nada).
   deudaMiembro: GrupoDeudasMiembro | null;
-  // El miembro tiene el aviso "Ajustar fecha o pago": se puede fechar el pago hacia atrás.
-  ajustarFecha: boolean;
+  // El miembro tiene el aviso "Por regularizar": se puede fechar el pago hacia atrás.
+  porRegularizar: boolean;
   onVolver: () => void;
   onPagoRegistrado: (fechaFinCicloISO: string | undefined) => void;
 }) {
@@ -479,7 +479,7 @@ function ContenidoPaso3({
   const [fechaPago, setFechaPago] = useState("");
   const hoyISO = fechaALocalISO(new Date());
   const minFechaISO = fechaALocalISO(new Date(Date.now() - MAX_DIAS_ATRAS_PAGO_RETROACTIVO * 24 * 60 * 60 * 1000));
-  const esFechaPasada = ajustarFecha && fechaPago !== "" && fechaPago < hoyISO;
+  const esFechaPasada = porRegularizar && fechaPago !== "" && fechaPago < hoyISO;
   const [tasaDelDia, setTasaDelDia] = useState<number | null>(null);
   useEffect(() => {
     setTasaDelDia(null);
@@ -637,10 +637,10 @@ function ContenidoPaso3({
       />
 
       <div className="flex min-w-0 flex-col gap-4 lg:flex-1 lg:overflow-y-auto lg:pr-2">
-      {ajustarFecha && (
+      {porRegularizar && (
         <div className="flex flex-col gap-2 rounded-xl border p-4" style={{ borderColor: "var(--gx-warn)" }}>
           <label className="flex flex-col gap-1.5 text-sm" style={{ color: "var(--gx-muted)" }}>
-            Fecha del pago (aviso "Ajustar fecha o pago")
+            Fecha del pago (aviso "Por regularizar")
             <input
               type="date"
               value={fechaPago}
@@ -1233,7 +1233,7 @@ export function ModalRegistrarPagoCaja({
             modalidad={modalidadElegida}
             metodosPago={metodosPago}
             deudaMiembro={deudas.find((g) => g.miembroId === miembroElegido.id) ?? null}
-            ajustarFecha={miembroElegido.ajustarFecha}
+            porRegularizar={miembroElegido.porRegularizar}
             tasaActual={tasaActual}
             onVolver={() => setPaso(2)}
             onPagoRegistrado={(fechaFinCicloISO) => {

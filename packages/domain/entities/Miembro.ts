@@ -24,7 +24,7 @@ export interface Miembro {
   fechaUltimoPago: Date | null;
   fechaVencimiento: Date | null;
   activo: boolean;
-  ajustarFecha: boolean; // fecha de vencimiento no confiable (migración): el socio debe ajustarla o registrar un pago con la fecha real
+  porRegularizar: boolean; // fecha de vencimiento no confiable (migración): el socio debe ajustarla o registrar un pago con la fecha real
   genero: Genero | null; // para el saludo del kiosco; null = no definido
   createdAt: Date;
 }
@@ -58,6 +58,6 @@ export interface CambiosMiembro {
   saldoAFavorUSD?: number;
   fechaVencimiento?: Date | null;
   activo?: boolean;
-  ajustarFecha?: boolean;
+  porRegularizar?: boolean;
   genero?: Genero | null;
 }

@@ -57,7 +57,7 @@ export class PrismaCheckInRepository implements ICheckInRepository {
         sucursalId: f.miembro.sucursalId,
         fechaVencimiento: f.miembro.fechaVencimiento,
         planNombre: f.miembro.plan?.nombre ?? null,
-        ajustarFecha: f.miembro.ajustarFecha,
+        porRegularizar: f.miembro.porRegularizar,
       },
     }));
   }

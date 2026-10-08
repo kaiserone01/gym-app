@@ -105,7 +105,7 @@ export function FormularioMiembro({
   totalPagos,
   valoresIniciales,
   tieneCicloVigente,
-  ajustarFecha = false,
+  porRegularizar = false,
 }: {
   accion: (estado: EstadoFormularioMiembro, formData: FormData) => Promise<EstadoFormularioMiembro>;
   // Entrenadores disponibles por cada sucursal visible — el elegible
@@ -145,8 +145,8 @@ export function FormularioMiembro({
   // botones "Cambiar plan" haciendo cosas distintas al mismo tiempo (ver
   // diseño acordado). Solo relevante en edición; en alta siempre es true.
   tieneCicloVigente?: boolean;
-  // Fecha de vencimiento no confiable (migrada): aviso "Ajustar fecha o pago" y campo de vencimiento que titila.
-  ajustarFecha?: boolean;
+  // Fecha de vencimiento no confiable (migrada): aviso "Por regularizar" y campo de vencimiento que titila.
+  porRegularizar?: boolean;
 }) {
   const [estado, enviar, enviando] = useActionState(accion, {});
   const esEdicion = !!valoresIniciales;
@@ -345,13 +345,13 @@ export function FormularioMiembro({
       </p>
     )}
 
-    {esEdicion && ajustarFecha && miembroId && (
+    {esEdicion && porRegularizar && miembroId && (
       <div
         className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-lg border px-4 py-3 text-sm"
         style={{ borderColor: "var(--gx-warn)", color: "var(--gx-ink)" }}
       >
         <span className="flex flex-wrap items-center gap-2">
-          <Badge tono="ambar">Ajustar fecha o pago</Badge>
+          <Badge tono="ambar">Por regularizar</Badge>
           La fecha de vencimiento viene de la migración y no es confiable. Ajústala o registra el último pago con su fecha real.
         </span>
         <span className="flex flex-wrap gap-2">
@@ -528,9 +528,9 @@ export function FormularioMiembro({
             </span>
           </div>
 
-          {/* Campo de un solo uso: solo existe mientras el miembro tenga el aviso "Ajustar fecha o pago".
+          {/* Campo de un solo uso: solo existe mientras el miembro tenga el aviso "Por regularizar".
               Se apaga al guardar una fecha nueva o al registrar un pago. */}
-          {esEdicion && ajustarFecha && (
+          {esEdicion && porRegularizar && (
             <div className="mb-4">
               <input type="hidden" name="fechaVencimientoOriginal" value={valoresIniciales?.fechaVencimiento ?? ""} />
               <Input

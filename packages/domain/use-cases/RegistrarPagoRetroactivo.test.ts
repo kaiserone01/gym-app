@@ -12,8 +12,8 @@ import type { DatosNuevoPago, Pago } from "../entities/Pago";
 
 const DIA = 24 * 60 * 60 * 1000;
 
-function crearDeps(opciones: { ajustarFecha?: boolean; tasa?: number | null; hayActiva?: boolean } = {}) {
-  const { ajustarFecha = true, tasa = 40, hayActiva = true } = opciones;
+function crearDeps(opciones: { porRegularizar?: boolean; tasa?: number | null; hayActiva?: boolean } = {}) {
+  const { porRegularizar = true, tasa = 40, hayActiva = true } = opciones;
   const pagos: DatosNuevoPago[] = [];
   const ciclos: { inicio: Date; fin: Date; planId?: string }[] = [];
   const creadas: unknown[] = [];
@@ -41,7 +41,7 @@ function crearDeps(opciones: { ajustarFecha?: boolean; tasa?: number | null; hay
       },
     },
     miembros: {
-      buscarPorId: async () => ({ id: "m1", sucursalId: "s1", planId: "plan1", precioPlan: 25, saldoAFavorUSD: 0, ajustarFecha, genero: null }),
+      buscarPorId: async () => ({ id: "m1", sucursalId: "s1", planId: "plan1", precioPlan: 25, saldoAFavorUSD: 0, porRegularizar, genero: null }),
       actualizar: async () => null,
       actualizarFechasPago: async (_id: string, pago: Date, fin: Date) => {
         fechasMiembro.push({ pago, fin });
@@ -78,7 +78,7 @@ function input(extra: Partial<DatosRegistrarPago> = {}): DatosRegistrarPago {
   };
 }
 
-describe("registrarPago con fecha pasada (aviso 'Ajustar fecha o pago')", () => {
+describe("registrarPago con fecha pasada (aviso 'Por regularizar')", () => {
   test("usa la tasa BCV de la fecha elegida (no la del formulario), sin turno, con ciclo = fecha + días del plan", async () => {
     const { deps, pagos, ciclos, fechasMiembro, fechasTasa } = crearDeps();
     const fecha = hace(10);
@@ -116,7 +116,7 @@ describe("registrarPago con fecha pasada (aviso 'Ajustar fecha o pago')", () => 
   });
 
   test("sin el aviso activo no se permite", async () => {
-    const { deps, pagos } = crearDeps({ ajustarFecha: false });
+    const { deps, pagos } = crearDeps({ porRegularizar: false });
     await expect(registrarPago(deps, input())).rejects.toBeInstanceOf(PagoRetroactivoNoDisponibleError);
     expect(pagos).toEqual([]);
   });
@@ -141,7 +141,7 @@ describe("registrarPago con fecha pasada (aviso 'Ajustar fecha o pago')", () => 
   });
 
   test("una fecha de hoy se trata como pago normal (con turno)", async () => {
-    const { deps, pagos, fechasTasa } = crearDeps({ ajustarFecha: false });
+    const { deps, pagos, fechasTasa } = crearDeps({ porRegularizar: false });
     await registrarPago(deps, input({ fechaPago: new Date() }));
     expect(pagos[0].turnoId).toBe("turno-hoy");
     expect(fechasTasa).toEqual([]);

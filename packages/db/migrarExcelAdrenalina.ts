@@ -181,7 +181,7 @@ async function migrarFilaConfirmada(
         fechaUltimoPago: fila.datos.fechaUltimoPago,
         fechaVencimiento: fila.datos.fechaVencimiento,
         activo: true,
-        ajustarFecha: true, // la fecha del Excel no es confiable: el socio la ajusta a mano
+        porRegularizar: true, // la fecha del Excel no es confiable: el socio la ajusta a mano
       },
     });
 

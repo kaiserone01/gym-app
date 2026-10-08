@@ -73,3 +73,18 @@ describe("actualizarMiembro — cédula", () => {
     expect(cambiosGuardados).toHaveLength(1);
   });
 });
+
+describe("actualizarMiembro — género y fecha de nacimiento", () => {
+  test("pasa genero y fechaNacimiento null al repositorio (vaciar un valor no se ignora)", async () => {
+    const { deps, cambiosGuardados } = crearDeps(false);
+    await actualizarMiembro(deps, { ...base, cambios: { genero: null, fechaNacimiento: null } });
+    expect(cambiosGuardados[0]).toEqual({ genero: null, fechaNacimiento: null });
+  });
+
+  test("pasa un género y una fecha de nacimiento definidos", async () => {
+    const { deps, cambiosGuardados } = crearDeps(false);
+    const nacimiento = new Date(1990, 9, 8);
+    await actualizarMiembro(deps, { ...base, cambios: { genero: "FEMENINO", fechaNacimiento: nacimiento } });
+    expect(cambiosGuardados[0]).toEqual({ genero: "FEMENINO", fechaNacimiento: nacimiento });
+  });
+});

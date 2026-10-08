@@ -9,6 +9,7 @@ import { PrismaMemberRepository } from "@gym-app/infrastructure/persistence/pris
 import { PrismaPlanRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaPlanRepository";
 import { PrismaPagoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaPagoRepository";
 import { PrismaSuscripcionRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaSuscripcionRepository";
+import { parsearGenero } from "@gym-app/domain/entities/Miembro";
 import { crearMiembro, CedulaDuplicadaError } from "@gym-app/domain/use-cases/CrearMiembro";
 import {
   actualizarMiembro,
@@ -52,6 +53,15 @@ function resolverSucursalId(valor: string | undefined): string | null {
 
 function resolverPlanId(formData: FormData): string | null {
   return formData.get("planId")?.toString() || null;
+}
+
+// "yyyy-mm-dd" del <input type="date"> → fecha local a las 00:00 (igual que fechaInscripcion); vacío o
+// inválido → null.
+function leerFecha(valor: FormDataEntryValue | null): Date | null {
+  const texto = valor?.toString();
+  if (!texto) return null;
+  const fecha = new Date(`${texto}T00:00:00`);
+  return Number.isNaN(fecha.getTime()) ? null : fecha;
 }
 
 // Sube la foto al bucket "gym-app" en Cloudflare R2 (carpeta "miembros") y
@@ -114,7 +124,8 @@ export async function crearMiembroAction(
         nombre,
         cedula,
         fechaInscripcion: new Date(`${fechaInscripcionTexto}T00:00:00`),
-        fechaNacimiento: null,
+        fechaNacimiento: leerFecha(formData.get("fechaNacimiento")),
+        genero: parsearGenero(formData.get("genero")),
         celular: formData.get("celular")?.toString() || null,
         fotoUrl,
         entrenadorId: formData.get("entrenadorId")?.toString() || null,
@@ -232,6 +243,8 @@ export async function actualizarMiembroAction(
           sucursalId: resolverSucursalId(sucursalId),
           fechaInscripcion: new Date(`${fechaInscripcionTexto}T00:00:00`),
           celular: formData.get("celular")?.toString() || null,
+          fechaNacimiento: leerFecha(formData.get("fechaNacimiento")),
+          genero: parsearGenero(formData.get("genero")),
           entrenadorId: formData.get("entrenadorId")?.toString() || null,
           ...(planId ? { planId } : {}),
           precioPlan,

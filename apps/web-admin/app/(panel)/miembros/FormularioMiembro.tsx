@@ -13,6 +13,7 @@ import { SelectorMetodoPago } from "../pagos/SelectorMetodoPago";
 import { formatearBs } from "../tasaBcvFija";
 import { ProveedorCambiosSinGuardar } from "./ContextoCambiosSinGuardar";
 import { SelectorFotoPerfil } from "./SelectorFotoPerfil";
+import { GENEROS, type Genero } from "@gym-app/domain/entities/Miembro";
 import type { EntrenadorResumen } from "@gym-app/domain/entities/EntrenadorResumen";
 import type { SucursalResumen } from "@gym-app/domain/entities/SucursalResumen";
 import type { Plan, FrecuenciaPago } from "@gym-app/domain/entities/Plan";
@@ -23,6 +24,8 @@ export interface ValoresFormularioMiembro {
   cedula: string;
   celular: string;
   fechaInscripcion: string; // yyyy-mm-dd
+  fechaNacimiento: string; // yyyy-mm-dd, "" si no tiene
+  genero: Genero | ""; // "" = no definido
   fechaVencimiento?: string; // yyyy-mm-dd, "" si no tiene
   sucursalId: string | null; // null = "Ambas"
   planId: string | null;
@@ -32,6 +35,11 @@ export interface ValoresFormularioMiembro {
 }
 
 const ID_AMBAS_SEDES = "__ambas__";
+
+const ETIQUETA_GENERO: Record<Genero, string> = {
+  MASCULINO: "Masculino",
+  FEMENINO: "Femenino",
+};
 
 const ETIQUETA_FRECUENCIA: Record<FrecuenciaPago, string> = {
   DIARIO: "Diario",
@@ -154,6 +162,8 @@ export function FormularioMiembro({
   const [cedula, setCedula] = useState(valoresIniciales?.cedula ?? "");
   const [celular, setCelular] = useState(valoresIniciales?.celular ?? "");
   const [fechaInscripcion, setFechaInscripcion] = useState(valoresIniciales?.fechaInscripcion ?? hoyISO());
+  const [fechaNacimiento, setFechaNacimiento] = useState(valoresIniciales?.fechaNacimiento ?? "");
+  const [genero, setGenero] = useState<Genero | "">(valoresIniciales?.genero ?? "");
   const [sucursalId, setSucursalId] = useState(
     valoresIniciales ? (valoresIniciales.sucursalId ?? ID_AMBAS_SEDES) : sucursalIdDefault ?? ""
   );
@@ -264,6 +274,8 @@ export function FormularioMiembro({
     (nombre !== valoresIniciales.nombre ||
       celular !== valoresIniciales.celular ||
       fechaInscripcion !== valoresIniciales.fechaInscripcion ||
+      fechaNacimiento !== valoresIniciales.fechaNacimiento ||
+      genero !== valoresIniciales.genero ||
       sucursalId !== (valoresIniciales.sucursalId ?? ID_AMBAS_SEDES) ||
       entrenadorId !== (valoresIniciales.entrenadorId ?? "") ||
       fotoPreview !== (valoresIniciales.fotoUrl ?? null) ||
@@ -434,6 +446,33 @@ export function FormularioMiembro({
               value={fechaInscripcion}
               onChange={(e) => setFechaInscripcion(e.target.value)}
             />
+
+            <div className="grid grid-cols-2 gap-4">
+              <Input
+                name="fechaNacimiento"
+                label="Fecha de nacimiento"
+                type="date"
+                value={fechaNacimiento}
+                onChange={(e) => setFechaNacimiento(e.target.value)}
+              />
+              <label className="flex flex-col gap-1.5 text-sm" style={{ color: "var(--gx-muted)" }}>
+                Género
+                <select
+                  name="genero"
+                  value={genero}
+                  onChange={(e) => setGenero(e.target.value as Genero | "")}
+                  className="min-h-11 rounded-lg border px-3 outline-none focus:border-[var(--gx-accent)]"
+                  style={{ background: "var(--gx-surface-2)", borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }}
+                >
+                  <option value="">Sin definir</option>
+                  {GENEROS.map((opcion) => (
+                    <option key={opcion} value={opcion}>
+                      {ETIQUETA_GENERO[opcion]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
           </div>
 
           <Button type="button" className="mt-6 w-full" onClick={manejarClickGuardar} disabled={enviando}>

@@ -42,6 +42,10 @@ export interface DatosNuevoMiembro {
   planId: string | null;
   precioPlan: number;
   genero?: Genero | null;
+  // Solo los usa la activación desde el padrón; un alta normal los deja en su valor por defecto.
+  fechaUltimoPago?: Date | null;
+  fechaVencimiento?: Date | null;
+  porRegularizar?: boolean;
 }
 
 export interface CambiosMiembro {

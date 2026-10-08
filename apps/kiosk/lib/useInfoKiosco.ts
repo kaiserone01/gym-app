@@ -2,9 +2,9 @@ import { useEffect, useState } from "react";
 import { obtenerInfoKiosco, type InfoKiosco } from "./api";
 
 const CLAVE_STORAGE = "kiosco_info";
-const REFRESCO_MS = 10 * 60_000;
+const REFRESCO_MS = 30_000;
 
-// Sede y tasa del reposo. Se guarda la última respuesta en localStorage para que el reposo se vea
+// Sede, tasa y configuración del reposo (frases, imagen, opacidad). Se guarda la última respuesta en localStorage para que el reposo se vea
 // completo aunque el kiosco arranque sin red; si no hay nada guardado devuelve null y el reposo
 // muestra "—".
 export function useInfoKiosco(apiKey: string | null): InfoKiosco | null {

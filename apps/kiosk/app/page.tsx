@@ -11,8 +11,8 @@ import { estadoInicial, reducirPantalla, type Ficha, type FichaActiva } from "@/
 import { caraDeResultado, tonoDeCara, type Tono } from "@/lib/cara";
 import { precargarFoto } from "@/lib/precargarFoto";
 import { textoSaludo } from "@/lib/saludo";
-import { FRASES_REPOSO } from "@/lib/frases";
 import { useFraseRotativa } from "@/lib/useFraseRotativa";
+import { useFrasesReposo } from "@/lib/useFrasesReposo";
 import { useHoraActual } from "@/lib/useHoraActual";
 import { useInfoKiosco } from "@/lib/useInfoKiosco";
 import { AccessCard } from "@/components/AccessCard";
@@ -65,9 +65,9 @@ export default function PaginaCheckIn() {
   const [reaccion, setReaccion] = useState<Reaccion | null>(null);
   const [pendientes, setPendientes] = useState(0);
   const { cedula, limpiar, sinInput, propsInput } = useEntradaCedula({ alEnviar: enviar });
-  const { frase, saliendo } = useFraseRotativa(FRASES_REPOSO);
-  const hora = useHoraActual();
   const info = useInfoKiosco(apiKey);
+  const { frase, saliendo } = useFraseRotativa(useFrasesReposo(info?.reposo));
+  const hora = useHoraActual();
 
   useEffect(() => {
     guardarClaveDelFragmento();

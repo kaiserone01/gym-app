@@ -71,10 +71,12 @@ export async function registrarCheckIn(apiKey: string, cedula: string): Promise<
   return datos as ResultadoCheckIn;
 }
 
-// Sede y última tasa BCV para la ficha de reposo (GET /api/kiosco/estado).
+// Sede, última tasa BCV y configuración del reposo (GET /api/kiosco/estado).
 export interface InfoKiosco {
   sucursalNombre: string;
   tasaBcv: { valor: number; fecha: string } | null;
+  // Configuración hecha desde el menú Kiosko del panel; ausente en un API viejo.
+  reposo?: { frases: string[]; imagenUrl: string | null; opacidad: number };
 }
 
 export async function obtenerInfoKiosco(apiKey: string): Promise<InfoKiosco> {

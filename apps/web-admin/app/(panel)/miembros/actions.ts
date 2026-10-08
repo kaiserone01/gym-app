@@ -36,6 +36,7 @@ import {
   AbonoMenorAlMinimoError,
 } from "@gym-app/domain/use-cases/RegistrarPago";
 import { eliminarMiembro } from "@gym-app/domain/use-cases/EliminarMiembro";
+import { activarMiembroEnTransaccion } from "@/lib/activacion";
 import { conMensajeOk } from "../redirectConMensaje";
 
 export interface EstadoFormularioMiembro {
@@ -368,4 +369,29 @@ export async function eliminarMiembroAction(id: string): Promise<void> {
 
   revalidatePath("/miembros");
   redirect(conMensajeOk("/miembros", "Miembro quitado del sistema."));
+}
+
+// Activa (o abre, si ya existe) al miembro de esa cédula desde el padrón de la sede y lleva a su ficha.
+// Los errores (en español) se dejan propagar para que el cliente los muestre con useFeedback.
+export async function activarDesdeExcelAction(cedula: string): Promise<void> {
+  const sesion = await obtenerUsuarioDeSesionActual();
+  if (!sesion) redirect("/login");
+  const { usuario, sucursalActivaId } = sesion;
+
+  const autorizado = await new AuthorizationService(new PrismaPermisoRepository(prisma)).tienePermiso(usuario.id, "MIEMBROS", "CREAR");
+  if (!autorizado) throw new Error("Tu rol no tiene permiso para activar miembros.");
+
+  const cedulaLimpia = cedula.trim();
+  if (!cedulaLimpia) throw new Error("Escribe la cédula.");
+
+  const yaExistia = await new PrismaMemberRepository(prisma).buscarPorOrganizacionYCedula(usuario.organizacionId, cedulaLimpia);
+  const miembro = await activarMiembroEnTransaccion({ organizacionId: usuario.organizacionId, sucursalId: sucursalActivaId, cedula: cedulaLimpia });
+  if (!miembro) throw new Error("No hay ninguna persona con esa cédula en el Excel de esta sede.");
+
+  revalidatePath("/miembros");
+  redirect(
+    yaExistia
+      ? `/miembros/${miembro.id}`
+      : conMensajeOk(`/miembros/${miembro.id}`, "Miembro activado desde el Excel. Revisa sus datos y regularízalo.")
+  );
 }

@@ -13,6 +13,7 @@ import { MetodoYCampos } from "../pagos/MetodoYCampos";
 import { ColumnaLateral, ColumnaPrincipal, MarcoAsistente, TarjetaOpcion, TituloSeccion } from "./MarcoAsistente";
 import { BuscadorMiembro, type MiembroConPlan, type PlanParaModal } from "./SelectorMiembroModal";
 import { formatearBs } from "../tasaBcvFija";
+import { normalizarTexto } from "@/lib/normalizarTexto";
 import type { EstadoVenderProducto, EstadoFiarProducto } from "./actions";
 
 const ID_FORMULARIO = "formulario-vender-producto";
@@ -36,11 +37,6 @@ const SELECCION_VACIA: Seleccion = {
 interface ItemCarrito {
   productoId: string;
   cantidad: number;
-}
-
-// Búsqueda sin distinguir mayúsculas ni tildes ("gatorade" encuentra "Gatorade", "cafe" a "Café").
-function normalizar(texto: string): string {
-  return texto.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 }
 
 export function ModalVenderProducto({
@@ -99,9 +95,9 @@ export function ModalVenderProducto({
   const unidades = renglones.reduce((suma, r) => suma + r.cantidad, 0);
   const enCarrito = (id: string) => carrito.find((i) => i.productoId === id)?.cantidad ?? 0;
 
-  const textoBusqueda = normalizar(busqueda.trim());
+  const textoBusqueda = normalizarTexto(busqueda.trim());
   const productosFiltrados = textoBusqueda
-    ? productos.filter((p) => normalizar(`${p.nombre} ${p.descripcion ?? ""}`).includes(textoBusqueda))
+    ? productos.filter((p) => normalizarTexto(`${p.nombre} ${p.descripcion ?? ""}`).includes(textoBusqueda))
     : productos;
 
   function cambiarCantidad(productoId: string, delta: number) {

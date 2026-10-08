@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { normalizarTexto } from "@/lib/normalizarTexto";
 import type { Miembro } from "@gym-app/domain/entities/Miembro";
 import type { FrecuenciaPago, TipoMinimoAbono } from "@gym-app/domain/entities/Plan";
 
@@ -110,12 +111,12 @@ export function BuscadorMiembro({
   const [busqueda, setBusqueda] = useState("");
   const planesPorId = useMemo(() => new Map(planes.map((p) => [p.id, p])), [planes]);
 
-  const busquedaAplicada = busqueda.trim().length >= MINIMO_CARACTERES_BUSQUEDA ? busqueda.trim().toLowerCase() : "";
+  const busquedaAplicada = busqueda.trim().length >= MINIMO_CARACTERES_BUSQUEDA ? normalizarTexto(busqueda.trim()) : "";
 
   const resultados = useMemo(() => {
     if (!busquedaAplicada) return [];
     return miembros
-      .filter((m) => `${m.nombre} ${m.cedula}`.toLowerCase().includes(busquedaAplicada))
+      .filter((m) => normalizarTexto(`${m.nombre} ${m.cedula}`).includes(busquedaAplicada))
       .slice(0, 20)
       .map((m) => aMiembroConPlan(m, planesPorId));
   }, [miembros, busquedaAplicada, planesPorId]);

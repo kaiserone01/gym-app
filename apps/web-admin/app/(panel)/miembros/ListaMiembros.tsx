@@ -6,6 +6,7 @@ import { Input } from "@gym-app/ui/components/Input";
 import { Button } from "@gym-app/ui/components/Button";
 import { Card } from "@gym-app/ui/components/Card";
 import { Badge } from "@gym-app/ui/components/Badge";
+import { normalizarTexto } from "@/lib/normalizarTexto";
 import { EstadoToggle } from "./EstadoToggle";
 import { DiasDisponibles, diasHastaVencimiento } from "./vencimiento";
 import type { Miembro } from "@gym-app/domain/entities/Miembro";
@@ -115,12 +116,12 @@ export function ListaMiembros({
   );
 
   const filtradas = useMemo(() => {
-    const busquedaAplicada = busqueda.trim().length >= MINIMO_CARACTERES_BUSQUEDA ? busqueda.trim().toLowerCase() : "";
+    const busquedaAplicada = busqueda.trim().length >= MINIMO_CARACTERES_BUSQUEDA ? normalizarTexto(busqueda.trim()) : "";
 
     const porNombre = [...filas].sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
 
     return porNombre.filter((miembro) => {
-      if (busquedaAplicada && !`${miembro.nombre} ${miembro.cedula}`.toLowerCase().includes(busquedaAplicada)) {
+      if (busquedaAplicada && !normalizarTexto(`${miembro.nombre} ${miembro.cedula}`).includes(busquedaAplicada)) {
         return false;
       }
 

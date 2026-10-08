@@ -99,17 +99,18 @@ Hoy: mensajes de WebView2 (`chrome.webview`) o `<input>` enfocado en navegador. 
 Riesgo: con Num Lock apagado Android envía teclas de navegación en vez de dígitos; probar con el modelo real de numpad y dejar Num Lock encendido.
 
 ## 9. APK (Fase 3)
-- Proyecto Capacitor (Android) con `server.url = https://kiosco.zipnegocios.com` y tráfico en claro desactivado.
-- Manifest para Android TV: categoría `LEANBACK_LAUNCHER`, `android.software.leanback` con `required=false`, pantalla siempre encendida, modo inmersivo.
-- `offline.html` local por si el primer arranque no tiene red.
-- Clave de sucursal: `/config` acepta `#clave=…` en el fragmento de la URL (no viaja al servidor) para cargarla con `adb` sin teclado.
-- Compatibilidad: objetivo Chromium 90+ (sin `color-mix()`, `:has` ni `backdrop-filter`); verificar la versión de Android System WebView del TV.
+Decisiones del usuario: compilar en **GitHub Actions** (la PC de desarrollo no soporta Android Studio: 2,7 GB libres, 7,9 GB de RAM, solo JDK 8); **una APK por sucursal con la clave dentro**; **pantalla de aviso** si el WebView es anterior a Chromium 111.
+- Proyecto Capacitor (Android) en `apps/kiosk-tv/capacitor/` (fuera de los workspaces de npm a propósito, para no tocar los Dockerfiles). Cáscara remota: abre `https://kiosco.zipnegocios.com/config#clave=<CLAVE>`; la página `/config` guarda la clave del fragmento (no viaja al servidor) y pasa a `/`. Tráfico en claro desactivado.
+- Manifest para Android TV: categoría `LEANBACK_LAUNCHER`, `android.software.leanback` y `touchscreen` con `required=false`, banner 320×180, orientación horizontal, pantalla siempre encendida, modo inmersivo.
+- `offline.html` local (con la URL inyectada al compilar) por si el primer arranque no tiene red; reintenta solo.
+- **Compilación y seguridad:** el repositorio es **público**, así que un artefacto de Actions es descargable por cualquiera. Con clave dentro, el workflow `workflow_dispatch` (entrada `sucursal`; secretos `KIOSCO_CLAVE_<SUCURSAL>` y `KIOSCO_APK_PASSWORD`) cifra el APK con 7-Zip AES-256 (nombres de archivo cifrados) y solo sube el `.7z`. Sin clave (prueba) sube el APK genérico. El APK se firma con una llave de debug fija versionada (permite actualizar encima; aceptado para una app privada de instalación manual).
+- **WebView:** el kiosco detecta `Chrome/NNN` en el user agent; si NNN < 111 muestra "Actualiza Android System WebView desde Google Play" con estilos en línea (Tailwind v4 usa `@layer`, que un WebView viejo descarta).
 - Arranque al encender el TV: Android 10+ limita lanzar actividades desde segundo plano; queda como prueba pendiente en el aparato real.
 
 ## 10. Fases de entrega
 - **F1 — sin migración:** reposo con ilustración, sede y tasa (`GET /api/kiosco/estado`); ficha real de 30 s con cuenta regresiva; logo fijo arriba a la derecha; tamaños proporcionales a la pantalla (rem con `html { font-size }` fluido); flip 3D; todas las caras (incluida `por_vencer`); video recodificado con reacción al estado; frases neutras; entrada de numpad por `keydown`; tokens sin `color-mix()`. Empieza por la ficha visible en reposo con `placeholder-profile.jpg`.
 - **F2:** `Miembro.genero` (migración) + `genero`/`esCumpleanos` en `/api/checkin` + selector de género y fecha de nacimiento en web-admin; saludo de la ficha según género y de cumpleaños. **Sin campaña ni saludos personalizados** (descartados). Plan: `docs/superpowers/plans/2026-10-08-rediseno-kiosco-fase2.md`.
-- **F3:** APK Capacitor para el TV.
+- **F3:** APK Capacitor para el TV (compilada en GitHub Actions, una por sucursal, cifrada). Plan: `docs/superpowers/plans/2026-10-08-rediseno-kiosco-fase3.md`.
 
 ## 11. Riesgos conocidos
 - **Enumeración de cédulas:** sin límite de intentos, cualquiera puede teclear números y ver nombre y foto de otros en un TV de uso público. Decisión del usuario: se pospone; opciones futuras: límite en servidor por clave de sucursal con pausa, o PIN.

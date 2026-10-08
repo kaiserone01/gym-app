@@ -214,6 +214,8 @@ export default function PaginaCheckIn() {
               hora={hora}
               tasa={info?.tasaBcv ?? null}
               sede={info?.sucursalNombre ?? null}
+              imagenUrl={info?.reposo?.imagenUrl ?? null}
+              opacidad={info?.reposo?.opacidad}
             />
           )}
           renderFicha={contenidoFicha}

@@ -13,12 +13,17 @@ export function FichaReposo({
   hora,
   tasa,
   sede,
+  imagenUrl,
+  opacidad,
 }: {
   frase: string;
   saliendo: boolean;
   hora: string;
   tasa: InfoKiosco["tasaBcv"];
   sede: string | null;
+  // Imagen y opacidad configuradas en el panel (menú Kiosko); sin ellas, el placeholder y 100 %.
+  imagenUrl?: string | null;
+  opacidad?: number;
 }) {
   const datos: { etiqueta: string; valor: string }[] = [
     { etiqueta: "Hora", valor: hora || "—" },
@@ -27,15 +32,20 @@ export function FichaReposo({
   ];
 
   return (
-    <MarcoFicha color="var(--gx-edge)">
+    <MarcoFicha color="var(--gx-edge)" opacidadFondo={opacidad}>
       <div className="grid grid-cols-[auto_1fr] items-center gap-12 p-8">
         <div
           className="h-80 w-80 overflow-hidden rounded-full"
           style={{ border: "4px solid var(--gx-edge)", background: "var(--gx-surface-2)" }}
         >
-          {/* La ilustración trae un aro claro en el borde: se amplía para que el recorte circular lo deje fuera. */}
+          {/* El placeholder trae un aro claro en el borde: se amplía para que el recorte circular lo deje fuera.
+              La imagen subida desde el panel ya viene encuadrada, así que no se amplía. */}
           {/* eslint-disable-next-line @next/next/no-img-element -- output: "export" no soporta el optimizador de next/image */}
-          <img src="/branding/placeholder-profile.jpg" alt="" className="h-full w-full scale-[1.25] object-cover" />
+          <img
+            src={imagenUrl ?? "/branding/placeholder-profile.jpg"}
+            alt=""
+            className={`h-full w-full object-cover${imagenUrl ? "" : " scale-[1.25]"}`}
+          />
         </div>
 
         <div className="flex flex-col gap-8">

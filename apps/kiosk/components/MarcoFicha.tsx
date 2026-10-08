@@ -1,16 +1,20 @@
 import type { ReactNode } from "react";
+import { fondoFicha } from "@/lib/tonos";
 
 // Marco común de todas las caras: borde de color, franja con el logo y, si se pasa `duracionMs`,
 // la barra de cuenta regresiva. El `key` del padre reinicia la barra en cada ficha nueva.
+// `opacidadFondo` (0–100, defecto 100) deja ver el video detrás; solo la usa la ficha en reposo.
 export function MarcoFicha({
   color,
   brillo,
   duracionMs,
+  opacidadFondo,
   children,
 }: {
   color: string;
   brillo?: string;
   duracionMs?: number;
+  opacidadFondo?: number;
   children: ReactNode;
 }) {
   return (
@@ -18,7 +22,7 @@ export function MarcoFicha({
       className="flex flex-1 flex-col overflow-hidden rounded-3xl border-4"
       style={{
         borderColor: color,
-        background: "var(--gx-surface)",
+        background: fondoFicha(opacidadFondo),
         boxShadow: brillo ? `0 30px 70px -20px ${brillo}` : undefined,
       }}
     >

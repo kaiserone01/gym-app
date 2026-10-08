@@ -3,6 +3,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { guardarApiKey, obtenerApiKey } from "@/lib/config";
+import { claveDeFragmento } from "@/lib/claveFragmento";
 
 export default function PaginaConfiguracion() {
   const router = useRouter();
@@ -13,10 +14,19 @@ export default function PaginaConfiguracion() {
   // hidrata con ese mismo valor inicial — hay que leer el valor real
   // después del montaje, en un efecto.
   useEffect(() => {
+    // La APK de Android TV abre /config#clave=...: se guarda la clave, se borra del historial y se pasa al kiosco.
+    const claveDelFragmento = claveDeFragmento(window.location.hash);
+    if (claveDelFragmento) {
+      guardarApiKey(claveDelFragmento);
+      window.history.replaceState(null, "", window.location.pathname);
+      router.replace("/");
+      return;
+    }
+
     const guardado = obtenerApiKey();
     // eslint-disable-next-line react-hooks/set-state-in-effect -- lee localStorage tras el montaje (SSR-safe, ver ADR de output: "export")
     if (guardado) setApiKey(guardado);
-  }, []);
+  }, [router]);
 
   function guardar(evento: FormEvent) {
     evento.preventDefault();

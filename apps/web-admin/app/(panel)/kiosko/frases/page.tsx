@@ -18,7 +18,8 @@ export default async function PaginaFrasesKiosko() {
         Se muestran una a una en la ficha en reposo del kiosco de esta sucursal. Si no hay ninguna, el kiosco usa sus frases
         predeterminadas. Los cambios llegan al kiosco en menos de 30 segundos.
       </p>
-      <FormularioFrases frasesIniciales={sucursal?.reposoFrases ?? []} />
+      {/* La key reinicia el formulario con las frases ya normalizadas que quedaron guardadas. */}
+      <FormularioFrases key={(sucursal?.reposoFrases ?? []).join("\u0000")} frasesIniciales={sucursal?.reposoFrases ?? []} />
     </Card>
   );
 }

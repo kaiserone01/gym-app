@@ -21,7 +21,9 @@ export default async function PaginaImagenKiosko() {
         Imagen del círculo y transparencia del fondo de la ficha en reposo del kiosco. Los cambios llegan en menos de 30
         segundos.
       </p>
+      {/* La key reinicia el formulario cuando cambian los valores guardados (tras guardar o restablecer). */}
       <FormularioImagenKiosko
+        key={`${sucursal?.reposoImagenUrl ?? ""}|${sucursal?.reposoOpacidad ?? 100}`}
         imagenActualUrl={sucursal?.reposoImagenUrl ?? imagenPlaceholder}
         esPersonalizada={!!sucursal?.reposoImagenUrl}
         opacidadInicial={sucursal?.reposoOpacidad ?? 100}

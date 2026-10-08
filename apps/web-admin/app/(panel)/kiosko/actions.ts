@@ -8,6 +8,7 @@ import { obtenerUsuarioDeSesionActual } from "@/lib/sesion";
 import { puedeEditarKiosko } from "@/lib/permisoKiosko";
 import { storageR2 } from "@/lib/storageR2";
 import { PrismaSucursalRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaSucursalRepository";
+import { extensionDeImagen } from "@gym-app/domain/utils/imagenSubida";
 import { limitarOpacidad, normalizarFrasesReposo } from "@gym-app/domain/utils/reposoKiosko";
 import type { CambiosSucursal } from "@gym-app/domain/entities/Sucursal";
 import { conMensajeOk } from "../redirectConMensaje";
@@ -48,15 +49,24 @@ export async function guardarFrasesAction(
   );
 }
 
-// Sube la imagen a la carpeta "kiosko" del bucket R2 y devuelve su URL pública.
+// Sube la imagen a la carpeta "kiosko" del bucket R2 y devuelve su URL pública. Solo JPEG/PNG/WebP de hasta
+// 5 MB; la extensión sale del tipo, no del nombre que manda el cliente.
 async function guardarImagen(archivo: FormDataEntryValue | null): Promise<string | null> {
   if (!(archivo instanceof File) || archivo.size === 0) return null;
 
-  const extension = archivo.name.split(".").pop()?.toLowerCase() || "jpg";
+  const extension = extensionDeImagen(archivo.type, archivo.size);
+  if (!extension) throw new ImagenNoValidaError();
+
   const nombreArchivo = `${randomUUID()}.${extension}`;
   const contenido = Buffer.from(await archivo.arrayBuffer());
 
-  return storageR2().subir("kiosko", nombreArchivo, contenido, archivo.type || "image/jpeg");
+  return storageR2().subir("kiosko", nombreArchivo, contenido, archivo.type);
+}
+
+class ImagenNoValidaError extends Error {
+  constructor() {
+    super("La imagen debe ser JPG, PNG o WebP de hasta 5 MB.");
+  }
 }
 
 export async function guardarImagenReposoAction(
@@ -66,7 +76,13 @@ export async function guardarImagenReposoAction(
   const sesion = await sesionConPermiso();
   if (!sesion) return { error: SIN_PERMISO };
 
-  const imagenUrl = await guardarImagen(formData.get("foto"));
+  let imagenUrl: string | null;
+  try {
+    imagenUrl = await guardarImagen(formData.get("foto"));
+  } catch (error) {
+    if (error instanceof ImagenNoValidaError) return { error: error.message };
+    throw error;
+  }
   const cambios: CambiosSucursal = { reposoOpacidad: limitarOpacidad(formData.get("opacidad")) };
   if (imagenUrl) cambios.reposoImagenUrl = imagenUrl;
 
@@ -82,7 +98,13 @@ export async function actualizarImagenReposoAction(formData: FormData): Promise<
   const sesion = await sesionConPermiso();
   if (!sesion) return { error: SIN_PERMISO };
 
-  const imagenUrl = await guardarImagen(formData.get("foto"));
+  let imagenUrl: string | null;
+  try {
+    imagenUrl = await guardarImagen(formData.get("foto"));
+  } catch (error) {
+    if (error instanceof ImagenNoValidaError) return { error: error.message };
+    throw error;
+  }
   if (!imagenUrl) return { error: "No se recibió la imagen." };
 
   const sucursal = await actualizarReposo(sesion, { reposoImagenUrl: imagenUrl });

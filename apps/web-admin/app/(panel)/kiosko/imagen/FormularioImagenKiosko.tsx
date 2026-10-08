@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { Button } from "@gym-app/ui/components/Button";
 import { useFeedback } from "@gym-app/ui/components/FeedbackOverlay";
 import { OPACIDAD_MAXIMA, OPACIDAD_MINIMA } from "@gym-app/domain/utils/reposoKiosko";
@@ -20,6 +20,7 @@ export function FormularioImagenKiosko({
   const { mostrarError, mostrarExito } = useFeedback();
   const [previewUrl, setPreviewUrl] = useState(imagenActualUrl);
   const [opacidad, setOpacidad] = useState(opacidadInicial);
+  const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
     if (estado.error) mostrarError(estado.error);
@@ -37,6 +38,10 @@ export function FormularioImagenKiosko({
     try {
       const resultado = await actualizarImagenReposoAction(datos);
       if (!resultado.imagenUrl) throw new Error(resultado.error ?? "No se pudo guardar el encuadre.");
+      // El encuadre ya quedó guardado: se vacía el archivo oculto del selector para que el "Guardar" del
+      // formulario no vuelva a subir la foto sin recortar y pise el ajuste.
+      const archivoOculto = formRef.current?.querySelector<HTMLInputElement>('input[type="file"][name="foto"]');
+      if (archivoOculto) archivoOculto.value = "";
       if (previewUrl.startsWith("blob:")) URL.revokeObjectURL(previewUrl);
       setPreviewUrl(resultado.imagenUrl);
       mostrarExito("Encuadre guardado.");
@@ -53,7 +58,7 @@ export function FormularioImagenKiosko({
   );
 
   return (
-    <form action={enviar} className="flex flex-col gap-5">
+    <form ref={formRef} action={enviar} className="flex flex-col gap-5">
       <div className="flex items-center gap-4">
         {circulo}
         <SelectorFotoPerfil

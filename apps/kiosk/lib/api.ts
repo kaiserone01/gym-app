@@ -55,3 +55,22 @@ export async function registrarCheckIn(apiKey: string, cedula: string): Promise<
 
   return datos as ResultadoCheckIn;
 }
+
+// Sede y última tasa BCV para la ficha de reposo (GET /api/kiosco/estado).
+export interface InfoKiosco {
+  sucursalNombre: string;
+  tasaBcv: { valor: number; fecha: string } | null;
+}
+
+export async function obtenerInfoKiosco(apiKey: string): Promise<InfoKiosco> {
+  if (!URL_API) {
+    throw new ErrorCheckIn("NEXT_PUBLIC_API_URL no está configurada en este build.", 0);
+  }
+
+  const respuesta = await fetch(`${URL_API}/api/kiosco/estado`, { headers: { "X-Kiosk-Api-Key": apiKey } });
+  if (!respuesta.ok) {
+    throw new ErrorCheckIn(`Error ${respuesta.status} al leer el estado del kiosco.`, respuesta.status);
+  }
+
+  return (await respuesta.json()) as InfoKiosco;
+}

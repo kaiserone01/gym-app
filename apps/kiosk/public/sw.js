@@ -3,7 +3,7 @@
 // momento. El check-in en sí SIEMPRE requiere red real (o queda en la cola
 // de pendientes, ver lib/colaPendientes.ts) — este service worker nunca
 // intercepta el POST a /api/checkin.
-const CACHE = "kiosco-shell-v5";
+const CACHE = "kiosco-shell-v6";
 const RECURSOS_SHELL = [
   "/",
   "/config",
@@ -11,7 +11,6 @@ const RECURSOS_SHELL = [
   "/icon-192.png",
   "/icon-512.png",
   "/branding/placeholder-profile.jpg",
-  "/branding/logo-adrenalina-gym.jpg",
   "/branding/backgound.jpg",
   "/branding/adrenalina-gym-bg.png",
 ];

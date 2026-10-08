@@ -23,11 +23,11 @@ export function MarcoFicha({
       }}
     >
       <div
-        className="flex items-center justify-center gap-4 px-8 py-4"
+        className="flex items-center justify-center gap-4 px-8 py-2"
         style={{ borderBottom: "1px solid var(--gx-edge)" }}
       >
         {/* eslint-disable-next-line @next/next/no-img-element -- output: "export" no soporta el optimizador de next/image */}
-        <img src="/branding/logo-adrenalina-gym.jpg" alt="" className="h-12 w-12 rounded-full object-cover" />
+        <img src="/branding/adrenalina-gym-bg.png" alt="" className="h-20 w-20 object-contain" />
         <span
           className="text-2xl font-bold uppercase"
           style={{ fontFamily: '"Barlow Condensed", sans-serif', letterSpacing: "0.3em", color: "var(--gx-muted)" }}

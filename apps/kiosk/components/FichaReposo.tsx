@@ -28,9 +28,9 @@ export function FichaReposo({
 
   return (
     <MarcoFicha color="var(--gx-edge)">
-      <div className="grid grid-cols-[auto_1fr] items-center gap-14 p-12">
+      <div className="grid grid-cols-[auto_1fr] items-center gap-12 p-8">
         <div
-          className="h-72 w-72 overflow-hidden rounded-full"
+          className="h-80 w-80 overflow-hidden rounded-full"
           style={{ border: "4px solid var(--gx-edge)", background: "var(--gx-surface-2)" }}
         >
           {/* La ilustración trae un aro claro en el borde: se amplía para que el recorte circular lo deje fuera. */}
@@ -47,13 +47,13 @@ export function FichaReposo({
             {frase}
           </p>
 
-          <div className="grid grid-cols-3 gap-6 border-t pt-6" style={{ borderColor: "var(--gx-edge)" }}>
+          <div className="grid grid-cols-[auto_auto_1fr] gap-x-12 gap-y-6 border-t pt-6" style={{ borderColor: "var(--gx-edge)" }}>
             {datos.map(({ etiqueta, valor }) => (
               <div key={etiqueta} className="flex flex-col gap-1">
                 <span className="text-2xl font-bold uppercase" style={{ letterSpacing: "0.1em", color: "var(--gx-muted-dim)" }}>
                   {etiqueta}
                 </span>
-                <span className="text-4xl font-semibold" style={{ color: "var(--gx-ink)" }}>
+                <span className="whitespace-nowrap text-4xl font-semibold" style={{ color: "var(--gx-ink)" }}>
                   {valor}
                 </span>
               </div>

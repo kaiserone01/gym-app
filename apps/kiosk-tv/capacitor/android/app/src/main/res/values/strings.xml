@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Kiosco AX</string>
+    <string name="title_activity_main">Kiosco AX</string>
+    <string name="package_name">com.adrenalina.kiosco</string>
+    <string name="custom_url_scheme">com.adrenalina.kiosco</string>
+</resources>

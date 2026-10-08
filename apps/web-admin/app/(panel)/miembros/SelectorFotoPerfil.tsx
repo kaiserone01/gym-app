@@ -302,12 +302,23 @@ export function SelectorFotoPerfil({
                   style={{ borderColor: "var(--gx-accent)", boxShadow: "0 0 0 999px rgba(0,0,0,0.55)" }}
                 />
               )}
+              {/* Silueta de cabeza y hombros para posicionarse al tomar la foto (solo con la cámara). */}
+              {guiaCircular && camaraAbierta && (
+                <svg viewBox="0 0 100 100" className="pointer-events-none absolute inset-0 h-full w-full" fill="none" aria-hidden>
+                  <g stroke="white" strokeOpacity="0.85" strokeWidth="0.8" strokeDasharray="2.5 1.8" strokeLinecap="round">
+                    <ellipse cx="50" cy="40" rx="15" ry="19" />
+                    <path d="M16 98 C16 82 30 74 41 70 Q50 76 59 70 C70 74 84 82 84 98" />
+                  </g>
+                </svg>
+              )}
             </div>
             <Deslizador etiqueta="Zoom" min={1} max={4} valor={zoom} onCambio={cambiarZoom} formato={(v) => `${v.toFixed(1)}x`} />
             <Deslizador etiqueta="Luz" min={0.5} max={2} valor={luz} onCambio={setLuz} />
             <p className="mt-2 text-center text-xs" style={{ color: "var(--gx-muted)" }}>
               {guiaCircular
-                ? "Acerca con el zoom y arrastra la imagen hasta centrar el rostro dentro del círculo."
+                ? camaraAbierta
+                  ? "Colócate dentro de la silueta: rostro al centro y un poco de torso."
+                  : "Acerca con el zoom y arrastra la imagen hasta centrar el rostro dentro del círculo."
                 : "Centra el producto en el cuadro."}
             </p>
             {esMovil && !ajustando && (

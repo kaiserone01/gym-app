@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
 type Cara<T> = { tipo: "reposo" } | { tipo: "ficha"; ficha: T };
 
@@ -31,10 +31,19 @@ export function FichaGiratoria<T extends { id: number }>({
     setEstado({ caras, giros: estado.giros + 1, clave });
   }
 
-  const contenido = (cara: Cara<T>) => (cara.tipo === "reposo" ? renderReposo() : <Fragment key={cara.ficha.id}>{renderFicha(cara.ficha)}</Fragment>);
+  // La ficha real es más angosta (4/5) que la de reposo, que usa todo el ancho de la escena. El key por id
+  // remonta la ficha en cada giro y reinicia su barra de cuenta regresiva.
+  const contenido = (cara: Cara<T>) =>
+    cara.tipo === "reposo" ? (
+      renderReposo()
+    ) : (
+      <div key={cara.ficha.id} className="mx-auto flex w-4/5 flex-1 flex-col">
+        {renderFicha(cara.ficha)}
+      </div>
+    );
 
   return (
-    <div className="flip-escena w-[60vw] min-w-[40rem] max-w-6xl">
+    <div className="flip-escena w-[80vw] min-w-[40rem] max-w-[88rem]">
       <div className="flip-tarjeta" style={{ transform: `rotateY(${estado.giros * 180}deg)` }}>
         <div className="flip-cara">{contenido(estado.caras[0])}</div>
         <div className="flip-cara flip-cara-trasera">{contenido(estado.caras[1])}</div>

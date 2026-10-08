@@ -2,6 +2,9 @@ import { Fragment, Suspense } from "react";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { obtenerUsuarioDeSesionActual } from "@/lib/sesion";
+import { PrismaMiembroReferenciaRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaMiembroReferenciaRepository";
+import { PrismaPermisoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaPermisoRepository";
+import { AuthorizationService } from "@gym-app/domain/services/AuthorizationService";
 import { PrismaSucursalRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaSucursalRepository";
 import { Sidebar } from "@gym-app/ui/components/Sidebar";
 import { FeedbackProvider } from "@gym-app/ui/components/FeedbackOverlay";
@@ -28,6 +31,9 @@ export default async function PanelLayout({ children }: { children: React.ReactN
   );
 
   const puedeVerEnSala = await tienePermisoEnSala(usuario, "VER");
+  const puedeVerExcel =
+    (await new PrismaMiembroReferenciaRepository(prisma).existeParaSucursal(usuario.organizacionId, sucursalActivaId)) &&
+    (await new AuthorizationService(new PrismaPermisoRepository(prisma)).tienePermiso(usuario.id, "MIEMBROS", "VER"));
   // Solo quien puede ver "En sala" monta el sondeo de check-ins (alertas de cobro en todo el panel).
   const ConEnSala = puedeVerEnSala ? ProveedorEnSala : Fragment;
 
@@ -49,6 +55,7 @@ export default async function PanelLayout({ children }: { children: React.ReactN
               { href: "/pagos", label: "Histórico de Pagos" },
               { href: "/productos", label: "Productos" },
               { href: "/miembros", label: "Miembros" },
+              ...(puedeVerExcel ? [{ href: "/excel", label: "Excel" }] : []),
               ...(puedeEditarKiosko(usuario.rol) ? [{ href: "/kiosko", label: "Kiosko" }] : []),
               // Planes, Sucursales y Usuarios se administran desde las tabs
               // de Configuraciones (ver diseño acordado) — solo SOCIO llega
@@ -70,6 +77,7 @@ export default async function PanelLayout({ children }: { children: React.ReactN
             email={usuario.email}
             rol={usuario.rol}
             puedeVerEnSala={puedeVerEnSala}
+            puedeVerExcel={puedeVerExcel}
           />
         </div>
       </div>

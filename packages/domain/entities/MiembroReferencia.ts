@@ -23,3 +23,18 @@ export interface MiembroReferencia {
   editadoAt: Date | null;
   editadoPor: string | null;
 }
+
+export interface FiltrosReferencia {
+  cedula?: string;
+  nombre?: string;
+  status?: string;
+  plan?: string;
+  venceDesde?: Date;
+  venceHasta?: Date;
+  estadoEnSistema?: "todos" | "no_miembro" | "miembro";
+  pagina: number;
+  porPagina: number;
+}
+
+// Fila del padrón con el id del Miembro que ya la ocupa (misma cédula), si lo hay.
+export type FilaReferenciaConEstado = MiembroReferencia & { miembroId: string | null };

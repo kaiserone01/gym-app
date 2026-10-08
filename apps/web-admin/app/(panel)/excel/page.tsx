@@ -57,7 +57,8 @@ export default async function PaginaExcel({ searchParams }: { searchParams: Prom
 
   const p = await searchParams;
   const estado = p.estado === "no_miembro" || p.estado === "miembro" ? p.estado : "todos";
-  const pagina = Math.max(1, Math.floor(Number(p.pagina)) || 1);
+  const numeroPagina = Math.floor(Number(p.pagina));
+  const pagina = Number.isFinite(numeroPagina) ? Math.min(Math.max(1, numeroPagina), 100000) : 1;
   const { filas, total } = await repo.listar(usuario.organizacionId, sucursalActivaId, {
     cedula: textoOUndefined(p.cedula),
     nombre: textoOUndefined(p.nombre),
@@ -147,7 +148,7 @@ export default async function PaginaExcel({ searchParams }: { searchParams: Prom
 
       <div className="flex items-center justify-between gap-4 text-sm" style={{ color: "var(--gx-muted)" }}>
         <span>
-          Mostrando {primera}–{ultima} de {total}
+          {primera > total ? `Sin resultados en esta página (${total} en total)` : `Mostrando ${primera}–${ultima} de ${total}`}
         </span>
         <span className="flex gap-3">
           {pagina > 1 && (

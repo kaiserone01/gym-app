@@ -36,5 +36,5 @@ export interface FiltrosReferencia {
   porPagina: number;
 }
 
-// Fila del padrón con el id del Miembro que ya la ocupa (misma cédula), si lo hay.
+// Fila del padrÃ³n con el id del Miembro que ya la ocupa (misma cÃ©dula), si lo hay.
 export type FilaReferenciaConEstado = MiembroReferencia & { miembroId: string | null };

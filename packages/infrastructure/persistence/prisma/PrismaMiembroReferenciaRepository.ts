@@ -1,6 +1,7 @@
 import type { PrismaClientOrTx } from "./PrismaClientOrTx";
 import type { IMiembroReferenciaRepository } from "@gym-app/domain/ports/IMiembroReferenciaRepository";
 import type { MiembroReferencia, FiltrosReferencia } from "@gym-app/domain/entities/MiembroReferencia";
+import type { CambiosCrudosPadron, NormalizadosPadron } from "@gym-app/domain/utils/padronExcel";
 import type { Prisma } from "@gym-app/db/generated/prisma/client";
 
 type FilaReferencia = Omit<MiembroReferencia, "precioPlanUSD"> & { precioPlanUSD: { toNumber(): number } | null };
@@ -22,6 +23,17 @@ export class PrismaMiembroReferenciaRepository implements IMiembroReferenciaRepo
   async existeParaSucursal(organizacionId: string, sucursalId: string): Promise<boolean> {
     const fila = await this.prisma.miembroReferencia.findFirst({ where: { organizacionId, sucursalId }, select: { id: true } });
     return fila !== null;
+  }
+
+  async actualizarEdicion(
+    id: string,
+    datos: { crudos: CambiosCrudosPadron; normalizados: NormalizadosPadron; camposEditados: string[]; editadoPor: string }
+  ) {
+    const fila = await this.prisma.miembroReferencia.update({
+      where: { id },
+      data: { ...datos.crudos, ...datos.normalizados, camposEditados: datos.camposEditados, editadoAt: new Date(), editadoPor: datos.editadoPor },
+    });
+    return mapearReferencia(fila);
   }
 
   async listar(organizacionId: string, sucursalId: string, f: FiltrosReferencia) {

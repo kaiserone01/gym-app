@@ -5,12 +5,11 @@ import { obtenerUsuarioDeSesionActual } from "@/lib/sesion";
 import { PrismaMiembroReferenciaRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaMiembroReferenciaRepository";
 import { PrismaPermisoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaPermisoRepository";
 import { AuthorizationService } from "@gym-app/domain/services/AuthorizationService";
-import type { FilaReferenciaConEstado } from "@gym-app/domain/entities/MiembroReferencia";
 import { Input } from "@gym-app/ui/components/Input";
 import { Button } from "@gym-app/ui/components/Button";
 import { Card } from "@gym-app/ui/components/Card";
-import { Badge } from "@gym-app/ui/components/Badge";
 import { PageHeader } from "@gym-app/ui/components/PageHeader";
+import { FilaPadronEditable } from "./FilaPadronEditable";
 
 const POR_PAGINA = 50;
 
@@ -132,7 +131,23 @@ export default async function PaginaExcel({ searchParams }: { searchParams: Prom
             </thead>
             <tbody>
               {filas.map((fila) => (
-                <FilaSoloLectura key={fila.id} fila={fila} puedeEditar={puedeEditar} />
+                <FilaPadronEditable
+                  key={fila.id}
+                  fila={{
+                    cedula: fila.cedula,
+                    numeroFila: fila.numeroFila,
+                    nombre: fila.nombre,
+                    status: fila.status,
+                    fNacimiento: fila.fNacimiento,
+                    celular: fila.celular,
+                    fVenc: fila.fVenc,
+                    fechaPago: fila.fechaPago,
+                    plan: fila.plan,
+                    camposEditados: fila.camposEditados,
+                    miembroId: fila.miembroId,
+                  }}
+                  puedeEditar={puedeEditar}
+                />
               ))}
               {filas.length === 0 && (
                 <tr>
@@ -164,43 +179,5 @@ export default async function PaginaExcel({ searchParams }: { searchParams: Prom
         </span>
       </div>
     </div>
-  );
-}
-
-// La Tarea 8 la reemplaza por la fila editable; por eso recibe solo props serializables.
-// `puedeEditar` aún no se usa: en solo lectura nadie edita.
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function FilaSoloLectura({ fila, puedeEditar }: { fila: FilaReferenciaConEstado; puedeEditar: boolean }) {
-  const celda = "py-2 pr-3";
-  const valor = (texto: string | null) => texto || "—";
-  return (
-    <tr className="border-b align-top" style={{ borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }}>
-      <td className={celda}>{fila.numeroFila}</td>
-      <td className={celda}>{fila.cedula}</td>
-      <td className={celda}>{fila.nombre}</td>
-      <td className={celda}>{valor(fila.status)}</td>
-      <td className={celda}>{valor(fila.fNacimiento)}</td>
-      <td className={celda}>{valor(fila.celular)}</td>
-      <td className={celda}>{valor(fila.fVenc)}</td>
-      <td className={celda}>{valor(fila.fechaPago)}</td>
-      <td className={celda}>{valor(fila.plan)}</td>
-      <td className="py-2">
-        <div className="flex flex-col items-start gap-1">
-          {fila.miembroId ? (
-            <>
-              <Link href={`/miembros/${fila.miembroId}`} className="font-medium hover:underline" style={{ color: "var(--gx-accent)" }}>
-                Ya es miembro
-              </Link>
-              <span className="text-xs" style={{ color: "var(--gx-muted)" }}>
-                Ajusta sus datos en la ficha del miembro
-              </span>
-            </>
-          ) : (
-            <span>No es miembro</span>
-          )}
-          {fila.camposEditados.length > 0 && <Badge tono="ambar">Editado: {fila.camposEditados.join(", ")}</Badge>}
-        </div>
-      </td>
-    </tr>
   );
 }

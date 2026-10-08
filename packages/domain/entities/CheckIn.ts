@@ -20,5 +20,6 @@ export interface CheckInEnSala {
     sucursalId: string | null;
     fechaVencimiento: Date | null;
     planNombre: string | null;
+    ajustarFecha: boolean;
   };
 }

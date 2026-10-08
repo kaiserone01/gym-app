@@ -59,3 +59,4 @@ docs/xls/*.xlsm
 # apps/kiosk-host (.NET)
 apps/kiosk-host/**/bin/
 apps/kiosk-host/**/obj/
+apps/kiosk-host/publicado/

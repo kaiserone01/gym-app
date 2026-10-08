@@ -9,12 +9,12 @@ import type { Suscripcion } from "../entities/Suscripcion";
 const AHORA = new Date("2026-09-29T15:00:00Z");
 const DIA = 86_400_000;
 
-function checkIn(id: string, miembroId: string, minutosAtras: number, fechaVencimiento: Date | null): CheckInEnSala {
+function checkIn(id: string, miembroId: string, minutosAtras: number, fechaVencimiento: Date | null, ajustarFecha = false): CheckInEnSala {
   return {
     id,
     miembroId,
     fechaHora: new Date(AHORA.getTime() - minutosAtras * 60_000),
-    miembro: { nombre: `Miembro ${miembroId}`, fotoUrl: null, sucursalId: null, fechaVencimiento, planNombre: null },
+    miembro: { nombre: `Miembro ${miembroId}`, fotoUrl: null, sucursalId: null, fechaVencimiento, planNombre: null, ajustarFecha },
   };
 }
 
@@ -57,6 +57,13 @@ describe("listarEnSala", () => {
     const vencido = new Date(AHORA.getTime() - 30 * DIA);
     const [persona] = await listarEnSala(deps([checkIn("c1", "m1", 5, vencido)], ["m1"]), input);
     expect(persona.requiereCobro).toBe(false);
+  });
+
+  test("propaga ajustarFecha para que el cobro se haga desde la ficha", async () => {
+    const vencido = new Date(AHORA.getTime() - 30 * DIA);
+    const [persona] = await listarEnSala(deps([checkIn("c1", "m1", 5, vencido, true)], []), input);
+    expect(persona.ajustarFecha).toBe(true);
+    expect(persona.requiereCobro).toBe(true);
   });
 
   test("marca en_gracia dentro de los días de gracia de la sucursal", async () => {

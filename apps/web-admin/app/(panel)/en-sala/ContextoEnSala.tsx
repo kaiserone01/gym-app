@@ -16,6 +16,7 @@ export interface PersonaEnSalaVista {
   fechaVencimiento: string | null;
   estado: EstadoCheckIn;
   requiereCobro: boolean;
+  ajustarFecha: boolean;
 }
 
 interface ValorContexto {

@@ -23,6 +23,8 @@ export interface PersonaEnSala {
   // estando en sala, la alerta se apaga sola.
   estado: EstadoCheckIn;
   requiereCobro: boolean;
+  // Vencimiento no confiable (migración): el cobro se hace desde la ficha, no desde Caja.
+  ajustarFecha: boolean;
 }
 
 export function requiereCobro(estado: EstadoCheckIn): boolean {
@@ -67,6 +69,7 @@ export async function listarEnSala(
         fechaVencimiento: c.miembro.fechaVencimiento,
         estado,
         requiereCobro: requiereCobro(estado),
+        ajustarFecha: c.miembro.ajustarFecha,
       };
     })
   );

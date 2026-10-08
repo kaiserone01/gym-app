@@ -7,6 +7,13 @@
   opacity: 0;
 }
 
+/* Toda la interfaz del kiosco se mide en rem: con este tamaño base proporcional a la pantalla (16 px a
+   1920x1080) crece o se encoge sola en PC, TV y pantallas pequeñas. Limita por ancho y por alto para que
+   la ficha siempre quepa completa. */
+html {
+  font-size: clamp(9px, min(0.8333vw, 1.3vh), 32px);
+}
+
 body {
   font-family: Arial, Helvetica, sans-serif;
 }

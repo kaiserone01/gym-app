@@ -30,14 +30,14 @@ Rediseñar `apps/kiosk` para un Smart TV (Android TV, APK) con un numpad USB; la
 Hoy: `esperando | procesando | resultado | pendiente | error`. Pasa a:
 
 ```
-reposo ──cédula+Enter──▶ procesando ──respuesta──▶ ficha(cara) ──7 s──▶ reposo
+reposo ──cédula+Enter──▶ procesando ──respuesta──▶ ficha(cara) ──30 s──▶ reposo
                                                        │
                               otra cédula (Enter) ─────┘  voltea directo a la nueva
 ```
 
 - **reposo:** ficha de marca (avatar = placeholder, frase neutra rotando, hora, tasa, sede). Teclear muestra los dígitos en el campo; la cédula a medias se borra a los 7 s de inactividad (`TIEMPO_INACTIVIDAD_MS`, ya existe).
 - **procesando:** "Verificando…" sobre la ficha de reposo; todavía no gira.
-- **ficha(cara):** llega la respuesta → se **precarga la foto** (`Image.decode()`, espera máxima ~1,5 s; si falla se usan iniciales) → gira. Dura **7 s** (rango 6–8) con barra de cuenta regresiva; al terminar gira de vuelta al reposo.
+- **ficha(cara):** llega la respuesta → se **precarga la foto** (`Image.decode()`, espera máxima ~1,5 s; si falla se usan iniciales) → gira. Dura **30 s** (decisión posterior del usuario; el diseño inicial decía 7 s) con barra de cuenta regresiva; al terminar gira de vuelta al reposo.
 - Si entra otra cédula con una ficha visible, voltea **directo** a la nueva y reinicia el conteo (sin pasar por reposo).
 - Escribir un dígito con una ficha visible no la cierra; solo la reemplaza una nueva respuesta o el fin del conteo. La cédula a medias se muestra en el campo, no en la ficha.
 - Caras: `permitido`, `por_vencer`, `en_gracia`, `vencido`, `abono_vencido`, `sucursal_incorrecta`, `pendiente` (sin red), `error`.
@@ -63,7 +63,7 @@ reposo ──cédula+Enter──▶ procesando ──respuesta──▶ ficha(ca
 ## 5. Coreografía de animaciones
 - **Flip:** contenedor con `perspective`; la tarjeta rota `rotateY(0 → 180°)` ~700 ms con `cubic-bezier` tipo ease-out-back; `backface-visibility: hidden`. Dos caras en el DOM (reposo / ficha). Solo se animan `transform` y `opacity`.
 - **Frases:** cada 4–5 s, salida con fundido + desplazamiento vertical corto y entrada igual (~300 ms). Rotación de bolsa barajada: se sortea sin repetir hasta agotar la lista y se vuelve a barajar (sin repetir la última como primera).
-- **Cuenta regresiva:** barra bajo la ficha que se vacía en 7 s (`transform: scaleX`).
+- **Cuenta regresiva:** barra bajo la ficha que se vacía en 30 s (`transform: scaleX`).
 - **Video (`components/FondoVideo.tsx`):** al validar, `playbackRate` 1 → 1,8 y de regreso a 1 en ~1,5 s. Capa de destello radial por CSS: verde (permitido), ámbar (gracia / por vencer), rojo (rechazos), con keyframes de opacidad. Sin `backdrop-filter` ni blur.
 - **Recodificación del video** (la corre el usuario; en esta máquina no hay ffmpeg):
   `ffmpeg -i backgound1.mp4 -an -c:v libx264 -profile:v main -b:v 1800k -maxrate 2000k -bufsize 4000k -movflags +faststart backgound1.mp4`
@@ -124,7 +124,7 @@ Riesgo: con Num Lock apagado Android envía teclas de navegación en vez de díg
 - Arranque al encender el TV: Android 10+ limita lanzar actividades desde segundo plano; queda como prueba pendiente en el aparato real.
 
 ## 10. Fases de entrega
-- **F1 — sin migración:** reposo con ilustración, sede y tasa (`GET /api/kiosco/estado`); ficha real de 7 s con cuenta regresiva; flip 3D; todas las caras (incluida `por_vencer`); video recodificado con reacción al estado; frases neutras; entrada de numpad por `keydown`; tokens sin `color-mix()`. Empieza por la ficha visible en reposo con `placeholder-profile.jpg`.
+- **F1 — sin migración:** reposo con ilustración, sede y tasa (`GET /api/kiosco/estado`); ficha real de 30 s con cuenta regresiva; logo fijo arriba a la derecha; tamaños proporcionales a la pantalla (rem con `html { font-size }` fluido); flip 3D; todas las caras (incluida `por_vencer`); video recodificado con reacción al estado; frases neutras; entrada de numpad por `keydown`; tokens sin `color-mix()`. Empieza por la ficha visible en reposo con `placeholder-profile.jpg`.
 - **F2:** `saludo` y `saludoPreguntas` (migración + `checkin` + `POST /api/checkin/saludo` + web-admin); frases por género; cumpleaños; campaña con `*` / `-` / `+`.
 - **F3:** APK Capacitor para el TV.
 

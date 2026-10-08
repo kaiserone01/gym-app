@@ -21,7 +21,7 @@ import { FichaReposo } from "@/components/FichaReposo";
 import { FondoVideo, type Reaccion } from "@/components/FondoVideo";
 
 // Cuánto tiempo se queda la ficha real en pantalla antes de volver al reposo.
-const DURACION_FICHA_MS = 7_000;
+const DURACION_FICHA_MS = 30_000;
 // Tope de espera por la foto antes de voltear la ficha (si falla, sale con iniciales).
 const ESPERA_FOTO_MS = 1_500;
 
@@ -94,7 +94,7 @@ export default function PaginaCheckIn() {
     return () => window.removeEventListener("online", alReconectar);
   }, [apiKey, actualizarPendientes]);
 
-  // La ficha real vuelve sola al reposo a los 7 s; una respuesta nueva la reemplaza antes y su id
+  // La ficha real vuelve sola al reposo a los 30 s; una respuesta nueva la reemplaza antes y su id
   // distinto reinicia el conteo (el temporizador de la anterior se cancela al cambiar el id).
   const fichaId = pantalla.ficha?.id;
   useEffect(() => {
@@ -163,9 +163,18 @@ export default function PaginaCheckIn() {
     >
       <FondoVideo reaccion={reaccion} />
 
+      {/* Logo fijo arriba a la derecha, dentro del margen de overscan. */}
+      {/* eslint-disable-next-line @next/next/no-img-element -- output: "export" no soporta el optimizador de next/image */}
+      <img
+        src="/branding/adrenalina-icono.png"
+        alt=""
+        aria-hidden
+        className="pointer-events-none fixed right-[5vmin] top-[5vmin] h-32 w-32 object-contain"
+      />
+
       {pendientes > 0 && (
         <div
-          className="fixed right-[5vmin] top-[5vmin] rounded px-3 py-1 text-xl"
+          className="fixed left-[5vmin] top-[5vmin] rounded px-3 py-1 text-xl"
           style={{ background: "var(--gx-bad)", color: "var(--gx-bad-ink)" }}
         >
           {pendientes} pendiente{pendientes === 1 ? "" : "s"} por sincronizar

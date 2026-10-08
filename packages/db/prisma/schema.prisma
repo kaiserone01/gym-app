@@ -30,6 +30,7 @@ model Organizacion {
   turnos               Turno[]
   reglasAbono          ReglaAbonoPorFrecuencia[]
   cambiosPlanAuditoria CambioPlanAuditoria[]
+  miembrosReferencia   MiembroReferencia[]
 }
 
 model Sucursal {
@@ -55,6 +56,7 @@ model Sucursal {
   miembros          Miembro[]
   sesiones          Sesion[]
   deudasProducto    DeudaProducto[]
+  miembrosReferencia MiembroReferencia[]
 }
 
 enum RolUsuario {
@@ -597,4 +599,39 @@ model Sesion {
   sucursalActiva   Sucursal?    @relation(fields: [sucursalActivaId], references: [id])
   expiraEn         DateTime
   createdAt        DateTime     @default(now())
+}
+
+// Padrón de referencia: espejo del Excel (solo filas con cédula única). NO son miembros del sistema;
+// se activan bajo demanda (ver ActivarMiembroDesdePadron). Ligado a la sede que usa ese Excel.
+model MiembroReferencia {
+  id               String       @id @default(cuid())
+  organizacionId   String
+  organizacion     Organizacion @relation(fields: [organizacionId], references: [id])
+  sucursalId       String
+  sucursal         Sucursal     @relation(fields: [sucursalId], references: [id])
+  cedula           String
+  numeroFila       Int
+  // Columnas crudas del Excel, como texto (fechas serial → yyyy-mm-dd)
+  nombre           String
+  status           String?
+  fNacimiento      String?
+  celular          String?
+  fVenc            String?
+  fechaPago        String?
+  plan             String?
+  // Normalizadas (null = sin dato confiable)
+  fechaVencimiento DateTime?
+  fechaUltimoPago  DateTime?
+  fechaNacimiento  DateTime?
+  planNombre       String?
+  precioPlanUSD    Decimal?     @db.Decimal(10, 2)
+  archivoOrigen    String
+  importadoAt      DateTime     @default(now())
+  // Ediciones manuales desde el menú Excel: columnas crudas tocadas, cuándo y quién. Vacío = tal cual el Excel.
+  camposEditados   String[]     @default([])
+  editadoAt        DateTime?
+  editadoPor       String?
+
+  @@unique([organizacionId, cedula])
+  @@index([sucursalId])
 }

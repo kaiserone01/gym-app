@@ -23,7 +23,7 @@ const DURACION_FICHA_MS = 30_000;
 const CLASES_CAMPO_CEDULA = "w-full max-w-xl text-center text-5xl tracking-widest rounded-xl border-2 px-6 py-4";
 const ESTILO_CAMPO_CEDULA = { borderColor: "var(--gx-accent)", color: "var(--gx-ink)" };
 
-// Mensajes de estado sobre fondo sólido: el logo de fondo (marca-agua-completa) no debe cruzar el texto.
+// Mensajes de estado sobre fondo sólido: así el texto se lee bien sobre el video de fondo.
 const CLASES_MENSAJE = "max-w-3xl rounded-xl px-6 py-4 text-2xl";
 const ESTILO_MENSAJE = { background: "var(--gx-surface)" };
 
@@ -102,8 +102,8 @@ export default function PaginaCheckIn() {
 
   return (
     <main
-      className={`marca-agua-pagina marca-agua-completa${estado.tipo === "resultado" ? " sin-logo" : ""} min-h-screen flex flex-col items-center gap-6 p-8 pt-10`}
-      style={{ background: "var(--gx-ground)", color: "var(--gx-ink)" }}
+      className="min-h-screen flex flex-col items-center gap-6 p-8 pt-10"
+      style={{ color: "var(--gx-ink)" }}
     >
       {pendientes > 0 && (
         <div

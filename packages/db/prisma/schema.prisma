@@ -43,6 +43,9 @@ model Sucursal {
   activo         Boolean      @default(true)
   createdAt      DateTime     @default(now())
   apiKey         String       @unique @default(uuid()) // el kiosco se autentica con esto (header X-Kiosk-Api-Key), nunca manda sucursalId directo (ADR v1 §4.2)
+  reposoFrases    String[]    @default([]) // frases de la ficha en reposo del kiosco; vacío = las predeterminadas
+  reposoImagenUrl String? // imagen del círculo de la ficha en reposo (R2); null = placeholder del kiosco
+  reposoOpacidad  Int         @default(100) // % de opacidad del fondo de la ficha en reposo (20–100)
 
   usuariosAdmin     UsuarioAdmin[]
   checkIns          CheckIn[]

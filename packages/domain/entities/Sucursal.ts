@@ -6,6 +6,9 @@ export interface Sucursal {
   diasGracia: number;
   activo: boolean;
   apiKey: string;
+  reposoFrases: string[];
+  reposoImagenUrl: string | null;
+  reposoOpacidad: number;
 }
 
 export interface CambiosSucursal {
@@ -13,6 +16,9 @@ export interface CambiosSucursal {
   direccion?: string | null;
   diasGracia?: number;
   activo?: boolean;
+  reposoFrases?: string[];
+  reposoImagenUrl?: string | null;
+  reposoOpacidad?: number;
 }
 
 export interface DatosNuevaSucursal {

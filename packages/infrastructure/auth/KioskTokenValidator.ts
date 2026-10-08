@@ -17,6 +17,9 @@ export class KioskTokenValidator implements IKioskAuthValidator {
       diasGracia: sucursal.diasGracia,
       activo: sucursal.activo,
       apiKey: sucursal.apiKey,
+      reposoFrases: sucursal.reposoFrases,
+      reposoImagenUrl: sucursal.reposoImagenUrl,
+      reposoOpacidad: sucursal.reposoOpacidad,
     };
   }
 }

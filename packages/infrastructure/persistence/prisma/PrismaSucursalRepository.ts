@@ -11,6 +11,9 @@ function mapear(sucursal: {
   diasGracia: number;
   activo: boolean;
   apiKey: string;
+  reposoFrases: string[];
+  reposoImagenUrl: string | null;
+  reposoOpacidad: number;
 }): Sucursal {
   return {
     id: sucursal.id,
@@ -20,6 +23,9 @@ function mapear(sucursal: {
     diasGracia: sucursal.diasGracia,
     activo: sucursal.activo,
     apiKey: sucursal.apiKey,
+    reposoFrases: sucursal.reposoFrases,
+    reposoImagenUrl: sucursal.reposoImagenUrl,
+    reposoOpacidad: sucursal.reposoOpacidad,
   };
 }
 

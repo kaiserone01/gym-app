@@ -25,7 +25,7 @@
 
 ## Review Focus
 
-1. **Clave en el repo público:** que ningún archivo versionado, log del workflow ni artefacto sin cifrar contenga una clave. El workflow debe fallar de forma ruidosa (no subir) si hay clave y falta `KIOSCO_APK_PASSWORD`, y debe comprobar que no queda ningún `.apk` en `salida/` cuando hay clave (Task 5).
+1. **Clave en el repo público (la ruta cifrada se verifica en Task 5 Step 6 con la sucursal de pruebas, sin descifrar):** que ningún archivo versionado, log del workflow ni artefacto sin cifrar contenga una clave. El workflow debe fallar de forma ruidosa (no subir) si hay clave y falta `KIOSCO_APK_PASSWORD`, y debe comprobar que no queda ningún `.apk` en `salida/` cuando hay clave (Task 5).
 2. **Clave con caracteres especiales** (`+`, `/`, `=`, `&`, `#`, espacios): debe sobrevivir el viaje por el fragmento y quedar guardada tal cual en el kiosco (Tasks 1 y 3).
 3. **WebView sin "Chrome/NNN" en el user agent** (otros motores) o con versión exacta 111: no debe mostrarse el aviso por error (Task 2).
 4. **Primer arranque sin red:** el TV debe mostrar la página local `offline.html` y reintentar solo, no una pantalla de error del WebView (Task 3/4; se confirma en el TV).
@@ -754,19 +754,24 @@ git push origin main
 ```
 (Si el push es rechazado por el permiso `workflow` del token, reportar BLOCKED con el mensaje exacto.)
 
-Run: `gh workflow run apk-kiosco.yml -f sucursal=prueba` y luego `gh run list --workflow apk-kiosco.yml --limit 1` para obtener el `id` y `gh run watch <id> --exit-status`.
-Expected: el workflow termina en éxito. **No existe el secreto `KIOSCO_CLAVE_PRUEBA`**, así que `KIOSCO_CLAVE` queda vacía y se publica `kiosco-prueba.apk` sin cifrar (es seguro: no lleva clave).
+Run: `gh workflow run apk-kiosco.yml -f sucursal=generico` y luego `gh run list --workflow apk-kiosco.yml --limit 1` para obtener el `id` y `gh run watch <id> --exit-status`.
+Expected: el workflow termina en éxito. **No existe el secreto `KIOSCO_CLAVE_GENERICO`** (no crearlo), así que `KIOSCO_CLAVE` queda vacía y se publica `kiosco-generico.apk` sin cifrar (es seguro: no lleva clave).
 
 Si falla, leer `gh run view <id> --log-failed`, corregir la causa (versión de Java, firma, rutas, sintaxis de Gradle o del manifest de la Task 4), hacer un commit por cada corrección (`git push origin main`) y relanzar. Repetir hasta que quede en verde. Reportar cada causa encontrada y el arreglo (los archivos de Tasks 3 y 4 pueden necesitar ajustes; está permitido tocarlos para que compile).
 
 - [ ] **Step 5: Comprobar el APK descargado**
 
-Run: `gh run download <id> -n kiosco-prueba -D "$TEMP/apk-prueba"` y luego `unzip -l "$TEMP/apk-prueba/kiosco-prueba.apk" | head -30`.
-Expected: el archivo existe, es un ZIP válido y contiene `AndroidManifest.xml`, `classes.dex` y `assets/public/` (con `offline.html` e `index.html`). Verificar también que **no** contiene ninguna clave real: `unzip -p ... assets/capacitor.config.json` debe mostrar `"url": "https://kiosco.zipnegocios.com/"` (sin `#clave=`). Borrar `$TEMP/apk-prueba` al terminar.
+Run: `gh run download <id> -n kiosco-generico -D "$TEMP/apk-generico"` y luego `unzip -l "$TEMP/apk-generico/kiosco-generico.apk" | head -30`.
+Expected: el archivo existe, es un ZIP válido y contiene `AndroidManifest.xml`, `classes.dex` y `assets/public/` (con `offline.html` e `index.html`). Verificar también que **no** contiene ninguna clave real: `unzip -p ... assets/capacitor.config.json` debe mostrar `"url": "https://kiosco.zipnegocios.com/"` (sin `#clave=`). Borrar `$TEMP/apk-generico` al terminar.
 
-- [ ] **Step 6: Confirmar (sin ejecutar) la ruta cifrada**
+- [ ] **Step 6: Verificar la ruta cifrada con la sucursal de pruebas**
 
-La ruta con clave (cifrado 7z) **no se puede probar sin los secretos reales del usuario**. Dejarlo anotado en el reporte como "no verificado", con la instrucción de que el usuario la pruebe tras crear los secretos (Task 6, lista de verificación). No crear secretos ni contraseñas de prueba en el repositorio.
+El usuario ya creó los secretos `KIOSCO_APK_PASSWORD` y `KIOSCO_CLAVE_PRINCIPAL`, y creará `KIOSCO_CLAVE_PRUEBA` (clave de una sucursal de pruebas de otra organización) y `KIOSCO_CLAVE_TIPURO`. Primero comprobar que existen los nombres (sin leer valores): `gh secret list` debe listar `KIOSCO_APK_PASSWORD` y `KIOSCO_CLAVE_PRUEBA`. Si `KIOSCO_CLAVE_PRUEBA` no aparece, saltar este paso y reportarlo como "ruta cifrada sin verificar: falta el secreto" (no crear secretos).
+
+Run: `gh workflow run apk-kiosco.yml -f sucursal=prueba`, esperar con `gh run watch <id> --exit-status` y descargar: `gh run download <id> -n kiosco-prueba -D "$TEMP/apk-prueba"`.
+Expected: el artefacto contiene **solo** `kiosco-prueba.7z` (ningún `.apk`). Sin descifrarlo (no se dispone de la contraseña ni debe usarse), comprobar que está cifrado: (a) la firma de los primeros 6 bytes es `37 7A BC AF 27 1C` (`head -c 6 "$TEMP/apk-prueba/kiosco-prueba.7z" | xxd`), (b) el archivo **no** contiene en claro cadenas del APK: `grep -c -a -e "AndroidManifest" -e "classes.dex" -e "assets/public" "$TEMP/apk-prueba/kiosco-prueba.7z"` debe dar `0` (con `-mhe=on` los nombres de archivo van cifrados), y (c) `gh run view <id> --log` no muestra ninguna clave (el log debe verse enmascarado). Borrar `$TEMP/apk-prueba` al terminar. Si (b) da más de 0 o aparece un `.apk` en el artefacto, es un fallo de seguridad: arreglar el workflow, borrar la ejecución (`gh run delete <id>`) y reportarlo.
+
+La sucursal `tipuro` no se compila en esta tarea: queda para el usuario cuando quiera (instrucciones en el README de la Task 6).
 
 ---
 

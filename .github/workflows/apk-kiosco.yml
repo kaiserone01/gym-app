@@ -50,8 +50,6 @@ jobs:
           distribution: temurin
           java-version: 21
 
-      - uses: android-actions/setup-android@v3
-
       - name: Instalar dependencias de Capacitor
         working-directory: apps/kiosk-tv/capacitor
         run: npm ci

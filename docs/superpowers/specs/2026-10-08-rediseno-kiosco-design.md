@@ -23,7 +23,7 @@ Rediseñar `apps/kiosk` para un Smart TV (Android TV, APK) con un numpad USB; la
 - Flip 3D ~700 ms con `ease-out-back`, foto precargada antes de voltear; ficha real 6–8 s con barra de cuenta regresiva.
 - Fondo: se mantiene el video (no WebGL, por las GPU de TV); reacciona al estado con `playbackRate` y un destello radial CSS.
 - Frases `{m, f, n}` en rotación de "bolsa barajada". La `@` solo aparece en "¡BIENVENID@, ADRENALINER!".
-- Campo `saludo` (preferencia de saludo, no "género") con campaña desde el propio kiosco; saludo especial de cumpleaños.
+- Campo `saludo` (preferencia de saludo, no "género") que edita recepción en web-admin; saludo especial de cumpleaños. **Sin campaña de personalización en el kiosco** (el usuario la descartó al iniciar la Fase 2).
 - Nombre + primer apellido en el TV (supuesto: en todas las caras).
 
 ## 3. Máquina de estados (`apps/kiosk/app/page.tsx`)
@@ -93,22 +93,15 @@ Todo lo nuevo es **opcional**: un kiosco viejo ignora los campos añadidos y tra
 
 **Fase 2 — `packages/db/prisma/schema.prisma`, modelo `Miembro`** (hoy tiene `fechaNacimiento` y no tiene género):
 - `saludo Saludo?` con `enum Saludo { MASCULINO FEMENINO NEUTRO }`; `null` = no preguntado.
-- `saludoPreguntas Int @default(0)`: visitas en que ya se preguntó (tope 3).
-- Migración fechada y con nombre en español. Editable también en `apps/web-admin` (`FormularioMiembro`) y por recepción.
+- Migración fechada y con nombre en español. Editable en `apps/web-admin` (`FormularioMiembro`, alta y edición) junto con **`fechaNacimiento`** (la columna ya existe pero ningún formulario la capturaba): sin ese campo el cumpleaños nunca se activaría.
 
 **`POST /api/checkin`** (`apps/web-admin/app/api/checkin/route.ts`, hoy devuelve nombre, fotoUrl, entrenador, fechaVencimiento, estado, sede asignada, diasGraciaRestantes, tieneGraciaConfigurada) agrega:
-- `checkInId`
 - `saludo` (`"MASCULINO" | "FEMENINO" | "NEUTRO" | null`)
 - `esCumpleanos` (calculado en servidor con `utils/fechaCaracas.ts`; **no** se envía `fechaNacimiento`)
-- `preguntarSaludo` (`true` si `saludo = null`, `saludoPreguntas < 3` y el acceso es permitido)
 
 `ResultadoCheckIn` en `apps/kiosk/lib/api.ts` suma esos campos como opcionales.
 
 **Nuevo `GET /api/kiosco/estado`** (Fase 1; clave de sucursal en `X-Kiosk-Api-Key`, mismos CORS que `checkin`, método GET): `{ sucursalNombre, tasaBcv: { valor, fecha } | null }`, con `ITasaCambioRepository.obtenerUltima()` (la tasa la actualiza el script `actualizar-tasa` de `apps/worker`). El kiosco la guarda en localStorage (funciona sin red) y la refresca cada ~10 min.
-
-**Nuevo `POST /api/checkin/saludo`** (Fase 2): `{ checkInId, saludo }`. Valida que el check-in sea de hoy y de la sucursal de la clave; guarda `saludo` y suma `saludoPreguntas`. Si nadie responde, solo se suma la pregunta (queda neutro).
-
-**Campaña de saludo (solo TV):** tras un acceso permitido con `preguntarSaludo`, la ficha muestra "¿Cómo te saludamos?" con las teclas de numpad **`*` Campeón · `-` Campeona · `+` Adrenaliner**. No se usan 1/2/3 porque las cédulas empiezan por esos dígitos y chocarían con el tecleo de la siguiente persona. Sin respuesta → neutro y se vuelve a preguntar hasta 3 visitas. `kiosk-host` no reenvía esas teclas, así que en PC no hay campaña; recepción edita el saludo en web-admin.
 
 ## 8. Entrada del numpad (`apps/kiosk/lib/useEntradaCedula.ts`)
 Hoy: mensajes de WebView2 (`chrome.webview`) o `<input>` enfocado en navegador. Se añade una tercera fuente para la APK: un `keydown` global (Capacitor/Android) que acepta solo `Numpad0`–`Numpad9`, `NumpadEnter`, `Backspace` y `Escape`, con `preventDefault`, y **sin `<input>` en el DOM** para que Android TV no abra el teclado en pantalla. El orden de preferencia es: host nativo (WebView2) → APK (keydown global) → navegador (`<input>`). Los tres comparten `alEscribir`, `alEnviar`, el espejo síncrono de la cédula y el borrado por inactividad.
@@ -125,7 +118,7 @@ Riesgo: con Num Lock apagado Android envía teclas de navegación en vez de díg
 
 ## 10. Fases de entrega
 - **F1 — sin migración:** reposo con ilustración, sede y tasa (`GET /api/kiosco/estado`); ficha real de 30 s con cuenta regresiva; logo fijo arriba a la derecha; tamaños proporcionales a la pantalla (rem con `html { font-size }` fluido); flip 3D; todas las caras (incluida `por_vencer`); video recodificado con reacción al estado; frases neutras; entrada de numpad por `keydown`; tokens sin `color-mix()`. Empieza por la ficha visible en reposo con `placeholder-profile.jpg`.
-- **F2:** `saludo` y `saludoPreguntas` (migración + `checkin` + `POST /api/checkin/saludo` + web-admin); frases por género; cumpleaños; campaña con `*` / `-` / `+`.
+- **F2:** `Miembro.saludo` (migración) + `saludo`/`esCumpleanos` en `/api/checkin` + selector de saludo y fecha de nacimiento en web-admin; frases por género y saludo de cumpleaños en la ficha. **Sin campaña** (descartada). Plan: `docs/superpowers/plans/2026-10-08-rediseno-kiosco-fase2.md`.
 - **F3:** APK Capacitor para el TV.
 
 ## 11. Riesgos conocidos

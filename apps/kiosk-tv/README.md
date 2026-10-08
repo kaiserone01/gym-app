@@ -65,6 +65,10 @@ Pendiente de verificar (no probado en un TV físico):
 - La ficha de reposo y el flip se ven bien y el texto es legible. Si el TV reporta 960x540, ajustar `html { font-size }` en `apps/kiosk/app/globals.css`.
 - Tras reiniciar el TV hay que abrir la app a mano: el arranque automático no está implementado (Android 10+ lo limita).
 
+## Cambiar frases, imagen y opacidad del reposo
+
+La APK solo abre la web del kiosco, así que no hay que recompilarla ni reinstalarla para cambiar el reposo: en el panel, menú **Kiosko** (SOCIO y GERENTE), se editan las frases, la imagen del círculo y la opacidad del fondo de la ficha. El TV consulta el servidor cada ~30 s y aplica el cambio solo; sin red conserva la última configuración recibida.
+
 ## 9. Seguridad
 
 El repositorio es **público**. Por eso el APK con clave solo se publica cifrado (7-Zip AES-256, nombres de archivo cifrados). Nunca subir un APK descifrado ni pegar la clave en issues, commits o logs. Con acceso físico al TV la clave podría extraerse del APK instalado (riesgo aceptado). El APK se firma con una llave de debug fija y pública (`capacitor/android/app/debug.keystore`, contraseña `android`) solo para que las actualizaciones se instalen encima; no protege nada. Además, quien tenga acceso de instalación al TV puede firmar un APK con el mismo appId e instalarlo encima de este, heredando sus datos guardados (incluida la clave); es el mismo modelo de amenaza de acceso físico, aceptado.

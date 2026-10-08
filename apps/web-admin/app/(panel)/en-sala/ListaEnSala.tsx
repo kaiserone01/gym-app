@@ -76,9 +76,13 @@ export function ListaEnSala() {
                 {persona.planNombre ? ` · ${persona.planNombre}` : ""}
               </p>
               {persona.requiereCobro ? (
-                <p className="mt-1 text-sm font-semibold" style={{ color: "var(--gx-bad)" }}>
+                <p
+                  className="mt-1 text-sm font-semibold"
+                  style={{ color: persona.porRegularizar ? "var(--gx-warn)" : "var(--gx-bad)" }}
+                >
                   {ETIQUETA_ESTADO[persona.estado]}
-                  {persona.fechaVencimiento ? ` desde el ${fecha(persona.fechaVencimiento)}` : ""} — cobrar antes de entrenar
+                  {persona.fechaVencimiento ? ` desde el ${fecha(persona.fechaVencimiento)}` : ""}
+                  {persona.porRegularizar ? " según el Excel — regularizar antes de entrenar" : " — cobrar antes de entrenar"}
                 </p>
               ) : (
                 <div className="mt-1">
@@ -87,14 +91,25 @@ export function ListaEnSala() {
               )}
             </div>
             <div className="flex w-full gap-2 sm:w-auto">
-              {persona.requiereCobro && (
+              {/* Por regularizar (aunque figure al día): su fecha no está verificada → se arregla en la ficha. */}
+              {persona.porRegularizar ? (
                 <Link
-                  href={persona.porRegularizar ? `/miembros/${persona.miembroId}` : `/caja?cobrar=${persona.miembroId}`}
+                  href={`/miembros/${persona.miembroId}`}
                   className="flex min-h-11 flex-1 items-center justify-center rounded-lg px-4 text-sm font-semibold sm:flex-none"
-                  style={{ background: "var(--gx-bad)", color: "white" }}
+                  style={{ background: "var(--gx-accent)", color: "var(--gx-accent-ink)" }}
                 >
-                  Cobrar ahora
+                  Regularizar
                 </Link>
+              ) : (
+                persona.requiereCobro && (
+                  <Link
+                    href={`/caja?cobrar=${persona.miembroId}`}
+                    className="flex min-h-11 flex-1 items-center justify-center rounded-lg px-4 text-sm font-semibold sm:flex-none"
+                    style={{ background: "var(--gx-bad)", color: "white" }}
+                  >
+                    Cobrar ahora
+                  </Link>
+                )
               )}
             </div>
           </Card>

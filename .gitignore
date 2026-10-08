@@ -53,6 +53,7 @@ apps/web-admin/public/uploads/
 
 # reportes de migración Excel — contienen PII real (nombres, cédulas, teléfonos)
 packages/db/migracion-excel/reporte-migracion-*.json
+packages/db/migracion-excel/reporte-padron-*.json
 # archivo fuente real de la migración — PII; el análisis en .md sí se versiona
 docs/xls/*.xlsm
 

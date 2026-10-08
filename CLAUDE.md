@@ -45,8 +45,7 @@ npm run start   # starts apps/web-admin only
 - `packages/db` — Prisma layer. Scripts (run with `npm run <script> --workspace packages/db`):
   - `generate` (prisma generate), `migrate:dev` (prisma migrate dev), `db:seed`
   - `db:limpiar-miembros`, `db:sembrar-prueba`, `db:quitar-permisos-entrenadores` — standalone maintenance scripts run via `tsx`
-  - `db:migrar-excel-adrenalina` (dry-run) / `db:migrar-excel-adrenalina:confirm` (writes) — Excel migration pipeline (see below)
-  - `db:limpiar-migracion-excel-prueba` — deletes the disposable test org created by the migration
+  - `db:importar-padron` (dry-run) / `db:importar-padron:confirm` (writes) — imports the Excel padrón into `MiembroReferencia` (see below)
   - `test` — `vitest run`
 - `packages/domain` — pure business logic, also has `test` (`vitest run`).
 
@@ -74,13 +73,14 @@ No root-level aggregate test script — run per workspace.
 - Migrations are dated and named in Spanish under `packages/db/prisma/migrations/`.
 - One-off/maintenance scripts live flat in `packages/db/` (not in subfolders) and share the same boilerplate: `dotenv.config({ path: path.resolve(__dirname, "../../.env") })` + Prisma adapter setup, run via `tsx`.
 
-## Excel migration pipeline (in progress)
-Imports member data from `docs/xls/DATA ADRENALINA_.xlsm` into a disposable test org (`migracion-adrenalina-test`).
-- Plan/spec docs: `docs/superpowers/plans/2026-09-28-migracion-excel-adrenalina.md`, `docs/superpowers/specs/2026-09-28-migracion-excel-adrenalina-design.md`.
-- Pure, unit-tested normalize/classify modules planned under `packages/db/migracion-excel/`, driven by editable JSON config (`mapeo-plan.json`, `reglas-cedula.json`).
-- CLI entry `packages/db/migrarExcelAdrenalina.ts` defaults to dry-run; `--confirm` writes, one Prisma transaction per row, idempotent on `(organizacionId, cedula)`.
-- Companion `limpiarMigracionExcelPrueba.ts` cascades-deletes the test org.
-- Check `packages/db/migracion-excel/` before implementing new normalize/classify logic — parts of this may already exist from a prior session.
+## Padrón Excel y activación bajo demanda
+Spec/plan: `docs/superpowers/specs/2026-10-08-padron-excel-activacion-bajo-demanda-design.md` (reemplaza la migración masiva del 2026-09-28, ya retirada).
+- `MiembroReferencia` (Prisma) es el padrón: espeja el Excel (`DATA ADRENALINA_*.xlsm`) ligado a la Sede Principal. Solo filas con cédula única y con al menos un dígito; sin cédula o repetida se excluye. Nunca toca `Miembro`.
+- `packages/db/importarPadronExcel.ts` (`db:importar-padron`, dry-run por defecto; `--confirm` escribe; `--org=` y `--sucursal=`). Reutiliza `migracion-excel/leerExcel.ts` y `normalizarFila.ts`; la normalización (plan, fechas) vive en `packages/domain/utils/padronExcel.ts`. Escribe `reporte-padron-*.json` (gitignored, contiene PII). Reimportar respeta lo editado a mano (`camposEditados`).
+- `activarMiembroPorCedula` (`packages/domain`) crea `Miembro` + `Suscripcion` (sin `Pago`) desde el padrón, con `porRegularizar = true`. Se invoca desde el check-in del kiosco (`registrarCheckIn`, dependencia opcional; kiosco solo dígitos) y desde "Activar desde Excel" en `/miembros` (acepta cédulas alfanuméricas). Solo si la sucursal coincide con la del padrón.
+- Menú "Excel" en web-admin: consulta del padrón con filtros por cédula y edición de filas de quien aún no es `Miembro` (`MIEMBROS`/`VER` para ver, `MIEMBROS`/`EDITAR` para editar).
+- `Miembro.porRegularizar` reemplazó a `ajustarFecha` (aviso único "Por regularizar"; se apaga al ajustar la fecha o registrar un pago).
+- Migraciones pendientes de aplicar en producción: se aplican al arrancar el contenedor tras el deploy; nunca correr `prisma migrate` contra el `.env` local (apunta a producción).
 
 ## Next.js apps
 - `apps/web-admin/app` — App Router with a `(panel)` route group: `caja`, `cambiar-password`, `configuraciones`, `en-sala`, `miembros`, `pagos`, `planes`, `sucursales`, `usuarios`; plus `app/login` and API route handlers under `app/api/{auth,caja,checkin,miembros,pagos,planes,tasa-cambio,usuarios}`.

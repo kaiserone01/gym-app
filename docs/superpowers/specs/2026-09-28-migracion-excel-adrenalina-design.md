@@ -1,3 +1,5 @@
+> **Reemplazado** por 2026-10-08-padron-excel-activacion-bajo-demanda.
+
 # Migración DATA_ADRENALINA_.xlsm → gym-app (diseño)
 
 **Fecha:** 2026-09-28

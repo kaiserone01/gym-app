@@ -24,7 +24,7 @@ export function ActivarDesdeExcel() {
 
   return (
     <div className="mb-6 flex flex-wrap items-end gap-3 print:hidden">
-      <Input label="¿No aparece? Activar desde Excel por cédula" type="text" inputMode="numeric" value={cedula} onChange={(e) => setCedula(e.target.value)} />
+      <Input label="¿No aparece? Activar desde Excel por cédula" type="text" inputMode="text" value={cedula} onChange={(e) => setCedula(e.target.value)} />
       <Button type="button" onClick={activar} disabled={activando || cedula.trim() === ""}>
         Activar desde Excel
       </Button>

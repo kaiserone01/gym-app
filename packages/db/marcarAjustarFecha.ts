@@ -2,7 +2,7 @@
 // (organización de prueba "migracion-adrenalina-test") con el aviso "Por regularizar",
 // porque ninguna fecha de vencimiento migrada es la real. El aviso se apaga solo
 // cuando el socio ajusta la fecha en la ficha o se registra un pago.
-// (Las migraciones nuevas ya marcan a cada miembro al crearlo — ver migrarExcelAdrenalina.ts.)
+// (Las activaciones desde el padrón ya marcan a cada miembro al crearlo.)
 //
 // Uso: npm run db:marcar-ajustar-fecha --workspace packages/db
 import { PrismaClient } from "./generated/prisma/client";

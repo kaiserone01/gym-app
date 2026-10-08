@@ -24,7 +24,7 @@ export interface Miembro {
   fechaUltimoPago: Date | null;
   fechaVencimiento: Date | null;
   activo: boolean;
-  porRegularizar: boolean; // fecha de vencimiento no confiable (migración): el socio debe ajustarla o registrar un pago con la fecha real
+  porRegularizar: boolean; // fechas y pago vienen de una fuente externa (padrón/Excel o migración anterior) y no están verificados: el socio debe ajustar la fecha o registrar un pago con la fecha real
   genero: Genero | null; // para el saludo del kiosco; null = no definido
   createdAt: Date;
 }

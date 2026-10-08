@@ -11,18 +11,21 @@ import type { Miembro } from "@gym-app/domain/entities/Miembro";
 // ya existe en vez de propagar el error.
 export async function activarMiembroEnTransaccion(input: ActivarMiembroInput): Promise<Miembro | null> {
   try {
-    return await prisma.$transaction((tx) =>
-      activarMiembroPorCedula(
-        {
-          miembros: new PrismaMemberRepository(tx),
-          referencias: new PrismaMiembroReferenciaRepository(tx),
-          planes: new PrismaPlanRepository(tx),
-          suscripciones: new PrismaSuscripcionRepository(tx),
-        },
-        input
-      )
+    return await prisma.$transaction(
+      (tx) =>
+        activarMiembroPorCedula(
+          {
+            miembros: new PrismaMemberRepository(tx),
+            referencias: new PrismaMiembroReferenciaRepository(tx),
+            planes: new PrismaPlanRepository(tx),
+            suscripciones: new PrismaSuscripcionRepository(tx),
+          },
+          input
+        ),
+      { timeout: 15000 }
     );
   } catch (error) {
+    console.error("Error al activar miembro desde el padrón:", error);
     const existente = await new PrismaMemberRepository(prisma).buscarPorOrganizacionYCedula(input.organizacionId, input.cedula);
     if (existente) return existente;
     throw error;

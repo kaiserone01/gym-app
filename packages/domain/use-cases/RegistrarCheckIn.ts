@@ -4,7 +4,8 @@ import { ISuscripcionRepository } from "../ports/ISuscripcionRepository";
 import { ISucursalRepository } from "../ports/ISucursalRepository";
 import { EstadoCheckIn } from "../entities/CheckIn";
 import { validarAccesoSucursal } from "./ValidarAccesoSucursalPorPlan";
-import type { Genero } from "../entities/Miembro";
+import type { Genero, Miembro } from "../entities/Miembro";
+import type { ActivarMiembroInput } from "./ActivarMiembroDesdePadron";
 import { esCumpleanos } from "../utils/fechaCaracas";
 
 const VENTANA_IDEMPOTENCIA_MINUTOS = 2;
@@ -15,6 +16,8 @@ export interface RegistrarCheckInDeps {
   checkIns: ICheckInRepository;
   suscripciones: ISuscripcionRepository;
   sucursales: ISucursalRepository;
+  // Si la cédula no es miembro, intenta activarla desde el padrón de la sede (null = no hay nada que activar).
+  activarDesdePadron?: (input: ActivarMiembroInput) => Promise<Miembro | null>;
 }
 
 export interface RegistrarCheckInInput {
@@ -61,7 +64,9 @@ export async function registrarCheckIn(
   deps: RegistrarCheckInDeps,
   input: RegistrarCheckInInput
 ): Promise<RegistrarCheckInResultado> {
-  const miembro = await deps.miembros.buscarPorOrganizacionYCedula(input.organizacionId, input.cedula);
+  const miembro =
+    (await deps.miembros.buscarPorOrganizacionYCedula(input.organizacionId, input.cedula)) ??
+    (deps.activarDesdePadron ? await deps.activarDesdePadron(input) : null);
 
   if (!miembro) {
     throw new MiembroNoEncontradoError();

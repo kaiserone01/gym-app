@@ -58,8 +58,9 @@ export function FilaPadronEditable({ fila, puedeEditar }: { fila: FilaPadronSeri
     }
     iniciarTransicion(async () => {
       try {
-        await editarFilaPadronAction(fila.cedula, cambios as CambiosCrudosPadron);
-        setEditando(false);
+        const resultado = await editarFilaPadronAction(fila.cedula, cambios as CambiosCrudosPadron);
+        if (resultado.error) mostrarError(resultado.error);
+        else setEditando(false);
       } catch (error) {
         mostrarError(error instanceof Error ? error.message : "No se pudo guardar el cambio.");
       }

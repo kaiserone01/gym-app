@@ -73,4 +73,16 @@ describe("editarMiembroReferencia", () => {
     await editarMiembroReferencia(deps, { ...input, cambios: { celular: "0414", nombre: "Ana Pérez" } });
     expect(escrituras).toEqual([]);
   });
+  test("una clave fuera de la lista (cédula) se ignora y no escribe", async () => {
+    const { deps, escrituras } = crearDeps();
+    await editarMiembroReferencia(deps, { ...input, cambios: { cedula: "999" } as any });
+    expect(escrituras).toEqual([]);
+  });
+  test("una fecha de nacimiento aaaa-mm-dd válida se acepta y se normaliza", async () => {
+    const { deps, escrituras } = crearDeps();
+    await editarMiembroReferencia(deps, { ...input, cambios: { fNacimiento: "1990-05-17" } });
+    const { datos } = escrituras[0] as { datos: any };
+    expect(datos.crudos).toEqual({ fNacimiento: "1990-05-17" });
+    expect(datos.normalizados.fechaNacimiento).toEqual(new Date("1990-05-17T00:00:00Z"));
+  });
 });

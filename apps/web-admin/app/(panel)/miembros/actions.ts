@@ -372,21 +372,21 @@ export async function eliminarMiembroAction(id: string): Promise<void> {
 }
 
 // Activa (o abre, si ya existe) al miembro de esa cédula desde el padrón de la sede y lleva a su ficha.
-// Los errores (en español) se dejan propagar para que el cliente los muestre con useFeedback.
-export async function activarDesdeExcelAction(cedula: string): Promise<void> {
+// Los errores esperados (en español) se devuelven como { error }: Next.js oculta el mensaje de los errores lanzados en producción.
+export async function activarDesdeExcelAction(cedula: string): Promise<{ error: string }> {
   const sesion = await obtenerUsuarioDeSesionActual();
   if (!sesion) redirect("/login");
   const { usuario, sucursalActivaId } = sesion;
 
   const autorizado = await new AuthorizationService(new PrismaPermisoRepository(prisma)).tienePermiso(usuario.id, "MIEMBROS", "CREAR");
-  if (!autorizado) throw new Error("Tu rol no tiene permiso para activar miembros.");
+  if (!autorizado) return { error: "Tu rol no tiene permiso para activar miembros." };
 
   const cedulaLimpia = cedula.trim();
-  if (!cedulaLimpia) throw new Error("Escribe la cédula.");
+  if (!cedulaLimpia) return { error: "Escribe la cédula." };
 
   const yaExistia = await new PrismaMemberRepository(prisma).buscarPorOrganizacionYCedula(usuario.organizacionId, cedulaLimpia);
   const miembro = await activarMiembroEnTransaccion({ organizacionId: usuario.organizacionId, sucursalId: sucursalActivaId, cedula: cedulaLimpia });
-  if (!miembro) throw new Error("No hay ninguna persona con esa cédula en el Excel de esta sede.");
+  if (!miembro) return { error: "No hay ninguna persona con esa cédula en el Excel de esta sede." };
 
   revalidatePath("/miembros");
   redirect(

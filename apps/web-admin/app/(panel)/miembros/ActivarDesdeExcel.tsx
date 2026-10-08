@@ -14,7 +14,8 @@ export function ActivarDesdeExcel() {
   function activar() {
     iniciarTransicion(async () => {
       try {
-        await activarDesdeExcelAction(cedula);
+        const resultado = await activarDesdeExcelAction(cedula);
+        if (resultado?.error) mostrarError(resultado.error);
       } catch (error) {
         mostrarError(error instanceof Error ? error.message : "No se pudo activar al miembro.");
       }

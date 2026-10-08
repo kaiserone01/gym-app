@@ -17,3 +17,12 @@ export function sumarDias(fecha: Date, dias: number): Date {
 export function inicioDelDiaCaracas(ahora: Date): Date {
   return new Date(diaCalendarioCaracas(ahora).getTime() + 4 * 3_600_000);
 }
+
+// ¿Hoy (día calendario de Caracas) es el cumpleaños? fechaNacimiento se guarda como fecha local a las
+// 00:00, igual que fechaInscripcion, y se lee con getters locales. Quien nació un 29 de febrero solo
+// cumple los años bisiestos.
+export function esCumpleanos(fechaNacimiento: Date | null, ahora: Date): boolean {
+  if (!fechaNacimiento) return false;
+  const hoy = diaCalendarioCaracas(ahora);
+  return fechaNacimiento.getMonth() === hoy.getUTCMonth() && fechaNacimiento.getDate() === hoy.getUTCDate();
+}

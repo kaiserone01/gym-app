@@ -7,7 +7,7 @@ function crearDeps(ajustarFecha = true, cedulaOcupadaPor: string | null = null) 
   const ciclos: { inicio: Date; fin: Date }[] = [];
   const deps = {
     miembros: {
-      buscarPorId: async () => ({ id: "m1", sucursalId: null, planId: "p1", cedula: "111", ajustarFecha }),
+      buscarPorId: async () => ({ id: "m1", sucursalId: null, planId: "p1", cedula: "111", ajustarFecha, genero: null }),
       buscarPorOrganizacionYCedula: async () => (cedulaOcupadaPor ? { id: cedulaOcupadaPor } : null),
       actualizar: async (_org: string, _id: string, cambios: CambiosMiembro) => {
         cambiosGuardados.push(cambios);

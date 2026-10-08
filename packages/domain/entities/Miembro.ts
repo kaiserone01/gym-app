@@ -1,3 +1,11 @@
+// Género del miembro, solo para saludarlo en el kiosco ("Bienvenido" / "Bienvenida"). null = no definido.
+export const GENEROS = ["MASCULINO", "FEMENINO"] as const;
+export type Genero = (typeof GENEROS)[number];
+
+export function parsearGenero(valor: unknown): Genero | null {
+  return GENEROS.find((genero) => genero === valor) ?? null;
+}
+
 export interface Miembro {
   id: string;
   organizacionId: string;
@@ -17,6 +25,7 @@ export interface Miembro {
   fechaVencimiento: Date | null;
   activo: boolean;
   ajustarFecha: boolean; // fecha de vencimiento no confiable (migración): el socio debe ajustarla o registrar un pago con la fecha real
+  genero: Genero | null; // para el saludo del kiosco; null = no definido
   createdAt: Date;
 }
 
@@ -32,6 +41,7 @@ export interface DatosNuevoMiembro {
   entrenadorId: string | null;
   planId: string | null;
   precioPlan: number;
+  genero?: Genero | null;
 }
 
 export interface CambiosMiembro {
@@ -49,4 +59,5 @@ export interface CambiosMiembro {
   fechaVencimiento?: Date | null;
   activo?: boolean;
   ajustarFecha?: boolean;
+  genero?: Genero | null;
 }

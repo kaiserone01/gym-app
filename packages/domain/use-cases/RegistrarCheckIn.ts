@@ -4,6 +4,8 @@ import { ISuscripcionRepository } from "../ports/ISuscripcionRepository";
 import { ISucursalRepository } from "../ports/ISucursalRepository";
 import { EstadoCheckIn } from "../entities/CheckIn";
 import { validarAccesoSucursal } from "./ValidarAccesoSucursalPorPlan";
+import type { Genero } from "../entities/Miembro";
+import { esCumpleanos } from "../utils/fechaCaracas";
 
 const VENTANA_IDEMPOTENCIA_MINUTOS = 2;
 const MS_POR_DIA = 24 * 60 * 60 * 1000;
@@ -43,6 +45,10 @@ export interface RegistrarCheckInResultado {
   // (kiosco) no debe mencionar "período de gracia" en ningún mensaje,
   // aunque el estado sea "vencido".
   tieneGraciaConfigurada: boolean;
+  // Género del miembro (null = no definido) y si hoy (día de Caracas) es su cumpleaños. La fecha de
+  // nacimiento nunca sale del servidor: el kiosco solo recibe este booleano.
+  genero: Genero | null;
+  esCumpleanos: boolean;
 }
 
 export class MiembroNoEncontradoError extends Error {
@@ -78,6 +84,8 @@ export async function registrarCheckIn(
     // deniega por sede a este miembro, ver validarAccesoSucursal.
     sucursalAsignadaNombre: miembro.sucursalId ? sucursalAsignada?.nombre ?? "" : "Ambas",
     sucursalAsignadaDireccion: sucursalAsignada?.direccion ?? null,
+    genero: miembro.genero,
+    esCumpleanos: esCumpleanos(miembro.fechaNacimiento, new Date()),
   };
 
   const desde = new Date(Date.now() - VENTANA_IDEMPOTENCIA_MINUTOS * 60_000);

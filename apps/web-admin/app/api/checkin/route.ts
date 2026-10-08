@@ -47,6 +47,8 @@ export async function POST(req: NextRequest) {
         sucursalAsignadaDireccion: resultado.sucursalAsignadaDireccion,
         diasGraciaRestantes: resultado.diasGraciaRestantes,
         tieneGraciaConfigurada: resultado.tieneGraciaConfigurada,
+        genero: resultado.genero,
+        esCumpleanos: resultado.esCumpleanos,
       },
       200
     );

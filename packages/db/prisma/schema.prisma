@@ -126,6 +126,11 @@ model UsuarioSucursal {
   @@id([usuarioId, sucursalId])
 }
 
+enum Genero {
+  MASCULINO
+  FEMENINO
+}
+
 model Miembro {
   id               String        @id @default(cuid())
   organizacionId   String // el Miembro cuelga de la Organización, no de una Sucursal (ADR v1 §4.1)
@@ -148,6 +153,7 @@ model Miembro {
   fechaVencimiento DateTime?
   activo           Boolean       @default(true) // baja lógica del miembro
   ajustarFecha     Boolean       @default(false) // fecha de vencimiento migrada y no confiable: el socio debe ajustarla a mano (badge "Ajustar fecha"); se limpia al ajustarla o al registrar un pago
+  genero           Genero? // solo para saludar en el kiosco ("Bienvenido" / "Bienvenida"); null = no definido
   createdAt        DateTime      @default(now())
 
   pagos                Pago[]

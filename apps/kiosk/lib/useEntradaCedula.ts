@@ -1,11 +1,5 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type ChangeEvent, type KeyboardEvent } from "react";
-
-// Mensajes de apps/kiosk-host (teclado numérico vinculado, vía CoreWebView2.PostWebMessageAsJson).
-type MensajeTeclado =
-  | { type: "digit"; value: string }
-  | { type: "enter" }
-  | { type: "backspace" }
-  | { type: "clear" };
+import { mensajeDeTecla, type MensajeTeclado } from "./teclasNumpad";
 
 type EscuchaMensaje = (evento: { data: unknown }) => void;
 
@@ -20,18 +14,20 @@ function obtenerWebView(): WebView2 | undefined {
 
 const TIEMPO_INACTIVIDAD_MS = 7_000;
 
-const sinSuscripcion =() => () => {};
+const sinSuscripcion = () => () => {};
 const hayHostNativo = () => obtenerWebView() !== undefined;
+const esAndroid = () => /Android/i.test(navigator.userAgent);
 const sinHostEnServidor = () => false;
 
 interface Opciones {
-  // Cada vez que se escribe o borra (page.tsx limpia la ficha del check-in anterior).
-  alEscribir: () => void;
+  // Cada vez que se escribe o borra (opcional).
+  alEscribir?: () => void;
   alEnviar: (cedula: string) => Promise<void>;
 }
 
-// Fuente de la cédula: dentro de apps/kiosk-host llega por mensajes nativos, sin depender del foco de
-// Windows; en un navegador normal (dev) se usa el <input> con eventos DOM de siempre.
+// Fuente de la cédula, por orden: host de Windows (mensajes nativos de WebView2), APK de Android TV
+// (keydown global solo de numpad, sin <input> para que no salga el teclado en pantalla) y, en un
+// navegador normal (dev), el <input> con eventos DOM de siempre.
 export function useEntradaCedula({ alEscribir, alEnviar }: Opciones) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [cedula, setCedula] = useState("");
@@ -39,6 +35,10 @@ export function useEntradaCedula({ alEscribir, alEnviar }: Opciones) {
   const cedulaRef = useRef("");
   const opciones = useRef({ alEscribir, alEnviar });
   const nativo = useSyncExternalStore(sinSuscripcion, hayHostNativo, sinHostEnServidor);
+  const android = useSyncExternalStore(sinSuscripcion, esAndroid, sinHostEnServidor);
+  const sinInput = nativo || android;
+  // Mientras se envía una cédula se ignora todo: evita el doble envío y dígitos que se perderían.
+  const enviandoRef = useRef(false);
 
   useEffect(() => {
     opciones.current = { alEscribir, alEnviar };
@@ -49,42 +49,63 @@ export function useEntradaCedula({ alEscribir, alEnviar }: Opciones) {
     setCedula(valor);
   }, []);
 
-  useEffect(() => {
-    const webview = obtenerWebView();
-    if (!nativo || !webview) return;
-
-    // Mientras se envía una cédula se ignora todo: evita el doble envío y dígitos que se perderían.
-    let enviando = false;
-    const alRecibir: EscuchaMensaje = ({ data }) => {
-      if (enviando || typeof data !== "object" || data === null) return;
-      const mensaje = data as MensajeTeclado;
+  const manejar = useCallback(
+    (mensaje: MensajeTeclado) => {
+      if (enviandoRef.current) return;
       const { alEscribir, alEnviar } = opciones.current;
 
       switch (mensaje.type) {
         case "digit":
           if (!/^\d$/.test(mensaje.value)) return;
-          alEscribir();
+          alEscribir?.();
           asignar(cedulaRef.current + mensaje.value);
           return;
         case "backspace":
-          alEscribir();
+          alEscribir?.();
           asignar(cedulaRef.current.slice(0, -1));
           return;
         case "clear":
-          alEscribir();
+          alEscribir?.();
           asignar("");
           return;
         case "enter":
-          enviando = true;
+          enviandoRef.current = true;
           alEnviar(cedulaRef.current).finally(() => {
-            enviando = false;
+            enviandoRef.current = false;
           });
       }
+    },
+    [asignar]
+  );
+
+  useEffect(() => {
+    const webview = obtenerWebView();
+    if (!nativo || !webview) return;
+
+    const alRecibir: EscuchaMensaje = ({ data }) => {
+      if (typeof data !== "object" || data === null) return;
+      manejar(data as MensajeTeclado);
     };
 
     webview.addEventListener("message", alRecibir);
     return () => webview.removeEventListener("message", alRecibir);
-  }, [nativo, asignar]);
+  }, [nativo, manejar]);
+
+  useEffect(() => {
+    if (nativo || !android) return;
+
+    const alTeclear = (evento: globalThis.KeyboardEvent) => {
+      const mensaje = mensajeDeTecla(evento);
+      if (!mensaje) return;
+      evento.preventDefault();
+      // Mantener una tecla pulsada no debe repetir dígitos ni, peor, el Enter.
+      if (evento.repeat) return;
+      manejar(mensaje);
+    };
+
+    window.addEventListener("keydown", alTeclear);
+    return () => window.removeEventListener("keydown", alTeclear);
+  }, [nativo, android, manejar]);
 
   // Una cédula a medias que nadie termina de teclear no debe quedar a la vista del siguiente socio.
   useEffect(() => {
@@ -93,17 +114,17 @@ export function useEntradaCedula({ alEscribir, alEnviar }: Opciones) {
     return () => clearTimeout(temporizador);
   }, [cedula, asignar]);
 
-  // Sin host, el kiosco tiene un teclado numérico físico y no pantalla táctil (ADR v1 §2.5): el input
-  // siempre debe estar enfocado para capturarlo sin que el staff toque nada.
+  // Sin host ni Android, el kiosco tiene un teclado numérico físico y no pantalla táctil (ADR v1 §2.5):
+  // el input siempre debe estar enfocado para capturarlo sin que el staff toque nada.
   useEffect(() => {
-    if (!nativo) inputRef.current?.focus();
+    if (!sinInput) inputRef.current?.focus();
   });
 
   const propsInput = {
     ref: inputRef,
     value: cedula,
     onChange: (evento: ChangeEvent<HTMLInputElement>) => {
-      opciones.current.alEscribir();
+      opciones.current.alEscribir?.();
       asignar(evento.target.value.replace(/\D/g, ""));
     },
     onKeyDown: (evento: KeyboardEvent<HTMLInputElement>) => {
@@ -115,5 +136,5 @@ export function useEntradaCedula({ alEscribir, alEnviar }: Opciones) {
     autoFocus: true,
   };
 
-  return { cedula, limpiar: () => asignar(""), nativo, propsInput };
+  return { cedula, limpiar: () => asignar(""), sinInput, propsInput };
 }

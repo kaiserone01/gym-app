@@ -31,7 +31,7 @@ export default function PaginaCheckIn() {
   const router = useRouter();
   const [apiKey, setApiKey] = useState<string | null>(null);
   const [estado, setEstado] = useState<Estado>({ tipo: "esperando" });
-  const { cedula, limpiar, nativo, propsInput } = useEntradaCedula({
+  const { cedula, limpiar, sinInput, propsInput } = useEntradaCedula({
     // Escribir la siguiente cédula limpia la ficha del check-in anterior
     // sin esperar a que se oculte sola (ver DURACION_FICHA_MS).
     alEscribir: () => {
@@ -119,7 +119,7 @@ export default function PaginaCheckIn() {
           Ingresa tu cédula
         </h1>
 
-        {nativo ? (
+        {sinInput ? (
           // Dentro de apps/kiosk-host la cédula llega por mensajes nativos: no hace falta foco.
           <div className={`${CLASES_CAMPO_CEDULA} min-h-[4.5rem]`} style={ESTILO_CAMPO_CEDULA}>
             {cedula}

@@ -89,6 +89,7 @@ Ruta `apps/web-admin/app/(panel)/excel`, entrada en `layout.tsx` y `NavegacionMo
 - ~39 filas (sin cédula/repetidas) no se pueden activar desde el padrón.
 - Cédulas alfanuméricas solo se activan desde el panel (el numpad del kiosco solo teclea dígitos).
 - Las ediciones manuales del padrón y el Excel pueden divergir; mientras el archivo siga cambiando habrá que reimportar y revisar los conflictos del reporte. Un editor con permiso `MIEMBROS`/`EDITAR` puede introducir un dato erróneo que el kiosco usará para decidir acceso hasta que el miembro se regularice.
+- Si se elimina un miembro con 'Quitar del sistema' (borrado físico), su cédula sigue en el padrón y se vuelve a crear sola en su siguiente check-in en la Sede Principal, con el vencimiento del Excel. Para evitarlo habría que marcar la fila del padrón al eliminar (no incluido).
 
 ## 10. Pruebas y despliegue
 

@@ -352,7 +352,12 @@ export function FormularioMiembro({
       >
         <span className="flex flex-wrap items-center gap-2">
           <Badge tono="ambar">Por regularizar</Badge>
-          La fecha de vencimiento viene de la migración y no es confiable. Ajústala o registra el último pago con su fecha real.
+          La fecha de vencimiento viene de una fuente externa (Excel/migración) y no está verificada. Ajústala o registra el último pago con su fecha real.
+          {(!fotoPreview || !fechaNacimiento) && (
+            <span style={{ color: "var(--gx-muted)" }}>
+              Pendiente además: {[!fotoPreview && "foto", !fechaNacimiento && "fecha de nacimiento"].filter(Boolean).join(" y ")} (no impide quitar el aviso).
+            </span>
+          )}
         </span>
         <span className="flex flex-wrap gap-2">
           <Button

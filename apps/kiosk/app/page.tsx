@@ -10,6 +10,7 @@ import { useEntradaCedula } from "@/lib/useEntradaCedula";
 import { estadoInicial, reducirPantalla, type Ficha, type FichaActiva } from "@/lib/estadoPantalla";
 import { caraDeResultado, tonoDeCara, type Tono } from "@/lib/cara";
 import { precargarFoto } from "@/lib/precargarFoto";
+import { textoSaludo } from "@/lib/saludo";
 import { FRASES_REPOSO } from "@/lib/frases";
 import { useFraseRotativa } from "@/lib/useFraseRotativa";
 import { useHoraActual } from "@/lib/useHoraActual";
@@ -39,6 +40,7 @@ function contenidoFicha(ficha: FichaActiva) {
           cara={ficha.cara}
           diasParaVencer={ficha.diasParaVencer}
           fotoOk={ficha.fotoOk}
+          saludo={ficha.saludo}
           duracionMs={DURACION_FICHA_MS}
         />
       );
@@ -132,6 +134,7 @@ export default function PaginaCheckIn() {
           cara,
           diasParaVencer,
           fotoOk: false,
+          saludo: textoSaludo(resultado.genero, resultado.esCumpleanos),
         },
         tono: tonoDeCara(cara),
       };

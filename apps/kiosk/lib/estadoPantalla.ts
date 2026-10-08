@@ -4,7 +4,7 @@ import type { CaraFicha } from "./cara";
 // Lo que se muestra al terminar una verificación. `cara` y `diasParaVencer` se calculan al
 // llegar la respuesta (no en el render) para que la ficha no cambie con el reloj.
 export type Ficha =
-  | { tipo: "resultado"; resultado: ResultadoCheckIn; hora: string; cara: CaraFicha; diasParaVencer: number | null; fotoOk: boolean }
+  | { tipo: "resultado"; resultado: ResultadoCheckIn; hora: string; cara: CaraFicha; diasParaVencer: number | null; fotoOk: boolean; saludo: string /* texto ya resuelto (bienvenida según género o cumpleaños) */ }
   | { tipo: "pendiente" }
   | { tipo: "error"; mensaje: string };
 

@@ -4,7 +4,6 @@ import { useState } from "react";
 import { CheckCircle, XCircle } from "@phosphor-icons/react/dist/ssr";
 import type { ResultadoCheckIn } from "@/lib/api";
 import { textoPorVencer, tonoDeCara, type CaraFicha } from "@/lib/cara";
-import { FRASE_BIENVENIDA_NEUTRA } from "@/lib/frases";
 import { nombreCorto } from "@/lib/nombreCorto";
 import { COLOR_TONO } from "@/lib/tonos";
 import { MarcoFicha } from "./MarcoFicha";
@@ -43,6 +42,7 @@ export function AccessCard({
   cara,
   diasParaVencer,
   fotoOk,
+  saludo,
   duracionMs,
 }: {
   resultado: ResultadoCheckIn;
@@ -50,6 +50,7 @@ export function AccessCard({
   cara: CaraFicha;
   diasParaVencer: number | null;
   fotoOk: boolean;
+  saludo: string;
   duracionMs?: number;
 }) {
   const { color, tinta, brillo } = COLOR_TONO[tonoDeCara(cara)];
@@ -103,7 +104,7 @@ export function AccessCard({
         <div className="flex flex-col gap-6">
           {CARAS_CON_ACCESO.includes(cara) && (
             <p className="text-4xl" style={{ fontFamily: '"Bebas Neue", sans-serif', color, letterSpacing: "0.02em" }}>
-              {FRASE_BIENVENIDA_NEUTRA}
+              {saludo}
             </p>
           )}
           <p className="break-words text-8xl uppercase leading-none" style={{ fontFamily: '"Bebas Neue", sans-serif', color: "var(--gx-ink)" }}>

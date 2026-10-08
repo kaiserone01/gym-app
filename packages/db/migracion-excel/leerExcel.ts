@@ -2,7 +2,6 @@ import { readFile, utils } from "xlsx";
 import type { FilaExcelCruda } from "./tipos";
 
 const PRIMERA_FILA_DATOS = 4; // fila 3 = encabezado
-const ULTIMA_FILA_DATOS = 1399;
 
 export function leerFilasExcel(rutaArchivo: string): FilaExcelCruda[] {
   const libro = readFile(rutaArchivo);
@@ -11,9 +10,12 @@ export function leerFilasExcel(rutaArchivo: string): FilaExcelCruda[] {
     throw new Error(`No se encontró "Hoja1" en ${rutaArchivo}`);
   }
 
+  // Última fila real de la hoja (el Excel crece: _hoy.xlsm llega a la 1452).
+  const ultimaFila = Number(String(hoja["!ref"]).split(":")[1].replace(/\D/g, ""));
+
   const filas: FilaExcelCruda[] = [];
 
-  for (let numeroFila = PRIMERA_FILA_DATOS; numeroFila <= ULTIMA_FILA_DATOS; numeroFila++) {
+  for (let numeroFila = PRIMERA_FILA_DATOS; numeroFila <= ultimaFila; numeroFila++) {
     const celda = (columna: string) => hoja[`${columna}${numeroFila}`];
     const valorCelda = (columna: string): string | number | null => {
       const c = celda(columna);

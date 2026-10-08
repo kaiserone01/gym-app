@@ -21,6 +21,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@gym-app/domain": "*",
     "@prisma/client": "^7.10.0",
     "@prisma/adapter-pg": "^7.10.0",
     "xlsx": "^0.18.5"

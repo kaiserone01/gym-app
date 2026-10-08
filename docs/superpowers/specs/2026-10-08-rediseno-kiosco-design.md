@@ -23,7 +23,7 @@ Rediseñar `apps/kiosk` para un Smart TV (Android TV, APK) con un numpad USB; la
 - Flip 3D ~700 ms con `ease-out-back`, foto precargada antes de voltear; ficha real 6–8 s con barra de cuenta regresiva.
 - Fondo: se mantiene el video (no WebGL, por las GPU de TV); reacciona al estado con `playbackRate` y un destello radial CSS.
 - Frases `{m, f, n}` en rotación de "bolsa barajada". La `@` solo aparece en "¡BIENVENID@, ADRENALINER!".
-- Campo `saludo` (preferencia de saludo, no "género") que edita recepción en web-admin; saludo especial de cumpleaños. **Sin campaña de personalización en el kiosco** (el usuario la descartó al iniciar la Fase 2).
+- Campo `genero` (Masculino / Femenino / sin definir) que edita recepción en web-admin; saludo de cumpleaños. **Sin saludos personalizados ni campaña** (frases por género, Campeón/Campeona, "¿Cómo te saludamos?"): el usuario los descartó al iniciar la Fase 2 por no ser pedidos por el cliente final; podrían retomarse más adelante.
 - Nombre + primer apellido en el TV (supuesto: en todas las caras).
 
 ## 3. Máquina de estados (`apps/kiosk/app/page.tsx`)
@@ -69,34 +69,24 @@ reposo ──cédula+Enter──▶ procesando ──respuesta──▶ ficha(ca
   `ffmpeg -i backgound1.mp4 -an -c:v libx264 -profile:v main -b:v 1800k -maxrate 2000k -bufsize 4000k -movflags +faststart backgound1.mp4`
   (hoy 1280×720, 24 fps, 10 s, 8,1 Mbps, con pista AAC innecesaria; perfil Main por los decodificadores de TV).
 
-## 6. Frases (lista maestra `{ m, f, n }`; 18 de las ~30 propuestas)
+## 6. Frases del reposo y saludo de la ficha
 **Reposo** (solo `n`; el kiosco no sabe quién está enfrente): ESTA HORA ES TUYA · CADA REPETICIÓN CUENTA · SUDA HOY, SONRÍE MAÑANA · LA DISCIPLINA VENCE AL TALENTO · NO TE COMPARES, SUPÉRATE · TU ÚNICO RIVAL ERES TÚ · UNA REPETICIÓN MÁS · EL DOLOR DE HOY ES LA FUERZA DE MAÑANA · CONSTANCIA ANTES QUE MOTIVACIÓN · AQUÍ SE VIENE A DARLO TODO.
 
-**Ficha** (según `saludo` del miembro):
-| # | m | f | n |
-|---|---|---|---|
-| 1 | ¡VAMOS, CAMPEÓN! | ¡VAMOS, CAMPEONA! | ¡VAMOS, ADRENALINER! |
-| 2 | ¡BIENVENIDO, GUERRERO! | ¡BIENVENIDA, GUERRERA! | ¡QUÉ BUENO VERTE, ADRENALINER! |
-| 3 | ¡HOY ERES IMPARABLE, CAMPEÓN! | ¡HOY ERES IMPARABLE, CAMPEONA! | ¡HOY ERES IMPARABLE, ADRENALINER! |
-| 4 | ¡DALE CON TODO, FIERA! | ¡DALE CON TODO, FIERA! | ¡DALE CON TODO, ADRENALINER! |
-| 5 | ¡A ENTRENAR, CRACK! | ¡A ENTRENAR, CRACK! | ¡A ENTRENAR, ADRENALINER! |
-| 6 | ¡ESE ES EL ESPÍRITU, CAMPEÓN! | ¡ESE ES EL ESPÍRITU, CAMPEONA! | ¡ESE ES EL ESPÍRITU, ADRENALINER! |
-| 7 | ¡TU CONSTANCIA INSPIRA, CAMPEÓN! | ¡TU CONSTANCIA INSPIRA, CAMPEONA! | ¡TU CONSTANCIA INSPIRA, ADRENALINER! |
-| 8 | ¡SIGUE ASÍ, GUERRERO! | ¡SIGUE ASÍ, GUERRERA! | ¡SIGUE ASÍ, ADRENALINER! |
-
-- `saludo = MASCULINO | FEMENINO | NEUTRO` → columna `m | f | n` de una frase de la bolsa.
-- `saludo = null` (no preguntado) → **"¡BIENVENID@, ADRENALINER!"**, única frase con `@`. Verificar el glifo `@` en Bebas Neue a tamaño grande antes de fijarla.
-- Cumpleaños (`esCumpleanos`): ¡FELIZ CUMPLEAÑOS, CAMPEÓN! / ¡FELIZ CUMPLEAÑOS, CAMPEONA! / ¡FELIZ CUMPLEAÑOS, ADRENALINER! (con `saludo = null`, la `n`).
+**Saludo de la ficha real** (Fase 2, simplificado; sin lista de frases ni bolsa):
+- `genero = MASCULINO` → **"¡BIENVENIDO, ADRENALINER!"**
+- `genero = FEMENINO` → **"¡BIENVENIDA, ADRENALINER!"**
+- `genero = null` (no definido) → **"¡BIENVENID@, ADRENALINER!"**, única frase con `@`. Verificar el glifo `@` en Bebas Neue a tamaño grande antes de fijarla.
+- Cumpleaños (`esCumpleanos`): **"¡FELIZ CUMPLEAÑOS, ADRENALINER!"** para todos, sin variante por género (la ficha sigue mostrando el resto de sus datos).
 
 ## 7. Schema y contrato del API
-Todo lo nuevo es **opcional**: un kiosco viejo ignora los campos añadidos y trata el saludo como neutro; un API viejo no manda `saludo`, y el kiosco nuevo usa el fallback.
+Todo lo nuevo es **opcional**: un kiosco viejo ignora los campos añadidos y trata el género como no definido; un API viejo no manda `genero`, y el kiosco nuevo usa el fallback.
 
-**Fase 2 — `packages/db/prisma/schema.prisma`, modelo `Miembro`** (hoy tiene `fechaNacimiento` y no tiene género):
-- `saludo Saludo?` con `enum Saludo { MASCULINO FEMENINO NEUTRO }`; `null` = no preguntado.
+**Fase 2 — `packages/db/prisma/schema.prisma`, modelo `Miembro`** (hoy tiene `fechaNacimiento` y no tiene género; se agrega `genero`):
+- `genero Genero?` con `enum Genero { MASCULINO FEMENINO }`; `null` = no definido.
 - Migración fechada y con nombre en español. Editable en `apps/web-admin` (`FormularioMiembro`, alta y edición) junto con **`fechaNacimiento`** (la columna ya existe pero ningún formulario la capturaba): sin ese campo el cumpleaños nunca se activaría.
 
 **`POST /api/checkin`** (`apps/web-admin/app/api/checkin/route.ts`, hoy devuelve nombre, fotoUrl, entrenador, fechaVencimiento, estado, sede asignada, diasGraciaRestantes, tieneGraciaConfigurada) agrega:
-- `saludo` (`"MASCULINO" | "FEMENINO" | "NEUTRO" | null`)
+- `genero` (`"MASCULINO" | "FEMENINO" | null`)
 - `esCumpleanos` (calculado en servidor con `utils/fechaCaracas.ts`; **no** se envía `fechaNacimiento`)
 
 `ResultadoCheckIn` en `apps/kiosk/lib/api.ts` suma esos campos como opcionales.
@@ -118,7 +108,7 @@ Riesgo: con Num Lock apagado Android envía teclas de navegación en vez de díg
 
 ## 10. Fases de entrega
 - **F1 — sin migración:** reposo con ilustración, sede y tasa (`GET /api/kiosco/estado`); ficha real de 30 s con cuenta regresiva; logo fijo arriba a la derecha; tamaños proporcionales a la pantalla (rem con `html { font-size }` fluido); flip 3D; todas las caras (incluida `por_vencer`); video recodificado con reacción al estado; frases neutras; entrada de numpad por `keydown`; tokens sin `color-mix()`. Empieza por la ficha visible en reposo con `placeholder-profile.jpg`.
-- **F2:** `Miembro.saludo` (migración) + `saludo`/`esCumpleanos` en `/api/checkin` + selector de saludo y fecha de nacimiento en web-admin; frases por género y saludo de cumpleaños en la ficha. **Sin campaña** (descartada). Plan: `docs/superpowers/plans/2026-10-08-rediseno-kiosco-fase2.md`.
+- **F2:** `Miembro.genero` (migración) + `genero`/`esCumpleanos` en `/api/checkin` + selector de género y fecha de nacimiento en web-admin; saludo de la ficha según género y de cumpleaños. **Sin campaña ni saludos personalizados** (descartados). Plan: `docs/superpowers/plans/2026-10-08-rediseno-kiosco-fase2.md`.
 - **F3:** APK Capacitor para el TV.
 
 ## 11. Riesgos conocidos

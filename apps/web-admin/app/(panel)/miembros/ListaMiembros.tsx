@@ -35,6 +35,20 @@ function iniciales(nombre: string): string {
     .join("");
 }
 
+const LETRAS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+
+// Inicial sin tilde ("Ángel" → "A", "Ñ" → "N"); "#" si el nombre no empieza por una letra.
+function letraInicial(nombre: string): string {
+  const letra = nombre.trim().normalize("NFD")[0]?.toUpperCase() ?? "";
+  return /[A-Z]/.test(letra) ? letra : "#";
+}
+
+// Hay dos copias de la lista en el DOM (móvil y escritorio, una oculta): se salta a la visible.
+function irALetra(letra: string) {
+  const destino = Array.from(document.querySelectorAll<HTMLElement>(`[data-letra="${letra}"]`)).find((el) => el.offsetParent !== null);
+  destino?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
 function formatearFecha(fecha: Date): string {
   return new Date(fecha).toLocaleDateString("es-VE");
 }
@@ -103,7 +117,9 @@ export function ListaMiembros({
   const filtradas = useMemo(() => {
     const busquedaAplicada = busqueda.trim().length >= MINIMO_CARACTERES_BUSQUEDA ? busqueda.trim().toLowerCase() : "";
 
-    return filas.filter((miembro) => {
+    const porNombre = [...filas].sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
+
+    return porNombre.filter((miembro) => {
       if (busquedaAplicada && !`${miembro.nombre} ${miembro.cedula}`.toLowerCase().includes(busquedaAplicada)) {
         return false;
       }
@@ -133,6 +149,8 @@ export function ListaMiembros({
       return true;
     });
   }, [filas, busqueda, inscritoDesde, venceHasta, planFiltro, proximoCobroFiltro]);
+
+  const letrasConMiembros = useMemo(() => new Set(filtradas.map((m) => letraInicial(m.nombre))), [filtradas]);
 
   function limpiarFiltros() {
     setBusqueda("");
@@ -223,6 +241,29 @@ export function ListaMiembros({
         {modo === "cards" ? <VistaCards miembros={filtradas} /> : <VistaLista miembros={filtradas} />}
       </div>
 
+      {/* Índice A-Z: salta al primer miembro de la letra (la lista ya va ordenada por nombre). */}
+      <nav
+        aria-label="Ir a la letra"
+        className="fixed right-4 top-1/2 z-10 flex h-[min(80vh,520px)] -translate-y-1/2 flex-col justify-between rounded-full border px-1 py-2 print:hidden"
+        style={{ borderColor: "var(--gx-edge)", background: "var(--gx-surface)" }}
+      >
+        {LETRAS.map((letra) => {
+          const hay = letrasConMiembros.has(letra);
+          return (
+            <button
+              key={letra}
+              type="button"
+              disabled={!hay}
+              onClick={() => irALetra(letra)}
+              className="w-5 text-center text-[11px] font-semibold leading-none disabled:cursor-default"
+              style={{ color: hay ? "var(--gx-accent)" : "var(--gx-muted-dim)", opacity: hay ? 1 : 0.4 }}
+            >
+              {letra}
+            </button>
+          );
+        })}
+      </nav>
+
       {/* Vista exclusiva de impresión: siempre la lista completa, sin fotos ni acciones, sin importar el modo elegido en pantalla. */}
       <div className="hidden print:block">
         <VistaImpresion miembros={filtradas} />
@@ -293,7 +334,7 @@ function VistaCards({ miembros }: { miembros: FilaMiembro[] }) {
   return (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
       {miembros.map((miembro) => (
-        <Link key={miembro.id} href={`/miembros/${miembro.id}`}>
+        <Link key={miembro.id} href={`/miembros/${miembro.id}`} data-letra={letraInicial(miembro.nombre)} className="scroll-mt-4">
           <Card className="flex h-full flex-col gap-3 transition-transform active:scale-[0.98]">
             <div className="flex items-center gap-3">
               <Avatar fotoUrl={miembro.fotoUrl} nombre={miembro.nombre} tamano={40} />
@@ -347,7 +388,7 @@ function VistaLista({ miembros }: { miembros: FilaMiembro[] }) {
           </thead>
           <tbody>
             {miembros.map((miembro) => (
-              <tr key={miembro.id} className="border-b" style={{ borderColor: "var(--gx-edge)" }}>
+              <tr key={miembro.id} data-letra={letraInicial(miembro.nombre)} className="border-b" style={{ borderColor: "var(--gx-edge)" }}>
                 <td className="py-2">
                   <Avatar fotoUrl={miembro.fotoUrl} nombre={miembro.nombre} tamano={36} />
                 </td>

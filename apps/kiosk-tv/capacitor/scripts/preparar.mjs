@@ -28,7 +28,9 @@ const configuracion = {
   appName: "Kiosco AX",
   webDir: "www",
   server: { url: inicio, cleartext: false, errorPath: "offline.html" },
-  android: { allowMixedContent: false },
+  // El APK es de debug: sin esto Capacitor deja logs (con la clave en la URL) y WebView inspeccionable.
+  loggingBehavior: "none",
+  android: { allowMixedContent: false, webContentsDebuggingEnabled: false },
 };
 writeFileSync(join(raiz, "capacitor.config.json"), `${JSON.stringify(configuracion, null, 2)}\n`);
 

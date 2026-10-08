@@ -19,12 +19,10 @@ permissions:
 
 jobs:
   apk:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       SUCURSAL: ${{ inputs.sucursal }}
       KIOSCO_URL: ${{ inputs.kiosco_url }}
-      KIOSCO_CLAVE: ${{ secrets[format('KIOSCO_CLAVE_{0}', inputs.sucursal)] }}
-      APK_PASSWORD: ${{ secrets.KIOSCO_APK_PASSWORD }}
     steps:
       - name: Validar la sucursal
         run: |
@@ -34,6 +32,8 @@ jobs:
           fi
 
       - name: Enmascarar la clave en los logs
+        env:
+          KIOSCO_CLAVE: ${{ secrets[format('KIOSCO_CLAVE_{0}', inputs.sucursal)] }}
         run: |
           if [ -n "$KIOSCO_CLAVE" ]; then echo "::add-mask::$KIOSCO_CLAVE"; fi
 
@@ -60,6 +60,8 @@ jobs:
 
       - name: Preparar y sincronizar (inyecta la URL y la clave)
         working-directory: apps/kiosk-tv/capacitor
+        env:
+          KIOSCO_CLAVE: ${{ secrets[format('KIOSCO_CLAVE_{0}', inputs.sucursal)] }}
         run: npm run sync
 
       - name: Compilar el APK de debug
@@ -68,6 +70,9 @@ jobs:
 
       - name: Preparar el archivo a publicar
         working-directory: apps/kiosk-tv/capacitor
+        env:
+          KIOSCO_CLAVE: ${{ secrets[format('KIOSCO_CLAVE_{0}', inputs.sucursal)] }}
+          APK_PASSWORD: ${{ secrets.KIOSCO_APK_PASSWORD }}
         run: |
           mkdir -p salida
           cp android/app/build/outputs/apk/debug/app-debug.apk "salida/kiosco-${SUCURSAL}.apk"
@@ -76,6 +81,7 @@ jobs:
               echo "Falta el secreto KIOSCO_APK_PASSWORD: no se publica un APK con clave sin cifrar."
               exit 1
             fi
+            sudo apt-get update
             sudo apt-get install -y -q p7zip-full
             (cd salida && 7z a -t7z -mhe=on -p"$APK_PASSWORD" "kiosco-${SUCURSAL}.7z" "kiosco-${SUCURSAL}.apk" > /dev/null && rm "kiosco-${SUCURSAL}.apk")
             # Guarda de seguridad: con clave no puede quedar ningún .apk sin cifrar para subir.
@@ -83,6 +89,8 @@ jobs:
               echo "Quedó un APK sin cifrar en salida/: se aborta."
               exit 1
             fi
+          else
+            echo "::warning::Sin secreto KIOSCO_CLAVE_${SUCURSAL^^}: se publica un APK genérico sin clave (¿error de tipeo en la sucursal?)"
           fi
           ls -l salida
 

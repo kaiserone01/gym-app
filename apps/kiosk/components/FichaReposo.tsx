@@ -33,8 +33,8 @@ export function FichaReposo({
           className="h-72 w-72 overflow-hidden rounded-full"
           style={{ border: "4px solid var(--gx-edge)", background: "var(--gx-surface-2)" }}
         >
-          {/* eslint-disable-next-line @next/next/no-img-element -- output: "export" no soporta el optimizador de next/image */}
           {/* La ilustración trae un aro claro en el borde: se amplía para que el recorte circular lo deje fuera. */}
+          {/* eslint-disable-next-line @next/next/no-img-element -- output: "export" no soporta el optimizador de next/image */}
           <img src="/branding/placeholder-profile.jpg" alt="" className="h-full w-full scale-[1.25] object-cover" />
         </div>
 

@@ -11,6 +11,7 @@ import { BarraUsuario } from "./BarraUsuario";
 import { EncabezadoSidebar } from "./EncabezadoSidebar";
 import { NavegacionMobile } from "./NavegacionMobile";
 import { tienePermisoEnSala } from "@/lib/permisoEnSala";
+import { puedeEditarKiosko } from "@/lib/permisoKiosko";
 import { ProveedorEnSala, ContadorEnSala, AvisoCobros } from "./en-sala/ContextoEnSala";
 
 export default async function PanelLayout({ children }: { children: React.ReactNode }) {
@@ -48,6 +49,7 @@ export default async function PanelLayout({ children }: { children: React.ReactN
               { href: "/pagos", label: "Histórico de Pagos" },
               { href: "/productos", label: "Productos" },
               { href: "/miembros", label: "Miembros" },
+              ...(puedeEditarKiosko(usuario.rol) ? [{ href: "/kiosko", label: "Kiosko" }] : []),
               // Planes, Sucursales y Usuarios se administran desde las tabs
               // de Configuraciones (ver diseño acordado) — solo SOCIO llega
               // a ellas desde ahí.

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Sheet } from "@gym-app/ui/components/Sheet";
 import { BarraUsuario } from "./BarraUsuario";
+import { puedeEditarKiosko } from "@/lib/permisoKiosko";
 
 export function MasSheet({
   abierto,
@@ -22,6 +23,7 @@ export function MasSheet({
   // que en el sidebar de escritorio.
   const enlaces = [
     { href: "/productos", label: "Productos" },
+    ...(puedeEditarKiosko(rol) ? [{ href: "/kiosko", label: "Kiosko" }] : []),
     ...(rol === "SOCIO" ? [{ href: "/configuraciones", label: "Configuraciones" }] : []),
   ];
 

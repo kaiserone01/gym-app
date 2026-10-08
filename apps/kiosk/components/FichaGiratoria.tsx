@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { Fragment, useState, type ReactNode } from "react";
 
 type Cara<T> = { tipo: "reposo" } | { tipo: "ficha"; ficha: T };
 
@@ -31,7 +31,7 @@ export function FichaGiratoria<T extends { id: number }>({
     setEstado({ caras, giros: estado.giros + 1, clave });
   }
 
-  const contenido = (cara: Cara<T>) => (cara.tipo === "reposo" ? renderReposo() : renderFicha(cara.ficha));
+  const contenido = (cara: Cara<T>) => (cara.tipo === "reposo" ? renderReposo() : <Fragment key={cara.ficha.id}>{renderFicha(cara.ficha)}</Fragment>);
 
   return (
     <div className="flip-escena w-[60vw] min-w-[40rem] max-w-6xl">

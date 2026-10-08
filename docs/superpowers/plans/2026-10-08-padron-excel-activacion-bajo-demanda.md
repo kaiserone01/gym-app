@@ -1612,6 +1612,7 @@ git push origin main
 ```
 
 ---
+
 ## Tarea 9: Retirar el pipeline viejo y actualizar la documentación
 
 **Archivos:**

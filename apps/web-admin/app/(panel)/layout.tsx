@@ -11,7 +11,7 @@ import { BarraUsuario } from "./BarraUsuario";
 import { EncabezadoSidebar } from "./EncabezadoSidebar";
 import { NavegacionMobile } from "./NavegacionMobile";
 import { tienePermisoEnSala } from "@/lib/permisoEnSala";
-import { ProveedorEnSala, ContadorEnSala } from "./en-sala/ContextoEnSala";
+import { ProveedorEnSala, ContadorEnSala, AvisoCobros } from "./en-sala/ContextoEnSala";
 
 export default async function PanelLayout({ children }: { children: React.ReactNode }) {
   const sesion = await obtenerUsuarioDeSesionActual();
@@ -38,6 +38,7 @@ export default async function PanelLayout({ children }: { children: React.ReactN
       <RelojYTasaConHistorial />
       <ConEnSala>
       <div className="marca-agua-pagina flex min-h-dvh flex-col lg:flex-row" style={{ background: "var(--gx-ground)" }}>
+        <AvisoCobros />
         <div className="hidden lg:block print:hidden">
           <Sidebar
             encabezado={<EncabezadoSidebar sucursalNombre={sucursalActiva?.nombre ?? "—"} />}

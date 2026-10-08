@@ -160,7 +160,6 @@ export function ProveedorEnSala({ children }: { children: React.ReactNode }) {
       value={{ personas, cobros, avisosActivos, recargar, activarAvisos, desactivarAvisos: () => guardarAvisos(false) }}
     >
       {children}
-      <AvisoCobrosFlotante />
     </Contexto.Provider>
   );
 }
@@ -180,19 +179,24 @@ export function ContadorEnSala({ className = "" }: { className?: string }) {
 }
 
 // Aviso visible desde cualquier página del panel; en /en-sala ya está la lista, no se repite.
-function AvisoCobrosFlotante() {
+// Va en la franja superior que el layout reserva (pt-16), a la izquierda del reloj, y se monta dentro
+// del contenedor de la página (ver layout): así los modales (z-50) lo cubren y nunca tapa sus botones.
+export function AvisoCobros() {
   const pathname = usePathname();
   const cobros = useEnSala()?.cobros ?? 0;
   if (cobros === 0 || pathname.startsWith("/en-sala")) return null;
 
+  const texto = cobros === 1 ? "1 persona en sala debe pagar" : `${cobros} personas en sala deben pagar`;
   return (
     <Link
       href="/en-sala"
-      className="fixed bottom-20 right-4 z-40 flex items-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold shadow-lg lg:bottom-6"
+      aria-label={texto}
+      className="fixed left-4 top-4 z-40 flex items-center gap-2 rounded-full px-3 py-2 text-xs font-semibold shadow-lg print:hidden lg:left-[15rem]"
       style={{ background: "var(--gx-bad)", color: "white" }}
     >
-      <Warning size={20} weight="fill" />
-      {cobros === 1 ? "1 persona en sala debe pagar" : `${cobros} personas en sala deben pagar`}
+      <Warning size={18} weight="fill" />
+      <span className="sm:hidden">{cobros}</span>
+      <span className="hidden sm:inline">{texto}</span>
     </Link>
   );
 }

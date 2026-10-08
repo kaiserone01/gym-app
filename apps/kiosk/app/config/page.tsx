@@ -2,8 +2,7 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { guardarApiKey, obtenerApiKey } from "@/lib/config";
-import { claveDeFragmento } from "@/lib/claveFragmento";
+import { guardarApiKey, guardarClaveDelFragmento, obtenerApiKey } from "@/lib/config";
 
 export default function PaginaConfiguracion() {
   const router = useRouter();
@@ -15,10 +14,7 @@ export default function PaginaConfiguracion() {
   // después del montaje, en un efecto.
   useEffect(() => {
     // La APK de Android TV abre /config#clave=...: se guarda la clave, se borra del historial y se pasa al kiosco.
-    const claveDelFragmento = claveDeFragmento(window.location.hash);
-    if (claveDelFragmento) {
-      guardarApiKey(claveDelFragmento);
-      window.history.replaceState(null, "", window.location.pathname);
+    if (guardarClaveDelFragmento()) {
       router.replace("/");
       return;
     }

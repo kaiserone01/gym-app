@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useReducer, useState } from "react";
 import { useRouter } from "next/navigation";
-import { obtenerApiKey } from "@/lib/config";
+import { guardarClaveDelFragmento, obtenerApiKey } from "@/lib/config";
 import { registrarCheckIn, ErrorCheckIn } from "@/lib/api";
 import { encolar, listarPendientes } from "@/lib/colaPendientes";
 import { reintentarPendientes } from "@/lib/reintentarPendientes";
@@ -70,6 +70,7 @@ export default function PaginaCheckIn() {
   const info = useInfoKiosco(apiKey);
 
   useEffect(() => {
+    guardarClaveDelFragmento();
     const clave = obtenerApiKey();
     if (!clave) {
       router.replace("/config");

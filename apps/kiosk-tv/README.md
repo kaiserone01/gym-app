@@ -2,7 +2,7 @@
 
 ## 1. Qué es
 
-APK de Android TV (Capacitor 8, `appId` `com.adrenalina.kiosco`, nombre "Kiosco AX") que abre el kiosco remoto `https://kiosco.zipnegocios.com` a pantalla completa. Se compila una APK por sucursal con la API key de la sede dentro: al abrir, la app carga `/config#clave=<clave codificada>`, el kiosco guarda la clave y va a `/`. Si no hay red al arrancar, muestra una página local "Sin conexión" y reintenta.
+APK de Android TV (Capacitor 8, `appId` `com.adrenalina.kiosco`, nombre "Kiosco AX") que abre el kiosco remoto `https://kiosco.zipnegocios.com` a pantalla completa. Se compila una APK por sucursal con la API key de la sede dentro: al abrir, la app carga `/#clave=<clave codificada>`, el kiosco guarda la clave y va a `/`. Si no hay red al arrancar, muestra una página local "Sin conexión" y reintenta.
 
 Código: `capacitor/` (proyecto Capacitor, deliberadamente **no** es un workspace de npm) y `.github/workflows/apk-kiosco.yml` (compilación en GitHub Actions; no se compila en local).
 
@@ -46,7 +46,7 @@ Abrir la app desde el launcher del TV como "Kiosco AX".
 
 ## 6. Rotar una clave
 
-Actualizar el secreto `KIOSCO_CLAVE_<SEDE>`, volver a compilar la sede (sección 4) e instalar con `adb install -r`. Cada arranque de un APK compilado con clave abre `/config#clave=...` y sobrescribe la clave guardada: una clave cambiada a mano en `/config` se pierde al reiniciar la app (la rotación se hace recompilando).
+Actualizar el secreto `KIOSCO_CLAVE_<SEDE>`, volver a compilar la sede (sección 4) e instalar con `adb install -r`. Cada arranque de un APK compilado con clave abre `/#clave=...` y sobrescribe la clave guardada: una clave cambiada a mano en `/config` se pierde al reiniciar la app (la rotación se hace recompilando).
 
 ## 7. Prueba sin clave
 

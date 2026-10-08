@@ -1,4 +1,5 @@
-// GET /api/kiosco/estado — lo que el reposo del kiosco muestra: sede y última tasa BCV.
+// GET /api/kiosco/estado — lo que el reposo del kiosco muestra: sede, última tasa BCV y la configuración
+// del reposo (frases, imagen y opacidad) hecha desde el menú Kiosko del panel.
 // Autenticado con la apiKey de la sucursal (ver lib/kiosco.ts).
 import { NextRequest, NextResponse } from "next/server";
 import { jsonKiosco, opcionesKiosco, sucursalDeKiosco } from "@/lib/kiosco";
@@ -23,7 +24,14 @@ export async function GET(req: NextRequest) {
       if (!(error instanceof SinTasaDisponibleError)) console.error("Error al leer la tasa para el kiosco:", error);
     }
 
-    return jsonKiosco({ sucursalNombre: sucursal.nombre, tasaBcv }, 200);
+    return jsonKiosco(
+      {
+        sucursalNombre: sucursal.nombre,
+        tasaBcv,
+        reposo: { frases: sucursal.reposoFrases, imagenUrl: sucursal.reposoImagenUrl, opacidad: sucursal.reposoOpacidad },
+      },
+      200
+    );
   } catch (error) {
     console.error("Error en el estado del kiosco:", error);
     return jsonKiosco({ error: "Error interno al leer el estado del kiosco." }, 500);

@@ -30,6 +30,10 @@ describe("caraDeResultado", () => {
     expect(caraDeResultado({ estado: "activo", fechaVencimiento: null }, AHORA)).toEqual({ cara: "permitido", diasParaVencer: null });
   });
 
+  it("activo con vencimiento ya pasado es permitido, no por_vencer", () => {
+    expect(caraDeResultado({ estado: "activo", fechaVencimiento: enDias(-2) }, AHORA)).toEqual({ cara: "permitido", diasParaVencer: -2 });
+  });
+
   it("los demás estados pasan tal cual, aunque la fecha ya haya pasado", () => {
     expect(caraDeResultado({ estado: "en_gracia", fechaVencimiento: enDias(-2) }, AHORA).cara).toBe("en_gracia");
     expect(caraDeResultado({ estado: "vencido", fechaVencimiento: enDias(-40) }, AHORA).cara).toBe("vencido");

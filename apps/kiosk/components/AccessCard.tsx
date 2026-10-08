@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import { CheckCircle, XCircle } from "@phosphor-icons/react/dist/ssr";
 import type { ResultadoCheckIn } from "@/lib/api";
 import { textoPorVencer, tonoDeCara, type CaraFicha } from "@/lib/cara";
@@ -39,17 +42,20 @@ export function AccessCard({
   hora,
   cara,
   diasParaVencer,
+  fotoOk,
   duracionMs,
 }: {
   resultado: ResultadoCheckIn;
   hora: string;
   cara: CaraFicha;
   diasParaVencer: number | null;
+  fotoOk: boolean;
   duracionMs?: number;
 }) {
   const { color, tinta, brillo } = COLOR_TONO[tonoDeCara(cara)];
   const acceso = cara === "permitido" || cara === "por_vencer";
   const nombre = nombreCorto(resultado.nombre);
+  const [fotoRota, setFotoRota] = useState(false);
 
   return (
     <MarcoFicha color={color} brillo={brillo} duracionMs={duracionMs}>
@@ -86,9 +92,9 @@ export function AccessCard({
             border: `4px solid ${color}`,
           }}
         >
-          {resultado.fotoUrl ? (
+          {resultado.fotoUrl && fotoOk && !fotoRota ? (
             // eslint-disable-next-line @next/next/no-img-element -- output: "export" no soporta el optimizador de next/image
-            <img src={resultado.fotoUrl} alt={resultado.nombre} className="h-full w-full object-cover" />
+            <img src={resultado.fotoUrl} alt="" onError={() => setFotoRota(true)} className="h-full w-full object-cover" />
           ) : (
             iniciales(resultado.nombre)
           )}

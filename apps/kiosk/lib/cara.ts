@@ -25,7 +25,7 @@ export function caraDeResultado(
 ): { cara: CaraFicha; diasParaVencer: number | null } {
   const dias = diasParaVencer(resultado.fechaVencimiento, ahora);
   if (resultado.estado === "activo") {
-    const porVencer = dias !== null && dias <= UMBRAL_POR_VENCER_DIAS;
+    const porVencer = dias !== null && dias >= 0 && dias <= UMBRAL_POR_VENCER_DIAS;
     return { cara: porVencer ? "por_vencer" : "permitido", diasParaVencer: dias };
   }
   return { cara: resultado.estado, diasParaVencer: dias };

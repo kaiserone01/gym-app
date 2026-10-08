@@ -15,7 +15,7 @@ export function MarcoFicha({
 }) {
   return (
     <div
-      className="overflow-hidden rounded-3xl border-4"
+      className="flex flex-1 flex-col overflow-hidden rounded-3xl border-4"
       style={{
         borderColor: color,
         background: "var(--gx-surface)",
@@ -36,7 +36,7 @@ export function MarcoFicha({
         </span>
       </div>
 
-      {children}
+      <div className="flex flex-1 flex-col">{children}</div>
 
       {duracionMs !== undefined && (
         <div className="h-2 w-full" style={{ background: "var(--gx-edge)" }}>

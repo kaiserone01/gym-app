@@ -38,6 +38,7 @@ function contenidoFicha(ficha: FichaActiva) {
           hora={ficha.hora}
           cara={ficha.cara}
           diasParaVencer={ficha.diasParaVencer}
+          fotoOk={ficha.fotoOk}
           duracionMs={DURACION_FICHA_MS}
         />
       );
@@ -104,8 +105,8 @@ export default function PaginaCheckIn() {
 
   async function mostrar(ficha: Ficha, tono: Tono) {
     // La foto se baja ANTES de voltear para que la ficha no aparezca a medio cargar.
-    if (ficha.tipo === "resultado" && ficha.resultado.fotoUrl) {
-      await precargarFoto(ficha.resultado.fotoUrl, ESPERA_FOTO_MS);
+    if (ficha.tipo === "resultado") {
+      ficha = { ...ficha, fotoOk: ficha.resultado.fotoUrl ? await precargarFoto(ficha.resultado.fotoUrl, ESPERA_FOTO_MS) : false };
     }
     despachar({ tipo: "respuesta", ficha });
     setReaccion((previa) => ({ id: (previa?.id ?? 0) + 1, tono }));
@@ -130,6 +131,7 @@ export default function PaginaCheckIn() {
           hora: ahora.toLocaleTimeString("es-VE", { hour: "numeric", minute: "2-digit" }),
           cara,
           diasParaVencer,
+          fotoOk: false,
         },
         tono: tonoDeCara(cara),
       };
@@ -137,14 +139,21 @@ export default function PaginaCheckIn() {
       if (error instanceof ErrorCheckIn) {
         salida = { ficha: { tipo: "error", mensaje: error.message }, tono: "rojo" };
       } else {
-        await encolar(cedula);
-        actualizarPendientes();
-        salida = { ficha: { tipo: "pendiente" }, tono: "ambar" };
+        try {
+          await encolar(cedula);
+          actualizarPendientes();
+          salida = { ficha: { tipo: "pendiente" }, tono: "ambar" };
+        } catch {
+          salida = { ficha: { tipo: "error", mensaje: "No se pudo guardar tu entrada. Acércate a recepción." }, tono: "rojo" };
+        }
       }
     }
 
-    await mostrar(salida.ficha, salida.tono);
-    limpiar();
+    try {
+      await mostrar(salida.ficha, salida.tono);
+    } finally {
+      limpiar();
+    }
   }
 
   return (

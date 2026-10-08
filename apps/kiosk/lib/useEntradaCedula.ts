@@ -128,7 +128,7 @@ export function useEntradaCedula({ alEscribir, alEnviar }: Opciones) {
       asignar(evento.target.value.replace(/\D/g, ""));
     },
     onKeyDown: (evento: KeyboardEvent<HTMLInputElement>) => {
-      if (evento.key === "Enter") void opciones.current.alEnviar(cedulaRef.current);
+      if (evento.key === "Enter") manejar({ type: "enter" });
       if (evento.key === "Escape") asignar("");
     },
     onBlur: () => inputRef.current?.focus(),

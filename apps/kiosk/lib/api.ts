@@ -1,4 +1,5 @@
 const URL_API = process.env.NEXT_PUBLIC_API_URL;
+const TIMEOUT_CHECKIN_MS = 10_000;
 
 export type EstadoCheckIn = "activo" | "en_gracia" | "vencido" | "abono_vencido" | "sucursal_incorrecta";
 
@@ -38,16 +39,25 @@ export async function registrarCheckIn(apiKey: string, cedula: string): Promise<
     throw new ErrorCheckIn("NEXT_PUBLIC_API_URL no está configurada en este build.", 0);
   }
 
-  const respuesta = await fetch(`${URL_API}/api/checkin`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Kiosk-Api-Key": apiKey,
-    },
-    body: JSON.stringify({ cedula }),
-  });
-
-  const datos = await respuesta.json().catch(() => ({}));
+  // Sin respuesta en 10 s se aborta: el AbortError no es ErrorCheckIn, así que cuenta como "sin conexión".
+  const controlador = new AbortController();
+  const temporizador = setTimeout(() => controlador.abort(), TIMEOUT_CHECKIN_MS);
+  let respuesta: Response;
+  let datos: { error?: string };
+  try {
+    respuesta = await fetch(`${URL_API}/api/checkin`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Kiosk-Api-Key": apiKey,
+      },
+      body: JSON.stringify({ cedula }),
+      signal: controlador.signal,
+    });
+    datos = await respuesta.json().catch(() => ({}));
+  } finally {
+    clearTimeout(temporizador);
+  }
 
   if (!respuesta.ok) {
     throw new ErrorCheckIn(datos.error ?? `Error ${respuesta.status} al registrar el check-in.`, respuesta.status);

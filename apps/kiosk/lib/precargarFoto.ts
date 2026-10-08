@@ -1,15 +1,15 @@
 // Descarga la foto antes de voltear la ficha para que no aparezca a medio cargar. Nunca rechaza:
-// si la foto falla o tarda más de `esperaMaxMs`, la ficha gira igual (AccessCard cae a iniciales).
-export function precargarFoto(url: string, esperaMaxMs: number): Promise<void> {
+// resuelve true si la foto cargó y false si falló o tardó más de `esperaMaxMs` (AccessCard cae a iniciales).
+export function precargarFoto(url: string, esperaMaxMs: number): Promise<boolean> {
   return new Promise((resolver) => {
     const imagen = new Image();
-    const tope = setTimeout(resolver, esperaMaxMs);
-    const terminar = () => {
+    const terminar = (cargo: boolean) => {
       clearTimeout(tope);
-      resolver();
+      resolver(cargo);
     };
-    imagen.onload = terminar;
-    imagen.onerror = terminar;
+    const tope = setTimeout(() => terminar(false), esperaMaxMs);
+    imagen.onload = () => terminar(true);
+    imagen.onerror = () => terminar(false);
     imagen.src = url;
   });
 }

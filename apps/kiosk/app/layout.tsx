@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { RegistrarServiceWorker } from "./RegistrarServiceWorker";
-import { FondoVideo } from "../components/FondoVideo";
 import { ThemeStyleTag } from "@gym-app/theming/ThemeStyleTag";
 import { temaAdrenalinaXtreme } from "@gym-app/theming/tokens";
 
@@ -27,7 +26,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className="marca-agua-pagina sin-logo min-h-full" style={{ background: "var(--gx-ground)", color: "var(--gx-ink)" }}>
         <ThemeStyleTag tema={temaAdrenalinaXtreme} />
-        <FondoVideo />
         {children}
         <RegistrarServiceWorker />
       </body>

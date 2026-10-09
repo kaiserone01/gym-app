@@ -26,9 +26,14 @@ Espejo fiel del Excel, un registro por cédula. Clave única `(organizacionId, c
 | `cedula` | texto recortado; clave de búsqueda |
 | `numeroFila` | fila en el Excel, para trazabilidad |
 | Columnas crudas | `nombre`, `status`, `fNacimiento`, `celular`, `fVenc`, `fechaPago`, `plan` — como texto (`String?`), tal cual vienen. Es lo que muestra el menú "Excel" |
+| Columnas I–K | `colI`, `colJ`, `colK` (`String?`): las tres columnas sin título del Excel, como texto. Las fechas se guardan en ISO (`aaaa-mm-dd`) y se muestran como dd/mm/aaaa |
+| Estilos | `estilos Json?`: por columna (A–K), negrita, color de fuente y alineación de la celda, leídos del Excel |
+| Resaltado | `resaltado String?` (hex de la paleta, p. ej. `FFFF00`; viene del relleno de la columna A del Excel) y `resaltadoEditado Boolean` (true si el color se puso a mano desde el menú) |
 | Normalizadas | `fechaVencimiento DateTime?`, `fechaUltimoPago DateTime?`, `fechaNacimiento DateTime?`, `planNombre String?`, `precioPlanUSD Decimal?` — calculadas con `normalizarFila`/`clasificarFila`; `null` si no hay dato confiable |
 | `archivoOrigen`, `importadoAt` | qué Excel y cuándo se cargó por última vez |
 | `camposEditados String[]`, `editadoAt`, `editadoPor` | ediciones manuales hechas desde el menú "Excel" (§7): qué columnas crudas se tocaron, cuándo y quién (nombre del usuario). Vacío si la fila es tal cual el Excel |
+
+**`PadronHoja`** (una por `(organizacionId, sucursalId)`): `encabezados Json` (las 11 columnas A–K con `col`, `titulo` de la fila 3 y `anchoPx`), `alturaEncabezadoPx`, `archivoOrigen`, `importadoAt`. La escribe el importador con `--confirm`; mientras no exista, el menú usa una hoja por defecto (títulos y anchos fijos en `tiposGrid.ts`). Migración `20261010000000_excel_espejo_fiel`.
 
 No guarda un enlace a `Miembro`: "ya activado" se calcula por join de cédula (el padrón nunca se sincroniza con `Miembro`).
 
@@ -46,6 +51,7 @@ Renombrado mecánico en ~20 archivos (domain, infra, web-admin, `marcarAjustarFe
 - Reutiliza `leerExcel.ts`, `normalizarFila.ts` y `PLANES_REALES`/resolución de plan de `clasificarFila.ts`. Se **elimina** de ese flujo el corte de 90 días y la creación de Plan/Suscripción/Pago.
 - Reglas de elegibilidad (puras, con tests): se excluye la fila si la cédula está vacía o no contiene dígitos (`S/C`, `G`), o si la cédula (recortada) aparece en más de una fila (se excluyen **todas** las repetidas). Cédulas con letra y dígitos (`E-3880506`) entran.
 - Dry-run por defecto: imprime y escribe un reporte JSON con altas, cambios (campo viejo → nuevo), sin cambios y excluidas por motivo. `--confirm` hace upsert por `(organizacionId, cedula)`; es idempotente. El archivo de trabajo es único (`DATA ADRENALINA_hoy.xlsm`) y puede reimportarse varias veces mientras se editan filas desde el menú: **los campos editados a mano (`camposEditados`) se respetan** (se conserva el valor del padrón y se recalculan las columnas normalizadas), y el reporte los lista como "conflicto" (valor del Excel vs. valor editado) para que se decida a mano. Los campos no editados se actualizan con el Excel.
+- **Espejo fiel (2026-10-09).** El importador también lee las columnas I–K (`colI`/`colJ`/`colK`), los estilos por columna (negrita, color de fuente, alineación), el relleno de la columna A (`resaltado`) y los títulos de la fila 3 con los anchos de columna (`PadronHoja`, con `--confirm`). Además de los textos editados (`camposEditados`), respeta el color puesto a mano (`resaltadoEditado = true`): ese color no se pisa al reimportar. Dry-run del archivo real: 1376 elegibles, 52 excluidas (34 sin cédula, 18 cédula repetida), 23 filas con color, 25/32/5 celdas con valor en I/J/K. El dry-run tolera que las columnas nuevas aún no existan en la base (P2022).
 - No toca `Miembro`, `Plan`, `Suscripcion` ni `Pago`.
 - Se retiran `migrarExcelAdrenalina.ts` y su configuración (`mapeo-plan.json`, `reglas-cedula.json`) en el plan de implementación, una vez reutilizado lo necesario; `limpiarMigracionExcelPrueba.ts` se conserva solo si sigue siendo útil.
 
@@ -69,13 +75,19 @@ Si el padrón no trae vencimiento, el miembro se crea sin `fechaVencimiento` y e
 
 **Panel.** En `/miembros`, al buscar una cédula sin resultado y con la sucursal activa = Sede Principal, se ofrece "Activar desde Excel" (misma función, server action nueva); al terminar lleva a la ficha, con el aviso "Por regularizar". Requiere permiso `MIEMBROS`/`CREAR`.
 
-## 7. Menú "Excel" (consulta y edición)
+## 7. Menú "Excel" (cuadrícula tipo hoja)
 
-Ruta `apps/web-admin/app/(panel)/excel`, entrada en `layout.tsx` y `NavegacionMobile.tsx`, visible solo si la sucursal activa es la del padrón; permiso `MIEMBROS`/`VER` (sin enum nuevo). Tabla paginada en el servidor con **todas las columnas crudas** más "N° fila" y "Estado en el sistema" (no es miembro / ya es miembro → enlace a la ficha). Búsqueda por cédula (coincidencia parcial) y filtros por nombre, status, plan, rango de vencimiento y "estado en el sistema". Sin activación desde aquí.
+Ruta `apps/web-admin/app/(panel)/excel`, entrada en `layout.tsx` y `NavegacionMobile.tsx`, visible solo si la sucursal activa es la del padrón; permiso `MIEMBROS`/`VER` para ver y `MIEMBROS`/`EDITAR` para editar (sin enum nuevo).
 
-**Visor del estado.** La última columna dice "No es miembro" o "Ya es miembro". Si la cédula ya existe como `Miembro`, la fila queda **bloqueada** (solo lectura) con el aviso "Ajusta sus datos en la ficha del miembro" y un enlace a la ficha: el padrón nunca modifica `Miembro` y la ficha es la única fuente de verdad de quien ya fue activado.
+**Cuadrícula.** El menú es una hoja que imita al Excel, no una tabla paginada: encabezado fijo con las letras A–K y la fila 3 con los títulos reales (con los anchos de `PadronHoja`), columna fija de números con el **número real de fila** del Excel (desde la 4), el relleno de fila tomado de la columna A, y negrita, color de fuente y alineación por celda según `estilos`. Se cargan todas las filas en una sola cuadrícula con **renderizado progresivo** (bloques de 150, `IntersectionObserver`; filas de alto fijo con `content-visibility`) y los **filtros** (cédula, nombre, status, plan, rango de vencimiento, estado en el sistema y color) se aplican en el navegador. La caja de nombre muestra la celda seleccionada (p. ej. `K166`) y su valor crudo. Las fechas se muestran dd/mm/aaaa; el texto libre se muestra tal cual.
 
-**Edición (microajustes en tiempo real).** En las filas de quien aún no es miembro, "Editar" convierte la fila en campos editables y "Guardar" actualiza solo el padrón, para corregir casos puntuales sin reimportar. Editables: nombre, status, f. nacimiento, celular, f. vencimiento, fecha de pago y plan; la cédula no (es la clave). `f. nacimiento` y `f. vencimiento` aceptan vacío, `aaaa-mm-dd` o `dd-mm-aaaa` (cualquier otra cosa se rechaza, porque editar es la oportunidad de corregir una fecha mal escrita); `fecha de pago` admite texto libre (en el Excel a veces es una nota). Al guardar se recalculan las columnas normalizadas (vencimiento, último pago, nacimiento, plan y precio) con la misma lógica del importador, y se registra `camposEditados`/`editadoAt`/`editadoPor`. Las filas editadas llevan una marca "Editado" con los campos tocados. Requiere permiso `MIEMBROS`/`EDITAR`. Una edición vale para la activación futura (la usa tal cual el kiosco y el panel) y sobrevive a reimportar el Excel (§4).
+**Ir a fila.** Rango `4 – N` (N = última fila del Excel). Cuenta también las filas que no están en el padrón (sin cédula o con cédula repetida): siguen fuera de la hoja, pero cuentan en la numeración. Si la fila pedida no está, salta a la siguiente existente con un aviso; si es menor que 4 va a la primera, y si pasa de la última va a la última. Si hay filtros activos, se limpian antes de saltar.
+
+**Visor del estado.** La columna Estado dice "No es miembro" o "Ya es miembro". Si la cédula ya existe como `Miembro`, la fila queda **bloqueada** (texto gris, sin edición ni resaltado) con un enlace a la ficha: el padrón nunca modifica `Miembro` y la ficha es la única fuente de verdad de quien ya fue activado.
+
+**Edición.** En las filas de quien aún no es miembro se edita la celda (doble clic, o clic sobre una celda ya seleccionada, Enter o F2; Enter guarda y Esc cancela). Editables: A–K salvo E (la cédula es la clave). Fechas: C y F aceptan vacío, `aaaa-mm-dd` o `dd/mm/aaaa` (se convierte a ISO antes de enviar; cualquier otra cosa se rechaza); G (fecha de pago) admite texto libre pero también convierte `dd/mm/aaaa`; el resto es texto libre. Al guardar se recalculan las columnas normalizadas con la lógica del importador y se registra `camposEditados`/`editadoAt`/`editadoPor`; la celda editada lleva un triángulo naranja. Una edición vale para la activación futura y sobrevive a reimportar (§4).
+
+**Resaltado de fila.** Sobre una fila editable, una paleta de 6 colores (amarillo, naranja, verde, celeste, rosado, rojo claro) más "Sin color" fija `resaltado` y marca `resaltadoEditado`, para que el importador no lo pise.
 
 ## 8. Qué pasa con lo existente
 

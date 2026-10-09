@@ -31,6 +31,7 @@ model Organizacion {
   reglasAbono          ReglaAbonoPorFrecuencia[]
   cambiosPlanAuditoria CambioPlanAuditoria[]
   miembrosReferencia   MiembroReferencia[]
+  padronHojas          PadronHoja[]
 }
 
 model Sucursal {
@@ -57,6 +58,7 @@ model Sucursal {
   sesiones          Sesion[]
   deudasProducto    DeudaProducto[]
   miembrosReferencia MiembroReferencia[]
+  padronHojas        PadronHoja[]
 }
 
 enum RolUsuario {
@@ -631,7 +633,32 @@ model MiembroReferencia {
   camposEditados   String[]     @default([])
   editadoAt        DateTime?
   editadoPor       String?
+  // Columnas I, J, K del Excel (texto, editables)
+  colI             String?
+  colJ             String?
+  colK             String?
+  // Estilos por columna del Excel ({ "F": { "b": true, "c": "FF0000", "a": "center" } }); solo se importan
+  estilos          Json?
+  // Color de relleno de la fila (hex sin #, ej. FFC000)
+  resaltado        String?
+  // El color se puso a mano: la reimportación lo respeta
+  resaltadoEditado Boolean      @default(false)
 
   @@unique([organizacionId, cedula])
   @@index([sucursalId])
+}
+
+// Hoja del padrón (una por organización + sede): encabezados y anchos de las 11 columnas A–K del Excel.
+model PadronHoja {
+  id                 String       @id @default(cuid())
+  organizacionId     String
+  organizacion       Organizacion @relation(fields: [organizacionId], references: [id])
+  sucursalId         String
+  sucursal           Sucursal     @relation(fields: [sucursalId], references: [id])
+  encabezados        Json // [{ col: "A", titulo: "NOMBRE", anchoPx: 233 }, ...] las 11 columnas A–K
+  alturaEncabezadoPx Float // alto de la fila 3 (títulos)
+  archivoOrigen      String
+  importadoAt        DateTime     @default(now())
+
+  @@unique([organizacionId, sucursalId])
 }

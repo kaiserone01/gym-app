@@ -142,22 +142,24 @@ export function ExcelGrid({ filas: filasIniciales, hoja, puedeEditar }: { filas:
   );
 
   const guardar = useCallback(
-    async (cedula: string, col: number, valor: string) => {
+    async (cedula: string, col: number, valor: string): Promise<boolean> => {
       const { campo } = COLUMNAS_GRID[col];
       setGuardando(true);
       try {
         const resultado = await editarFilaPadronAction(cedula, { [campo]: valorParaGuardar(valor, CAMPOS_FECHA.has(campo)) });
         if ("error" in resultado) {
           mostrarError(resultado.error); // sigue en edición
-          return;
+          return false;
         }
         reemplazarFila(resultado.fila);
         setEdicion(null);
         // Devuelve el foco a la hoja (para las flechas) salvo que el usuario ya se haya ido a otro control.
         const activo = document.activeElement;
         if (!activo || activo === document.body || contenedor.current?.contains(activo)) enfocarHoja();
+        return true;
       } catch {
         mostrarError("No se pudo guardar el cambio.");
+        return false;
       } finally {
         setGuardando(false);
       }

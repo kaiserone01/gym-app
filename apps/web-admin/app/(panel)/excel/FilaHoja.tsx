@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useState, type CSSProperties } from "react";
+import { memo, useRef, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { formatearCeldaPadron } from "@gym-app/domain/utils/formatoCeldaPadron";
 import { COLUMNAS_GRID, type FilaGrid } from "./tiposGrid";
@@ -49,14 +49,21 @@ export const ESTILO_NUMERO: CSSProperties = {
   color: HOJA.numero,
 };
 
-// Fechas dd/mm/aaaa (lo que se ve) se envían como aaaa-mm-dd, que el dominio acepta y la celda vuelve a mostrar igual.
+// Fechas dd/mm/aaaa o dd-mm-aaaa se envían como aaaa-mm-dd, que el dominio acepta y la celda vuelve a mostrar como dd/mm/aaaa.
 export function valorParaGuardar(texto: string, esFecha: boolean): string {
-  const dmy = esFecha ? /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(texto.trim()) : null;
+  const dmy = esFecha ? /^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/.exec(texto.trim()) : null;
   return dmy ? `${dmy[3]}-${dmy[2].padStart(2, "0")}-${dmy[1].padStart(2, "0")}` : texto;
 }
 
-function EditorCelda({ inicial, guardando, onGuardar, onCancelar }: { inicial: string; guardando: boolean; onGuardar: (valor: string) => void; onCancelar: (devolverFoco: boolean) => void }) {
+function EditorCelda({ inicial, guardando, onGuardar, onCancelar }: { inicial: string; guardando: boolean; onGuardar: (valor: string) => Promise<boolean>; onCancelar: (devolverFoco: boolean) => void }) {
   const [valor, setValor] = useState(inicial);
+  const cerrado = useRef(false); // evita guardar dos veces (Enter + blur) o guardar tras Escape
+  async function confirmar() {
+    if (cerrado.current || guardando) return;
+    cerrado.current = true;
+    if (valor === inicial) onCancelar(true);
+    else if (!(await onGuardar(valor))) cerrado.current = false; // con error sigue en edición
+  }
   return (
     <input
       autoFocus
@@ -68,15 +75,18 @@ function EditorCelda({ inicial, guardando, onGuardar, onCancelar }: { inicial: s
         e.stopPropagation();
         if (e.key === "Enter") {
           e.preventDefault();
-          if (guardando) return;
-          if (valor === inicial) onCancelar(true);
-          else onGuardar(valor);
+          void confirmar();
         } else if (e.key === "Escape") {
           e.preventDefault();
+          cerrado.current = true;
           onCancelar(true);
         }
       }}
-      onBlur={() => onCancelar(false)}
+      onBlur={() => {
+        if (cerrado.current || guardando) return;
+        if (valor === inicial) onCancelar(false);
+        else void confirmar();
+      }}
       style={{ width: "100%", height: "100%", border: "none", outline: "none", padding: 0, font: "inherit", color: "inherit", background: "transparent" }}
     />
   );
@@ -92,7 +102,7 @@ interface PropsFilaHoja {
   destacada: boolean;
   onSeleccionar: (cedula: string, col: number) => void;
   onEditar: (cedula: string, col: number) => void;
-  onGuardar: (cedula: string, col: number, valor: string) => void;
+  onGuardar: (cedula: string, col: number, valor: string) => Promise<boolean>;
   onCancelar: (devolverFoco: boolean) => void;
   onClicNumero: (cedula: string, ancla: HTMLElement) => void;
 }

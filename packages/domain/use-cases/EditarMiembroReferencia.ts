@@ -70,7 +70,7 @@ export async function editarMiembroReferencia(
     const valor = bruto === undefined || bruto === null || bruto.trim() === "" ? null : bruto.trim();
     if (campo === "nombre" && valor === null) throw new EdicionInvalidaError("El nombre no puede quedar vacío.");
     if ((campo === "fNacimiento" || campo === "fVenc") && valor !== null && fechaDesdeTextoPadron(valor) === null) {
-      throw new EdicionInvalidaError(`Fecha inválida en ${ETIQUETAS[campo]}: usa aaaa-mm-dd o dd-mm-aaaa.`);
+      throw new EdicionInvalidaError(`Fecha inválida en ${ETIQUETAS[campo]}: usa aaaa-mm-dd o dd/mm/aaaa.`);
     }
     if (valor !== referencia[campo]) cambiados[campo] = valor;
   }

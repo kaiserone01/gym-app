@@ -44,8 +44,7 @@ function CampoFoto({ nombreActual, fotoUrlActual }: { nombreActual: string; foto
             const archivo = e.target.files?.[0];
             if (archivo) setFotoPreview(URL.createObjectURL(archivo));
           }}
-          className="text-sm file:mr-3 file:min-h-9 file:rounded-lg file:border-0 file:px-3 file:py-1.5 file:text-sm file:font-medium"
-          style={{ color: "var(--gx-muted)" }}
+          className="gx-archivo"
         />
       </label>
     </div>
@@ -107,8 +106,7 @@ export function FormularioUsuario({
               required
               value={rol}
               onChange={(e) => setRol(e.target.value)}
-              className="min-h-11 rounded-lg border px-3 outline-none focus:border-[var(--gx-accent)]"
-              style={{ background: "var(--gx-surface-2)", borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }}
+              className="min-h-11 rounded-lg border px-3 gx-campo"
             >
               <option value="">Seleccioná un rol</option>
               <option value="SOCIO">Socio</option>
@@ -139,7 +137,7 @@ export function FormularioUsuario({
                     type="checkbox"
                     name="sucursalIds"
                     value={sucursal.id}
-                    className="h-5 w-5 accent-[var(--gx-accent)]"
+                    className="gx-check"
                   />
                   {sucursal.nombre}
                 </label>

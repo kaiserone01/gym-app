@@ -43,13 +43,17 @@ export function EstadoToggle({ id, activo }: { id: string; activo: boolean }) {
       aria-checked={activoLocal}
       title={activoLocal ? "Activo — clic para dar de baja" : "Inactivo — clic para reactivar"}
       className="inline-flex h-7 w-12 shrink-0 cursor-pointer items-center rounded-full border-0 p-0.5 shadow-inner outline-none transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50"
-      style={{ background: activoLocal ? "var(--gx-good)" : "#E0E0E0" }}
+      style={
+        activoLocal
+          ? { background: "var(--gx-good)" }
+          : { background: "var(--gx-surface-2)", boxShadow: "inset 0 0 0 1px var(--gx-field-edge)" }
+      }
     >
       <span
         className={`h-6 w-6 rounded-full shadow transition-transform duration-150 ${
           activoLocal ? "translate-x-5" : "translate-x-0"
         }`}
-        style={{ background: activoLocal ? "var(--gx-good-ink)" : "#8A8A8A" }}
+        style={{ background: activoLocal ? "var(--gx-good-ink)" : "var(--gx-muted)" }}
       />
     </button>
   );

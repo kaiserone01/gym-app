@@ -237,8 +237,7 @@ export function FormularioCambiarPlan({
             setEsCombinado(false);
             setLineas([nuevaLineaVacia()]);
           }}
-          className="min-h-11 rounded-lg border px-3 outline-none focus:border-[var(--gx-accent)]"
-          style={{ background: "var(--gx-surface-2)", borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }}
+          className="min-h-11 rounded-lg border px-3 gx-campo"
         >
           <option value="">Seleccioná un plan</option>
           {planes.map((plan) => (
@@ -256,8 +255,7 @@ export function FormularioCambiarPlan({
           <select
             value={entrenadorId}
             onChange={(e) => setEntrenadorId(e.target.value)}
-            className="min-h-11 rounded-lg border px-3 outline-none focus:border-[var(--gx-accent)]"
-            style={{ background: "var(--gx-surface-2)", borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }}
+            className="min-h-11 rounded-lg border px-3 gx-campo"
           >
             <option value="">Seleccioná un entrenador</option>
             {entrenadores.map((entrenador) => (
@@ -365,7 +363,7 @@ export function FormularioCambiarPlan({
             type="button"
             onClick={() => setLineas((prev) => [...prev, nuevaLineaVacia()])}
             className="min-h-11 rounded-lg border px-3 text-sm font-medium"
-            style={{ borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }}
+            style={{ borderColor: "var(--gx-field-edge)", color: "var(--gx-ink)" }}
           >
             + Agregar método
           </button>

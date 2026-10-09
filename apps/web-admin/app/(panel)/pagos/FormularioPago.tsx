@@ -179,8 +179,7 @@ export function FormularioPago({
           <select
             name="miembroId"
             required
-            className="min-h-11 rounded-lg border px-3 outline-none focus:border-[var(--gx-accent)]"
-            style={{ background: "var(--gx-surface-2)", borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }}
+            className="min-h-11 rounded-lg border px-3 gx-campo"
           >
             <option value="">Seleccioná un miembro</option>
             {miembros.map((miembro) => (
@@ -256,8 +255,7 @@ export function FormularioPago({
               required
               value={planId}
               onChange={(e) => manejarCambioPlan(e.target.value)}
-              className="min-h-11 rounded-lg border px-3 outline-none focus:border-[var(--gx-accent)]"
-              style={{ background: "var(--gx-surface-2)", borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }}
+              className="min-h-11 rounded-lg border px-3 gx-campo"
             >
               <option value="">Seleccioná un plan</option>
               {planes.map((plan) => (

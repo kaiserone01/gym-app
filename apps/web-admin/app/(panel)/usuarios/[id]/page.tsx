@@ -92,7 +92,7 @@ export default async function PaginaEditarUsuario({
               name="sucursalIds"
               value={sucursal.id}
               defaultChecked={detalle.sucursalIds.includes(sucursal.id)}
-              className="h-5 w-5 accent-[var(--gx-accent)]"
+              className="gx-check"
             />
             {sucursal.nombre}
           </label>

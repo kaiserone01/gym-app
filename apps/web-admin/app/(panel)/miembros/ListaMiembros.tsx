@@ -197,8 +197,7 @@ export function ListaMiembros({
           <select
             value={planFiltro}
             onChange={(e) => setPlanFiltro(e.target.value)}
-            className="min-h-11 rounded-lg border px-3 outline-none focus:border-[var(--gx-accent)]"
-            style={{ background: "var(--gx-surface-2)", borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }}
+            className="min-h-11 rounded-lg border px-3 gx-campo"
           >
             <option value="">Todos los planes</option>
             {planes.map((plan) => (
@@ -214,8 +213,7 @@ export function ListaMiembros({
           <select
             value={proximoCobroFiltro}
             onChange={(e) => setProximoCobroFiltro(e.target.value as FiltroProximoCobro)}
-            className="min-h-11 rounded-lg border px-3 outline-none focus:border-[var(--gx-accent)]"
-            style={{ background: "var(--gx-surface-2)", borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }}
+            className="min-h-11 rounded-lg border px-3 gx-campo"
           >
             {OPCIONES_PROXIMO_COBRO.map((opcion) => (
               <option key={opcion.valor} value={opcion.valor}>

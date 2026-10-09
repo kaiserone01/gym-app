@@ -11,8 +11,7 @@ export function Input({
       {label}
       <input
         name={name}
-        className={`min-h-11 rounded-lg border px-3 outline-none transition-colors duration-150 focus:border-[var(--gx-accent)] disabled:opacity-50 ${className}`}
-        style={{ background: "var(--gx-surface-2)", borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }}
+        className={`min-h-11 rounded-lg border px-3 ${className} gx-campo`}
         {...props}
       />
     </label>

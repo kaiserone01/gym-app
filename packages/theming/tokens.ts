@@ -4,6 +4,9 @@ export interface Tema {
   surface2: string;
   surfaceElevada: string;
   edge: string;
+  fieldBg: string;
+  fieldEdge: string;
+  fieldEdgeHover: string;
   ink: string;
   muted: string;
   mutedDim: string;
@@ -28,9 +31,12 @@ export const temaAdrenalinaXtreme: Tema = {
   surface2: "#191f11",
   surfaceElevada: "#1f2616",
   edge: "#26301a",
+  fieldBg: "#0e1209",
+  fieldEdge: "#667a48",
+  fieldEdgeHover: "#8a9f66",
   ink: "#f3f6ec",
   muted: "#93a17d",
-  mutedDim: "#545e42",
+  mutedDim: "#6c7a55",
   accent: "#93e83a",
   accentInk: "#0c1400",
   good: "#93e83a",

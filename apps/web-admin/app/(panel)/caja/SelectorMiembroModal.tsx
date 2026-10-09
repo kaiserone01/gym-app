@@ -134,8 +134,7 @@ export function BuscadorMiembro({
           placeholder="Mínimo 3 caracteres..."
           value={busqueda}
           onChange={(e) => setBusqueda(e.target.value)}
-          className={`min-h-11 rounded-lg border px-3 outline-none transition-colors duration-150 focus:border-[var(--gx-accent)] ${textoBusqueda}`}
-          style={{ background: "var(--gx-surface-2)", borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }}
+          className={`min-h-11 rounded-lg border px-3 ${textoBusqueda} gx-campo`}
         />
       </label>
 

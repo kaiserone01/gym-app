@@ -86,8 +86,7 @@ export function FormularioMetodoPago({
             required
             value={tipo}
             onChange={(e) => setTipo(e.target.value as TipoMetodoPago)}
-            className="min-h-11 rounded-lg border px-3 outline-none focus:border-[var(--gx-accent)]"
-            style={{ background: "var(--gx-surface-2)", borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }}
+            className="min-h-11 rounded-lg border px-3 gx-campo"
           >
             {TIPOS.map((t) => (
               <option key={t} value={t}>
@@ -105,8 +104,7 @@ export function FormularioMetodoPago({
           required
           value={moneda}
           onChange={(e) => setMoneda(e.target.value as MonedaMetodoPago)}
-          className="min-h-11 rounded-lg border px-3 outline-none focus:border-[var(--gx-accent)]"
-          style={{ background: "var(--gx-surface-2)", borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }}
+          className="min-h-11 rounded-lg border px-3 gx-campo"
         >
           <option value="USD">USD (dólares)</option>
           <option value="BS">Bs (bolívares, requiere tasa BCV)</option>
@@ -143,8 +141,7 @@ export function FormularioMetodoPago({
             name="logo"
             accept="image/*"
             onChange={(e) => manejarCambioLogo(e.target.files?.[0])}
-            className="text-sm file:mr-3 file:min-h-9 file:rounded-lg file:border-0 file:px-3 file:py-1.5 file:text-sm file:font-medium"
-            style={{ color: "var(--gx-muted)" }}
+            className="gx-archivo"
           />
         </label>
       </div>
@@ -177,8 +174,7 @@ export function FormularioMetodoPago({
                 name="qr"
                 accept="image/*"
                 onChange={(e) => manejarCambioQr(e.target.files?.[0])}
-                className="text-sm file:mr-3 file:min-h-9 file:rounded-lg file:border-0 file:px-3 file:py-1.5 file:text-sm file:font-medium"
-                style={{ color: "var(--gx-muted)" }}
+                className="gx-archivo"
               />
             </label>
           </div>

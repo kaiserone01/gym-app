@@ -28,12 +28,8 @@ export function CampoNumeroOperacion({
         placeholder="0000"
         value={value}
         onChange={(e) => onChange(e.target.value.replace(/\D/g, ""))}
-        className="h-14 w-40 rounded-lg border-2 pl-[0.4em] text-center text-2xl font-bold tabular-nums tracking-[0.4em] outline-none transition-colors duration-150 placeholder:opacity-30 focus:border-[var(--gx-accent)]"
-        style={{
-          background: "var(--gx-surface-2)",
-          borderColor: value.length === 4 ? "var(--gx-accent)" : "var(--gx-edge)",
-          color: "var(--gx-ink)",
-        }}
+        className="h-14 w-40 rounded-lg border-2 pl-[0.4em] text-center text-2xl font-bold tabular-nums tracking-[0.4em] placeholder:opacity-30 gx-campo"
+        style={value.length === 4 ? { borderColor: "var(--gx-accent)" } : undefined}
       />
     </label>
   );

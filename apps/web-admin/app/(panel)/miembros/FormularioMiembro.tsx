@@ -465,8 +465,7 @@ export function FormularioMiembro({
                   name="genero"
                   value={genero}
                   onChange={(e) => setGenero(e.target.value as Genero | "")}
-                  className="min-h-11 rounded-lg border px-3 outline-none focus:border-[var(--gx-accent)]"
-                  style={{ background: "var(--gx-surface-2)", borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }}
+                  className="min-h-11 rounded-lg border px-3 gx-campo"
                 >
                   <option value="">Sin definir</option>
                   {GENEROS.map((opcion) => (
@@ -520,7 +519,7 @@ export function FormularioMiembro({
                   type="checkbox"
                   checked={sucursalId === ID_AMBAS_SEDES}
                   onChange={(e) => setSucursalId(e.target.checked ? ID_AMBAS_SEDES : sucursalIdDefault ?? "")}
-                  className="h-5 w-5 accent-[var(--gx-accent)]"
+                  className="gx-check"
                 />
                 Disponible en ambas sedes
               </label>
@@ -709,8 +708,7 @@ export function FormularioMiembro({
                     value={entrenadorId}
                     onChange={(e) => setEntrenadorId(e.target.value)}
                     disabled={bloqueado}
-                    className="min-h-11 rounded-lg border px-3 outline-none focus:border-[var(--gx-accent)] disabled:opacity-50"
-                    style={{ background: "var(--gx-surface-2)", borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }}
+                    className="min-h-11 rounded-lg border px-3 gx-campo"
                   >
                     <option value="">Seleccioná un entrenador</option>
                     {entrenadores.map((entrenador) => (

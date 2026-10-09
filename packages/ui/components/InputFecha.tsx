@@ -52,6 +52,9 @@ export function InputFecha({
   min,
   max,
   required,
+  disabled,
+  etiquetaOculta,
+  sinCalendario,
   className = "",
 }: {
   label: string;
@@ -63,6 +66,11 @@ export function InputFecha({
   min?: string;
   max?: string;
   required?: boolean;
+  disabled?: boolean;
+  /** Etiqueta sólo para lectores de pantalla (p. ej. celdas de tabla). */
+  etiquetaOculta?: boolean;
+  /** Sólo texto dd/mm/aaaa, sin botón ni popover (dentro de contenedores con overflow). */
+  sinCalendario?: boolean;
   className?: string;
 }) {
   const controlado = value !== undefined;
@@ -109,7 +117,9 @@ export function InputFecha({
 
   return (
     <div className="flex flex-col gap-1.5 text-sm" style={{ color: "var(--gx-muted)" }} ref={contenedor}>
-      <label htmlFor={id ?? idError + "-campo"}>{label}</label>
+      <label htmlFor={id ?? idError + "-campo"} className={etiquetaOculta ? "sr-only" : undefined}>
+        {label}
+      </label>
       <div className="relative">
         <input
           id={id ?? idError + "-campo"}
@@ -121,7 +131,8 @@ export function InputFecha({
           pattern="\d{2}/\d{2}/\d{4}"
           title="Formato dd/mm/aaaa"
           required={required}
-          aria-invalid={incompleto || fueraDeRango}
+          disabled={disabled}
+          aria-invalid={incompleto || fueraDeRango ? true : undefined}
           aria-describedby={incompleto || fueraDeRango ? idError : undefined}
           value={texto}
           onChange={(e) => {
@@ -129,13 +140,9 @@ export function InputFecha({
             setTexto(nuevo);
             confirmar(textoAIso(nuevo));
           }}
-          className={`min-h-11 w-full rounded-lg border pl-3 pr-11 outline-none transition-colors duration-150 focus:border-[var(--gx-accent)] ${className}`}
-          style={{
-            background: "var(--gx-surface-2)",
-            borderColor: incompleto || fueraDeRango ? "var(--gx-bad)" : "var(--gx-edge)",
-            color: "var(--gx-ink)",
-          }}
+          className={`min-h-11 w-full rounded-lg border pl-3 ${sinCalendario ? "pr-3" : "pr-11"} gx-campo ${className}`}
         />
+        {!sinCalendario && (
         <button
           type="button"
           aria-label="Abrir calendario"
@@ -146,8 +153,9 @@ export function InputFecha({
         >
           <CalendarBlank size={20} />
         </button>
+        )}
 
-        {abierto && (
+        {abierto && !sinCalendario && (
           <div
             className="selector-fecha absolute left-0 top-full z-50 mt-2 rounded-2xl border p-3 shadow-lg"
             style={{ background: "var(--gx-surface-elevada, var(--gx-surface))", borderColor: "var(--gx-edge)" }}

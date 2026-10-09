@@ -197,7 +197,7 @@ export function ModalCobrarDeudas({
                     type="button"
                     onClick={() => setMiembroId(g.miembroId)}
                     className="flex w-full flex-col gap-1 rounded-xl border-2 p-4 text-left transition-colors duration-150 hover:border-[var(--gx-accent)]"
-                    style={{ borderColor: "var(--gx-edge)", background: "var(--gx-surface-2)" }}
+                    style={{ borderColor: "var(--gx-field-edge)", background: "var(--gx-surface-2)" }}
                   >
                     <span className="text-lg font-semibold" style={{ color: "var(--gx-ink)" }}>
                       {g.miembroNombre}

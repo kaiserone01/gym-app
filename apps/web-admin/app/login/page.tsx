@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import { Eye, EyeSlash } from "@phosphor-icons/react";
 import { LogoBadge } from "@gym-app/ui/components/LogoBadge";
 
 interface SucursalParaElegir {
@@ -13,6 +14,7 @@ interface SucursalParaElegir {
 
 export default function LoginPage() {
   const router = useRouter();
+  const [verPassword, setVerPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -124,27 +126,36 @@ export default function LoginPage() {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="rounded border px-3 py-2 outline-none"
-                  style={{ background: "var(--gx-surface-2)", borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }}
+                  className="min-h-11 rounded-lg border px-3 gx-campo"
                 />
               </label>
 
               <label className="flex flex-col gap-1 text-sm" style={{ color: "var(--gx-muted)" }}>
                 Contraseña
-                <input
-                  type="password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="rounded border px-3 py-2 outline-none"
-                  style={{ background: "var(--gx-surface-2)", borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }}
-                />
+                <div className="relative">
+                  <input
+                    type={verPassword ? "text" : "password"}
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="min-h-11 w-full rounded-lg border pl-3 pr-11 gx-campo"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setVerPassword((v) => !v)}
+                    aria-label={verPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                    className="absolute right-1 top-1/2 flex size-9 -translate-y-1/2 cursor-pointer items-center justify-center rounded-md transition-colors duration-150 hover:text-[var(--gx-accent)]"
+                    style={{ color: "var(--gx-muted)" }}
+                  >
+                    {verPassword ? <EyeSlash size={20} /> : <Eye size={20} />}
+                  </button>
+                </div>
               </label>
 
               <button
                 type="submit"
                 disabled={cargando}
-                className="rounded px-5 py-2 font-semibold transition-opacity disabled:opacity-50"
+                className="min-h-11 cursor-pointer rounded-lg px-5 font-semibold transition-opacity hover:opacity-90 disabled:opacity-50"
                 style={{ background: "var(--gx-accent)", color: "var(--gx-accent-ink)" }}
               >
                 {cargando ? "Ingresando..." : "Ingresar"}

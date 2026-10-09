@@ -56,7 +56,7 @@ export function FormularioPermisos({
                       type="checkbox"
                       name={`permiso_${m.valor}_${a.valor}`}
                       defaultChecked={tiene(m.valor, a.valor)}
-                      className="h-5 w-5 accent-[var(--gx-accent)]"
+                      className="gx-check"
                     />
                   </td>
                 ))}

@@ -145,8 +145,7 @@ export function ModalRegistrarEgreso({
               name="metodo"
               value={metodo}
               onChange={(e) => setMetodo(e.target.value)}
-              className="min-h-11 rounded-lg border px-3 outline-none focus:border-[var(--gx-accent)]"
-              style={{ background: "var(--gx-surface-2)", borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }}
+              className="min-h-11 rounded-lg border px-3 gx-campo"
             >
               {METODOS_EGRESO.map((m) => (
                 <option key={m.value} value={m.value}>

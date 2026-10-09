@@ -80,8 +80,7 @@ export function FormularioSucursal({
             <input
               readOnly
               value={valoresIniciales.apiKey}
-              className="min-h-11 flex-1 rounded-lg border px-3"
-              style={{ background: "var(--gx-surface-2)", borderColor: "var(--gx-edge)", color: "var(--gx-muted)" }}
+              className="min-h-11 flex-1 rounded-lg border px-3 gx-campo"
             />
             <Button type="button" variant="secundario" onClick={copiarApiKey}>
               {copiado ? "Copiado" : "Copiar"}

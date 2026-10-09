@@ -220,7 +220,7 @@ function ContenidoPaso2({
                 setProyeccionCambioPlan(null);
               }}
               className="min-h-9 shrink-0 rounded-lg border px-3 text-sm font-medium"
-              style={{ borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }}
+              style={{ borderColor: "var(--gx-field-edge)", color: "var(--gx-ink)" }}
             >
               Cambiar plan
             </button>
@@ -283,8 +283,7 @@ function ContenidoPaso2({
             <select
               value={planElegidoId ?? ""}
               onChange={(e) => onElegirPlan(e.target.value)}
-              className="min-h-12 flex-1 rounded-lg border px-3 text-base outline-none focus:border-[var(--gx-accent)]"
-              style={{ background: "var(--gx-surface-2)", borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }}
+              className="min-h-12 flex-1 rounded-lg border px-3 text-base gx-campo"
             >
               <option value="">Seleccioná un plan</option>
               {planes.map((plan) => (
@@ -911,7 +910,7 @@ function ContenidoPaso3({
               setFraccionAbiertaClave(nueva.clave);
             }}
             className="min-h-11 w-fit rounded-lg border px-4 text-sm font-medium"
-            style={{ borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }}
+            style={{ borderColor: "var(--gx-field-edge)", color: "var(--gx-ink)" }}
           >
             + Agregar fracción
           </button>
@@ -957,7 +956,7 @@ function ContenidoPaso3({
               type="checkbox"
               checked={incluirDeudas}
               onChange={(e) => setIncluirDeudas(e.target.checked)}
-              className="h-5 w-5 accent-[var(--gx-accent)]"
+              className="gx-check"
             />
             Cobrar también los productos pendientes
           </label>

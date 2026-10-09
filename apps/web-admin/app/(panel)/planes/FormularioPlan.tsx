@@ -104,8 +104,7 @@ export function FormularioPlan({
                 required
                 value={frecuencia}
                 onChange={(e) => setFrecuencia(e.target.value as FrecuenciaPago)}
-                className="min-h-11 rounded-lg border px-3 outline-none focus:border-[var(--gx-accent)]"
-                style={{ background: "var(--gx-surface-2)", borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }}
+                className="min-h-11 rounded-lg border px-3 gx-campo"
               >
                 <option value="DIARIO">Diario</option>
                 <option value="SEMANAL">Semanal</option>
@@ -131,7 +130,7 @@ export function FormularioPlan({
             {!esPersonalizado && <input type="hidden" name="diasCiclo" value={diasCicloEfectivo} />}
 
             <label className="flex min-h-11 items-center gap-2 text-sm" style={{ color: "var(--gx-muted)" }}>
-              <input type="checkbox" name="incluyeEntrenador" className="h-5 w-5 accent-[var(--gx-accent)]" />
+              <input type="checkbox" name="incluyeEntrenador" className="gx-check" />
               Incluye entrenador personal
             </label>
           </>
@@ -142,7 +141,7 @@ export function FormularioPlan({
             type="checkbox"
             name="multisede"
             defaultChecked={valoresIniciales?.multisede}
-            className="h-5 w-5 accent-[var(--gx-accent)]"
+            className="gx-check"
           />
           Multisede (permite asignar &quot;Ambas&quot; sedes a un miembro con este plan)
         </label>
@@ -153,7 +152,7 @@ export function FormularioPlan({
             name="permitePagoParcial"
             checked={permitePagoParcial}
             onChange={(e) => setPermitePagoParcial(e.target.checked)}
-            className="h-5 w-5 accent-[var(--gx-accent)]"
+            className="gx-check"
           />
           Permite pago parcial (abono)
         </label>
@@ -165,7 +164,7 @@ export function FormularioPlan({
                 type="checkbox"
                 checked={tieneMinimoPropio}
                 onChange={(e) => setTieneMinimoPropio(e.target.checked)}
-                className="h-5 w-5 accent-[var(--gx-accent)]"
+                className="gx-check"
               />
               Mínimo de abono personalizado para este plan
             </label>
@@ -176,8 +175,7 @@ export function FormularioPlan({
                   name="minimoAbonoTipo"
                   value={minimoAbonoTipo}
                   onChange={(e) => setMinimoAbonoTipo(e.target.value as TipoMinimoAbono)}
-                  className="min-h-11 rounded-lg border px-3 outline-none focus:border-[var(--gx-accent)]"
-                  style={{ background: "var(--gx-surface-2)", borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }}
+                  className="min-h-11 rounded-lg border px-3 gx-campo"
                 >
                   <option value="DIAS">Días</option>
                   <option value="PORCENTAJE">Porcentaje</option>
@@ -301,8 +299,7 @@ function CambiarFrecuenciaSection({
           <select
             value={frecuencia}
             onChange={(e) => setFrecuencia(e.target.value as FrecuenciaPago)}
-            className="min-h-11 rounded-lg border px-3 outline-none focus:border-[var(--gx-accent)]"
-            style={{ background: "var(--gx-surface-2)", borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }}
+            className="min-h-11 rounded-lg border px-3 gx-campo"
           >
             <option value="DIARIO">Diario</option>
             <option value="SEMANAL">Semanal</option>
@@ -322,8 +319,7 @@ function CambiarFrecuenciaSection({
               min={1}
               value={diasCicloPersonalizado}
               onChange={(e) => setDiasCicloPersonalizado(e.target.value)}
-              className="min-h-11 rounded-lg border px-3 outline-none focus:border-[var(--gx-accent)]"
-              style={{ background: "var(--gx-surface-2)", borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }}
+              className="min-h-11 rounded-lg border px-3 gx-campo"
             />
           </label>
         )}
@@ -333,7 +329,7 @@ function CambiarFrecuenciaSection({
             type="checkbox"
             checked={incluyeEntrenador}
             onChange={(e) => setIncluyeEntrenador(e.target.checked)}
-            className="h-5 w-5 accent-[var(--gx-accent)]"
+            className="gx-check"
           />
           Incluye entrenador personal
         </label>
@@ -383,7 +379,7 @@ function CambiarFrecuenciaSection({
                   type="checkbox"
                   checked={exonerar}
                   onChange={(e) => setExonerar(e.target.checked)}
-                  className="h-5 w-5 accent-[var(--gx-accent)]"
+                  className="gx-check"
                 />
                 Exonerar: no recalcular las suscripciones activas
               </label>
@@ -395,8 +391,7 @@ function CambiarFrecuenciaSection({
                   required
                   value={confirmacion}
                   onChange={(e) => setConfirmacion(e.target.value)}
-                  className="min-h-11 rounded-lg border px-3 outline-none focus:border-[var(--gx-accent)]"
-                  style={{ background: "var(--gx-surface-2)", borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }}
+                  className="min-h-11 rounded-lg border px-3 gx-campo"
                 />
               </label>
 

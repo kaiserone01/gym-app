@@ -37,8 +37,7 @@ function textoOUndefined(valor?: string): string | undefined {
   return limpio ? limpio : undefined;
 }
 
-const SELECT_CLASE = "min-h-11 rounded-lg border px-3 outline-none focus:border-[var(--gx-accent)]";
-const SELECT_ESTILO = { background: "var(--gx-surface-2)", borderColor: "var(--gx-edge)", color: "var(--gx-ink)" };
+const SELECT_CLASE = "min-h-11 rounded-lg border px-3 gx-campo";
 
 export default async function PaginaExcel({ searchParams }: { searchParams: Promise<Parametros> }) {
   const sesion = await obtenerUsuarioDeSesionActual();
@@ -97,7 +96,7 @@ export default async function PaginaExcel({ searchParams }: { searchParams: Prom
         <InputFecha label="Vence hasta" name="hasta" defaultValue={p.hasta ?? ""} />
         <label className="flex flex-col gap-1.5 text-sm" style={{ color: "var(--gx-muted)" }}>
           Estado
-          <select name="estado" defaultValue={estado} className={SELECT_CLASE} style={SELECT_ESTILO}>
+          <select name="estado" defaultValue={estado} className={SELECT_CLASE}>
             <option value="todos">Todos</option>
             <option value="no_miembro">No es miembro</option>
             <option value="miembro">Ya es miembro</option>

@@ -43,7 +43,7 @@ export default function PaginaConfiguracion() {
           value={apiKey}
           onChange={(evento) => setApiKey(evento.target.value)}
           placeholder="API key de la sucursal"
-          className="bg-neutral-900 border border-neutral-700 rounded px-4 py-3 text-lg outline-none"
+          className="min-h-12 rounded-lg border px-4 py-3 text-lg gx-campo"
         />
         <button
           type="submit"

@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @source "../../../packages/ui/**/*.{ts,tsx}";
 @import "../../../packages/ui/styles/marca-agua.css";
+@import "../../../packages/ui/styles/campos.css";
 @import "../../../packages/ui/styles/selector-fecha.css";
 
 * {

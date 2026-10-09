@@ -274,7 +274,7 @@ export function SelectorMetodoPago({
               style={
                 seleccionado
                   ? { borderColor: "var(--gx-accent)", background: "color-mix(in srgb, var(--gx-accent) 12%, transparent)" }
-                  : { borderColor: "var(--gx-edge)" }
+                  : { borderColor: "var(--gx-field-edge)" }
               }
             >
               <span style={{ color: seleccionado ? "var(--gx-accent)" : "var(--gx-muted)" }}>
@@ -299,7 +299,7 @@ export function SelectorMetodoPago({
               style={
                 metodoId === instancia.id
                   ? { borderColor: "var(--gx-accent)", background: "color-mix(in srgb, var(--gx-accent) 12%, transparent)" }
-                  : { borderColor: "var(--gx-edge)" }
+                  : { borderColor: "var(--gx-field-edge)" }
               }
             >
               {instancia.logoUrl ? (
@@ -329,7 +329,7 @@ export function SelectorMetodoPago({
                 style={
                   metodoId === m.id
                     ? { borderColor: "var(--gx-accent)", background: "color-mix(in srgb, var(--gx-accent) 12%, transparent)" }
-                    : { borderColor: "var(--gx-edge)" }
+                    : { borderColor: "var(--gx-field-edge)" }
                 }
               >
                 {m.moneda === "USD" ? "USD" : "Bs"}
@@ -466,7 +466,7 @@ export function ModalFallaTemporalTasa({
             target="_blank"
             rel="noopener noreferrer"
             className="flex min-h-11 w-full items-center justify-center rounded-lg border-2 text-sm font-medium transition-colors duration-150"
-            style={{ borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }}
+            style={{ borderColor: "var(--gx-field-edge)", color: "var(--gx-ink)" }}
           >
             Verificar en bcv.org.ve
           </a>

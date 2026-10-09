@@ -100,7 +100,7 @@ export function TarjetaOpcion({
       style={
         elegida
           ? { borderColor: "var(--gx-accent)", background: "color-mix(in srgb, var(--gx-accent) 12%, transparent)" }
-          : { borderColor: "var(--gx-edge)" }
+          : { borderColor: "var(--gx-field-edge)" }
       }
     >
       <span className="flex w-full items-center justify-between gap-2 text-base font-semibold" style={{ color: "var(--gx-ink)" }}>

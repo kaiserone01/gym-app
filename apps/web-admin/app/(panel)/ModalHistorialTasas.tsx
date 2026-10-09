@@ -202,7 +202,7 @@ export function ModalHistorialTasas({ onCerrar }: { onCerrar: () => void }) {
                     onClick={cargarMas}
                     disabled={cargandoMas}
                     className="self-center rounded-lg border px-4 py-2 text-sm font-medium"
-                    style={{ borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }}
+                    style={{ borderColor: "var(--gx-field-edge)", color: "var(--gx-ink)" }}
                   >
                     {cargandoMas ? "Cargando..." : "Cargar más"}
                   </button>

@@ -125,8 +125,7 @@ export function FormularioAbrirTurno({
                 required
                 value={sucursalElegida}
                 onChange={(e) => alCambiarSucursal(e.target.value)}
-                className="min-h-11 rounded-lg border px-3 outline-none focus:border-[var(--gx-accent)]"
-                style={{ background: "var(--gx-surface-2)", borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }}
+                className="min-h-11 rounded-lg border px-3 gx-campo"
               >
                 <option value="">Seleccioná una sucursal</option>
                 {sucursales.map((s) => (

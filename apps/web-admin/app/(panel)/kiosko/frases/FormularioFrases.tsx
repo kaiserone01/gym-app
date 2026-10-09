@@ -34,8 +34,7 @@ export function FormularioFrases({ frasesIniciales }: { frasesIniciales: string[
             maxLength={MAX_LARGO_FRASE_REPOSO}
             onChange={(e) => cambiar(indice, e.target.value)}
             placeholder="Escribe una frase"
-            className="min-h-11 flex-1 rounded-lg border px-3 outline-none focus:border-[var(--gx-accent)]"
-            style={{ background: "var(--gx-surface-2)", borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }}
+            className="min-h-11 flex-1 rounded-lg border px-3 gx-campo"
           />
           <Button type="button" variant="secundario" onClick={() => quitar(indice)}>
             Quitar

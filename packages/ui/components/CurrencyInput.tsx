@@ -85,8 +85,7 @@ export function CurrencyInput({
           onChange={(e) => manejarCambio(e.target.value)}
           onBlur={() => setInterno(formatearVisual(valorNumericoActual))}
           placeholder="0,00"
-          className={`min-h-11 w-full rounded-lg border pl-3 pr-14 outline-none transition-colors duration-150 focus:border-[var(--gx-accent)] disabled:opacity-50 ${className}`}
-          style={{ background: "var(--gx-surface-2)", borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }}
+          className={`min-h-11 w-full rounded-lg border pl-3 pr-14 ${className} gx-campo`}
         />
         <span
           className="pointer-events-none absolute right-3 text-xs font-semibold"

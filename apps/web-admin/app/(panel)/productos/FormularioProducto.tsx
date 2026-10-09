@@ -75,8 +75,7 @@ export function FormularioProducto({
           name="descripcion"
           rows={3}
           defaultValue={valoresIniciales?.descripcion ?? ""}
-          className="rounded-lg border px-3 py-2 outline-none focus:border-[var(--gx-accent)]"
-          style={{ background: "var(--gx-surface-2)", borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }}
+          className="rounded-lg border px-3 py-2 gx-campo"
         />
       </label>
 
@@ -95,7 +94,7 @@ export function FormularioProducto({
             type="checkbox"
             name="activo"
             defaultChecked={valoresIniciales.activo}
-            className="h-5 w-5 accent-[var(--gx-accent)]"
+            className="gx-check"
           />
           Activo (disponible para vender en Caja)
         </label>

@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useFeedback } from "@gym-app/ui/components/FeedbackOverlay";
 import { Badge } from "@gym-app/ui/components/Badge";
+import { InputFecha } from "@gym-app/ui/components/InputFecha";
 import { CAMPOS_EDITABLES_PADRON, type CambiosCrudosPadron, type CampoEditablePadron } from "@gym-app/domain/utils/padronExcel";
 import { editarFilaPadronAction } from "./actions";
 
@@ -25,7 +26,6 @@ type Borrador = Record<CampoEditablePadron, string>;
 
 const CELDA = "py-2 pr-3";
 const BOTON = "cursor-pointer rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50";
-const ESTILO_INPUT = { background: "var(--gx-surface-2)", borderColor: "var(--gx-edge)", color: "var(--gx-ink)" };
 const ESTILO_EDITADO = { background: "color-mix(in srgb, var(--gx-warn) 18%, transparent)" };
 const ES_FECHA = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -79,15 +79,26 @@ export function FilaPadronEditable({ fila, puedeEditar }: { fila: FilaPadronSeri
     const comoFecha = esCampoFecha && (fila[campo] === null || fila[campo] === "" || ES_FECHA.test(fila[campo]!));
     return (
       <td className={CELDA}>
-        <input
-          aria-label={etiqueta}
-          type={comoFecha ? "date" : "text"}
-          value={borrador[campo]}
-          onChange={(e) => setBorrador((b) => ({ ...b, [campo]: e.target.value }))}
-          disabled={guardando}
-          className="min-h-9 w-full min-w-24 rounded-lg border px-2 text-sm outline-none focus:border-[var(--gx-accent)]"
-          style={ESTILO_INPUT}
-        />
+{comoFecha ? (
+          <InputFecha
+            label={etiqueta}
+            etiquetaOculta
+            sinCalendario
+            disabled={guardando}
+            value={borrador[campo]}
+            onChange={(iso) => setBorrador((b) => ({ ...b, [campo]: iso }))}
+            className="min-h-9 min-w-28 px-2 text-sm"
+          />
+        ) : (
+          <input
+            aria-label={etiqueta}
+            type="text"
+            value={borrador[campo]}
+            onChange={(e) => setBorrador((b) => ({ ...b, [campo]: e.target.value }))}
+            disabled={guardando}
+            className="min-h-9 w-full min-w-24 rounded-lg border px-2 text-sm gx-campo"
+          />
+        )}
       </td>
     );
   }

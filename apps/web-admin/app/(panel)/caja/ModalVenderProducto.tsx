@@ -156,8 +156,7 @@ export function ModalVenderProducto({
               onChange={(e) => setBusqueda(e.target.value)}
               placeholder="Buscar producto..."
               aria-label="Buscar producto"
-              className="min-h-12 w-full shrink-0 rounded-lg border px-4 outline-none transition-colors focus:border-[var(--gx-accent)] lg:max-w-md"
-              style={{ background: "var(--gx-surface-2)", borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }}
+              className="min-h-12 w-full shrink-0 rounded-lg border px-4 lg:max-w-md gx-campo"
             />
 
             <div className="grid min-h-40 flex-1 auto-rows-max grid-cols-2 content-start gap-3 overflow-y-auto sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">

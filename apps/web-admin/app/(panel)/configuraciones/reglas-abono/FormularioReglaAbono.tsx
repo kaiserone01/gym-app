@@ -75,7 +75,7 @@ export function FormularioReglaAbono({
             name="activo"
             checked={activo}
             onChange={(e) => setActivo(e.target.checked)}
-            className="h-5 w-5 accent-[var(--gx-accent)]"
+            className="gx-check"
           />
           Activo
         </label>
@@ -89,8 +89,7 @@ export function FormularioReglaAbono({
               name="tipo"
               value={tipo}
               onChange={(e) => setTipo(e.target.value as TipoMinimoAbono)}
-              className="min-h-11 rounded-lg border px-3 outline-none focus:border-[var(--gx-accent)]"
-              style={{ background: "var(--gx-surface-2)", borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }}
+              className="min-h-11 rounded-lg border px-3 gx-campo"
             >
               <option value="DIAS">Días</option>
               <option value="PORCENTAJE">Porcentaje</option>

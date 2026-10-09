@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useDeferredValue, useEffect, useLayoutEffect, useMemo, useReducer, useRef, useState, type CSSProperties, type KeyboardEvent } from "react";
+import { useCallback, useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent } from "react";
 import { useFeedback } from "@gym-app/ui/components/FeedbackOverlay";
 import { Button } from "@gym-app/ui/components/Button";
 import type { HojaPadron } from "@gym-app/domain/entities/MiembroReferencia";
@@ -37,7 +37,6 @@ export function ExcelGrid({ filas: filasIniciales, hoja, puedeEditar }: { filas:
   const [pintando, setPintando] = useState(false);
   const [textoIr, setTextoIr] = useState("");
   const [aviso, setAviso] = useState<string | null>(null);
-  const [, forzarRender] = useReducer((n: number) => n + 1, 0);
 
   const contenedor = useRef<HTMLDivElement>(null);
   const centinela = useRef<HTMLDivElement>(null);
@@ -80,10 +79,12 @@ export function ExcelGrid({ filas: filasIniciales, hoja, puedeEditar }: { filas:
   useLayoutEffect(() => {
     const pendiente = desplazamientoPendiente.current;
     const c = contenedor.current;
-    if (!pendiente || !c) return;
-    const indice = mostradas.findIndex((f) => f.cedula === pendiente.cedula);
-    if (indice === -1) return; // los filtros diferidos aún no se aplicaron: se reintenta en el próximo render
+    // Tras "Ir a fila" (que limpia los filtros) se espera a que el valor diferido se ponga al día: con la lista
+    // filtrada vieja el índice, y por tanto el scroll, serían otros.
+    if (!pendiente || !c || filtrosAplicados !== filtros) return;
     desplazamientoPendiente.current = null;
+    const indice = mostradas.findIndex((f) => f.cedula === pendiente.cedula);
+    if (indice === -1) return;
     const cuerpo = c.clientHeight - altoEncabezado;
     const arriba = indice * ALTO_FILA;
     if (pendiente.centrar) c.scrollTop = arriba - (cuerpo - ALTO_FILA) / 2;
@@ -207,7 +208,6 @@ export function ExcelGrid({ filas: filasIniciales, hoja, puedeEditar }: { filas:
     setDestacada(cedula);
     if (temporizadorDestacado.current) clearTimeout(temporizadorDestacado.current);
     temporizadorDestacado.current = setTimeout(() => setDestacada(null), 1500);
-    forzarRender();
     enfocarHoja();
   }
 
@@ -312,7 +312,7 @@ export function ExcelGrid({ filas: filasIniciales, hoja, puedeEditar }: { filas:
         aria-label="Hoja del Excel"
         onKeyDown={alTeclear}
         onScroll={() => paleta && setPaleta(null)}
-        className="overflow-auto rounded-md outline-none"
+        className="overflow-auto rounded-md outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-solid focus-visible:outline-[#217346]"
         style={{
           maxHeight: "calc(100dvh - 220px)",
           minHeight: 320,

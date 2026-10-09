@@ -116,7 +116,7 @@ export const FilaHoja = memo(function FilaHoja({
   const relleno = destacada ? HOJA.destacado : fila.resaltado ? `#${fila.resaltado}` : HOJA.fondo;
 
   return (
-    <div style={{ display: "flex", height: ALTO_FILA, contentVisibility: "auto", containIntrinsicSize: `auto ${ALTO_FILA}px` }}
+    <div style={{ display: "flex", height: ALTO_FILA, contentVisibility: "auto", containIntrinsicHeight: `auto ${ALTO_FILA}px` }}
     >
       <div
         style={{ ...ESTILO_NUMERO, cursor: editable ? "pointer" : "default" }}
@@ -132,7 +132,12 @@ export const FilaHoja = memo(function FilaHoja({
         return (
           <div
             key={col}
-            onClick={() => colEditando !== i && onSeleccionar(fila.cedula, i)}
+            onClick={() => {
+              if (colEditando === i) return;
+              // Un toque sobre la celda ya seleccionada abre la edición (en táctil no hay doble clic ni Enter fiables).
+              if (seleccionada && editable && columnaEditable) onEditar(fila.cedula, i);
+              else onSeleccionar(fila.cedula, i);
+            }}
             onDoubleClick={() => editable && columnaEditable && onEditar(fila.cedula, i)}
             title={fila.camposEditados.includes(campo) ? "Editado a mano" : undefined}
             style={{

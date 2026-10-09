@@ -46,6 +46,10 @@ npm run start   # starts apps/web-admin only
   - `generate` (prisma generate), `migrate:dev` (prisma migrate dev), `db:seed`
   - `db:limpiar-miembros`, `db:sembrar-prueba`, `db:quitar-permisos-entrenadores` — standalone maintenance scripts run via `tsx`
   - `db:importar-padron` (dry-run) / `db:importar-padron:confirm` (writes) — imports the Excel padrón into `MiembroReferencia` (see below)
+  - `db:clonar-zipgym` — simulación (por defecto, solo lee): muestra qué se borraría en `zip-gym` y qué se clonaría
+  - `db:clonar-zipgym:confirm` — escribe en `zip-gym`: borra su contenido y lo clona desde `gym-demo` · "Sede Principal" (una sola transacción; hacer respaldo antes)
+  - `db:clonar-zipgym:verificar` — solo lectura: compara origen vs destino (exit ≠ 0 si hay diferencias o referencias cruzadas/entrantes)
+  - Seguridad del clon: destino fijo `zip-gym` y origen solo lectura (sin flags para cambiarlos); se conserva `zipnegocios@gmail.com`; correos del personal pasan a `@zipgym.local`; `grupoPagoId` se renueva; no copia sesiones, `RegistroAuditoria` ni `TasaCambio`. Nunca correr `--confirm` sin visto bueno del usuario (el `.env` es producción).
   - `test` — `vitest run`
 - `packages/domain` — pure business logic, also has `test` (`vitest run`).
 
@@ -72,6 +76,8 @@ No root-level aggregate test script — run per workspace.
 - Kiosk auth uses a per-`Sucursal` API key (`X-Kiosk-Api-Key` header), never a raw sucursal id.
 - Migrations are dated and named in Spanish under `packages/db/prisma/migrations/`.
 - One-off/maintenance scripts live flat in `packages/db/` (not in subfolders) and share the same boilerplate: `dotenv.config({ path: path.resolve(__dirname, "../../.env") })` + Prisma adapter setup, run via `tsx`.
+
+- Espejo de pruebas: `packages/db/clonarSedePrincipalAZipGym.ts` (+ `clonarZipGym/`) clona la Sede Principal de `gym-demo` en la org `zip-gym` (plan: `docs/superpowers/plans/2026-10-09-clon-zipgym.md`); ver los scripts `db:clonar-zipgym*` arriba.
 
 ## Padrón Excel y activación bajo demanda
 Spec/plan: `docs/superpowers/specs/2026-10-08-padron-excel-activacion-bajo-demanda-design.md` (reemplaza la migración masiva del 2026-09-28, ya retirada).

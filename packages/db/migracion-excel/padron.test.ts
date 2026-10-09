@@ -57,9 +57,34 @@ describe("prepararPadron", () => {
   });
 });
 
+describe("prepararPadron: columnas I-K, resaltado y estilos", () => {
+  test("colI-K recortadas (vacío → null), resaltado de la columna A y estilos sin relleno", () => {
+    const [d] = prepararPadron([
+      fila({
+        colI: " nota ", colJ: 3, colK: "  ",
+        estilos: {
+          A: { relleno: "FFC000", negrita: true, fuenteRgb: "FF0000", alineacion: "left" },
+          B: { relleno: "92D050" },
+          C: { alineacion: "center" },
+        },
+      }),
+    ]).elegibles;
+    expect([d.colI, d.colJ, d.colK]).toEqual(["nota", "3", null]);
+    expect(d.resaltado).toBe("FFC000");
+    expect(d.estilos).toEqual({ A: { b: true, c: "FF0000", a: "left" }, C: { a: "center" } });
+  });
+  test("sin estilos: resaltado y estilos null; relleno en otra columna no resalta", () => {
+    expect(prepararPadron([fila({})]).elegibles[0]).toMatchObject({ colI: null, resaltado: null, estilos: null });
+    const [d] = prepararPadron([fila({ estilos: { B: { relleno: "FFC000" } } })]).elegibles;
+    expect(d.resaltado).toBeNull();
+    expect(d.estilos).toBeNull();
+  });
+});
+
 describe("reconciliarPadron", () => {
   const base: DatosPadron = prepararPadron([fila({})]).elegibles[0];
-  const existente = (sobre: Partial<ComparablesPadron> = {}): ComparablesPadron => ({ ...base, camposEditados: [], ...sobre });
+  const existente = (sobre: Partial<ComparablesPadron> = {}): ComparablesPadron => ({ ...base, camposEditados: [], resaltadoEditado: false, ...sobre });
+  const nuevoConColor = { ...base, colI: "nota", resaltado: "FFC000" };
 
   test("cédula nueva = alta y se escribe", () => {
     const r = reconciliarPadron(new Map(), [base]);
@@ -97,5 +122,41 @@ describe("reconciliarPadron", () => {
     expect(r.conflictos).toEqual([]);
     expect(r.aEscribir[0].plan).toBe("30");
     expect(r.cambios[0].campos).toEqual([{ campo: "plan", antes: "25", despues: "30" }]);
+  });
+  test("colI editado a mano se respeta y se reporta el conflicto", () => {
+    const editado = existente({ colI: "mía", camposEditados: ["colI"] });
+    const r = reconciliarPadron(new Map([[base.cedula, editado]]), [nuevoConColor]);
+    expect(r.aEscribir[0].colI).toBe("mía");
+    expect(r.conflictos).toEqual([{ cedula: base.cedula, nombre: base.nombre, campo: "colI", excel: "nota", padron: "mía" }]);
+  });
+  test("resaltado editado a mano se respeta y se reporta el conflicto", () => {
+    const editado = existente({ resaltado: "92D050", resaltadoEditado: true });
+    const r = reconciliarPadron(new Map([[base.cedula, editado]]), [nuevoConColor]);
+    expect(r.aEscribir[0].resaltado).toBe("92D050");
+    expect(r.conflictos).toEqual([{ cedula: base.cedula, nombre: base.nombre, campo: "resaltado", excel: "FFC000", padron: "92D050" }]);
+  });
+  test("resaltado editado igual al del Excel: sin conflicto", () => {
+    const r = reconciliarPadron(new Map([[base.cedula, existente({ resaltado: "FFC000", resaltadoEditado: true })]]), [nuevoConColor]);
+    expect(r.conflictos).toEqual([]);
+  });
+  test("resaltado no editado se actualiza y aparece en cambios", () => {
+    const r = reconciliarPadron(new Map([[base.cedula, existente({ colI: "nota" })]]), [nuevoConColor]);
+    expect(r.aEscribir[0].resaltado).toBe("FFC000");
+    expect(r.cambios[0].campos).toEqual([{ campo: "resaltado", antes: null, despues: "FFC000" }]);
+    expect(r.conflictos).toEqual([]);
+  });
+  test("mismos valores incluyendo colI-K y resaltado: sin cambios", () => {
+    const r = reconciliarPadron(new Map([[nuevoConColor.cedula, existente({ colI: "nota", resaltado: "FFC000" })]]), [nuevoConColor]);
+    expect(r.sinCambios).toBe(1);
+  });
+  test("fila nueva: alta con colI-K, resaltado y estilos", () => {
+    const [d] = prepararPadron([fila({ colK: "x", estilos: { A: { relleno: "92D050", negrita: true } } })]).elegibles;
+    const r = reconciliarPadron(new Map(), [d]);
+    expect(r.altas[0]).toMatchObject({ colK: "x", resaltado: "92D050", estilos: { A: { b: true } } });
+  });
+  test("los estilos del Excel se conservan aunque haya ediciones", () => {
+    const [d] = prepararPadron([fila({ estilos: { A: { negrita: true } } })]).elegibles;
+    const r = reconciliarPadron(new Map([[d.cedula, existente({ resaltado: "92D050", resaltadoEditado: true })]]), [d]);
+    expect(r.aEscribir[0].estilos).toEqual({ A: { b: true } });
   });
 });

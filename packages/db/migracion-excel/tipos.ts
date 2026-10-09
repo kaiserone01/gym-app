@@ -1,3 +1,6 @@
+import type { ColumnaExcel } from "@gym-app/domain/utils/padronExcel";
+import type { EstiloCelda } from "./leerEstilosExcel";
+
 export interface FilaExcelCruda {
   numeroFila: number; // 1-indexed real row number in the .xlsm (4..1399)
   nombre: string;
@@ -8,6 +11,11 @@ export interface FilaExcelCruda {
   fVenc: string | number | null;
   fechaPago: string | number | null;
   plan: string | number | null;
+  // Columnas sin título del Excel (I–K) y estilos por columna; opcionales para no romper quien arma filas a mano.
+  colI?: string | number | null;
+  colJ?: string | number | null;
+  colK?: string | number | null;
+  estilos?: Partial<Record<ColumnaExcel, EstiloCelda>>;
 }
 
 export type EstadoSuscripcionNormalizado = "ACTIVA" | "VENCIDA" | null; // null = sin dato (2 filas)

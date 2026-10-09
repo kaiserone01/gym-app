@@ -4,11 +4,12 @@
 //
 //   npm run db:importar-padron --workspace packages/db -- --org=<slug> --sucursal="<nombre>" [--archivo=<ruta>]
 //   npm run db:importar-padron:confirm --workspace packages/db -- --org=<slug> --sucursal="<nombre>"
-import { PrismaClient } from "./generated/prisma/client";
+import { Prisma, PrismaClient } from "./generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { config as configDotenv } from "dotenv";
 import path from "node:path";
 import { writeFileSync } from "node:fs";
+import { leerEncabezadosExcel } from "./migracion-excel/leerEstilosExcel";
 import { leerFilasExcel } from "./migracion-excel/leerExcel";
 import { prepararPadron, reconciliarPadron, type ComparablesPadron } from "./migracion-excel/padron";
 
@@ -51,19 +52,25 @@ async function main() {
 
   const { elegibles, excluidas } = prepararPadron(leerFilasExcel(archivo));
 
-  // Antes del primer deploy la tabla aún no existe (P2021): el dry-run sigue, tratándola como vacía.
+  // Antes del primer deploy la tabla o sus columnas nuevas aún no existen (P2021/P2022): el dry-run sigue, tratándola como vacía.
   let existentes: ComparablesPadron[] = [];
   try {
     existentes = await prisma.miembroReferencia.findMany({ where: { organizacionId: organizacion.id } });
   } catch (error) {
-    if ((error as { code?: string }).code !== "P2021") throw error;
-    if (confirmar) throw new Error("La tabla MiembroReferencia no existe: despliega primero la migración.");
-    console.log("(La tabla MiembroReferencia aún no existe: se compara contra un padrón vacío.)");
+    const codigo = (error as { code?: string }).code;
+    if (codigo !== "P2021" && codigo !== "P2022") throw error;
+    if (confirmar) throw new Error("La tabla MiembroReferencia (o sus columnas nuevas) no existe: despliega primero la migración.");
+    console.log(`(MiembroReferencia aún no existe o le faltan columnas [${codigo}]: se compara contra un padrón vacío.)`);
   }
   const diff = reconciliarPadron(new Map(existentes.map((e) => [e.cedula, e])), elegibles);
 
+  const { encabezados, alturaEncabezadoPx } = leerEncabezadosExcel(archivo);
   const resumen = {
     elegibles: elegibles.length,
+    conColor: elegibles.filter((e) => e.resaltado !== null).length,
+    celdasColI: elegibles.filter((e) => e.colI !== null).length,
+    celdasColJ: elegibles.filter((e) => e.colJ !== null).length,
+    celdasColK: elegibles.filter((e) => e.colK !== null).length,
     altas: diff.altas.length,
     cambios: diff.cambios.length,
     sinCambios: diff.sinCambios,
@@ -75,6 +82,7 @@ async function main() {
     },
   };
   console.log(resumen);
+  console.log(`Columnas (alto de títulos ${alturaEncabezadoPx}px): ${encabezados.map((e) => `${e.col}="${e.titulo}" ${e.anchoPx}px`).join(" | ")}`);
 
   const rutaReporte = path.resolve(__dirname, `migracion-excel/reporte-padron-${Date.now()}.json`);
   writeFileSync(rutaReporte, JSON.stringify({ archivo, resumen, altas: diff.altas.map((a) => a.cedula), cambios: diff.cambios, conflictos: diff.conflictos, excluidas }, null, 2));
@@ -92,7 +100,8 @@ async function main() {
     await Promise.all(
       diff.aEscribir.slice(i, i + LOTE).map((d) => {
         const { cedula, ...datos } = d;
-        const valores = { ...datos, sucursalId: sucursal.id, archivoOrigen, importadoAt: new Date() };
+        const { estilos, ...resto } = datos;
+        const valores = { ...resto, estilos: (estilos as Prisma.InputJsonObject | null) ?? Prisma.DbNull, sucursalId: sucursal.id, archivoOrigen, importadoAt: new Date() };
         return prisma.miembroReferencia.upsert({
           where: { organizacionId_cedula: { organizacionId: organizacion.id, cedula } },
           create: { organizacionId: organizacion.id, cedula, ...valores },
@@ -102,6 +111,12 @@ async function main() {
     );
     console.log(`  ${Math.min(i + LOTE, diff.aEscribir.length)}/${diff.aEscribir.length}`);
   }
+  const hoja = { encabezados: encabezados as unknown as Prisma.InputJsonArray, alturaEncabezadoPx, archivoOrigen, importadoAt: new Date() };
+  await prisma.padronHoja.upsert({
+    where: { organizacionId_sucursalId: { organizacionId: organizacion.id, sucursalId: sucursal.id } },
+    create: { organizacionId: organizacion.id, sucursalId: sucursal.id, ...hoja },
+    update: hoja,
+  });
   console.log("Padrón cargado.");
 }
 

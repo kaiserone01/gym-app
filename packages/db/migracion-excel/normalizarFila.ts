@@ -29,7 +29,7 @@ export function clasificarValorPlan(valor: string | number | null): Clasificacio
   return { tipo: "requiereMapeo", valorOriginal: comoTexto };
 }
 
-function excelSerialADate(serial: number): Date {
+export function excelSerialADate(serial: number): Date {
   // Excel epoch: día 0 = 1899-12-30 (compensa el bug histórico del año bisiesto 1900).
   const epoch = Date.UTC(1899, 11, 30);
   return new Date(epoch + serial * 86400000);

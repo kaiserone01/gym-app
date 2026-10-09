@@ -3,16 +3,22 @@
 // La normalización (plan, fechas) vive en @gym-app/domain/utils/padronExcel. Sin I/O ni Prisma.
 import {
   CAMPOS_EDITABLES_PADRON,
+  COLUMNAS_EXCEL,
   normalizarCamposPadron,
   type CampoEditablePadron,
   type CamposCrudosPadron,
+  type EstilosPadron,
   type NormalizadosPadron,
 } from "@gym-app/domain/utils/padronExcel";
 import { parsearFechaExcel } from "./normalizarFila";
 import type { FilaExcelCruda } from "./tipos";
 
-export type DatosPadron = { cedula: string; numeroFila: number } & CamposCrudosPadron & NormalizadosPadron;
-export type ComparablesPadron = Pick<DatosPadron, "cedula" | CampoEditablePadron> & { camposEditados: string[] };
+export type DatosPadron = { cedula: string; numeroFila: number; estilos: EstilosPadron | null; resaltado: string | null } & CamposCrudosPadron &
+  NormalizadosPadron;
+export type ComparablesPadron = Pick<DatosPadron, "cedula" | CampoEditablePadron | "resaltado"> & {
+  camposEditados: string[];
+  resaltadoEditado: boolean;
+};
 
 export interface FilaExcluidaPadron {
   numeroFila: number;
@@ -24,14 +30,14 @@ export interface FilaExcluidaPadron {
 export interface CambioPadron {
   cedula: string;
   nombre: string;
-  campos: { campo: CampoEditablePadron; antes: string | null; despues: string | null }[];
+  campos: { campo: CampoEditablePadron | "resaltado"; antes: string | null; despues: string | null }[];
 }
 
 // Un campo editado a mano cuyo valor difiere del que trae el Excel.
 export interface ConflictoPadron {
   cedula: string;
   nombre: string;
-  campo: CampoEditablePadron;
+  campo: CampoEditablePadron | "resaltado";
   excel: string | null;
   padron: string | null;
 }
@@ -54,6 +60,18 @@ function textoCrudo(valor: string | number | null): string | null {
 function textoColumnaFecha(valor: string | number | null): string | null {
   const fecha = parsearFechaExcel(valor);
   return fecha.tipo === "valida" ? fecha.fecha.toISOString().slice(0, 10) : textoCrudo(valor);
+}
+
+// Por columna solo lo que no es relleno (el relleno de la fila va aparte, en `resaltado`); null si no hay nada.
+function estilosPadron(estilos: FilaExcelCruda["estilos"]): EstilosPadron | null {
+  const resultado: EstilosPadron = {};
+  for (const col of COLUMNAS_EXCEL) {
+    const e = estilos?.[col];
+    if (!e) continue;
+    const estilo = { ...(e.negrita ? { b: true as const } : {}), ...(e.fuenteRgb ? { c: e.fuenteRgb } : {}), ...(e.alineacion ? { a: e.alineacion } : {}) };
+    if (Object.keys(estilo).length > 0) resultado[col] = estilo;
+  }
+  return Object.keys(resultado).length > 0 ? resultado : null;
 }
 
 export function prepararPadron(filas: FilaExcelCruda[]): { elegibles: DatosPadron[]; excluidas: FilaExcluidaPadron[] } {
@@ -86,9 +104,18 @@ export function prepararPadron(filas: FilaExcelCruda[]): { elegibles: DatosPadro
       fVenc: textoColumnaFecha(fila.fVenc),
       fechaPago: textoColumnaFecha(fila.fechaPago),
       plan: textoCrudo(fila.plan),
-      colI: null, colJ: null, colK: null, // la Tarea 3 los rellena desde el Excel
+      colI: textoCrudo(fila.colI ?? null),
+      colJ: textoCrudo(fila.colJ ?? null),
+      colK: textoCrudo(fila.colK ?? null),
     };
-    elegibles.push({ cedula, numeroFila: fila.numeroFila, ...crudos, ...normalizarCamposPadron(crudos) });
+    elegibles.push({
+      cedula,
+      numeroFila: fila.numeroFila,
+      estilos: estilosPadron(fila.estilos),
+      resaltado: fila.estilos?.A?.relleno ?? null,
+      ...crudos,
+      ...normalizarCamposPadron(crudos),
+    });
   }
 
   excluidas.sort((a, b) => a.numeroFila - b.numeroFila);
@@ -120,11 +147,17 @@ export function reconciliarPadron(existentes: Map<string, ComparablesPadron>, nu
       datos = { ...nuevo, ...crudos, ...normalizarCamposPadron(crudos) };
     }
 
-    const campos = CAMPOS_EDITABLES_PADRON.filter((campo) => viejo[campo] !== datos[campo]).map((campo) => ({
-      campo,
-      antes: viejo[campo],
-      despues: datos[campo],
-    }));
+    // El color editado a mano se conserva igual que un campo de texto.
+    if (viejo.resaltadoEditado) {
+      if (nuevo.resaltado !== viejo.resaltado) {
+        resultado.conflictos.push({ cedula: nuevo.cedula, nombre: viejo.nombre, campo: "resaltado", excel: nuevo.resaltado, padron: viejo.resaltado });
+      }
+      datos = { ...datos, resaltado: viejo.resaltado };
+    }
+
+    const campos = [...CAMPOS_EDITABLES_PADRON, "resaltado" as const]
+      .filter((campo) => viejo[campo] !== datos[campo])
+      .map((campo) => ({ campo, antes: viejo[campo], despues: datos[campo] }));
     if (campos.length === 0) resultado.sinCambios++;
     else resultado.cambios.push({ cedula: nuevo.cedula, nombre: datos.nombre, campos });
     resultado.aEscribir.push(datos);

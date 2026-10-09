@@ -3,7 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Warning } from "@phosphor-icons/react/dist/ssr";
+import { Warning, X } from "@phosphor-icons/react/dist/ssr";
 import type { EstadoCheckIn } from "@gym-app/domain/entities/CheckIn";
 
 export interface PersonaEnSalaVista {
@@ -184,19 +184,29 @@ export function ContadorEnSala({ className = "" }: { className?: string }) {
 export function AvisoCobros() {
   const pathname = usePathname();
   const cobros = useEnSala()?.cobros ?? 0;
-  if (cobros === 0 || pathname.startsWith("/en-sala")) return null;
+  // Cantidad de cobros que había al cerrar el aviso: reaparece solo si entra alguien más.
+  const [cerradoEn, setCerradoEn] = useState(0);
+  if (cobros === 0 || cobros <= cerradoEn || pathname.startsWith("/en-sala")) return null;
 
   const texto = cobros === 1 ? "1 persona en sala debe pagar" : `${cobros} personas en sala deben pagar`;
   return (
-    <Link
-      href="/en-sala"
-      aria-label={texto}
-      className="fixed left-4 top-4 z-40 flex items-center gap-2 rounded-full px-3 py-2 text-xs font-semibold shadow-lg print:hidden lg:left-[15rem]"
+    <div
+      className="fixed left-4 top-4 z-40 flex items-center rounded-full text-xs font-semibold shadow-lg print:hidden lg:left-[15rem]"
       style={{ background: "var(--gx-bad)", color: "white" }}
     >
-      <Warning size={18} weight="fill" />
-      <span className="sm:hidden">{cobros}</span>
-      <span className="hidden sm:inline">{texto}</span>
-    </Link>
+      <Link href="/en-sala" aria-label={texto} className="flex items-center gap-2 py-2 pl-3 pr-2">
+        <Warning size={18} weight="fill" />
+        <span className="sm:hidden">{cobros}</span>
+        <span className="hidden sm:inline">{texto}</span>
+      </Link>
+      <button
+        type="button"
+        onClick={() => setCerradoEn(cobros)}
+        aria-label="Cerrar aviso"
+        className="mr-1 flex size-7 cursor-pointer items-center justify-center rounded-full transition-colors duration-150 hover:bg-black/20 focus-visible:outline-2 focus-visible:outline-white"
+      >
+        <X size={14} weight="bold" />
+      </button>
+    </div>
   );
 }

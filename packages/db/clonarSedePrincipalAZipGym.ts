@@ -176,9 +176,11 @@ function validarReferencias(ctx: Contexto, datos: DatosOrigen) {
 async function contarFueraDeSede(ctx: Contexto) {
   const o = ctx.orgOrigen.id;
   const fuera = { not: ctx.sedeOrigen.id };
+  // Incluye las ventas de producto sin miembro hechas en otras sedes de gym-demo.
+  const deOrigen = { OR: [{ sucursal: { organizacionId: o } }, { miembro: { is: { organizacionId: o } } }] };
   return {
-    pagos: await prisma.pago.count({ where: { miembro: { organizacionId: o }, sucursalId: fuera } }),
-    checkIns: await prisma.checkIn.count({ where: { miembro: { organizacionId: o }, sucursalId: fuera } }),
+    pagos: await prisma.pago.count({ where: { ...deOrigen, sucursalId: fuera } }),
+    checkIns: await prisma.checkIn.count({ where: { OR: [{ sucursal: { organizacionId: o } }, { miembro: { organizacionId: o } }], sucursalId: fuera } }),
     turnos: await prisma.turno.count({ where: { organizacionId: o, sucursalId: fuera } }),
     deudas: await prisma.deudaProducto.count({ where: { organizacionId: o, sucursalId: fuera } }),
     padron: await prisma.miembroReferencia.count({ where: { organizacionId: o, sucursalId: fuera } }),
@@ -251,14 +253,54 @@ async function contarBorrado(w: Borrado["where"]) {
   };
 }
 
-// Filas de otra organización atadas a datos de zip-gym: el borrado las arrastraría. Si existen, se aborta.
-async function contarCruzadasHaciaDestino(ctx: Contexto) {
-  const d = ctx.orgDestino.id;
-  const fuera = { organizacionId: { not: d } };
-  return (
-    (await prisma.pago.count({ where: { miembro: { organizacionId: d }, sucursal: fuera } })) +
-    (await prisma.checkIn.count({ where: { miembro: { organizacionId: d }, sucursal: fuera } }))
-  );
+// Referencias ENTRANTES: filas de otra organización cuyo FK apunta a algo de zip-gym (plan, usuario, método de
+// pago, producto, turno, miembro, pago). Muchos de esos FK son ON DELETE SET NULL o se arrastrarían con los
+// filtros OR del borrado, así que el borrado modificaría datos ajenos. Todas deben ser 0; si no, se aborta.
+// (Egreso/ArqueoLinea cuelgan de su turno y Permiso/RegistroAuditoria de su usuario: no tienen organización propia.)
+async function referenciasEntrantes(db: Tx, d: string): Promise<Record<string, number>> {
+  const enD = { organizacionId: d };
+  const deEnD = { is: enD };
+  const otra = { organizacionId: { not: d } };
+  const pagoAjeno = { sucursal: otra };
+  const deudaAjena = otra;
+  const auditoriaAjena = otra;
+  const miembroAjeno = otra;
+  return {
+    "Miembro.planId": await db.miembro.count({ where: { ...miembroAjeno, plan: deEnD } }),
+    "Miembro.entrenadorId": await db.miembro.count({ where: { ...miembroAjeno, entrenador: deEnD } }),
+    "Suscripcion.planId": await db.suscripcion.count({ where: { miembro: miembroAjeno, plan: enD } }),
+    "CambioPlanAuditoria.miembroId": await db.cambioPlanAuditoria.count({ where: { ...auditoriaAjena, miembro: enD } }),
+    "CambioPlanAuditoria.planAnteriorId": await db.cambioPlanAuditoria.count({ where: { ...auditoriaAjena, planAnterior: enD } }),
+    "CambioPlanAuditoria.planNuevoId": await db.cambioPlanAuditoria.count({ where: { ...auditoriaAjena, planNuevo: enD } }),
+    "CambioPlanAuditoria.pagoId": await db.cambioPlanAuditoria.count({ where: { ...auditoriaAjena, pago: { is: { sucursal: enD } } } }),
+    "CambioPlanAuditoria.registradoPorId": await db.cambioPlanAuditoria.count({ where: { ...auditoriaAjena, registradoPor: enD } }),
+    "Turno.usuarioId": await db.turno.count({ where: { ...otra, usuario: enD } }),
+    "Pago.miembroId (sede ajena)": await db.pago.count({ where: { ...pagoAjeno, miembro: deEnD } }),
+    "Pago.turnoId": await db.pago.count({ where: { ...pagoAjeno, turno: deEnD } }),
+    "Pago.registradoPorId": await db.pago.count({ where: { ...pagoAjeno, registradoPor: enD } }),
+    "Pago.anuladoPorId": await db.pago.count({ where: { ...pagoAjeno, anuladoPor: deEnD } }),
+    "Pago.metodoPagoId": await db.pago.count({ where: { ...pagoAjeno, metodoPago: deEnD } }),
+    "Pago.productoId": await db.pago.count({ where: { ...pagoAjeno, producto: deEnD } }),
+    "Pago en sede zip-gym con miembro ajeno": await db.pago.count({ where: { sucursal: enD, miembro: { is: otra } } }),
+    "CheckIn.miembroId (sede ajena)": await db.checkIn.count({ where: { sucursal: otra, miembro: enD } }),
+    "CheckIn en sede zip-gym con miembro ajeno": await db.checkIn.count({ where: { sucursal: enD, miembro: otra } }),
+    "DeudaProducto.miembroId": await db.deudaProducto.count({ where: { ...deudaAjena, miembro: enD } }),
+    "DeudaProducto.productoId": await db.deudaProducto.count({ where: { ...deudaAjena, producto: deEnD } }),
+    "DeudaProducto.registradaPorId": await db.deudaProducto.count({ where: { ...deudaAjena, registradaPor: enD } }),
+    "DeudaProducto.cobradaPorId": await db.deudaProducto.count({ where: { ...deudaAjena, cobradaPor: deEnD } }),
+    "DeudaProducto.anuladaPorId": await db.deudaProducto.count({ where: { ...deudaAjena, anuladaPor: deEnD } }),
+    "UsuarioSucursal (usuario zip-gym en sede ajena)": await db.usuarioSucursal.count({ where: { usuario: enD, sucursal: otra } }),
+    "Sesion (usuario zip-gym con sede activa ajena)": await db.sesion.count({ where: { usuario: enD, sucursalActiva: { is: otra } } }),
+  };
+}
+
+function exigirSinEntrantes(entrantes: Record<string, number>) {
+  const conFilas = Object.entries(entrantes).filter(([, n]) => n > 0);
+  if (conFilas.length > 0) {
+    throw new Error(
+      `Hay referencias de otras organizaciones hacia zip-gym; el borrado modificaría datos ajenos. Abortado:\n  - ${conFilas.map(([campo, n]) => `${campo}: ${n}`).join("\n  - ")}`,
+    );
+  }
 }
 
 async function borrarDestino(tx: Tx, w: Borrado["where"]) {
@@ -527,6 +569,20 @@ async function metricas(orgId: string, sedeIds: string[], excluirUsuarioId: stri
   poner("miembros activos", await prisma.miembro.count({ where: { organizacionId: orgId, activo: true } }));
   poner("miembros inactivos", await prisma.miembro.count({ where: { organizacionId: orgId, activo: false } }));
   poner("miembros por regularizar", await prisma.miembro.count({ where: { organizacionId: orgId, porRegularizar: true } }));
+  // Fidelidad de campos (los ids difieren: el plan se compara por nombre).
+  const sumasMiembros = await prisma.miembro.aggregate({ where: { organizacionId: orgId }, _sum: { precioPlan: true, saldoAFavorUSD: true } });
+  poner("miembros suma precioPlan", sumasMiembros._sum.precioPlan);
+  poner("miembros suma saldoAFavorUSD", sumasMiembros._sum.saldoAFavorUSD);
+  for (const campo of ["fechaVencimiento", "fechaUltimoPago", "genero", "fotoUrl", "entrenadorId"] as const) {
+    poner(`miembros con ${campo}`, await prisma.miembro.count({ where: { organizacionId: orgId, [campo]: { not: null } } }));
+  }
+  const miembrosPlan = await prisma.miembro.findMany({ where: { organizacionId: orgId }, select: { plan: { select: { nombre: true } } } });
+  const porPlan = new Map<string, number>();
+  for (const x of miembrosPlan) {
+    const nombre = x.plan?.nombre ?? "(sin plan)";
+    porPlan.set(nombre, (porPlan.get(nombre) ?? 0) + 1);
+  }
+  for (const [nombre, n] of [...porPlan].sort(([a], [b]) => a.localeCompare(b))) poner(`miembros con plan "${nombre}"`, n);
   for (const estado of ["ACTIVA", "VENCIDA", "CANCELADA", "PAUSADA"] as const) {
     poner(`suscripciones ${estado}`, await prisma.suscripcion.count({ where: { miembro: { organizacionId: orgId }, estado } }));
   }
@@ -617,11 +673,15 @@ async function verificar(ctx: Contexto) {
   origen["configuración de la sede"] = "(origen)";
   destino["configuración de la sede"] = configSede(ctx.sedeOrigen) === configSede(ctx.sedeDestino) ? "(origen)" : "(distinta)";
 
+  // Unión de claves: una métrica que solo existe en un lado (p. ej. un nombre de plan) vale "0" en el otro.
   let diferencias = 0;
-  const filas = Object.keys(origen).map((clave) => {
-    const igual = origen[clave] === destino[clave];
+  const claves = [...new Set([...Object.keys(origen), ...Object.keys(destino)])];
+  const filas = claves.map((clave) => {
+    const valorOrigen = origen[clave] ?? "0";
+    const valorDestino = destino[clave] ?? "0";
+    const igual = valorOrigen === valorDestino;
     if (!igual) diferencias++;
-    return { métrica: clave, origen: origen[clave], destino: destino[clave], estado: igual ? "OK" : "DIFERENTE" };
+    return { métrica: clave, origen: valorOrigen, destino: valorDestino, estado: igual ? "OK" : "DIFERENTE" };
   });
   console.log(`Origen: ${SLUG_ORIGEN} · ${SEDE_ORIGEN}   Destino: ${SLUG_DESTINO} · ${SEDE_DESTINO}`);
   console.log(`(En el destino se excluye el usuario conservado ${EMAIL_USUARIO_CONSERVADO} con sus permisos y accesos: es esperado.)`);
@@ -632,11 +692,16 @@ async function verificar(ctx: Contexto) {
   console.log("Referencias de zip-gym hacia fuera de zip-gym (deben ser 0):");
   console.table(Object.entries(cruzadas).map(([tabla, n]) => ({ tabla, filas: n, estado: n === 0 ? "OK" : "CRUZADA" })));
 
-  if (diferencias > 0 || totalCruzadas > 0) {
-    console.log(`❌ Verificación con problemas: ${diferencias} diferencia(s), ${totalCruzadas} referencia(s) cruzada(s).`);
+  const entrantes = await referenciasEntrantes(prisma, ctx.orgDestino.id);
+  const totalEntrantes = Object.values(entrantes).reduce((s, n) => s + n, 0);
+  console.log("Referencias de otras organizaciones hacia zip-gym (deben ser 0):");
+  console.table(Object.entries(entrantes).map(([campo, n]) => ({ campo, filas: n, estado: n === 0 ? "OK" : "ENTRANTE" })));
+
+  if (diferencias > 0 || totalCruzadas > 0 || totalEntrantes > 0) {
+    console.log(`❌ Verificación con problemas: ${diferencias} diferencia(s), ${totalCruzadas} referencia(s) cruzada(s), ${totalEntrantes} entrante(s).`);
     process.exitCode = 1;
   } else {
-    console.log("✅ Verificación sin diferencias ni referencias cruzadas.");
+    console.log("✅ Verificación sin diferencias ni referencias cruzadas ni entrantes.");
   }
 }
 
@@ -663,9 +728,10 @@ async function main() {
     return;
   }
 
-  if ((await contarCruzadasHaciaDestino(ctx)) > 0) {
-    throw new Error("Hay pagos o check-ins de otra organización atados a miembros de zip-gym: el borrado los arrastraría. Abortado.");
-  }
+  const entrantes = await referenciasEntrantes(prisma, ctx.orgDestino.id);
+  const totalEntrantes = Object.values(entrantes).reduce((s, n) => s + n, 0);
+  console.log(`Referencias entrantes de otras organizaciones hacia zip-gym: ${totalEntrantes} (${Object.keys(entrantes).length} comprobaciones).`);
+  exigirSinEntrantes(entrantes);
 
   const datos = await leerOrigen(ctx);
   validarReferencias(ctx, datos);
@@ -699,6 +765,7 @@ async function main() {
   console.log("\nEscribiendo en zip-gym (una sola transacción)…");
   const clonados = await prisma.$transaction(
     async (tx) => {
+      exigirSinEntrantes(await referenciasEntrantes(tx, ctx.orgDestino.id)); // de nuevo, ya dentro de la transacción
       await borrarDestino(tx, borrado.where);
       return clonar(tx, ctx, datos, correos);
     },

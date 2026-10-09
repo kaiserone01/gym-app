@@ -17,6 +17,9 @@
     "db:marcar-ajustar-fecha": "tsx marcarAjustarFecha.ts",
     "db:limpiar-organizacion": "tsx limpiarOrganizacionParaMigracion.ts",
     "db:sembrar-zip-gym": "tsx sembrarOrganizacionZipGym.ts",
+    "db:clonar-zipgym": "tsx clonarSedePrincipalAZipGym.ts",
+    "db:clonar-zipgym:confirm": "tsx clonarSedePrincipalAZipGym.ts --confirm",
+    "db:clonar-zipgym:verificar": "tsx clonarSedePrincipalAZipGym.ts --verificar",
     "test": "vitest run"
   },
   "dependencies": {

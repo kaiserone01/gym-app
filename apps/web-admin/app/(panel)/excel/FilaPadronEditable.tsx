@@ -18,6 +18,9 @@ export interface FilaPadronSerializable {
   fVenc: string | null;
   fechaPago: string | null;
   plan: string | null;
+  colI: string | null;
+  colJ: string | null;
+  colK: string | null;
   camposEditados: string[];
   miembroId: string | null;
 }

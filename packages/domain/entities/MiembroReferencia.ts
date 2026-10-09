@@ -1,3 +1,5 @@
+import type { ColumnaExcel, EstilosPadron } from "../utils/padronExcel";
+
 // Fila del padrón de referencia (espejo del Excel). No es un miembro del sistema.
 export interface MiembroReferencia {
   id: string;
@@ -22,7 +24,16 @@ export interface MiembroReferencia {
   camposEditados: string[]; // columnas crudas editadas a mano desde el menú Excel
   editadoAt: Date | null;
   editadoPor: string | null;
+  colI: string | null;
+  colJ: string | null;
+  colK: string | null;
+  estilos: EstilosPadron | null;
+  resaltado: string | null;
+  resaltadoEditado: boolean;
 }
+
+export interface EncabezadoColumnaPadron { col: ColumnaExcel; titulo: string; anchoPx: number }
+export interface HojaPadron { encabezados: EncabezadoColumnaPadron[]; alturaEncabezadoPx: number; archivoOrigen: string }
 
 export interface FiltrosReferencia {
   cedula?: string;

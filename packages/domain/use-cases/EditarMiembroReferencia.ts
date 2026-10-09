@@ -4,9 +4,11 @@ import { IAuthorizationService } from "../ports/IAuthorizationService";
 import type { MiembroReferencia } from "../entities/MiembroReferencia";
 import {
   CAMPOS_EDITABLES_PADRON,
+  esColorResaltadoValido,
   fechaDesdeTextoPadron,
   normalizarCamposPadron,
   type CambiosCrudosPadron,
+  type CambiosEdicionPadron,
   type CampoEditablePadron,
   type CamposCrudosPadron,
 } from "../utils/padronExcel";
@@ -40,12 +42,13 @@ export interface EditarMiembroReferenciaInput {
   cedula: string;
   usuarioId: string;
   usuarioNombre: string;
-  cambios: CambiosCrudosPadron;
+  cambios: CambiosEdicionPadron;
 }
 
 const ETIQUETAS: Record<CampoEditablePadron, string> = {
   nombre: "nombre", status: "status", fNacimiento: "fecha de nacimiento", celular: "celular",
   fVenc: "fecha de vencimiento", fechaPago: "fecha de pago", plan: "plan",
+  colI: "columna I", colJ: "columna J", colK: "columna K",
 };
 
 // Microajuste de una fila del padrón (solo si la persona aún no es miembro). La cédula no se edita.
@@ -72,12 +75,24 @@ export async function editarMiembroReferencia(
     if (valor !== referencia[campo]) cambiados[campo] = valor;
   }
 
+  let resaltado: string | null | undefined;
+  if (input.cambios.resaltado !== undefined) {
+    if (input.cambios.resaltado !== null && !esColorResaltadoValido(input.cambios.resaltado)) {
+      throw new EdicionInvalidaError("Color de resaltado no permitido.");
+    }
+    if (input.cambios.resaltado !== referencia.resaltado) resaltado = input.cambios.resaltado;
+  }
+
   const tocados = Object.keys(cambiados);
-  if (tocados.length === 0) return referencia;
+  if (tocados.length === 0 && resaltado === undefined) return referencia;
+  if (tocados.length === 0) {
+    return deps.referencias.actualizarEdicion(referencia.id, { crudos: {}, editadoPor: input.usuarioNombre, resaltado });
+  }
 
   const crudosFinales: CamposCrudosPadron = {
     nombre: referencia.nombre, status: referencia.status, fNacimiento: referencia.fNacimiento, celular: referencia.celular,
     fVenc: referencia.fVenc, fechaPago: referencia.fechaPago, plan: referencia.plan,
+    colI: referencia.colI, colJ: referencia.colJ, colK: referencia.colK,
     ...cambiados,
   } as CamposCrudosPadron;
 
@@ -86,5 +101,6 @@ export async function editarMiembroReferencia(
     normalizados: normalizarCamposPadron(crudosFinales),
     camposEditados: [...new Set([...referencia.camposEditados, ...tocados])],
     editadoPor: input.usuarioNombre,
+    ...(resaltado !== undefined && { resaltado }),
   });
 }

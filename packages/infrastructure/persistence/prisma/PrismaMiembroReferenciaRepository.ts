@@ -1,13 +1,13 @@
 import type { PrismaClientOrTx } from "./PrismaClientOrTx";
 import type { IMiembroReferenciaRepository } from "@gym-app/domain/ports/IMiembroReferenciaRepository";
-import type { MiembroReferencia, FiltrosReferencia } from "@gym-app/domain/entities/MiembroReferencia";
-import type { CambiosCrudosPadron, NormalizadosPadron } from "@gym-app/domain/utils/padronExcel";
+import type { MiembroReferencia, FiltrosReferencia, FilaReferenciaConEstado, HojaPadron, EncabezadoColumnaPadron } from "@gym-app/domain/entities/MiembroReferencia";
+import type { CambiosCrudosPadron, EstilosPadron, NormalizadosPadron } from "@gym-app/domain/utils/padronExcel";
 import type { Prisma } from "@gym-app/db/generated/prisma/client";
 
-type FilaReferencia = Omit<MiembroReferencia, "precioPlanUSD"> & { precioPlanUSD: { toNumber(): number } | null };
+type FilaReferencia = Omit<MiembroReferencia, "precioPlanUSD" | "estilos"> & { precioPlanUSD: { toNumber(): number } | null; estilos: unknown };
 
 export function mapearReferencia(fila: FilaReferencia): MiembroReferencia {
-  return { ...fila, precioPlanUSD: fila.precioPlanUSD?.toNumber() ?? null };
+  return { ...fila, precioPlanUSD: fila.precioPlanUSD?.toNumber() ?? null, estilos: (fila.estilos as EstilosPadron | null) ?? null };
 }
 
 export class PrismaMiembroReferenciaRepository implements IMiembroReferenciaRepository {
@@ -25,13 +25,40 @@ export class PrismaMiembroReferenciaRepository implements IMiembroReferenciaRepo
     return fila !== null;
   }
 
+  async listarTodas(organizacionId: string, sucursalId: string): Promise<FilaReferenciaConEstado[]> {
+    const filas = await this.prisma.miembroReferencia.findMany({ where: { organizacionId, sucursalId }, orderBy: { numeroFila: "asc" } });
+    const miembros = await this.prisma.miembro.findMany({
+      where: { organizacionId, cedula: { in: filas.map((r) => r.cedula) } },
+      select: { id: true, cedula: true },
+    });
+    const idPorCedula = new Map(miembros.map((m) => [m.cedula, m.id]));
+    return filas.map((r) => ({ ...mapearReferencia(r), miembroId: idPorCedula.get(r.cedula) ?? null }));
+  }
+
+  async obtenerHoja(organizacionId: string, sucursalId: string): Promise<HojaPadron | null> {
+    const hoja = await this.prisma.padronHoja.findUnique({ where: { organizacionId_sucursalId: { organizacionId, sucursalId } } });
+    if (!hoja) return null;
+    return {
+      encabezados: hoja.encabezados as unknown as EncabezadoColumnaPadron[],
+      alturaEncabezadoPx: hoja.alturaEncabezadoPx,
+      archivoOrigen: hoja.archivoOrigen,
+    };
+  }
+
   async actualizarEdicion(
     id: string,
-    datos: { crudos: CambiosCrudosPadron; normalizados: NormalizadosPadron; camposEditados: string[]; editadoPor: string }
+    datos: { crudos: CambiosCrudosPadron; normalizados?: NormalizadosPadron; camposEditados?: string[]; editadoPor: string; resaltado?: string | null }
   ) {
     const fila = await this.prisma.miembroReferencia.update({
       where: { id },
-      data: { ...datos.crudos, ...datos.normalizados, camposEditados: datos.camposEditados, editadoAt: new Date(), editadoPor: datos.editadoPor },
+      data: {
+        ...datos.crudos,
+        ...datos.normalizados,
+        ...(datos.camposEditados && { camposEditados: datos.camposEditados }),
+        editadoAt: new Date(),
+        editadoPor: datos.editadoPor,
+        ...(datos.resaltado !== undefined && { resaltado: datos.resaltado, resaltadoEditado: true }),
+      },
     });
     return mapearReferencia(fila);
   }

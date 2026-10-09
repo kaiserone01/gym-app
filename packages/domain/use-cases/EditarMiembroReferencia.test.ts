@@ -11,6 +11,7 @@ const base: MiembroReferencia = {
   fechaVencimiento: new Date("2026-10-01T00:00:00Z"), fechaUltimoPago: null, fechaNacimiento: null,
   planNombre: "Mensual con entrenador", precioPlanUSD: 30, archivoOrigen: "x.xlsm", importadoAt: new Date(),
   camposEditados: [], editadoAt: null, editadoPor: null,
+  colI: null, colJ: null, colK: null, estilos: null, resaltado: null, resaltadoEditado: false,
 };
 const input = { organizacionId: "org", sucursalId: "principal", cedula: "123", usuarioId: "u1", usuarioNombre: "Jorge", cambios: {} };
 
@@ -84,5 +85,48 @@ describe("editarMiembroReferencia", () => {
     const { datos } = escrituras[0] as { datos: any };
     expect(datos.crudos).toEqual({ fNacimiento: "1990-05-17" });
     expect(datos.normalizados.fechaNacimiento).toEqual(new Date("1990-05-17T00:00:00Z"));
+  });
+  test("colJ es texto libre: va en crudos y camposEditados sin normalizar fecha", async () => {
+    const { deps, escrituras } = crearDeps();
+    await editarMiembroReferencia(deps, { ...input, cambios: { colJ: "  mañana  " } });
+    const { datos } = escrituras[0] as { datos: any };
+    expect(datos.crudos).toEqual({ colJ: "mañana" });
+    expect(datos.camposEditados).toEqual(["colJ"]);
+    expect(datos.resaltado).toBeUndefined();
+  });
+  test("resaltado válido: envía resaltado sin tocar camposEditados ni normalizados", async () => {
+    const { deps, escrituras } = crearDeps({ referencia: { camposEditados: ["status"] } });
+    await editarMiembroReferencia(deps, { ...input, cambios: { resaltado: "FFFF00" } });
+    const { datos } = escrituras[0] as { datos: any };
+    expect(datos.resaltado).toBe("FFFF00");
+    expect(datos.crudos).toEqual({});
+    expect(datos.normalizados).toBeUndefined();
+    expect(datos.camposEditados).toBeUndefined();
+  });
+  test("resaltado fuera de la paleta se rechaza", async () => {
+    const error = await editarMiembroReferencia(crearDeps().deps, { ...input, cambios: { resaltado: "123456" } }).catch((e) => e);
+    expect(error).toBeInstanceOf(EdicionInvalidaError);
+    expect(error.message).toBe("Color de resaltado no permitido.");
+  });
+  test("quitar el color (null) cuando había color", async () => {
+    const { deps, escrituras } = crearDeps({ referencia: { resaltado: "FFFF00" } });
+    await editarMiembroReferencia(deps, { ...input, cambios: { resaltado: null } });
+    const { datos } = escrituras[0] as { datos: any };
+    expect(datos.resaltado).toBeNull();
+  });
+  test("resaltado igual al actual no escribe", async () => {
+    const { deps, escrituras } = crearDeps({ referencia: { resaltado: "FFFF00" } });
+    await editarMiembroReferencia(deps, { ...input, cambios: { resaltado: "FFFF00" } });
+    expect(escrituras).toEqual([]);
+  });
+  test("texto y resaltado juntos en una sola escritura", async () => {
+    const { deps, escrituras } = crearDeps();
+    await editarMiembroReferencia(deps, { ...input, cambios: { celular: "0416", resaltado: "92D050" } });
+    expect(escrituras).toHaveLength(1);
+    const { datos } = escrituras[0] as { datos: any };
+    expect(datos.crudos).toEqual({ celular: "0416" });
+    expect(datos.resaltado).toBe("92D050");
+    expect(datos.camposEditados).toEqual(["celular"]);
+    expect(datos.normalizados).toBeDefined();
   });
 });

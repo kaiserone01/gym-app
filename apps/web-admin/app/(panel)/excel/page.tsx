@@ -143,6 +143,9 @@ export default async function PaginaExcel({ searchParams }: { searchParams: Prom
                     fVenc: fila.fVenc,
                     fechaPago: fila.fechaPago,
                     plan: fila.plan,
+                    colI: fila.colI,
+                    colJ: fila.colJ,
+                    colK: fila.colK,
                     camposEditados: fila.camposEditados,
                     miembroId: fila.miembroId,
                   }}

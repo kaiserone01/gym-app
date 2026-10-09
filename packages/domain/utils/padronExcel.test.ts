@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { fechaDesdeTextoPadron, normalizarCamposPadron, resolverPlanPadron } from "./padronExcel";
+import { CAMPOS_EDITABLES_PADRON, COLUMNAS_EXCEL, PALETA_RESALTADO, esColorResaltadoValido, fechaDesdeTextoPadron, normalizarCamposPadron, resolverPlanPadron } from "./padronExcel";
 
 describe("resolverPlanPadron", () => {
   test("precio de un plan real → nombre y precio", () => {
@@ -40,12 +40,23 @@ describe("normalizarCamposPadron", () => {
   test("calcula fechas y plan a partir de los crudos", () => {
     const n = normalizarCamposPadron({
       nombre: "Ana", status: "ACTIVO", fNacimiento: "1990-05-02", celular: null,
-      fVenc: "2026-10-01", fechaPago: "efectivo", plan: "25",
+      fVenc: "2026-10-01", fechaPago: "efectivo", plan: "25", colI: null, colJ: null, colK: null,
     });
     expect(n.fechaVencimiento?.toISOString()).toBe("2026-10-01T00:00:00.000Z");
     expect(n.fechaNacimiento?.toISOString()).toBe("1990-05-02T00:00:00.000Z");
     expect(n.fechaUltimoPago).toBeNull(); // nota de texto, no fecha
     expect(n.planNombre).toBe("Mensual sin entrenador");
     expect(n.precioPlanUSD).toBe(25);
+  });
+});
+
+describe("columnas editables y resaltado", () => {
+  test("incluye colI, colJ y colK y las 11 columnas del Excel", () => {
+    expect(CAMPOS_EDITABLES_PADRON).toEqual(expect.arrayContaining(["colI", "colJ", "colK"]));
+    expect(COLUMNAS_EXCEL).toHaveLength(11);
+  });
+  test("esColorResaltadoValido acepta solo los hex de la paleta en mayúsculas", () => {
+    for (const { hex } of PALETA_RESALTADO) expect(esColorResaltadoValido(hex)).toBe(true);
+    for (const hex of ["ffff00", "#FFFF00", "000000", "", "FFFF0"]) expect(esColorResaltadoValido(hex)).toBe(false);
   });
 });

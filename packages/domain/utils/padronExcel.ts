@@ -11,7 +11,10 @@ export const PLANES_PADRON: Record<number, string> = {
   30: "Mensual con entrenador",
 };
 
-export const CAMPOS_EDITABLES_PADRON = ["nombre", "status", "fNacimiento", "celular", "fVenc", "fechaPago", "plan"] as const;
+export const COLUMNAS_EXCEL = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K"] as const;
+export type ColumnaExcel = (typeof COLUMNAS_EXCEL)[number];
+
+export const CAMPOS_EDITABLES_PADRON = ["nombre", "status", "fNacimiento", "celular", "fVenc", "fechaPago", "plan", "colI", "colJ", "colK"] as const;
 export type CampoEditablePadron = (typeof CAMPOS_EDITABLES_PADRON)[number];
 
 export interface CamposCrudosPadron {
@@ -22,9 +25,32 @@ export interface CamposCrudosPadron {
   fVenc: string | null;
   fechaPago: string | null;
   plan: string | null;
+  colI: string | null;
+  colJ: string | null;
+  colK: string | null;
 }
 
 export type CambiosCrudosPadron = { nombre?: string } & Partial<Record<Exclude<CampoEditablePadron, "nombre">, string | null>>;
+
+export interface CambiosEdicionPadron extends CambiosCrudosPadron {
+  resaltado?: string | null; // null = quitar el color
+}
+
+export interface EstiloCeldaPadron { b?: true; c?: string; a?: "left" | "center" | "right" }
+export type EstilosPadron = Partial<Record<ColumnaExcel, EstiloCeldaPadron>>;
+
+export const PALETA_RESALTADO: { nombre: string; hex: string }[] = [
+  { nombre: "amarillo", hex: "FFFF00" },
+  { nombre: "naranja", hex: "FFC000" },
+  { nombre: "verde", hex: "92D050" },
+  { nombre: "celeste", hex: "00B0F0" },
+  { nombre: "rosado", hex: "FF99CC" },
+  { nombre: "rojo claro", hex: "FF7C80" },
+];
+
+export function esColorResaltadoValido(hex: string): boolean {
+  return PALETA_RESALTADO.some((c) => c.hex === hex);
+}
 
 export interface NormalizadosPadron {
   fechaVencimiento: Date | null;

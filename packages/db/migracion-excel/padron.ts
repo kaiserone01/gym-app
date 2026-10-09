@@ -86,6 +86,7 @@ export function prepararPadron(filas: FilaExcelCruda[]): { elegibles: DatosPadro
       fVenc: textoColumnaFecha(fila.fVenc),
       fechaPago: textoColumnaFecha(fila.fechaPago),
       plan: textoCrudo(fila.plan),
+      colI: null, colJ: null, colK: null, // la Tarea 3 los rellena desde el Excel
     };
     elegibles.push({ cedula, numeroFila: fila.numeroFila, ...crudos, ...normalizarCamposPadron(crudos) });
   }

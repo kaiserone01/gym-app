@@ -107,7 +107,7 @@ export default async function PaginaHistoricoPagos({
         <div className="hidden print:block mb-4">
           <h1 className="text-xl font-bold text-black">Histórico de pagos</h1>
           <div className="text-xs text-black">
-            {desde.toLocaleDateString("es-VE")} – {hasta.toLocaleDateString("es-VE")} · {pagosOrdenados.length}{" "}
+            {desde.toLocaleDateString("es-VE", { day: "2-digit", month: "2-digit", year: "numeric" })} – {hasta.toLocaleDateString("es-VE", { day: "2-digit", month: "2-digit", year: "numeric" })} · {pagosOrdenados.length}{" "}
             {pagosOrdenados.length === 1 ? "pago" : "pagos"} · Total: ${reporte.totalUSD.toFixed(2)}
           </div>
         </div>

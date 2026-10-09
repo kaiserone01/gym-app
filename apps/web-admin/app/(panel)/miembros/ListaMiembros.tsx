@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Input } from "@gym-app/ui/components/Input";
+import { InputFecha } from "@gym-app/ui/components/InputFecha";
 import { Button } from "@gym-app/ui/components/Button";
 import { Card } from "@gym-app/ui/components/Card";
 import { Badge } from "@gym-app/ui/components/Badge";
@@ -51,7 +52,7 @@ function irALetra(letra: string) {
 }
 
 function formatearFecha(fecha: Date): string {
-  return new Date(fecha).toLocaleDateString("es-VE");
+  return new Date(fecha).toLocaleDateString("es-VE", { day: "2-digit", month: "2-digit", year: "numeric" });
 }
 
 function Avatar({ fotoUrl, nombre, tamano }: { fotoUrl: string | null; nombre: string; tamano: number }) {
@@ -188,13 +189,8 @@ export function ListaMiembros({
           value={busqueda}
           onChange={(e) => setBusqueda(e.target.value)}
         />
-        <Input
-          label="Inscritos desde"
-          type="date"
-          value={inscritoDesde}
-          onChange={(e) => setInscritoDesde(e.target.value)}
-        />
-        <Input label="Vencidos hasta" type="date" value={venceHasta} onChange={(e) => setVenceHasta(e.target.value)} />
+        <InputFecha label="Inscritos desde" value={inscritoDesde} onChange={setInscritoDesde} />
+        <InputFecha label="Vencidos hasta" value={venceHasta} onChange={setVenceHasta} />
 
         <label className="flex flex-col gap-1.5 text-sm" style={{ color: "var(--gx-muted)" }}>
           Plan

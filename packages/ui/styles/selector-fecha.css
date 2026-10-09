@@ -1,0 +1,70 @@
+/* Calendario (react-day-picker) con la paleta del sistema, para InputFecha y SelectorRangoFechas. */
+.rdp-root {
+  --rdp-accent-color: var(--gx-accent);
+  --rdp-accent-background-color: color-mix(in srgb, var(--gx-accent) 18%, transparent);
+  --rdp-day-height: 40px;
+  --rdp-day-width: 40px;
+  --rdp-day_button-height: 38px;
+  --rdp-day_button-width: 38px;
+  --rdp-day_button-border-radius: 10px;
+  --rdp-selected-border: 2px solid var(--gx-accent);
+  --rdp-today-color: var(--gx-accent);
+  --rdp-disabled-opacity: 0.3;
+  --rdp-outside-opacity: 0.4;
+  --rdp-range_start-color: var(--gx-accent-ink);
+  --rdp-range_end-color: var(--gx-accent-ink);
+  --rdp-weekday-opacity: 1;
+  color: var(--gx-ink);
+  font-size: 0.875rem;
+}
+.rdp-root .rdp-weekday {
+  color: var(--gx-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+.rdp-root .rdp-month_caption {
+  font-weight: 600;
+  text-transform: capitalize;
+}
+.rdp-root .rdp-day_button {
+  cursor: pointer;
+  transition: background-color 150ms ease;
+}
+.rdp-root .rdp-day_button:hover:not(:disabled) {
+  background: var(--gx-surface-2);
+}
+.rdp-root .rdp-selected .rdp-day_button {
+  background: var(--gx-accent);
+  color: var(--gx-accent-ink);
+  border-color: var(--gx-accent);
+  font-weight: 700;
+}
+.rdp-root .rdp-today:not(.rdp-selected) .rdp-day_button {
+  border-color: var(--gx-edge);
+  color: var(--gx-accent);
+}
+.rdp-root .rdp-day_button:focus-visible,
+.rdp-root .rdp-chevron:focus-visible {
+  outline: 2px solid var(--gx-accent);
+  outline-offset: 2px;
+}
+.rdp-root .rdp-chevron {
+  fill: var(--gx-muted);
+}
+.rdp-root .rdp-button_previous:hover .rdp-chevron,
+.rdp-root .rdp-button_next:hover .rdp-chevron {
+  fill: var(--gx-accent);
+}
+.rdp-root .rdp-dropdown {
+  background: var(--gx-surface-2);
+  color: var(--gx-ink);
+}
+.rdp-root .rdp-dropdown_root {
+  border: 1px solid var(--gx-edge);
+  border-radius: 8px;
+  padding: 0 0.25rem;
+}
+.rdp-root .rdp-dropdown_root:focus-within {
+  border-color: var(--gx-accent);
+}

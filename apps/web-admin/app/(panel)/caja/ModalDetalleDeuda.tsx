@@ -49,7 +49,7 @@ export function ModalDetalleDeuda({
                 {d.productoNombre}
                 {d.cantidad > 1 ? ` × ${d.cantidad}` : ""}
                 <span className="block text-xs" style={{ color: "var(--gx-muted)" }}>
-                  ${d.precioUnitarioUSD.toFixed(2)} c/u · {d.creadaEn.toLocaleDateString("es-VE")}
+                  ${d.precioUnitarioUSD.toFixed(2)} c/u · {d.creadaEn.toLocaleDateString("es-VE", { day: "2-digit", month: "2-digit", year: "numeric" })}
                 </span>
               </span>
               <span className="shrink-0 font-medium" style={{ color: "var(--gx-ink)" }}>

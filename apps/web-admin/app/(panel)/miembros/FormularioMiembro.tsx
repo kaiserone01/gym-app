@@ -4,6 +4,7 @@ import { useActionState, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Button } from "@gym-app/ui/components/Button";
 import { Input } from "@gym-app/ui/components/Input";
+import { InputFecha } from "@gym-app/ui/components/InputFecha";
 import { CurrencyInput } from "@gym-app/ui/components/CurrencyInput";
 import { Card } from "@gym-app/ui/components/Card";
 import { Badge } from "@gym-app/ui/components/Badge";
@@ -443,22 +444,20 @@ export function FormularioMiembro({
               />
             </div>
 
-            <Input
+            <InputFecha
               name="fechaInscripcion"
               label="Fecha de inscripción"
-              type="date"
               required
               value={fechaInscripcion}
-              onChange={(e) => setFechaInscripcion(e.target.value)}
+              onChange={setFechaInscripcion}
             />
 
             <div className="grid grid-cols-2 gap-4">
-              <Input
+              <InputFecha
                 name="fechaNacimiento"
                 label="Fecha de nacimiento"
-                type="date"
                 value={fechaNacimiento}
-                onChange={(e) => setFechaNacimiento(e.target.value)}
+                onChange={setFechaNacimiento}
               />
               <label className="flex flex-col gap-1.5 text-sm" style={{ color: "var(--gx-muted)" }}>
                 Género
@@ -538,13 +537,12 @@ export function FormularioMiembro({
           {esEdicion && porRegularizar && (
             <div className="mb-4">
               <input type="hidden" name="fechaVencimientoOriginal" value={valoresIniciales?.fechaVencimiento ?? ""} />
-              <Input
+              <InputFecha
                 id="campo-fecha-vencimiento"
                 name="fechaVencimiento"
                 label="Fecha de vencimiento"
-                type="date"
                 value={fechaVencimiento}
-                onChange={(e) => setFechaVencimiento(e.target.value)}
+                onChange={setFechaVencimiento}
                 className="titilar-fecha"
               />
             </div>

@@ -1,5 +1,6 @@
 "use client";
 
+import { InputFecha } from "@gym-app/ui/components/InputFecha";
 import { useEffect, useState } from "react";
 
 interface FilaHistorial {
@@ -213,16 +214,7 @@ export function ModalHistorialTasas({ onCerrar }: { onCerrar: () => void }) {
 
         {modo === "fecha" && (
           <div className="mt-4 flex flex-col gap-3">
-            <label className="flex flex-col gap-1.5 text-sm" style={{ color: "var(--gx-muted)" }}>
-              Fecha
-              <input
-                type="date"
-                value={fechaElegida}
-                onChange={(e) => buscarPorFecha(e.target.value)}
-                className="min-h-11 rounded-lg border px-3 outline-none focus:border-[var(--gx-accent)]"
-                style={{ background: "var(--gx-surface-2)", borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }}
-              />
-            </label>
+            <InputFecha label="Fecha" value={fechaElegida} onChange={buscarPorFecha} />
 
             {buscando && <p className="text-sm" style={{ color: "var(--gx-muted)" }}>Buscando...</p>}
 

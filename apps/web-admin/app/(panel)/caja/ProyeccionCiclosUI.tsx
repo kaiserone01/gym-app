@@ -164,7 +164,7 @@ export function MensajeProyeccionAbono({
       <strong style={{ color: "var(--gx-accent)" }}>
         saldo remanente de ${proyeccionAbono.saldoRemanente.toFixed(2)}
         {tasaActual !== null && ` (Bs. ${formatearBs(proyeccionAbono.saldoRemanente * tasaActual)})`} antes del{" "}
-        {proyeccionAbono.fechaTope.toLocaleDateString("es-VE")}
+        {proyeccionAbono.fechaTope.toLocaleDateString("es-VE", { day: "2-digit", month: "2-digit", year: "numeric" })}
       </strong>
       .
     </p>

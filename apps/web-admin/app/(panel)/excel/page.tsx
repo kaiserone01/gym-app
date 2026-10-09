@@ -6,6 +6,7 @@ import { PrismaMiembroReferenciaRepository } from "@gym-app/infrastructure/persi
 import { PrismaPermisoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaPermisoRepository";
 import { AuthorizationService } from "@gym-app/domain/services/AuthorizationService";
 import { Input } from "@gym-app/ui/components/Input";
+import { InputFecha } from "@gym-app/ui/components/InputFecha";
 import { Button } from "@gym-app/ui/components/Button";
 import { Card } from "@gym-app/ui/components/Card";
 import { PageHeader } from "@gym-app/ui/components/PageHeader";
@@ -92,8 +93,8 @@ export default async function PaginaExcel({ searchParams }: { searchParams: Prom
         <Input label="Nombre" name="nombre" type="text" defaultValue={p.nombre ?? ""} />
         <Input label="Status" name="status" type="text" defaultValue={p.status ?? ""} />
         <Input label="Plan" name="plan" type="text" defaultValue={p.plan ?? ""} />
-        <Input label="Vence desde" name="desde" type="date" defaultValue={p.desde ?? ""} />
-        <Input label="Vence hasta" name="hasta" type="date" defaultValue={p.hasta ?? ""} />
+        <InputFecha label="Vence desde" name="desde" defaultValue={p.desde ?? ""} />
+        <InputFecha label="Vence hasta" name="hasta" defaultValue={p.hasta ?? ""} />
         <label className="flex flex-col gap-1.5 text-sm" style={{ color: "var(--gx-muted)" }}>
           Estado
           <select name="estado" defaultValue={estado} className={SELECT_CLASE} style={SELECT_ESTILO}>

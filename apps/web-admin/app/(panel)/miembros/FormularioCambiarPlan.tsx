@@ -400,7 +400,7 @@ export function FormularioCambiarPlan({
                   : "Cambiar de plan — sin costo adicional"}
             </span>
             <span className="text-xs font-normal" style={{ color: "var(--gx-accent-ink)", opacity: 0.85 }}>
-              Nuevo vencimiento: {resultado.nuevoVencimiento.toLocaleDateString("es-VE")}
+              Nuevo vencimiento: {resultado.nuevoVencimiento.toLocaleDateString("es-VE", { day: "2-digit", month: "2-digit", year: "numeric" })}
             </span>
           </Button>
         </div>

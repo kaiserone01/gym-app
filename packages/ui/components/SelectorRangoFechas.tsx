@@ -97,7 +97,7 @@ export function SelectorRangoFechas({ desde, hasta, diasConActividad, onCambiar 
 
       <div className="relative">
         <Button type="button" variant="secundario" onClick={() => setAbierto((v) => !v)}>
-          {desde.toLocaleDateString("es-VE")} — {hasta.toLocaleDateString("es-VE")}
+          {desde.toLocaleDateString("es-VE", { day: "2-digit", month: "2-digit", year: "numeric" })} — {hasta.toLocaleDateString("es-VE", { day: "2-digit", month: "2-digit", year: "numeric" })}
         </Button>
 
         {abierto && (
@@ -108,6 +108,7 @@ export function SelectorRangoFechas({ desde, hasta, diasConActividad, onCambiar 
             <DayPicker
               mode="range"
               locale={es}
+              weekStartsOn={1}
               selected={rango}
               onSelect={manejarSeleccion}
               disabled={estaDeshabilitado}

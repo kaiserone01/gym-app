@@ -6,6 +6,7 @@ import type { MetodoPago } from "@gym-app/domain/entities/MetodoPago";
 import type { FrecuenciaPago } from "@gym-app/domain/entities/Plan";
 import { MAX_DIAS_ATRAS_PAGO_RETROACTIVO } from "@gym-app/domain/entities/Pago";
 import { Button } from "@gym-app/ui/components/Button";
+import { InputFecha } from "@gym-app/ui/components/InputFecha";
 import { CurrencyInput } from "@gym-app/ui/components/CurrencyInput";
 import { useFeedback, DURACION_MS } from "@gym-app/ui/components/FeedbackOverlay";
 import { BuscadorMiembro, aMiembroConPlan, type MiembroConPlan, type PlanParaModal } from "./SelectorMiembroModal";
@@ -639,18 +640,14 @@ function ContenidoPaso3({
       <div className="flex min-w-0 flex-col gap-4 lg:flex-1 lg:overflow-y-auto lg:pr-2">
       {porRegularizar && (
         <div className="flex flex-col gap-2 rounded-xl border p-4" style={{ borderColor: "var(--gx-warn)" }}>
-          <label className="flex flex-col gap-1.5 text-sm" style={{ color: "var(--gx-muted)" }}>
-            Fecha del pago (aviso "Por regularizar")
-            <input
-              type="date"
-              value={fechaPago}
-              min={minFechaISO}
-              max={hoyISO}
-              onChange={(e) => setFechaPago(e.target.value)}
-              className="titilar-fecha min-h-11 w-48 rounded-lg border px-3 outline-none"
-              style={{ background: "var(--gx-surface-2)", borderColor: "var(--gx-edge)", color: "var(--gx-ink)" }}
-            />
-          </label>
+          <InputFecha
+            label={'Fecha del pago (aviso "Por regularizar")'}
+            value={fechaPago}
+            min={minFechaISO}
+            max={hoyISO}
+            onChange={setFechaPago}
+            className="titilar-fecha"
+          />
           <p className="text-xs" style={{ color: "var(--gx-muted)" }}>
             {esFechaPasada
               ? tasaDelDia !== null

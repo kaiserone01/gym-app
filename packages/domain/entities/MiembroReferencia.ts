@@ -35,17 +35,5 @@ export interface MiembroReferencia {
 export interface EncabezadoColumnaPadron { col: ColumnaExcel; titulo: string; anchoPx: number }
 export interface HojaPadron { encabezados: EncabezadoColumnaPadron[]; alturaEncabezadoPx: number; archivoOrigen: string }
 
-export interface FiltrosReferencia {
-  cedula?: string;
-  nombre?: string;
-  status?: string;
-  plan?: string;
-  venceDesde?: Date;
-  venceHasta?: Date;
-  estadoEnSistema?: "todos" | "no_miembro" | "miembro";
-  pagina: number;
-  porPagina: number;
-}
-
 // Fila del padrón con el id del Miembro que ya la ocupa (misma cédula), si lo hay.
 export type FilaReferenciaConEstado = MiembroReferencia & { miembroId: string | null };

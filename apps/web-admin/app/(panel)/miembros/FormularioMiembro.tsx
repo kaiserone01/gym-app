@@ -23,9 +23,10 @@ export interface ValoresFormularioMiembro {
   nombre: string;
   cedula: string;
   celular: string;
-  fechaInscripcion: string; // yyyy-mm-dd
+  fechaInscripcion: string; // yyyy-mm-dd, solo informativa (no se envía al guardar)
   fechaNacimiento: string; // yyyy-mm-dd, "" si no tiene
   fechaVencimiento?: string; // yyyy-mm-dd, "" si no tiene
+  fechaUltimoPago?: string; // yyyy-mm-dd, "" si no tiene
   sucursalId: string | null; // null = "Ambas"
   planId: string | null;
   precioPlan: number;
@@ -100,6 +101,7 @@ export function FormularioMiembro({
   valoresIniciales,
   tieneCicloVigente,
   porRegularizar = false,
+  vieneDelExcel = false,
 }: {
   accion: (estado: EstadoFormularioMiembro, formData: FormData) => Promise<EstadoFormularioMiembro>;
   // Entrenadores disponibles por cada sucursal visible — el elegible
@@ -110,9 +112,9 @@ export function FormularioMiembro({
   // nombre cuando sucursalId === ID_AMBAS_SEDES; ya NO se usa para poblar
   // un <select> de sedes.
   sucursales: SucursalResumen[];
-  // Nombre de la sucursal activa de la sesión — se muestra como texto fijo
-  // en vez de ofrecer un selector (ver diseño acordado: crear/editar un
-  // miembro siempre lo asigna a la sede activa, salvo "Ambas").
+  // Nombre de la sucursal activa de la sesión — solo se muestra en el ticket
+  // de confirmación (crear/editar un miembro siempre lo asigna a la sede
+  // activa, salvo "Ambas").
   sucursalActivaNombre: string;
   sucursalIdDefault: string | null;
   planes: Plan[];
@@ -141,6 +143,9 @@ export function FormularioMiembro({
   tieneCicloVigente?: boolean;
   // Fecha de vencimiento no confiable (migrada): aviso "Por regularizar" y campo de vencimiento que titila.
   porRegularizar?: boolean;
+  // Miembro activado desde el padrón del Excel: sus fechas de pago y de vencimiento se editan siempre
+  // (no tiene fecha de inscripción confiable) y cambiar de plan no las mueve.
+  vieneDelExcel?: boolean;
 }) {
   const [estado, enviar, enviando] = useActionState(accion, {});
   const esEdicion = !!valoresIniciales;
@@ -155,7 +160,13 @@ export function FormularioMiembro({
   const [nombre, setNombre] = useState(valoresIniciales?.nombre ?? "");
   const [cedula, setCedula] = useState(valoresIniciales?.cedula ?? "");
   const [celular, setCelular] = useState(valoresIniciales?.celular ?? "");
-  const [fechaInscripcion, setFechaInscripcion] = useState(valoresIniciales?.fechaInscripcion ?? hoyISO());
+  // Solo informativa: en el alta es hoy (la acción usa hoy) y en la ficha no se edita ni se envía.
+  const [fechaInscripcion] = useState(valoresIniciales?.fechaInscripcion ?? hoyISO());
+  const [fechaUltimoPago, setFechaUltimoPago] = useState(valoresIniciales?.fechaUltimoPago ?? "");
+  const [fechaVencimiento, setFechaVencimiento] = useState(valoresIniciales?.fechaVencimiento ?? "");
+  // Fechas de pago/vencimiento editables: siempre para quien viene del Excel, y mientras dure el aviso
+  // "Por regularizar" para el resto (la fecha de pago, solo para quien viene del Excel).
+  const editaFechas = esEdicion && (vieneDelExcel || porRegularizar);
   const [fechaNacimiento, setFechaNacimiento] = useState(valoresIniciales?.fechaNacimiento ?? "");
   const [sucursalId, setSucursalId] = useState(
     valoresIniciales ? (valoresIniciales.sucursalId ?? ID_AMBAS_SEDES) : sucursalIdDefault ?? ""
@@ -206,8 +217,9 @@ export function FormularioMiembro({
   const [mostrarTicket, setMostrarTicket] = useState(false);
   // Mientras el ciclo actual esté vigente, el cambio de plan gratis queda
   // deshabilitado acá — usa "Cambiar de plan" del panel derecho, que cobra
-  // la diferencia correspondiente (ver diseño acordado).
-  const puedeCambiarPlanGratis = !esEdicion || !tieneCicloVigente;
+  // la diferencia correspondiente (ver diseño acordado). Quien viene del
+  // Excel lo tiene siempre: la regularización lo necesita y no mueve fechas.
+  const puedeCambiarPlanGratis = !esEdicion || !tieneCicloVigente || vieneDelExcel;
   // En edición, el plan asignado se ve de solo lectura hasta que se
   // confirma explícitamente que se quiere cambiar (ver diseño acordado:
   // evita cambios de plan por error, ya que dispara el prorrateo).
@@ -216,9 +228,9 @@ export function FormularioMiembro({
   const planIdOriginal = valoresIniciales?.planId ?? null;
   // El entrenador también se ve de solo lectura en edición — se asigna en
   // la inscripción, cambiarlo es una acción explícita aparte (ver diseño
-  // acordado). La sede ya no tiene modo edición propio — la única
-  // alternativa a la sede activa es el toggle de "Ambas sedes" (ver bloque
-  // "Sede asignada" más abajo).
+  // acordado). La sede ya no se muestra ni tiene modo edición propio — la
+  // única alternativa a la sede activa es el toggle de "Ambas sedes" (solo
+  // con planes multisede, ver más abajo).
   const [editandoEntrenador, setEditandoEntrenador] = useState(!esEdicion);
   const entrenadorIdOriginal = valoresIniciales?.entrenadorId ?? "";
 
@@ -266,8 +278,9 @@ export function FormularioMiembro({
     !!valoresIniciales &&
     (nombre !== valoresIniciales.nombre ||
       celular !== valoresIniciales.celular ||
-      fechaInscripcion !== valoresIniciales.fechaInscripcion ||
       fechaNacimiento !== valoresIniciales.fechaNacimiento ||
+      (editaFechas && vieneDelExcel && fechaUltimoPago !== (valoresIniciales.fechaUltimoPago ?? "")) ||
+      (editaFechas && fechaVencimiento !== (valoresIniciales.fechaVencimiento ?? "")) ||
       sucursalId !== (valoresIniciales.sucursalId ?? ID_AMBAS_SEDES) ||
       entrenadorId !== (valoresIniciales.entrenadorId ?? "") ||
       fotoPreview !== (valoresIniciales.fotoUrl ?? null) ||
@@ -324,7 +337,6 @@ export function FormularioMiembro({
   }
 
   const idFormulario = "formulario-miembro";
-  const [fechaVencimiento, setFechaVencimiento] = useState(valoresIniciales?.fechaVencimiento ?? "");
 
   return (
     <ProveedorCambiosSinGuardar value={hayCambiosSinGuardar}>
@@ -344,7 +356,7 @@ export function FormularioMiembro({
       >
         <span className="flex flex-wrap items-center gap-2">
           <Badge tono="ambar">Por regularizar</Badge>
-          La fecha de vencimiento viene de una fuente externa (Excel/migración) y no está verificada. Ajústala o registra el último pago con su fecha real.
+          Las fechas de pago y de vencimiento vienen de una fuente externa (Excel/migración) y no están verificadas. Ajústalas o registra el último pago con su fecha real.
           {(!fotoPreview || !fechaNacimiento) && (
             <span style={{ color: "var(--gx-muted)" }}>
               Pendiente además: {[!fotoPreview && "foto", !fechaNacimiento && "fecha de nacimiento"].filter(Boolean).join(" y ")} (no impide quitar el aviso).
@@ -361,7 +373,7 @@ export function FormularioMiembro({
               campo?.focus({ preventScroll: true });
             }}
           >
-            Ajustar fecha de vencimiento
+            Ajustar fechas
           </Button>
           <Link href={`/caja?cobrar=${miembroId}`}>
             <Button type="button">Registrar pago con fecha</Button>
@@ -435,13 +447,21 @@ export function FormularioMiembro({
               />
             </div>
 
-            <InputFecha
-              name="fechaInscripcion"
-              label="Fecha de inscripción"
-              required
-              value={fechaInscripcion}
-              onChange={setFechaInscripcion}
-            />
+            {esEdicion && vieneDelExcel ? (
+              <>
+                <input type="hidden" name="fechaUltimoPagoOriginal" value={valoresIniciales?.fechaUltimoPago ?? ""} />
+                <InputFecha
+                  name="fechaUltimoPago"
+                  label="Fecha de pago"
+                  value={fechaUltimoPago}
+                  onChange={setFechaUltimoPago}
+                />
+              </>
+            ) : (
+              // Fija e informativa: sin name (no viaja) y sin calendario (un InputFecha deshabilitado
+              // igual dejaría abrir el calendario).
+              <InputFecha label="Fecha de inscripción" value={fechaInscripcion} disabled sinCalendario />
+            )}
 
             <InputFecha
               name="fechaNacimiento"
@@ -455,7 +475,7 @@ export function FormularioMiembro({
             Guardar
           </Button>
           <span className="mt-2 block text-xs" style={{ color: "var(--gx-muted-dim)" }}>
-            Guarda estos datos junto con la sede, el entrenador y el plan del cuadro de al lado.
+            Guarda estos datos junto con el entrenador y el plan del cuadro de al lado.
           </span>
         </Card>
 
@@ -478,16 +498,11 @@ export function FormularioMiembro({
             </div>
           </div>
 
-          <div className="mb-4 rounded-lg border p-4" style={{ borderColor: "var(--gx-edge)" }}>
-            <input type="hidden" name="sucursalId" value={sucursalId} />
-            <div className="flex justify-between text-sm">
-              <span style={{ color: "var(--gx-muted)" }}>Sede asignada</span>
-              <span className="font-medium" style={{ color: "var(--gx-ink)" }}>
-                {sucursalId === ID_AMBAS_SEDES ? "Ambas" : sucursalActivaNombre}
-              </span>
-            </div>
-            {planPermiteMultisede && (
-              <label className="mt-3 flex min-h-11 items-center gap-2 text-sm" style={{ color: "var(--gx-muted)" }}>
+          {/* La sede es un metadato (sede activa o "Ambas"): no se muestra, solo viaja en el formulario. */}
+          <input type="hidden" name="sucursalId" value={sucursalId} />
+          {planPermiteMultisede && (
+            <div className="mb-4 rounded-lg border p-4" style={{ borderColor: "var(--gx-edge)" }}>
+              <label className="flex min-h-11 items-center gap-2 text-sm" style={{ color: "var(--gx-muted)" }}>
                 <input
                   type="checkbox"
                   checked={sucursalId === ID_AMBAS_SEDES}
@@ -496,17 +511,12 @@ export function FormularioMiembro({
                 />
                 Disponible en ambas sedes
               </label>
-            )}
-            <span className="mt-2 block text-xs" style={{ color: "var(--gx-muted-dim)" }}>
-              {sucursalId === ID_AMBAS_SEDES
-                ? "Puede hacer check-in en cualquier sucursal de la organización."
-                : "Determina en qué sucursal puede hacer check-in."}
-            </span>
-          </div>
+            </div>
+          )}
 
-          {/* Campo de un solo uso: solo existe mientras el miembro tenga el aviso "Por regularizar".
-              Se apaga al guardar una fecha nueva o al registrar un pago. */}
-          {esEdicion && porRegularizar && (
+          {/* Siempre editable para quien viene del Excel; para el resto, solo mientras tenga el aviso
+              "Por regularizar". Titila solo mientras dure el aviso. Se envía solo si cambia. */}
+          {editaFechas && (
             <div className="mb-4">
               <input type="hidden" name="fechaVencimientoOriginal" value={valoresIniciales?.fechaVencimiento ?? ""} />
               <InputFecha
@@ -515,7 +525,7 @@ export function FormularioMiembro({
                 label="Fecha de vencimiento"
                 value={fechaVencimiento}
                 onChange={setFechaVencimiento}
-                className="titilar-fecha"
+                className={porRegularizar ? "titilar-fecha" : ""}
               />
             </div>
           )}
@@ -540,12 +550,15 @@ export function FormularioMiembro({
                   Entrenador: {nombreEntrenadorActual ?? "Sin asignar"}
                 </p>
               )}
-              <div className="mt-2 flex justify-between text-xs" style={{ color: "var(--gx-muted)" }}>
-                <span>Última fecha de renovación</span>
-                <span className="font-medium" style={{ color: "var(--gx-ink)" }}>
-                  {ultimaFechaRenovacion ? formatearFechaCorta(ultimaFechaRenovacion) : "—"}
-                </span>
-              </div>
+              {/* Quien viene del Excel ya ve y edita sus fechas arriba. */}
+              {!vieneDelExcel && (
+                <div className="mt-2 flex justify-between text-xs" style={{ color: "var(--gx-muted)" }}>
+                  <span>Última fecha de renovación</span>
+                  <span className="font-medium" style={{ color: "var(--gx-ink)" }}>
+                    {ultimaFechaRenovacion ? formatearFechaCorta(ultimaFechaRenovacion) : "—"}
+                  </span>
+                </div>
+              )}
               {!puedeCambiarPlanGratis && (
                 <p className="mt-2 text-xs" style={{ color: "var(--gx-muted)" }}>
                   Este ciclo ya está pagado — para subir o bajar de plan usá &quot;Cambiar de plan&quot; en el panel
@@ -568,8 +581,9 @@ export function FormularioMiembro({
                   ¿Cambiar el plan?
                 </h3>
                 <p className="mt-2 text-sm" style={{ color: "var(--gx-muted)" }}>
-                  Se va a cambiar el plan de membresía. Si el miembro tiene una suscripción activa, su fecha de
-                  vencimiento se recalcula (prorrateo) a la nueva frecuencia. ¿Estás seguro?
+                  {vieneDelExcel
+                    ? "Se va a cambiar el plan de membresía. Sus fechas de pago y de vencimiento no cambian (se ajustan aparte). ¿Estás seguro?"
+                    : "Se va a cambiar el plan de membresía. Si el miembro tiene una suscripción activa, su fecha de vencimiento se recalcula (prorrateo) a la nueva frecuencia. ¿Estás seguro?"}
                 </p>
                 <div className="mt-4 flex gap-3">
                   <Button
@@ -815,7 +829,14 @@ export function FormularioMiembro({
               <Fila label="Nombre" valor={nombre || "—"} />
               <Fila label="Cédula" valor={cedula || "—"} />
               <Fila label="Celular" valor={celular || "—"} />
-              <Fila label="Inscripción" valor={formatearFecha(fechaInscripcion)} />
+              {esEdicion && vieneDelExcel ? (
+                <>
+                  <Fila label="Fecha de pago" valor={formatearFecha(fechaUltimoPago)} />
+                  <Fila label="Vencimiento" valor={formatearFecha(fechaVencimiento)} />
+                </>
+              ) : (
+                <Fila label="Inscripción" valor={formatearFecha(fechaInscripcion)} />
+              )}
               <Fila
                 label="Sede"
                 valor={sucursalId === ID_AMBAS_SEDES ? "Ambas" : sucursalActivaNombre}

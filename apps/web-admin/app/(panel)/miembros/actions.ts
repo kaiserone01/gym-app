@@ -16,7 +16,10 @@ import {
   MiembroFueraDeSucursalError,
   PlanNoEncontradoError as ActualizarPlanNoEncontradoError,
   AjusteFechaNoDisponibleError,
+  FechasIncoherentesError,
 } from "@gym-app/domain/use-cases/ActualizarMiembro";
+import { calcularCambiosFechas } from "@gym-app/domain/utils/cambiosFechasFicha";
+import { inicioDelDiaCaracas } from "@gym-app/domain/utils/fechaCaracas";
 import { PrismaTurnoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaTurnoRepository";
 import { PrismaPermisoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaPermisoRepository";
 import { PrismaSucursalRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaSucursalRepository";
@@ -55,8 +58,7 @@ function resolverPlanId(formData: FormData): string | null {
   return formData.get("planId")?.toString() || null;
 }
 
-// "yyyy-mm-dd" del <input type="date"> → fecha local a las 00:00 (igual que fechaInscripcion); vacío o
-// inválido → null.
+// "yyyy-mm-dd" del <input type="date"> → fecha local a las 00:00; vacío o inválido → null.
 function leerFecha(valor: FormDataEntryValue | null): Date | null {
   const texto = valor?.toString();
   if (!texto) return null;
@@ -86,7 +88,6 @@ export async function crearMiembroAction(
 
   const nombre = formData.get("nombre")?.toString().trim();
   const cedula = formData.get("cedula")?.toString().trim();
-  const fechaInscripcionTexto = formData.get("fechaInscripcion")?.toString();
   const sucursalId = formData.get("sucursalId")?.toString();
   const precioPlan = Number(formData.get("precioPlan"));
   const metodo = formData.get("metodo")?.toString();
@@ -97,8 +98,8 @@ export async function crearMiembroAction(
   // si no vino, se cae a la sede activa de la sesión.
   const sucursalIdPago = formData.get("sucursalIdPago")?.toString() || sucursalActivaId;
 
-  if (!nombre || !cedula || !fechaInscripcionTexto || !sucursalId || Number.isNaN(precioPlan)) {
-    return { error: "Nombre, cédula, fecha de inscripción y sede son requeridos." };
+  if (!nombre || !cedula || !sucursalId || Number.isNaN(precioPlan)) {
+    return { error: "Nombre, cédula y sede son requeridos." };
   }
   // Un plan de cortesía ($0) no tiene nada que cobrar — el método de pago
   // solo es obligatorio cuando hay un monto real de por medio (ver diseño
@@ -123,7 +124,9 @@ export async function crearMiembroAction(
         sucursalId: resolverSucursalId(sucursalId),
         nombre,
         cedula,
-        fechaInscripcion: new Date(`${fechaInscripcionTexto}T00:00:00`),
+        // La inscripción es siempre hoy (no viene del formulario): el instante en que empieza el día
+        // calendario de Caracas, que es la medianoche local de Venezuela sin depender de la zona del servidor.
+        fechaInscripcion: inicioDelDiaCaracas(new Date()),
         fechaNacimiento: leerFecha(formData.get("fechaNacimiento")),
         celular: formData.get("celular")?.toString() || null,
         fotoUrl,
@@ -212,14 +215,23 @@ export async function actualizarMiembroAction(
 
   const nombre = formData.get("nombre")?.toString().trim();
   const cedula = formData.get("cedula")?.toString().trim();
-  const fechaInscripcionTexto = formData.get("fechaInscripcion")?.toString();
-  const fechaVencimientoTexto = formData.get("fechaVencimiento")?.toString();
   const sucursalId = formData.get("sucursalId")?.toString();
   const precioPlan = Number(formData.get("precioPlan"));
 
-  if (!nombre || !cedula || !fechaInscripcionTexto || !sucursalId || Number.isNaN(precioPlan)) {
-    return { error: "Nombre, cédula, fecha de inscripción, sede y precio del plan son requeridos." };
+  if (!nombre || !cedula || !sucursalId || Number.isNaN(precioPlan)) {
+    return { error: "Nombre, cédula, sede y precio del plan son requeridos." };
   }
+
+  // null = el campo no se envió (el miembro no puede ajustar esa fecha); "" = el campo se vació.
+  const leerTexto = (campo: string) => (formData.has(campo) ? (formData.get(campo)?.toString() ?? "") : null);
+  // Solo las fechas que el socio cambió (distintas a las que cargó el formulario): así no se reescribe
+  // la hora guardada ni se apaga el aviso en cada guardado.
+  const cambiosFechas = calcularCambiosFechas({
+    vencimiento: leerTexto("fechaVencimiento"),
+    vencimientoOriginal: leerTexto("fechaVencimientoOriginal"),
+    pago: leerTexto("fechaUltimoPago"),
+    pagoOriginal: leerTexto("fechaUltimoPagoOriginal"),
+  });
 
   const planId = resolverPlanId(formData);
   const fotoUrl = await guardarFoto(formData.get("foto"));
@@ -240,18 +252,13 @@ export async function actualizarMiembroAction(
           nombre,
           cedula,
           sucursalId: resolverSucursalId(sucursalId),
-          fechaInscripcion: new Date(`${fechaInscripcionTexto}T00:00:00`),
           celular: formData.get("celular")?.toString() || null,
           fechaNacimiento: leerFecha(formData.get("fechaNacimiento")),
-            entrenadorId: formData.get("entrenadorId")?.toString() || null,
+          entrenadorId: formData.get("entrenadorId")?.toString() || null,
           ...(planId ? { planId } : {}),
           precioPlan,
           ...(fotoUrl ? { fotoUrl } : {}),
-          // Solo si el socio cambió la fecha (distinta a la que cargó el formulario): así no se reescribe
-          // la hora del vencimiento ni se apaga el aviso en cada guardado.
-          ...(fechaVencimientoTexto && fechaVencimientoTexto !== formData.get("fechaVencimientoOriginal")?.toString()
-            ? { fechaVencimiento: new Date(`${fechaVencimientoTexto}T00:00:00`) }
-            : {}),
+          ...cambiosFechas,
         },
       }
     );
@@ -259,6 +266,7 @@ export async function actualizarMiembroAction(
     if (
       error instanceof CedulaDuplicadaError ||
       error instanceof AjusteFechaNoDisponibleError ||
+      error instanceof FechasIncoherentesError ||
       error instanceof MiembroNoEncontradoError ||
       error instanceof MiembroFueraDeSucursalError ||
       error instanceof ActualizarPlanNoEncontradoError

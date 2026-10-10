@@ -103,6 +103,7 @@ export default async function PaginaEditarMiembro({ params }: { params: Promise<
         saldoPendiente={saldoPendiente}
         totalPagos={pagos.length}
         porRegularizar={miembro.porRegularizar}
+        vieneDelExcel={miembro.vieneDelExcel}
         valoresIniciales={{
           nombre: miembro.nombre,
           cedula: miembro.cedula,
@@ -110,6 +111,7 @@ export default async function PaginaEditarMiembro({ params }: { params: Promise<
           fechaInscripcion: formatearFechaISO(miembro.fechaInscripcion ?? miembro.createdAt),
           fechaNacimiento: miembro.fechaNacimiento ? formatearFechaISO(miembro.fechaNacimiento) : "",
           fechaVencimiento: miembro.fechaVencimiento ? formatearFechaISO(miembro.fechaVencimiento) : "",
+          fechaUltimoPago: miembro.fechaUltimoPago ? formatearFechaISO(miembro.fechaUltimoPago) : "",
           sucursalId: miembro.sucursalId,
           planId: miembro.planId,
           precioPlan: miembro.precioPlan,

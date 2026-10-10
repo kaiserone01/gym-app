@@ -312,7 +312,9 @@ export function FormularioMiembro({
     }
 
     setErrorPrecio(null);
-    setMostrarTicket(true);
+    // Al editar se guarda directo (el aviso de "Cambios guardados" sale tras el redirect); el resumen es solo del alta.
+    if (esEdicion) form.requestSubmit();
+    else setMostrarTicket(true);
   }
 
   function manejarCambioFoto(archivo: File) {
@@ -382,7 +384,7 @@ export function FormularioMiembro({
       </div>
     )}
 
-    <div className={`grid grid-cols-1 gap-6 ${esEdicion && !mostrarTicket ? "lg:grid-cols-2" : "lg:grid-cols-3"}`}>
+    <div className={`grid grid-cols-1 gap-6 ${esEdicion ? "lg:grid-cols-2" : "lg:grid-cols-3"}`}>
       {/* display: contents — Datos personales y Plan de membresía quedan como
           celdas independientes de la grilla de 3 columnas, pero sus campos
           (incluidos los de la card de Plan) siguen siendo hijos reales de
@@ -775,7 +777,7 @@ export function FormularioMiembro({
           formulario propio, fuera de "formulario-miembro" a propósito (no se
           pueden anidar <form>). En edición no hay columna acá salvo mientras
           se confirma el ticket — los pagos se registran desde Caja. */}
-      {(!esEdicion || mostrarTicket) && (
+      {!esEdicion && (
       <div className="lg:col-start-3 lg:row-start-1">
         {!mostrarTicket ? (
             <Card>
@@ -809,7 +811,7 @@ export function FormularioMiembro({
               className="text-center text-xs font-semibold uppercase tracking-widest"
               style={{ color: "var(--gx-muted)" }}
             >
-              {esEdicion ? "Resumen de la edición" : "Resumen del nuevo miembro"}
+              Resumen del nuevo miembro
             </p>
 
             <div className="my-3 flex justify-center">
@@ -832,21 +834,14 @@ export function FormularioMiembro({
               <Fila label="Nombre" valor={nombre || "—"} />
               <Fila label="Cédula" valor={cedula || "—"} />
               <Fila label="Celular" valor={celular || "—"} />
-              {esEdicion && vieneDelExcel ? (
-                <>
-                  <Fila label="Fecha de pago" valor={formatearFecha(fechaUltimoPago)} />
-                  <Fila label="Vencimiento" valor={formatearFecha(fechaVencimiento)} />
-                </>
-              ) : (
-                <Fila label="Inscripción" valor={formatearFecha(fechaInscripcion)} />
-              )}
+              <Fila label="Inscripción" valor={formatearFecha(fechaInscripcion)} />
               <Fila
                 label="Sede"
                 valor={sucursalId === ID_AMBAS_SEDES ? "Ambas" : sucursalActivaNombre}
               />
               <Fila label="Plan" valor={nombrePlanActual} />
               <Fila label="Entrenador" valor={requiereEntrenador ? (nombreEntrenadorActual ?? "Sin asignar") : "No aplica"} />
-              {!esEdicion && <Fila label="Método de pago" valor={nombreMetodoPagoActual ?? "—"} />}
+              <Fila label="Método de pago" valor={nombreMetodoPagoActual ?? "—"} />
             </dl>
 
             <div className="my-3 border-t border-dashed" style={{ borderColor: "var(--gx-edge)" }} />
@@ -859,7 +854,7 @@ export function FormularioMiembro({
                 ${precioActual.toFixed(2)}
               </span>
             </div>
-            {!esEdicion && montoBsActual !== null && (
+            {montoBsActual !== null && (
               <p className="text-right text-sm" style={{ color: "var(--gx-muted)" }}>
                 Bs. {formatearBs(montoBsActual)}
               </p>
@@ -893,7 +888,7 @@ export function FormularioMiembro({
       )}
 
       {esEdicion && ultimosCiclos.length > 0 && (
-        <Card className={`lg:col-start-1 lg:row-start-2 ${mostrarTicket ? "lg:col-span-3" : "lg:col-span-2"}`}>
+        <Card className={`lg:col-start-1 lg:row-start-2 lg:col-span-2`}>
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--gx-muted)" }}>
               Ciclos

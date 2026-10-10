@@ -472,6 +472,7 @@ Tokens nuevos `--gx-field-bg/-edge/-edge-hover` (`packages/theming/tokens.ts`); 
 ## 5. Próximos pasos
 
 ### 5.00000000000. INSERTAR ACTIVOS DEL EXCEL (2026-10-10)
+- Cédula repetida: ya no se excluyen ambas filas; entra la única ACTIVO del grupo (caso fila 10 Daniel Valera vs fila 965 S/V). Dry-run: +4 altas (filas 10, 575, 993, 1244). Falta correr `db:importar-padron:confirm -- --org=gym-demo --sucursal="Sede Principal"` (pendiente de OK del usuario). 8 ACTIVO sin cédula (filas 385, 672, 891, 1194, 1230, 1283, 1386, 1432) no pueden entrar: hay que ponerles cédula en el Excel.
 - Botón "Insertar N activos en Miembros" en `/excel` (`activarActivosPadronAction`, lotes de 20, `estaActivoEnPadron` en `padronExcel.ts`). Esperado en gym-demo: 193 pendientes (249 → 442 miembros), todos "Por regularizar", sin pagos. Tras desplegar: pulsarlo (pide confirmación), comprobar `/miembros` y que repetirlo no duplica. Sin verificar en navegador. Rehacer el clon de ZIPGYM si se quiere reflejarlos.
 
 ### 5.0000000000. FICHA DE IMPORTADOS (2026-10-10)

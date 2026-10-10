@@ -35,12 +35,25 @@ describe("prepararPadron", () => {
     expect(elegibles).toEqual([]);
     expect(excluidas.map((e) => [e.numeroFila, e.motivo])).toEqual([[4, "sin-cedula"], [5, "sin-cedula"], [6, "sin-cedula"], [7, "sin-cedula"]]);
   });
-  test("cédula repetida: se excluyen TODAS las filas con esa cédula", () => {
+  test("cédula repetida sin una única fila activa: se excluyen TODAS las filas con esa cédula", () => {
     const { elegibles, excluidas } = prepararPadron([
       fila({ numeroFila: 4, cedula: "111" }), fila({ numeroFila: 5, cedula: "222" }), fila({ numeroFila: 6, cedula: "111" }),
     ]);
     expect(elegibles.map((e) => e.cedula)).toEqual(["222"]);
     expect(excluidas.map((e) => [e.numeroFila, e.motivo, e.cedula])).toEqual([[4, "cedula-repetida", "111"], [6, "cedula-repetida", "111"]]);
+  });
+  test("cédula repetida con una única fila ACTIVO: entra esa y se excluye la otra", () => {
+    const { elegibles, excluidas } = prepararPadron([
+      fila({ numeroFila: 4, cedula: "111", status: "ACTIVO" }), fila({ numeroFila: 6, cedula: "111", status: " S/V" }),
+      fila({ numeroFila: 7, cedula: "222", status: "S/V" }), fila({ numeroFila: 8, cedula: "222", status: "ACTIVO" }),
+    ]);
+    expect(elegibles.map((e) => [e.cedula, e.numeroFila])).toEqual([["111", 4], ["222", 8]]);
+    expect(excluidas.map((e) => [e.numeroFila, e.motivo])).toEqual([[6, "cedula-repetida"], [7, "cedula-repetida"]]);
+  });
+  test("cédula repetida con dos filas ACTIVO: no se puede elegir, se excluyen ambas", () => {
+    const { elegibles, excluidas } = prepararPadron([fila({ numeroFila: 4, cedula: "111" }), fila({ numeroFila: 5, cedula: "111" })]);
+    expect(elegibles).toEqual([]);
+    expect(excluidas).toHaveLength(2);
   });
   test("cédula alfanumérica con dígitos entra", () => {
     expect(prepararPadron([fila({ cedula: "E-3880506" })]).elegibles[0].cedula).toBe("E-3880506");

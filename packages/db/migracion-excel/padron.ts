@@ -4,6 +4,7 @@
 import {
   CAMPOS_EDITABLES_PADRON,
   COLUMNAS_EXCEL,
+  estaActivoEnPadron,
   normalizarCamposPadron,
   type CampoEditablePadron,
   type CamposCrudosPadron,
@@ -87,12 +88,23 @@ export function prepararPadron(filas: FilaExcelCruda[]): { elegibles: DatosPadro
     conCedula.push({ fila, cedula });
   }
 
-  const apariciones = new Map<string, number>();
-  for (const { cedula } of conCedula) apariciones.set(cedula, (apariciones.get(cedula) ?? 0) + 1);
+  const porCedula = new Map<string, { fila: FilaExcelCruda; cedula: string }[]>();
+  for (const item of conCedula) porCedula.set(item.cedula, [...(porCedula.get(item.cedula) ?? []), item]);
+
+  // Cédula repetida: se conserva la fila que el Excel marca como activa si es la única; si ninguna o varias lo
+  // son, no hay forma de elegir y se excluyen todas. Las demás de ese grupo se excluyen.
+  const ganadora = new Map<string, FilaExcelCruda>();
+  for (const [cedula, grupo] of porCedula) {
+    if (grupo.length === 1) ganadora.set(cedula, grupo[0].fila);
+    else {
+      const activas = grupo.filter(({ fila }) => estaActivoEnPadron(textoCrudo(fila.status)));
+      if (activas.length === 1) ganadora.set(cedula, activas[0].fila);
+    }
+  }
 
   const elegibles: DatosPadron[] = [];
   for (const { fila, cedula } of conCedula) {
-    if ((apariciones.get(cedula) ?? 0) > 1) {
+    if (ganadora.get(cedula) !== fila) {
       excluidas.push({ numeroFila: fila.numeroFila, nombre: fila.nombre.trim(), motivo: "cedula-repetida", cedula });
       continue;
     }

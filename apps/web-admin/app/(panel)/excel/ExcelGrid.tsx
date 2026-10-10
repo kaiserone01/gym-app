@@ -4,14 +4,15 @@ import { useCallback, useDeferredValue, useEffect, useLayoutEffect, useMemo, use
 import { useFeedback } from "@gym-app/ui/components/FeedbackOverlay";
 import { Button } from "@gym-app/ui/components/Button";
 import type { HojaPadron } from "@gym-app/domain/entities/MiembroReferencia";
-import { PALETA_RESALTADO } from "@gym-app/domain/utils/padronExcel";
+import { PALETA_RESALTADO, estaActivoEnPadron } from "@gym-app/domain/utils/padronExcel";
 import { filtrarFilasPadron, type FiltrosFilasPadron } from "@gym-app/domain/utils/filtrarFilasPadron";
 import { PRIMERA_FILA_DATOS, resolverSaltoFila } from "@gym-app/domain/utils/saltoFila";
-import { editarFilaPadronAction, resaltarFilaPadronAction } from "./actions";
+import { activarActivosPadronAction, editarFilaPadronAction, resaltarFilaPadronAction } from "./actions";
 import { COLUMNAS_GRID, HOJA_POR_DEFECTO, type FilaGrid } from "./tiposGrid";
 import { ALTO_FILA, ANCHO_ESTADO, ANCHO_NUMERO, ESTILO_NUMERO, FilaHoja, HOJA, celdaBase, valorParaGuardar } from "./FilaHoja";
 import { PanelFiltros } from "./PanelFiltros";
 
+const LOTE_ACTIVACION = 20;
 const BLOQUE = 150; // filas que se agregan cada vez que el final de la hoja entra en vista
 const ALTO_LETRAS = 22;
 const CAMPOS_FECHA = new Set(["fNacimiento", "fVenc", "fechaPago"]);
@@ -37,6 +38,7 @@ export function ExcelGrid({ filas: filasIniciales, hoja, puedeEditar }: { filas:
   const [pintando, setPintando] = useState(false);
   const [textoIr, setTextoIr] = useState("");
   const [aviso, setAviso] = useState<string | null>(null);
+  const [activando, setActivando] = useState<number | null>(null);
 
   const contenedor = useRef<HTMLDivElement>(null);
   const centinela = useRef<HTMLDivElement>(null);
@@ -167,6 +169,33 @@ export function ExcelGrid({ filas: filasIniciales, hoja, puedeEditar }: { filas:
     [mostrarError, reemplazarFila, enfocarHoja]
   );
 
+  const pendientesActivos = useMemo(() => filas.filter((f) => f.miembroId === null && estaActivoEnPadron(f.status)).map((f) => f.cedula), [filas]);
+
+  async function activarActivos() {
+    if (!window.confirm(`Se insertarán ${pendientesActivos.length} miembros con estatus activo en el listado, como "Por regularizar" y sin pago. ¿Continuar?`)) return;
+    const pendientes = [...pendientesActivos];
+    setActivando(0);
+    let hechos = 0;
+    try {
+      for (let i = 0; i < pendientes.length; i += LOTE_ACTIVACION) {
+        const resultado = await activarActivosPadronAction(pendientes.slice(i, i + LOTE_ACTIVACION));
+        if ("error" in resultado) {
+          mostrarError(resultado.error);
+          break;
+        }
+        const idPorCedula = new Map(resultado.activados.map((a) => [a.cedula, a.miembroId]));
+        setFilas((previas) => previas.map((f) => (idPorCedula.has(f.cedula) ? { ...f, miembroId: idPorCedula.get(f.cedula)! } : f)));
+        hechos += resultado.activados.length;
+        setActivando(hechos);
+      }
+    } catch {
+      mostrarError("No se pudo activar a todos. Vuelve a intentarlo: los ya insertados no se duplican.");
+    } finally {
+      setActivando(null);
+    }
+    setAviso(`${hechos} miembros insertados.`);
+  }
+
   const abrirPaleta = useCallback((cedula: string, ancla: HTMLElement) => {
     const r = ancla.getBoundingClientRect();
     setSeleccion({ cedula, col: 0 });
@@ -292,6 +321,11 @@ export function ExcelGrid({ filas: filasIniciales, hoja, puedeEditar }: { filas:
               Ir
             </Button>
           </form>
+          {puedeEditar && pendientesActivos.length > 0 && (
+            <Button type="button" className="min-h-9" disabled={activando !== null} onClick={() => void activarActivos()}>
+              {activando === null ? `Insertar ${pendientesActivos.length} activos en Miembros` : `Insertando… ${activando} de ${pendientesActivos.length + activando}`}
+            </Button>
+          )}
           <Button type="button" variant="secundario" className="min-h-9" aria-expanded={verFiltros} onClick={() => setVerFiltros((v) => !v)}>
             {hayFiltros(filtros) ? `Filtros · ${filtradas.length} de ${filas.length}` : "Filtros"}
           </Button>

@@ -52,6 +52,12 @@ export function esColorResaltadoValido(hex: string): boolean {
   return PALETA_RESALTADO.some((c) => c.hex === hex);
 }
 
+// Estatus "activo" del Excel (columna B): ACTIVO / ACTIVA, sin distinguir mayúsculas ni espacios. S/V y vacío no cuentan.
+export function estaActivoEnPadron(status: string | null): boolean {
+  const limpio = status?.trim().toUpperCase();
+  return limpio === "ACTIVO" || limpio === "ACTIVA";
+}
+
 export interface NormalizadosPadron {
   fechaVencimiento: Date | null;
   fechaUltimoPago: Date | null;

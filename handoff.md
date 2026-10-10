@@ -471,6 +471,9 @@ Tokens nuevos `--gx-field-bg/-edge/-edge-hover` (`packages/theming/tokens.ts`); 
 
 ## 5. Próximos pasos
 
+### 5.00000000000. INSERTAR ACTIVOS DEL EXCEL (2026-10-10)
+- Botón "Insertar N activos en Miembros" en `/excel` (`activarActivosPadronAction`, lotes de 20, `estaActivoEnPadron` en `padronExcel.ts`). Esperado en gym-demo: 193 pendientes (249 → 442 miembros), todos "Por regularizar", sin pagos. Tras desplegar: pulsarlo (pide confirmación), comprobar `/miembros` y que repetirlo no duplica. Sin verificar en navegador. Rehacer el clon de ZIPGYM si se quiere reflejarlos.
+
 ### 5.0000000000. FICHA DE IMPORTADOS (2026-10-10)
 0. Decidir con el usuario si se corrigen las fechas (UTC medianoche) de los miembros ya activados/migrados desde el padrón, y si se bloquea el guardado de la ficha con "Fecha de pago" incompleta o imposible (ver Estado actual, puntos a y b).
 1. Desplegar web-admin (aplica la migración `20261011000000_miembro_viene_del_excel`) y verificar con una consulta de solo lectura el conteo de `vieneDelExcel` (esperado en gym-demo ≈ 4 en false).

@@ -14,7 +14,8 @@ import {
   ReferenciaNoEncontradaError,
   RolNoAutorizadoError,
 } from "@gym-app/domain/use-cases/EditarMiembroReferencia";
-import { CAMPOS_EDITABLES_PADRON, type CambiosEdicionPadron } from "@gym-app/domain/utils/padronExcel";
+import { CAMPOS_EDITABLES_PADRON, estaActivoEnPadron, type CambiosEdicionPadron } from "@gym-app/domain/utils/padronExcel";
+import { activarMiembroEnTransaccion } from "@/lib/activacion";
 import { aFilaGrid, type FilaGrid } from "./tiposGrid";
 
 type ResultadoEdicion = { fila: FilaGrid } | { error: string };
@@ -66,4 +67,35 @@ export async function editarFilaPadronAction(cedula: string, cambios: CambiosEdi
 
 export async function resaltarFilaPadronAction(cedula: string, color: string | null): Promise<ResultadoEdicion> {
   return editarFila(cedula, { resaltado: color });
+}
+
+const MAX_LOTE_ACTIVACION = 25;
+
+// Inserta en Miembros (por regularizar, sin pago) a quienes el Excel marca como activos. Se llama por lotes desde la
+// cuadrícula; cada cédula se revalida en el servidor (padrón de esta sede + estatus activo) y la activación es idempotente.
+export async function activarActivosPadronAction(cedulas: string[]): Promise<{ activados: { cedula: string; miembroId: string }[] } | { error: string }> {
+  const sesion = await obtenerUsuarioDeSesionActual();
+  if (!sesion) redirect("/login");
+  const { usuario, sucursalActivaId } = sesion;
+
+  if (!Array.isArray(cedulas) || cedulas.length > MAX_LOTE_ACTIVACION || !cedulas.every((c) => typeof c === "string")) {
+    return { error: "Lote de activación inválido." };
+  }
+  if (!(await new AuthorizationService(new PrismaPermisoRepository(prisma)).tienePermiso(usuario.id, "MIEMBROS", "EDITAR"))) {
+    return { error: "No tienes permiso para activar miembros." };
+  }
+
+  const referencias = new PrismaMiembroReferenciaRepository(prisma);
+  const activados: { cedula: string; miembroId: string }[] = [];
+  try {
+    for (const cedula of cedulas) {
+      const referencia = await referencias.buscarPorCedula(usuario.organizacionId, cedula);
+      if (!referencia || referencia.sucursalId !== sucursalActivaId || !estaActivoEnPadron(referencia.status)) continue;
+      const miembro = await activarMiembroEnTransaccion({ organizacionId: usuario.organizacionId, sucursalId: sucursalActivaId, cedula });
+      if (miembro) activados.push({ cedula, miembroId: miembro.id });
+    }
+  } catch {
+    return { error: "No se pudo activar a todos. Vuelve a intentarlo: los ya insertados no se duplican." };
+  }
+  return { activados };
 }

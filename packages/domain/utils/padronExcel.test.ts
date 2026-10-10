@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { CAMPOS_EDITABLES_PADRON, COLUMNAS_EXCEL, PALETA_RESALTADO, esColorResaltadoValido, fechaDesdeTextoPadron, normalizarCamposPadron, resolverPlanPadron } from "./padronExcel";
+import { CAMPOS_EDITABLES_PADRON, COLUMNAS_EXCEL, PALETA_RESALTADO, esColorResaltadoValido, estaActivoEnPadron, fechaDesdeTextoPadron, normalizarCamposPadron, resolverPlanPadron } from "./padronExcel";
 
 describe("resolverPlanPadron", () => {
   test("precio de un plan real → nombre y precio", () => {
@@ -58,5 +58,17 @@ describe("columnas editables y resaltado", () => {
   test("esColorResaltadoValido acepta solo los hex de la paleta en mayúsculas", () => {
     for (const { hex } of PALETA_RESALTADO) expect(esColorResaltadoValido(hex)).toBe(true);
     for (const hex of ["ffff00", "#FFFF00", "000000", "", "FFFF0"]) expect(esColorResaltadoValido(hex)).toBe(false);
+  });
+});
+
+describe("estaActivoEnPadron", () => {
+  test("ACTIVO y ACTIVA, sin importar mayúsculas ni espacios", () => {
+    expect(estaActivoEnPadron("ACTIVO")).toBe(true);
+    expect(estaActivoEnPadron(" activa ")).toBe(true);
+  });
+  test("S/V, vacío y null no son activos", () => {
+    expect(estaActivoEnPadron("S/V")).toBe(false);
+    expect(estaActivoEnPadron("")).toBe(false);
+    expect(estaActivoEnPadron(null)).toBe(false);
   });
 });

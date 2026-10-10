@@ -447,17 +447,9 @@ export function FormularioMiembro({
               />
             </div>
 
-            {esEdicion && vieneDelExcel ? (
-              <>
-                <input type="hidden" name="fechaUltimoPagoOriginal" value={valoresIniciales?.fechaUltimoPago ?? ""} />
-                <InputFecha
-                  name="fechaUltimoPago"
-                  label="Fecha de pago"
-                  value={fechaUltimoPago}
-                  onChange={setFechaUltimoPago}
-                />
-              </>
-            ) : (
+            {/* Quien viene del Excel no tiene inscripción conocida: su fecha de pago y de vencimiento van
+                juntas en la tarjeta de Plan de membresía. */}
+            {!(esEdicion && vieneDelExcel) && (
               // Fija e informativa: sin name (no viaja) y sin calendario (un InputFecha deshabilitado
               // igual dejaría abrir el calendario).
               <InputFecha label="Fecha de inscripción" value={fechaInscripcion} disabled sinCalendario />
@@ -517,7 +509,18 @@ export function FormularioMiembro({
           {/* Siempre editable para quien viene del Excel; para el resto, solo mientras tenga el aviso
               "Por regularizar". Titila solo mientras dure el aviso. Se envía solo si cambia. */}
           {editaFechas && (
-            <div className="mb-4">
+            <div className={`mb-4 grid gap-4 ${vieneDelExcel ? "sm:grid-cols-2" : "grid-cols-1"}`}>
+              {vieneDelExcel && (
+                <>
+                  <input type="hidden" name="fechaUltimoPagoOriginal" value={valoresIniciales?.fechaUltimoPago ?? ""} />
+                  <InputFecha
+                    name="fechaUltimoPago"
+                    label="Fecha de pago"
+                    value={fechaUltimoPago}
+                    onChange={setFechaUltimoPago}
+                  />
+                </>
+              )}
               <input type="hidden" name="fechaVencimientoOriginal" value={valoresIniciales?.fechaVencimiento ?? ""} />
               <InputFecha
                 id="campo-fecha-vencimiento"

@@ -28,7 +28,31 @@ export function esCumpleanos(fechaNacimiento: Date | null, ahora: Date): boolean
 }
 
 // El padrón guarda las fechas a medianoche UTC; recibe una así y devuelve ese mismo día calendario a las
-// 00:00 de Caracas (el servidor lee las fechas con getters locales en esa zona).
+// 00:00 de Caracas (el servidor lee las fechas con getters locales en esa zona). Caracas fue UTC-4:30
+// entre 2007-12-09 y 2016-05-01, así que el desfase se calcula con Intl, sin depender del huso del servidor.
+const PARTES_CARACAS = new Intl.DateTimeFormat("en-US", {
+  timeZone: "America/Caracas",
+  hourCycle: "h23",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  second: "2-digit",
+});
+
+function relojDeCaracasComoUtc(instante: Date): number {
+  const p = Object.fromEntries(PARTES_CARACAS.formatToParts(instante).map((x) => [x.type, Number(x.value)]));
+  return Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute, p.second);
+}
+
 export function medianocheCaracasDeFechaUtc(fecha: Date): Date {
-  return new Date(fecha.getTime() + 4 * 3_600_000);
+  const deseado = Date.UTC(fecha.getUTCFullYear(), fecha.getUTCMonth(), fecha.getUTCDate());
+  let candidato = new Date(deseado + 4 * 3_600_000);
+  for (let i = 0; i < 2; i++) {
+    const diferencia = deseado - relojDeCaracasComoUtc(candidato);
+    if (diferencia === 0) break;
+    candidato = new Date(candidato.getTime() + diferencia);
+  }
+  return candidato;
 }

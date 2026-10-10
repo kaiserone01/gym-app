@@ -44,4 +44,14 @@ describe("medianocheCaracasDeFechaUtc", () => {
     expect(medianocheCaracasDeFechaUtc(new Date("2026-12-31T00:00:00Z")).toISOString()).toBe("2026-12-31T04:00:00.000Z");
     expect(medianocheCaracasDeFechaUtc(new Date("2027-01-01T00:00:00Z")).toISOString()).toBe("2027-01-01T04:00:00.000Z");
   });
+
+  test("en la era UTC-4:30 (2007-12-09 a 2016-05-01) la medianoche cae a las 04:30Z", () => {
+    expect(medianocheCaracasDeFechaUtc(new Date("2010-03-05T00:00:00Z")).toISOString()).toBe("2010-03-05T04:30:00.000Z");
+    expect(medianocheCaracasDeFechaUtc(new Date("2016-04-30T00:00:00Z")).toISOString()).toBe("2016-04-30T04:30:00.000Z");
+  });
+
+  test("antes y después de la era UTC-4:30 vuelve a 04:00Z", () => {
+    expect(medianocheCaracasDeFechaUtc(new Date("2007-12-08T00:00:00Z")).toISOString()).toBe("2007-12-08T04:00:00.000Z");
+    expect(medianocheCaracasDeFechaUtc(new Date("2016-05-02T00:00:00Z")).toISOString()).toBe("2016-05-02T04:00:00.000Z");
+  });
 });

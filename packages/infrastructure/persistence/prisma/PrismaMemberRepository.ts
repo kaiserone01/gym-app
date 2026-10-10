@@ -21,6 +21,7 @@ type FilaMiembro = {
   fechaVencimiento: Date | null;
   activo: boolean;
   porRegularizar: boolean;
+  vieneDelExcel: boolean;
   genero: Genero | null;
   createdAt: Date;
 };
@@ -45,6 +46,7 @@ function mapear(miembro: FilaMiembro): Miembro {
     fechaVencimiento: miembro.fechaVencimiento,
     activo: miembro.activo,
     porRegularizar: miembro.porRegularizar,
+    vieneDelExcel: miembro.vieneDelExcel,
     genero: miembro.genero,
     createdAt: miembro.createdAt,
   };

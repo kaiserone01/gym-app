@@ -160,6 +160,7 @@ model Miembro {
   fechaVencimiento DateTime?
   activo           Boolean       @default(true) // baja lógica del miembro
   porRegularizar   Boolean       @default(false) // los datos de fecha/pago vienen de una fuente externa (Excel/padrón) sin verificar: el socio debe ajustar el vencimiento o registrar un pago (badge "Por regularizar"); se limpia al ajustar la fecha o al registrar un pago
+  vieneDelExcel    Boolean       @default(false) // el miembro viene del padrón/migración del Excel: su fecha de pago y de vencimiento se editan siempre en la ficha (no se conoce su fecha de inscripción)
   genero           Genero? // solo para saludar en el kiosco ("Bienvenido" / "Bienvenida"); null = no definido
   createdAt        DateTime      @default(now())
 

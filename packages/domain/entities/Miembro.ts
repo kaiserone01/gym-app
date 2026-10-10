@@ -25,6 +25,7 @@ export interface Miembro {
   fechaVencimiento: Date | null;
   activo: boolean;
   porRegularizar: boolean; // fechas y pago vienen de una fuente externa (padrón/Excel o migración anterior) y no están verificados: el socio debe ajustar la fecha o registrar un pago con la fecha real
+  vieneDelExcel: boolean; // viene del padrón/migración del Excel: su fecha de pago y de vencimiento se editan siempre en la ficha (no se conoce su fecha de inscripción)
   genero: Genero | null; // para el saludo del kiosco; null = no definido
   createdAt: Date;
 }
@@ -46,6 +47,7 @@ export interface DatosNuevoMiembro {
   fechaUltimoPago?: Date | null;
   fechaVencimiento?: Date | null;
   porRegularizar?: boolean;
+  vieneDelExcel?: boolean;
 }
 
 export interface CambiosMiembro {
@@ -60,6 +62,7 @@ export interface CambiosMiembro {
   planId?: string | null;
   precioPlan?: number;
   saldoAFavorUSD?: number;
+  fechaUltimoPago?: Date | null;
   fechaVencimiento?: Date | null;
   activo?: boolean;
   porRegularizar?: boolean;

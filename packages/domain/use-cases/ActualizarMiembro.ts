@@ -23,7 +23,13 @@ export class PlanNoEncontradoError extends Error {
 
 export class AjusteFechaNoDisponibleError extends Error {
   constructor() {
-    super("Solo se puede ajustar la fecha de vencimiento a un miembro con el aviso \"Por regularizar\".");
+    super("Solo se pueden ajustar las fechas de pago y vencimiento de un miembro que viene del Excel o con el aviso \"Por regularizar\".");
+  }
+}
+
+export class FechasIncoherentesError extends Error {
+  constructor() {
+    super("La fecha de pago no puede ser posterior a la de vencimiento.");
   }
 }
 
@@ -57,24 +63,36 @@ export async function actualizarMiembro(
   const cambiaDePlan =
     input.cambios.planId !== undefined && input.cambios.planId !== null && input.cambios.planId !== antes.planId;
 
-  // Ajuste manual del vencimiento (solo con el aviso "Por regularizar"): se mantiene en sync con la
-  // Suscripcion (nunca por separado) y apaga el aviso.
+  // Ajuste manual de las fechas de pago y vencimiento (solo si viene del Excel o tiene el aviso "Por
+  // regularizar"): se mantiene en sync con la Suscripcion (nunca por separado) y apaga el aviso.
+  // fechaUltimoPago null = vaciarla; fechaVencimiento ausente/null = sin cambio (un vencimiento no se vacía).
+  const nuevoPago = input.cambios.fechaUltimoPago;
   const nuevoVencimiento = input.cambios.fechaVencimiento ?? null;
-  if (nuevoVencimiento && !antes.porRegularizar) {
+  const cambiaFechas = nuevoPago !== undefined || nuevoVencimiento !== null;
+  if (cambiaFechas && !(antes.vieneDelExcel || antes.porRegularizar)) {
     throw new AjusteFechaNoDisponibleError();
   }
-  const cambios = nuevoVencimiento ? { ...input.cambios, porRegularizar: false } : input.cambios;
+  const pagoFinal = nuevoPago !== undefined ? nuevoPago : antes.fechaUltimoPago;
+  const vencimientoFinal = nuevoVencimiento ?? antes.fechaVencimiento;
+  if (cambiaFechas && pagoFinal && vencimientoFinal && pagoFinal.getTime() > vencimientoFinal.getTime()) {
+    throw new FechasIncoherentesError();
+  }
+  const cambios = cambiaFechas ? { ...input.cambios, porRegularizar: false } : input.cambios;
 
   const actualizado = await deps.miembros.actualizar(input.organizacionId, input.id, cambios);
   if (!actualizado) {
     throw new MiembroNoEncontradoError();
   }
 
-  if (nuevoVencimiento) {
-    const plan = antes.planId ? await deps.planes.buscarPorId(input.organizacionId, antes.planId) : null;
-    const inicio = new Date(nuevoVencimiento);
-    inicio.setDate(inicio.getDate() - (plan?.diasCiclo ?? 30));
-    await deps.suscripciones.ajustarCicloMasReciente(input.id, inicio, nuevoVencimiento);
+  if (cambiaFechas && vencimientoFinal) {
+    // Ciclo [fecha de pago, vencimiento]; sin una fecha de pago válida, el inicio es el vencimiento - días del plan.
+    let inicio = pagoFinal && pagoFinal.getTime() < vencimientoFinal.getTime() ? pagoFinal : null;
+    if (!inicio) {
+      const plan = antes.planId ? await deps.planes.buscarPorId(input.organizacionId, antes.planId) : null;
+      inicio = new Date(vencimientoFinal);
+      inicio.setDate(inicio.getDate() - (plan?.diasCiclo ?? 30));
+    }
+    await deps.suscripciones.ajustarCicloMasReciente(input.id, inicio, vencimientoFinal);
   }
 
   // Si el miembro cambió de Plan (sin que medie un pago nuevo) y tiene una
@@ -95,7 +113,8 @@ export async function actualizarMiembro(
         throw new PlanNoEncontradoError();
       }
 
-      if (planViejo) {
+      // Un miembro del Excel no tiene fecha de inscripción confiable: el cambio de plan no prorratea.
+      if (planViejo && !antes.vieneDelExcel) {
         const nuevoFin = prorratearVencimiento(activa.inicio, ahora, planViejo.diasCiclo, planNuevo.diasCiclo);
         await deps.suscripciones.extenderFin(activa.id, nuevoFin);
       }

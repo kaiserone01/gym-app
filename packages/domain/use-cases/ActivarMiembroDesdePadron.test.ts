@@ -65,7 +65,7 @@ describe("activarMiembroPorCedula", () => {
     expect(miembro?.id).toBe("nuevo");
     expect(creados[0]).toMatchObject({
       organizacionId: "org", sucursalId: "principal", nombre: "Ana Pérez", cedula: "123", celular: "0414",
-      planId: "p30", precioPlan: 30, porRegularizar: true,
+      planId: "p30", precioPlan: 30, porRegularizar: true, vieneDelExcel: true,
     });
     expect(creados[0].fechaVencimiento).toEqual(new Date("2026-10-01T00:00:00Z"));
     expect(creados[0].fechaUltimoPago).toEqual(new Date("2026-09-01T00:00:00Z"));

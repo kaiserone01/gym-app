@@ -49,6 +49,7 @@ export async function activarMiembroPorCedula(deps: ActivarMiembroDeps, input: A
     fechaUltimoPago: referencia.fechaUltimoPago,
     fechaVencimiento: referencia.fechaVencimiento,
     porRegularizar: true,
+    vieneDelExcel: true,
   });
 
   if (plan && referencia.fechaVencimiento) {

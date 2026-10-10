@@ -4,15 +4,18 @@ import type { CambiosMiembro } from "../entities/Miembro";
 
 type OpcionesMiembro = {
   vieneDelExcel?: boolean;
+  planId?: string | null;
   fechaUltimoPago?: Date | null;
   fechaVencimiento?: Date | null;
 };
 
-function crearDeps(porRegularizar = true, cedulaOcupadaPor: string | null = null, miembro: OpcionesMiembro = {}) {
+function crearDeps(porRegularizar = true, cedulaOcupadaPor: string | null = null, miembro: OpcionesMiembro = {}, tieneSuscripcion = true) {
   const cambiosGuardados: CambiosMiembro[] = [];
   const ciclos: { inicio: Date; fin: Date }[] = [];
   const extensiones: Date[] = [];
   const cambiosDePlan: string[] = [];
+  const creadas: { miembroId: string; planId: string; inicio: Date; fin: Date; fechaLimiteAbono: Date | null }[] = [];
+  const planesDelCiclo: (string | undefined)[] = [];
   const deps = {
     miembros: {
       buscarPorId: async () => ({
@@ -27,9 +30,14 @@ function crearDeps(porRegularizar = true, cedulaOcupadaPor: string | null = null
     },
     planes: { buscarPorId: async () => ({ diasCiclo: 30 }) },
     suscripciones: {
-      ajustarCicloMasReciente: async (_id: string, inicio: Date, fin: Date) => {
+      ajustarCicloMasReciente: async (_id: string, inicio: Date, fin: Date, planId?: string) => {
         ciclos.push({ inicio, fin });
-        return true;
+        planesDelCiclo.push(planId);
+        return tieneSuscripcion;
+      },
+      crear: async (datos: (typeof creadas)[number]) => {
+        creadas.push(datos);
+        return datos;
       },
       buscarActivaVigentePorMiembroYPlan: async () => ({ id: "s1", inicio: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000) }),
       extenderFin: async (_id: string, fin: Date) => {
@@ -41,7 +49,7 @@ function crearDeps(porRegularizar = true, cedulaOcupadaPor: string | null = null
     },
     sucursales: {},
   } as unknown as Parameters<typeof actualizarMiembro>[0];
-  return { deps, cambiosGuardados, ciclos, extensiones, cambiosDePlan };
+  return { deps, cambiosGuardados, ciclos, extensiones, cambiosDePlan, creadas, planesDelCiclo };
 }
 
 const base = { organizacionId: "org", id: "m1", sucursalActivaId: "s1" };
@@ -133,6 +141,44 @@ describe("actualizarMiembro — ajuste manual de fechas", () => {
     await actualizarMiembro(deps, { ...base, cambios: { nombre: "Otro" } });
     expect(cambiosGuardados[0]).toEqual({ nombre: "Otro" });
     expect(ciclos).toEqual([]);
+  });
+});
+
+describe("actualizarMiembro — suscripción al ajustar fechas", () => {
+  const pago = new Date("2026-10-01T00:00:00.000Z");
+  const venc = new Date("2026-11-15T00:00:00.000Z");
+
+  test("sin suscripción y con plan: la crea con el ciclo [pago, vencimiento]", async () => {
+    const { deps, creadas } = crearDeps(true, null, {}, false);
+    await actualizarMiembro(deps, { ...base, cambios: { fechaUltimoPago: pago, fechaVencimiento: venc } });
+    expect(creadas).toEqual([{ miembroId: "m1", planId: "p1", inicio: pago, fin: venc, fechaLimiteAbono: null }]);
+  });
+
+  test("sin suscripción y con plan nuevo en el mismo guardado: la crea con el plan nuevo", async () => {
+    const { deps, creadas } = crearDeps(true, null, { planId: null }, false);
+    await actualizarMiembro(deps, { ...base, cambios: { planId: "p2", fechaVencimiento: venc } });
+    expect(creadas.map((c) => c.planId)).toEqual(["p2"]);
+  });
+
+  test("sin suscripción y sin plan: no crea nada", async () => {
+    const { deps, creadas } = crearDeps(true, null, { planId: null }, false);
+    await actualizarMiembro(deps, { ...base, cambios: { fechaVencimiento: venc } });
+    expect(creadas).toEqual([]);
+  });
+
+  test("con suscripción: no crea otra", async () => {
+    const { deps, creadas } = crearDeps();
+    await actualizarMiembro(deps, { ...base, cambios: { fechaVencimiento: venc } });
+    expect(creadas).toEqual([]);
+  });
+
+  test("plan y fechas a la vez: el ciclo recibe el plan nuevo; sin cambio de plan, ninguno", async () => {
+    const conPlan = crearDeps();
+    await actualizarMiembro(conPlan.deps, { ...base, cambios: { planId: "p2", fechaVencimiento: venc } });
+    expect(conPlan.planesDelCiclo).toEqual(["p2"]);
+    const sinPlan = crearDeps();
+    await actualizarMiembro(sinPlan.deps, { ...base, cambios: { fechaVencimiento: venc } });
+    expect(sinPlan.planesDelCiclo).toEqual([undefined]);
   });
 });
 

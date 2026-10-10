@@ -3,6 +3,7 @@ import { IMiembroReferenciaRepository } from "../ports/IMiembroReferenciaReposit
 import { IPlanRepository } from "../ports/IPlanRepository";
 import { ISuscripcionRepository } from "../ports/ISuscripcionRepository";
 import type { Miembro } from "../entities/Miembro";
+import { medianocheCaracasDeFechaUtc } from "../utils/fechaCaracas";
 
 const MS_POR_DIA = 24 * 60 * 60 * 1000;
 
@@ -34,30 +35,34 @@ export async function activarMiembroPorCedula(deps: ActivarMiembroDeps, input: A
     ? ((await deps.planes.listarPorOrganizacion(input.organizacionId)).find((p) => p.nombre === referencia.planNombre) ?? null)
     : null;
 
+  // El padrón guarda las fechas a medianoche UTC; se normalizan al mismo día a medianoche de Caracas.
+  const normalizar = (fecha: Date | null) => (fecha ? medianocheCaracasDeFechaUtc(fecha) : null);
+  const fechaVencimiento = normalizar(referencia.fechaVencimiento);
+
   const miembro = await deps.miembros.crear({
     organizacionId: input.organizacionId,
     sucursalId: referencia.sucursalId,
     nombre: referencia.nombre,
     cedula: referencia.cedula,
     fechaInscripcion: null,
-    fechaNacimiento: referencia.fechaNacimiento,
+    fechaNacimiento: normalizar(referencia.fechaNacimiento),
     celular: referencia.celular,
     fotoUrl: null,
     entrenadorId: null,
     planId: plan?.id ?? null,
     precioPlan: referencia.precioPlanUSD ?? plan?.precioUSD ?? 0,
-    fechaUltimoPago: referencia.fechaUltimoPago,
-    fechaVencimiento: referencia.fechaVencimiento,
+    fechaUltimoPago: normalizar(referencia.fechaUltimoPago),
+    fechaVencimiento,
     porRegularizar: true,
     vieneDelExcel: true,
   });
 
-  if (plan && referencia.fechaVencimiento) {
+  if (plan && fechaVencimiento) {
     await deps.suscripciones.crear({
       miembroId: miembro.id,
       planId: plan.id,
-      inicio: new Date(referencia.fechaVencimiento.getTime() - plan.diasCiclo * MS_POR_DIA),
-      fin: referencia.fechaVencimiento,
+      inicio: new Date(fechaVencimiento.getTime() - plan.diasCiclo * MS_POR_DIA),
+      fin: fechaVencimiento,
       fechaLimiteAbono: null,
     });
   }

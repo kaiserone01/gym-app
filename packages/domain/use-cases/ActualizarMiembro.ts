@@ -92,7 +92,13 @@ export async function actualizarMiembro(
       inicio = new Date(vencimientoFinal);
       inicio.setDate(inicio.getDate() - (plan?.diasCiclo ?? 30));
     }
-    await deps.suscripciones.ajustarCicloMasReciente(input.id, inicio, vencimientoFinal);
+    const planNuevoId = cambiaDePlan ? (input.cambios.planId as string) : undefined;
+    const sincronizada = await deps.suscripciones.ajustarCicloMasReciente(input.id, inicio, vencimientoFinal, planNuevoId);
+    // Sin ninguna Suscripcion (el padrón no traía vencimiento o plan) el kiosco seguiría mostrando "vencido": se crea.
+    const planId = planNuevoId ?? antes.planId;
+    if (!sincronizada && planId) {
+      await deps.suscripciones.crear({ miembroId: input.id, planId, inicio, fin: vencimientoFinal, fechaLimiteAbono: null });
+    }
   }
 
   // Si el miembro cambió de Plan (sin que medie un pago nuevo) y tiene una

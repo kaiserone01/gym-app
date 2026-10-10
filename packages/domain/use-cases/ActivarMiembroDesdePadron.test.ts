@@ -67,14 +67,12 @@ describe("activarMiembroPorCedula", () => {
       organizacionId: "org", sucursalId: "principal", nombre: "Ana Pérez", cedula: "123", celular: "0414",
       planId: "p30", precioPlan: 30, porRegularizar: true, vieneDelExcel: true,
     });
-    expect(creados[0].fechaVencimiento).toEqual(new Date("2026-10-01T00:00:00Z"));
-    expect(creados[0].fechaUltimoPago).toEqual(new Date("2026-09-01T00:00:00Z"));
+    // Fechas del padrón (medianoche UTC) normalizadas a la medianoche de Caracas del mismo día.
+    const venc = new Date("2026-10-01T04:00:00Z");
+    expect(creados[0].fechaVencimiento).toEqual(venc);
+    expect(creados[0].fechaUltimoPago).toEqual(new Date("2026-09-01T04:00:00Z"));
     expect(suscripciones).toEqual([
-      {
-        miembroId: "nuevo", planId: "p30",
-        inicio: new Date(new Date("2026-10-01T00:00:00Z").getTime() - 30 * DIA),
-        fin: new Date("2026-10-01T00:00:00Z"), fechaLimiteAbono: null,
-      },
+      { miembroId: "nuevo", planId: "p30", inicio: new Date(venc.getTime() - 30 * DIA), fin: venc, fechaLimiteAbono: null },
     ]);
   });
 
@@ -100,5 +98,11 @@ describe("activarMiembroPorCedula", () => {
     const sinPlan = crearDeps({ referencia: { precioPlanUSD: null, planNombre: null } });
     await activarMiembroPorCedula(sinPlan.deps, input);
     expect(sinPlan.creados[0].precioPlan).toBe(0);
+  });
+
+  test("normaliza también la fecha de nacimiento", async () => {
+    const { deps, creados } = crearDeps({ referencia: { fechaNacimiento: new Date("1990-03-05T00:00:00Z") } });
+    await activarMiembroPorCedula(deps, input);
+    expect(creados[0].fechaNacimiento).toEqual(new Date("1990-03-05T04:00:00Z"));
   });
 });

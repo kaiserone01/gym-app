@@ -26,3 +26,9 @@ export function esCumpleanos(fechaNacimiento: Date | null, ahora: Date): boolean
   const hoy = diaCalendarioCaracas(ahora);
   return fechaNacimiento.getMonth() === hoy.getUTCMonth() && fechaNacimiento.getDate() === hoy.getUTCDate();
 }
+
+// El padrón guarda las fechas a medianoche UTC; recibe una así y devuelve ese mismo día calendario a las
+// 00:00 de Caracas (el servidor lee las fechas con getters locales en esa zona).
+export function medianocheCaracasDeFechaUtc(fecha: Date): Date {
+  return new Date(fecha.getTime() + 4 * 3_600_000);
+}

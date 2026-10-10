@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { esCumpleanos } from "./fechaCaracas";
+import { esCumpleanos, medianocheCaracasDeFechaUtc } from "./fechaCaracas";
 
 // fechaNacimiento se guarda como fecha local a las 00:00 (igual que fechaInscripcion): se crea con el
 // constructor local para que el test no dependa de la zona horaria de la máquina.
@@ -31,5 +31,17 @@ describe("esCumpleanos", () => {
     const ahora = new Date("2026-10-08T03:00:00Z");
     expect(esCumpleanos(nacio(10, 7), ahora)).toBe(true);
     expect(esCumpleanos(nacio(10, 8), ahora)).toBe(false);
+  });
+});
+
+describe("medianocheCaracasDeFechaUtc", () => {
+  test("conserva el día calendario y lo pone a las 00:00 de Caracas", () => {
+    expect(medianocheCaracasDeFechaUtc(new Date("2026-10-01T00:00:00Z")).toISOString()).toBe("2026-10-01T04:00:00.000Z");
+  });
+
+  test("respeta los límites de mes y de año", () => {
+    expect(medianocheCaracasDeFechaUtc(new Date("2026-02-28T00:00:00Z")).toISOString()).toBe("2026-02-28T04:00:00.000Z");
+    expect(medianocheCaracasDeFechaUtc(new Date("2026-12-31T00:00:00Z")).toISOString()).toBe("2026-12-31T04:00:00.000Z");
+    expect(medianocheCaracasDeFechaUtc(new Date("2027-01-01T00:00:00Z")).toISOString()).toBe("2027-01-01T04:00:00.000Z");
   });
 });

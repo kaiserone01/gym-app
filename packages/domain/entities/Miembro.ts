@@ -1,11 +1,3 @@
-// Género del miembro, solo para saludarlo en el kiosco ("Bienvenido" / "Bienvenida"). null = no definido.
-export const GENEROS = ["MASCULINO", "FEMENINO"] as const;
-export type Genero = (typeof GENEROS)[number];
-
-export function parsearGenero(valor: unknown): Genero | null {
-  return GENEROS.find((genero) => genero === valor) ?? null;
-}
-
 export interface Miembro {
   id: string;
   organizacionId: string;
@@ -26,7 +18,6 @@ export interface Miembro {
   activo: boolean;
   porRegularizar: boolean; // fechas y pago vienen de una fuente externa (padrón/Excel o migración anterior) y no están verificados: el socio debe ajustar la fecha o registrar un pago con la fecha real
   vieneDelExcel: boolean; // viene del padrón/migración del Excel: su fecha de pago y de vencimiento se editan siempre en la ficha (no se conoce su fecha de inscripción)
-  genero: Genero | null; // para el saludo del kiosco; null = no definido
   createdAt: Date;
 }
 
@@ -42,7 +33,6 @@ export interface DatosNuevoMiembro {
   entrenadorId: string | null;
   planId: string | null;
   precioPlan: number;
-  genero?: Genero | null;
   // Solo los usa la activación desde el padrón; un alta normal los deja en su valor por defecto.
   fechaUltimoPago?: Date | null;
   fechaVencimiento?: Date | null;
@@ -66,5 +56,4 @@ export interface CambiosMiembro {
   fechaVencimiento?: Date | null;
   activo?: boolean;
   porRegularizar?: boolean;
-  genero?: Genero | null;
 }

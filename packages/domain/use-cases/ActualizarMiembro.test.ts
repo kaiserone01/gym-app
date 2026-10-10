@@ -16,7 +16,7 @@ function crearDeps(porRegularizar = true, cedulaOcupadaPor: string | null = null
   const deps = {
     miembros: {
       buscarPorId: async () => ({
-        id: "m1", sucursalId: null, planId: "p1", cedula: "111", porRegularizar, genero: null,
+        id: "m1", sucursalId: null, planId: "p1", cedula: "111", porRegularizar,
         vieneDelExcel: false, fechaUltimoPago: null, fechaVencimiento: null, ...miembro,
       }),
       buscarPorOrganizacionYCedula: async () => (cedulaOcupadaPor ? { id: cedulaOcupadaPor } : null),
@@ -172,17 +172,17 @@ describe("actualizarMiembro — cédula", () => {
   });
 });
 
-describe("actualizarMiembro — género y fecha de nacimiento", () => {
-  test("pasa genero y fechaNacimiento null al repositorio (vaciar un valor no se ignora)", async () => {
+describe("actualizarMiembro — fecha de nacimiento", () => {
+  test("pasa fechaNacimiento null al repositorio (vaciar un valor no se ignora)", async () => {
     const { deps, cambiosGuardados } = crearDeps(false);
-    await actualizarMiembro(deps, { ...base, cambios: { genero: null, fechaNacimiento: null } });
-    expect(cambiosGuardados[0]).toEqual({ genero: null, fechaNacimiento: null });
+    await actualizarMiembro(deps, { ...base, cambios: { fechaNacimiento: null } });
+    expect(cambiosGuardados[0]).toEqual({ fechaNacimiento: null });
   });
 
-  test("pasa un género y una fecha de nacimiento definidos", async () => {
+  test("pasa una fecha de nacimiento definida", async () => {
     const { deps, cambiosGuardados } = crearDeps(false);
     const nacimiento = new Date(1990, 9, 8);
-    await actualizarMiembro(deps, { ...base, cambios: { genero: "FEMENINO", fechaNacimiento: nacimiento } });
-    expect(cambiosGuardados[0]).toEqual({ genero: "FEMENINO", fechaNacimiento: nacimiento });
+    await actualizarMiembro(deps, { ...base, cambios: { fechaNacimiento: nacimiento } });
+    expect(cambiosGuardados[0]).toEqual({ fechaNacimiento: nacimiento });
   });
 });

@@ -1,5 +1,3 @@
-import type { Genero } from "./saludo";
-
 const URL_API = process.env.NEXT_PUBLIC_API_URL;
 const TIMEOUT_CHECKIN_MS = 10_000;
 
@@ -19,8 +17,7 @@ export interface ResultadoCheckIn {
   // gracia" en 0 — el concepto de período de gracia no aplica ahí, y la
   // presentación no debe mencionarlo en ningún mensaje.
   tieneGraciaConfigurada: boolean;
-  // Opcionales: un API viejo no los envía (el kiosco los trata como "no definido" / "no es cumpleaños").
-  genero?: Genero | null;
+  // Opcional: un API viejo no lo envía (el kiosco lo trata como "no es cumpleaños").
   esCumpleanos?: boolean;
 }
 

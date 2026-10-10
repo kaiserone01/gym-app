@@ -13,7 +13,6 @@ function crearDeps(miembro: Partial<Miembro>) {
         fechaVencimiento: null,
         sucursalId: null,
         fechaNacimiento: null,
-        genero: null,
         ...miembro,
       }),
     },
@@ -28,17 +27,7 @@ const input = { organizacionId: "org", sucursalId: "s1", cedula: "123" };
 
 afterEach(() => vi.useRealTimers());
 
-describe("registrarCheckIn — género y cumpleaños", () => {
-  test("devuelve el género del miembro", async () => {
-    const resultado = await registrarCheckIn(crearDeps({ genero: "FEMENINO" }), input);
-    expect(resultado.genero).toBe("FEMENINO");
-  });
-
-  test("devuelve género null cuando el miembro no lo tiene definido", async () => {
-    const resultado = await registrarCheckIn(crearDeps({ genero: null }), input);
-    expect(resultado.genero).toBeNull();
-  });
-
+describe("registrarCheckIn — cumpleaños", () => {
   test("esCumpleanos es true el día del cumpleaños en Caracas", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-10-08T15:00:00Z"));
@@ -69,7 +58,7 @@ describe("registrarCheckIn — activación desde el padrón", () => {
     const llamadas: unknown[] = [];
     const deps = depsSinMiembro(async (i) => {
       llamadas.push(i);
-      return { id: "nuevo", nombre: "Ana Pérez", fotoUrl: null, entrenadorNombre: null, fechaVencimiento: null, sucursalId: null, fechaNacimiento: null, genero: null };
+      return { id: "nuevo", nombre: "Ana Pérez", fotoUrl: null, entrenadorNombre: null, fechaVencimiento: null, sucursalId: null, fechaNacimiento: null };
     });
     const resultado = await registrarCheckIn(deps, input);
     expect(resultado.nombre).toBe("Ana Pérez");

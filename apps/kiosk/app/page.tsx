@@ -135,7 +135,7 @@ export default function PaginaCheckIn() {
           cara,
           diasParaVencer,
           fotoOk: false,
-          saludo: textoSaludo(resultado.genero, resultado.esCumpleanos),
+          saludo: textoSaludo(resultado.esCumpleanos),
         },
         tono: tonoDeCara(cara),
       };

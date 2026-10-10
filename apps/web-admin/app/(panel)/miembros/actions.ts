@@ -9,7 +9,6 @@ import { PrismaMemberRepository } from "@gym-app/infrastructure/persistence/pris
 import { PrismaPlanRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaPlanRepository";
 import { PrismaPagoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaPagoRepository";
 import { PrismaSuscripcionRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaSuscripcionRepository";
-import { parsearGenero } from "@gym-app/domain/entities/Miembro";
 import { crearMiembro, CedulaDuplicadaError } from "@gym-app/domain/use-cases/CrearMiembro";
 import {
   actualizarMiembro,
@@ -126,7 +125,6 @@ export async function crearMiembroAction(
         cedula,
         fechaInscripcion: new Date(`${fechaInscripcionTexto}T00:00:00`),
         fechaNacimiento: leerFecha(formData.get("fechaNacimiento")),
-        genero: parsearGenero(formData.get("genero")),
         celular: formData.get("celular")?.toString() || null,
         fotoUrl,
         entrenadorId: formData.get("entrenadorId")?.toString() || null,
@@ -245,8 +243,7 @@ export async function actualizarMiembroAction(
           fechaInscripcion: new Date(`${fechaInscripcionTexto}T00:00:00`),
           celular: formData.get("celular")?.toString() || null,
           fechaNacimiento: leerFecha(formData.get("fechaNacimiento")),
-          genero: parsearGenero(formData.get("genero")),
-          entrenadorId: formData.get("entrenadorId")?.toString() || null,
+            entrenadorId: formData.get("entrenadorId")?.toString() || null,
           ...(planId ? { planId } : {}),
           precioPlan,
           ...(fotoUrl ? { fotoUrl } : {}),

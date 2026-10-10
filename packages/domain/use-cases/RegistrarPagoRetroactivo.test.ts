@@ -41,7 +41,7 @@ function crearDeps(opciones: { porRegularizar?: boolean; tasa?: number | null; h
       },
     },
     miembros: {
-      buscarPorId: async () => ({ id: "m1", sucursalId: "s1", planId: "plan1", precioPlan: 25, saldoAFavorUSD: 0, porRegularizar, genero: null }),
+      buscarPorId: async () => ({ id: "m1", sucursalId: "s1", planId: "plan1", precioPlan: 25, saldoAFavorUSD: 0, porRegularizar }),
       actualizar: async () => null,
       actualizarFechasPago: async (_id: string, pago: Date, fin: Date) => {
         fechasMiembro.push({ pago, fin });

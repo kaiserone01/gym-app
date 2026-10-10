@@ -1,6 +1,6 @@
 import type { PrismaClientOrTx } from "./PrismaClientOrTx";
 import type { IMemberRepository } from "@gym-app/domain/ports/IMemberRepository";
-import type { Miembro, DatosNuevoMiembro, CambiosMiembro, Genero } from "@gym-app/domain/entities/Miembro";
+import type { Miembro, DatosNuevoMiembro, CambiosMiembro } from "@gym-app/domain/entities/Miembro";
 
 type FilaMiembro = {
   id: string;
@@ -22,7 +22,6 @@ type FilaMiembro = {
   activo: boolean;
   porRegularizar: boolean;
   vieneDelExcel: boolean;
-  genero: Genero | null;
   createdAt: Date;
 };
 
@@ -47,7 +46,6 @@ function mapear(miembro: FilaMiembro): Miembro {
     activo: miembro.activo,
     porRegularizar: miembro.porRegularizar,
     vieneDelExcel: miembro.vieneDelExcel,
-    genero: miembro.genero,
     createdAt: miembro.createdAt,
   };
 }

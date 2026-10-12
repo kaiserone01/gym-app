@@ -84,7 +84,9 @@ export async function actualizarMiembro(
     throw new MiembroNoEncontradoError();
   }
 
-  if (cambiaFechas && vencimientoFinal) {
+  // También al darle plan a un miembro del Excel que ya tiene vencimiento pero ninguna Suscripcion (el kiosco lo
+  // mostraría "vencido"): se sincroniza o crea con sus fechas actuales.
+  if ((cambiaFechas || (cambiaDePlan && antes.vieneDelExcel)) && vencimientoFinal) {
     // Ciclo [fecha de pago, vencimiento]; sin una fecha de pago válida, el inicio es el vencimiento - días del plan.
     let inicio = pagoFinal && pagoFinal.getTime() < vencimientoFinal.getTime() ? pagoFinal : null;
     if (!inicio) {

@@ -160,6 +160,12 @@ describe("actualizarMiembro — suscripción al ajustar fechas", () => {
     expect(creadas.map((c) => c.planId)).toEqual(["p2"]);
   });
 
+  test("miembro del Excel con vencimiento y sin plan ni suscripción: al elegirle plan se crea la suscripción con sus fechas", async () => {
+    const { deps, creadas } = crearDeps(false, null, { vieneDelExcel: true, planId: null, fechaUltimoPago: pago, fechaVencimiento: venc }, false);
+    await actualizarMiembro(deps, { ...base, cambios: { planId: "p2" } });
+    expect(creadas).toEqual([{ miembroId: "m1", planId: "p2", inicio: pago, fin: venc, fechaLimiteAbono: null }]);
+  });
+
   test("sin suscripción y sin plan: no crea nada", async () => {
     const { deps, creadas } = crearDeps(true, null, { planId: null }, false);
     await actualizarMiembro(deps, { ...base, cambios: { fechaVencimiento: venc } });

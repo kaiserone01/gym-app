@@ -121,6 +121,13 @@ describe("registrarPago con fecha pasada (aviso 'Por regularizar')", () => {
     expect(pagos).toEqual([]);
   });
 
+  test("primer pago de un miembro nuevo: se permite con fecha pasada aunque no tenga el aviso", async () => {
+    const { deps, pagos } = crearDeps({ porRegularizar: false });
+    await registrarPago(deps, input({ primerPagoDeInscripcion: true }));
+    expect(pagos).toHaveLength(1);
+    expect(pagos[0].turnoId).toBeNull();
+  });
+
   test("más de 365 días atrás → FechaPagoInvalidaError", async () => {
     const { deps } = crearDeps();
     await expect(registrarPago(deps, input({ fechaPago: hace(400) }))).rejects.toBeInstanceOf(FechaPagoInvalidaError);

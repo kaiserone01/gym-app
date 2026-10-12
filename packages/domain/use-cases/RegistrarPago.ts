@@ -76,10 +76,10 @@ export class AbonoMenorAlMinimoError extends Error {
   }
 }
 
-// Pago con fecha pasada fuera de lo permitido: solo con el aviso "Por regularizar" activo.
+// Pago con fecha pasada fuera de lo permitido: solo con el aviso "Por regularizar" activo o en el primer pago de un miembro nuevo.
 export class PagoRetroactivoNoDisponibleError extends Error {
   constructor() {
-    super("Solo se puede registrar un pago con fecha pasada a un miembro con el aviso \"Por regularizar\".");
+    super("Solo se puede registrar un pago con fecha pasada a un miembro con el aviso \"Por regularizar\" o al inscribir un miembro nuevo.");
   }
 }
 
@@ -135,8 +135,10 @@ export interface DatosRegistrarPago {
   sucursalId: string;
   registradoPorId: string;
   rolUsuario: RolUsuario;
-  // Pago con fecha pasada (solo con el aviso "Por regularizar"). Si es de hoy, se ignora.
+  // Pago con fecha pasada (solo con el aviso "Por regularizar" o con primerPagoDeInscripcion). Si es de hoy, se ignora.
   fechaPago?: Date;
+  // Primer pago de un miembro que se acaba de inscribir con fecha pasada: permite fechaPago sin el aviso "Por regularizar".
+  primerPagoDeInscripcion?: boolean;
 }
 
 export async function registrarPago(deps: RegistrarPagoDeps, input: DatosRegistrarPago): Promise<Pago[]> {
@@ -363,7 +365,7 @@ async function registrarPagoRetroactivo(
     ahora: Date;
   }
 ): Promise<Pago[]> {
-  if (!ctx.miembro.porRegularizar) throw new PagoRetroactivoNoDisponibleError();
+  if (!ctx.miembro.porRegularizar && !input.primerPagoDeInscripcion) throw new PagoRetroactivoNoDisponibleError();
 
   const limite = new Date(ctx.ahora);
   limite.setDate(limite.getDate() - MAX_DIAS_ATRAS_PAGO_RETROACTIVO);

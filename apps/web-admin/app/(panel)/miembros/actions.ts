@@ -23,6 +23,7 @@ import { inicioDelDiaCaracas } from "@gym-app/domain/utils/fechaCaracas";
 import { PrismaTurnoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaTurnoRepository";
 import { PrismaPermisoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaPermisoRepository";
 import { PrismaSucursalRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaSucursalRepository";
+import { PrismaTasaCambioRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaTasaCambioRepository";
 import { PrismaReglaAbonoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaReglaAbonoRepository";
 import { AuthorizationService } from "@gym-app/domain/services/AuthorizationService";
 import { storageR2 } from "@/lib/storageR2";
@@ -36,6 +37,9 @@ import {
   MontoInvalidoError,
   AbonoNoPermitidoError,
   AbonoMenorAlMinimoError,
+  FechaPagoInvalidaError,
+  PagoRetroactivoIncompletoError,
+  SinTasaParaFechaError,
 } from "@gym-app/domain/use-cases/RegistrarPago";
 import { eliminarMiembro } from "@gym-app/domain/use-cases/EliminarMiembro";
 import { activarMiembroEnTransaccion } from "@/lib/activacion";
@@ -163,11 +167,16 @@ export async function crearMiembroAction(
         sucursales: new PrismaSucursalRepository(prisma),
         autorizacion: new AuthorizationService(new PrismaPermisoRepository(prisma)),
         reglasAbono: new PrismaReglaAbonoRepository(prisma),
+        tasas: new PrismaTasaCambioRepository(prisma),
       },
       {
         organizacionId: usuario.organizacionId,
         miembroId: miembro.id,
         planId,
+        // El pago inicial lleva la fecha de inscripción: con una fecha pasada el ciclo y el vencimiento
+        // cuentan desde ese día (ver primerPagoDeInscripcion).
+        fechaPago: miembro.fechaInscripcion ?? undefined,
+        primerPagoDeInscripcion: true,
         lineas: [
           {
             monto: precioPlan,
@@ -191,7 +200,10 @@ export async function crearMiembroAction(
       error instanceof PagoRolNoAutorizadoError ||
       error instanceof MontoInvalidoError ||
       error instanceof AbonoNoPermitidoError ||
-      error instanceof AbonoMenorAlMinimoError
+      error instanceof AbonoMenorAlMinimoError ||
+      error instanceof FechaPagoInvalidaError ||
+      error instanceof PagoRetroactivoIncompletoError ||
+      error instanceof SinTasaParaFechaError
     ) {
       return { error: `El miembro se creó, pero no se pudo registrar el pago inicial: ${error.message}` };
     }

@@ -124,9 +124,9 @@ export async function crearMiembroAction(
         sucursalId: resolverSucursalId(sucursalId),
         nombre,
         cedula,
-        // La inscripción es siempre hoy (no viene del formulario): el instante en que empieza el día
-        // calendario de Caracas, que es la medianoche local de Venezuela sin depender de la zona del servidor.
-        fechaInscripcion: inicioDelDiaCaracas(new Date()),
+        // Viene del formulario (puede ser pasada: miembros anotados en cuaderno); si falta, hoy: el instante en
+        // que empieza el día calendario de Caracas, que es la medianoche local de Venezuela sin depender de la zona del servidor.
+        fechaInscripcion: leerFecha(formData.get("fechaInscripcion")) ?? inicioDelDiaCaracas(new Date()),
         fechaNacimiento: leerFecha(formData.get("fechaNacimiento")),
         celular: formData.get("celular")?.toString() || null,
         fotoUrl,

@@ -160,8 +160,8 @@ export function FormularioMiembro({
   const [nombre, setNombre] = useState(valoresIniciales?.nombre ?? "");
   const [cedula, setCedula] = useState(valoresIniciales?.cedula ?? "");
   const [celular, setCelular] = useState(valoresIniciales?.celular ?? "");
-  // Solo informativa: en el alta es hoy (la acción usa hoy) y en la ficha no se edita ni se envía.
-  const [fechaInscripcion] = useState(valoresIniciales?.fechaInscripcion ?? hoyISO());
+  // Solo informativa: en Nuevo miembro se puede poner una fecha pasada (por defecto hoy) y en la ficha no se edita ni se envía.
+  const [fechaInscripcion, setFechaInscripcion] = useState(valoresIniciales?.fechaInscripcion ?? hoyISO());
   const [fechaUltimoPago, setFechaUltimoPago] = useState(valoresIniciales?.fechaUltimoPago ?? "");
   const [fechaVencimiento, setFechaVencimiento] = useState(valoresIniciales?.fechaVencimiento ?? "");
   // Fechas de pago/vencimiento editables: siempre para quien viene del Excel, y mientras dure el aviso
@@ -452,9 +452,20 @@ export function FormularioMiembro({
             {/* Quien viene del Excel no tiene inscripción conocida: su fecha de pago y de vencimiento van
                 juntas en la tarjeta de Plan de membresía. */}
             {!(esEdicion && vieneDelExcel) && (
-              // Fija e informativa: sin name (no viaja) y sin calendario (un InputFecha deshabilitado
-              // igual dejaría abrir el calendario).
-              <InputFecha label="Fecha de inscripción" value={fechaInscripcion} disabled sinCalendario />
+              esEdicion ? (
+                // Fija e informativa: sin name (no viaja) y sin calendario (un InputFecha deshabilitado
+                // igual dejaría abrir el calendario).
+                <InputFecha label="Fecha de inscripción" value={fechaInscripcion} disabled sinCalendario />
+              ) : (
+                <InputFecha
+                  name="fechaInscripcion"
+                  label="Fecha de inscripción"
+                  value={fechaInscripcion}
+                  onChange={setFechaInscripcion}
+                  max={hoyISO()}
+                  required
+                />
+              )
             )}
 
             <InputFecha

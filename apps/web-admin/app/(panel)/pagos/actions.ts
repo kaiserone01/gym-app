@@ -30,7 +30,6 @@ import {
   LineasDePagoInvalidasError,
   AbonoNoPermitidoError,
   AbonoMenorAlMinimoError,
-  PagoRetroactivoNoDisponibleError,
   FechaPagoInvalidaError,
   PagoRetroactivoIncompletoError,
   SinTasaParaFechaError,
@@ -212,7 +211,6 @@ export async function registrarPagoAction(
       error instanceof LineasDePagoInvalidasError ||
       error instanceof AbonoNoPermitidoError ||
       error instanceof AbonoMenorAlMinimoError ||
-      error instanceof PagoRetroactivoNoDisponibleError ||
       error instanceof FechaPagoInvalidaError ||
       error instanceof PagoRetroactivoIncompletoError ||
       error instanceof SinTasaParaFechaError ||

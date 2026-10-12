@@ -4,7 +4,7 @@ import { useActionState, useEffect, useState } from "react";
 import type { Miembro } from "@gym-app/domain/entities/Miembro";
 import type { MetodoPago } from "@gym-app/domain/entities/MetodoPago";
 import type { FrecuenciaPago } from "@gym-app/domain/entities/Plan";
-import { MAX_DIAS_ATRAS_PAGO_RETROACTIVO } from "@gym-app/domain/entities/Pago";
+import { MAX_DIAS_ATRAS_PAGO_RETROACTIVO, MAX_DIAS_ATRAS_PAGO_FECHADO } from "@gym-app/domain/entities/Pago";
 import { Button } from "@gym-app/ui/components/Button";
 import { InputFecha } from "@gym-app/ui/components/InputFecha";
 import { CurrencyInput } from "@gym-app/ui/components/CurrencyInput";
@@ -469,7 +469,7 @@ function ContenidoPaso3({
   tasaActual: number | null;
   // Productos fiados pendientes de este miembro en la sucursal (null = no debe nada).
   deudaMiembro: GrupoDeudasMiembro | null;
-  // El miembro tiene el aviso "Por regularizar": se puede fechar el pago hacia atrás.
+  // Con el aviso "Por regularizar" el pago se puede fechar hasta 365 días atrás; el resto, hasta 15.
   porRegularizar: boolean;
   onVolver: () => void;
   onPagoRegistrado: (fechaFinCicloISO: string | undefined) => void;
@@ -478,8 +478,9 @@ function ContenidoPaso3({
   // Fecha del pago (yyyy-mm-dd, "" = hoy). Con una fecha pasada, todo el cálculo en Bs usa la tasa BCV de ese día.
   const [fechaPago, setFechaPago] = useState("");
   const hoyISO = fechaALocalISO(new Date());
-  const minFechaISO = fechaALocalISO(new Date(Date.now() - MAX_DIAS_ATRAS_PAGO_RETROACTIVO * 24 * 60 * 60 * 1000));
-  const esFechaPasada = porRegularizar && fechaPago !== "" && fechaPago < hoyISO;
+  const maxDiasAtras = porRegularizar ? MAX_DIAS_ATRAS_PAGO_RETROACTIVO : MAX_DIAS_ATRAS_PAGO_FECHADO;
+  const minFechaISO = fechaALocalISO(new Date(Date.now() - maxDiasAtras * 24 * 60 * 60 * 1000));
+  const esFechaPasada = fechaPago !== "" && fechaPago < hoyISO;
   const [tasaDelDia, setTasaDelDia] = useState<number | null>(null);
   useEffect(() => {
     setTasaDelDia(null);
@@ -637,25 +638,23 @@ function ContenidoPaso3({
       />
 
       <div className="flex min-w-0 flex-col gap-4 lg:flex-1 lg:overflow-y-auto lg:pr-2">
-      {porRegularizar && (
-        <div className="flex flex-col gap-2 rounded-xl border p-4" style={{ borderColor: "var(--gx-warn)" }}>
-          <InputFecha
-            label={'Fecha del pago (aviso "Por regularizar")'}
-            value={fechaPago}
-            min={minFechaISO}
-            max={hoyISO}
-            onChange={setFechaPago}
-            className="titilar-fecha"
-          />
-          <p className="text-xs" style={{ color: "var(--gx-muted)" }}>
-            {esFechaPasada
-              ? tasaDelDia !== null
-                ? `El pago se registra el ${fechaPago.split("-").reverse().join("/")} con la tasa BCV de ese día (Bs. ${tasaDelDia}); no entra en ningún turno de caja y no admite abonos.`
-                : "Buscando la tasa BCV de esa fecha…"
-              : "Déjala vacía para registrar el pago hoy. Si eliges una fecha anterior, se usa la tasa BCV de ese día."}
-          </p>
-        </div>
-      )}
+      <div className="flex flex-col gap-2 rounded-xl border p-4" style={{ borderColor: porRegularizar ? "var(--gx-warn)" : "var(--gx-edge)" }}>
+        <InputFecha
+          label={porRegularizar ? 'Fecha del pago (aviso "Por regularizar")' : "Fecha del pago"}
+          value={fechaPago}
+          min={minFechaISO}
+          max={hoyISO}
+          onChange={setFechaPago}
+          className={porRegularizar ? "titilar-fecha" : undefined}
+        />
+        <p className="text-xs" style={{ color: "var(--gx-muted)" }}>
+          {esFechaPasada
+            ? tasaDelDia !== null
+              ? `El pago se registra el ${fechaPago.split("-").reverse().join("/")} con la tasa BCV de ese día (Bs. ${tasaDelDia}); no entra en ningún turno de caja y no admite abonos.`
+              : "Buscando la tasa BCV de esa fecha…"
+            : `Déjala vacía para registrar el pago hoy. Si el cliente pagó antes (hasta ${maxDiasAtras} días atrás), elige ese día: se usa la tasa BCV de ese día.`}
+        </p>
+      </div>
       {/* Abono: el método se elige ANTES que el monto (ver diseño acordado) — se le pasa el precio
           del plan como referencia para la tasa en Bs, no como monto a cobrar. El monto a abonar y
           el número de operación viven en la tarjeta de la derecha. USD es la fuente de verdad;

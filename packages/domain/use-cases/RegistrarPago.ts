@@ -14,6 +14,7 @@ import {
   validarLineasDePago,
   LineasDePagoInvalidasError,
   MAX_DIAS_ATRAS_PAGO_RETROACTIVO,
+  MAX_DIAS_ATRAS_PAGO_FECHADO,
 } from "../entities/Pago";
 import { RolUsuario } from "../entities/UsuarioAdmin";
 import { IAuthorizationService } from "../ports/IAuthorizationService";
@@ -76,16 +77,9 @@ export class AbonoMenorAlMinimoError extends Error {
   }
 }
 
-// Pago con fecha pasada fuera de lo permitido: solo con el aviso "Por regularizar" activo o en el primer pago de un miembro nuevo.
-export class PagoRetroactivoNoDisponibleError extends Error {
-  constructor() {
-    super("Solo se puede registrar un pago con fecha pasada a un miembro con el aviso \"Por regularizar\" o al inscribir un miembro nuevo.");
-  }
-}
-
 export class FechaPagoInvalidaError extends Error {
-  constructor() {
-    super(`La fecha del pago debe estar entre hoy y los últimos ${MAX_DIAS_ATRAS_PAGO_RETROACTIVO} días.`);
+  constructor(maxDias: number = MAX_DIAS_ATRAS_PAGO_RETROACTIVO) {
+    super(`La fecha del pago debe estar entre hoy y los últimos ${maxDias} días.`);
   }
 }
 
@@ -135,7 +129,8 @@ export interface DatosRegistrarPago {
   sucursalId: string;
   registradoPorId: string;
   rolUsuario: RolUsuario;
-  // Pago con fecha pasada (solo con el aviso "Por regularizar" o con primerPagoDeInscripcion). Si es de hoy, se ignora.
+  // Pago con fecha pasada: hasta 365 días con el aviso "Por regularizar" o con primerPagoDeInscripcion, hasta 15 para el
+  // resto de los miembros. Si es de hoy, se ignora.
   fechaPago?: Date;
   // Primer pago de un miembro que se acaba de inscribir con fecha pasada: permite fechaPago sin el aviso "Por regularizar".
   primerPagoDeInscripcion?: boolean;
@@ -346,10 +341,11 @@ export async function registrarPago(deps: RegistrarPagoDeps, input: DatosRegistr
   return pagosCreados;
 }
 
-// Pago con fecha pasada: regulariza el ciclo del último pago de un miembro migrado (aviso "Por
-// regularizar"). Mismo flujo de siempre (líneas, métodos, monto) con una sola variación: la fecha. No se enlaza a
-// ningún turno (no entra en arqueos), la tasa de las líneas en Bs es la BCV de esa fecha y el ciclo nuevo
-// reemplaza al anterior: vencimiento = fecha del pago + días del plan. Apaga el aviso.
+// Pago con fecha pasada. Mismo flujo de siempre (líneas, métodos, monto) con una sola variación: la fecha. No se
+// enlaza a ningún turno (no entra en arqueos), la tasa de las líneas en Bs es la BCV de esa fecha y no admite abonos.
+// Regularizando (aviso "Por regularizar" o primer pago de un miembro nuevo) el ciclo nuevo reemplaza al anterior:
+// vencimiento = fecha del pago + días del plan, y se apaga el aviso. Para un miembro normal el ciclo se suma al
+// vigente en esa fecha, o arranca ese día si ya estaba vencido.
 async function registrarPagoRetroactivo(
   deps: RegistrarPagoDeps,
   input: DatosRegistrarPago,
@@ -365,11 +361,13 @@ async function registrarPagoRetroactivo(
     ahora: Date;
   }
 ): Promise<Pago[]> {
-  if (!ctx.miembro.porRegularizar && !input.primerPagoDeInscripcion) throw new PagoRetroactivoNoDisponibleError();
-
+  // Regularizar (miembro migrado o primer pago de un miembro nuevo): el ciclo se reemplaza y el tope es amplio. Un
+  // miembro normal que paga un día anterior: el ciclo se suma al vigente (o arranca ese día) y el tope es corto.
+  const regulariza = ctx.miembro.porRegularizar || !!input.primerPagoDeInscripcion;
+  const maxDias = regulariza ? MAX_DIAS_ATRAS_PAGO_RETROACTIVO : MAX_DIAS_ATRAS_PAGO_FECHADO;
   const limite = new Date(ctx.ahora);
-  limite.setDate(limite.getDate() - MAX_DIAS_ATRAS_PAGO_RETROACTIVO);
-  if (ctx.fechaPago < limite) throw new FechaPagoInvalidaError();
+  limite.setDate(limite.getDate() - maxDias);
+  if (ctx.fechaPago < limite) throw new FechaPagoInvalidaError(maxDias);
 
   if (ctx.montoTotal + ctx.saldoAConsumir < ctx.precioObjetivo) throw new PagoRetroactivoIncompletoError();
 
@@ -381,13 +379,27 @@ async function registrarPagoRetroactivo(
     tasaDelDia = tasa.valor;
   }
 
-  const fin = new Date(ctx.fechaPago);
-  fin.setDate(fin.getDate() + ctx.plan.diasCiclo);
-
   const planId = input.planId;
-  const ajustada = await deps.suscripciones.ajustarCicloMasReciente(input.miembroId, ctx.fechaPago, fin, planId);
-  if (!ajustada) {
-    await deps.suscripciones.crear({ miembroId: input.miembroId, planId, inicio: ctx.fechaPago, fin, fechaLimiteAbono: null });
+  let inicioCiclo = ctx.fechaPago;
+  let fin: Date;
+  if (regulariza) {
+    fin = new Date(ctx.fechaPago);
+    fin.setDate(fin.getDate() + ctx.plan.diasCiclo);
+    const ajustada = await deps.suscripciones.ajustarCicloMasReciente(input.miembroId, ctx.fechaPago, fin, planId);
+    if (!ajustada) {
+      await deps.suscripciones.crear({ miembroId: input.miembroId, planId, inicio: ctx.fechaPago, fin, fechaLimiteAbono: null });
+    }
+  } else {
+    const activa = await deps.suscripciones.buscarActivaVigentePorMiembroYPlan(input.miembroId, planId, ctx.fechaPago);
+    if (activa) inicioCiclo = activa.fin;
+    fin = new Date(inicioCiclo);
+    fin.setDate(fin.getDate() + ctx.plan.diasCiclo);
+    if (activa) {
+      await deps.suscripciones.extenderFin(activa.id, fin);
+      await deps.suscripciones.actualizarFechaLimiteAbono(activa.id, null);
+    } else {
+      await deps.suscripciones.crear({ miembroId: input.miembroId, planId, inicio: inicioCiclo, fin, fechaLimiteAbono: null });
+    }
   }
   await deps.miembros.actualizar(input.organizacionId, input.miembroId, {
     planId,
@@ -416,7 +428,7 @@ async function registrarPagoRetroactivo(
         numeroOperacion: linea.numeroOperacion,
         tasaCambio,
         montoBs: tasaCambio !== null ? linea.monto * tasaCambio : null,
-        fechaInicioCiclo: ctx.fechaPago,
+        fechaInicioCiclo: inicioCiclo,
         fechaFinCiclo: fin,
         grupoPagoId,
         fechaPago: ctx.fechaPago,

@@ -3,7 +3,6 @@ import {
   registrarPago,
   FechaPagoInvalidaError,
   PagoRetroactivoIncompletoError,
-  PagoRetroactivoNoDisponibleError,
   SinTasaParaFechaError,
   type RegistrarPagoDeps,
   type DatosRegistrarPago,
@@ -12,8 +11,9 @@ import type { DatosNuevoPago, Pago } from "../entities/Pago";
 
 const DIA = 24 * 60 * 60 * 1000;
 
-function crearDeps(opciones: { porRegularizar?: boolean; tasa?: number | null; hayActiva?: boolean } = {}) {
-  const { porRegularizar = true, tasa = 40, hayActiva = true } = opciones;
+function crearDeps(opciones: { porRegularizar?: boolean; tasa?: number | null; hayActiva?: boolean; vigenteHasta?: Date } = {}) {
+  const { porRegularizar = true, tasa = 40, hayActiva = true, vigenteHasta } = opciones;
+  const extensiones: Date[] = [];
   const pagos: DatosNuevoPago[] = [];
   const ciclos: { inicio: Date; fin: Date; planId?: string }[] = [];
   const creadas: unknown[] = [];
@@ -29,8 +29,10 @@ function crearDeps(opciones: { porRegularizar?: boolean; tasa?: number | null; h
       listarPorMiembro: async () => [],
     },
     suscripciones: {
-      buscarActivaVigentePorMiembroYPlan: async () => null,
-      extenderFin: async () => undefined,
+      buscarActivaVigentePorMiembroYPlan: async () => (vigenteHasta ? { id: "s1", fin: vigenteHasta } : null),
+      extenderFin: async (_id: string, fin: Date) => {
+        extensiones.push(fin);
+      },
       actualizarFechaLimiteAbono: async () => undefined,
       ajustarCicloMasReciente: async (_m: string, inicio: Date, fin: Date, planId?: string) => {
         ciclos.push({ inicio, fin, planId });
@@ -59,7 +61,7 @@ function crearDeps(opciones: { porRegularizar?: boolean; tasa?: number | null; h
       },
     },
   } as unknown as RegistrarPagoDeps;
-  return { deps, pagos, ciclos, creadas, fechasMiembro, fechasTasa };
+  return { deps, pagos, ciclos, creadas, fechasMiembro, fechasTasa, extensiones };
 }
 
 const hace = (dias: number) => new Date(Date.now() - dias * DIA);
@@ -115,9 +117,32 @@ describe("registrarPago con fecha pasada (aviso 'Por regularizar')", () => {
     expect(creadas).toHaveLength(1);
   });
 
-  test("sin el aviso activo no se permite", async () => {
+  test("miembro sin el aviso con ciclo vigente ese día: el ciclo se suma al final del vigente, sin turno", async () => {
+    const vigenteHasta = new Date(Date.now() + 5 * DIA);
+    const { deps, pagos, extensiones, ciclos, fechasMiembro } = crearDeps({ porRegularizar: false, vigenteHasta });
+    const fecha = hace(2);
+    await registrarPago(deps, input({ fechaPago: fecha }));
+    const fin = new Date(vigenteHasta);
+    fin.setDate(fin.getDate() + 30);
+    expect(extensiones).toEqual([fin]);
+    expect(ciclos).toEqual([]);
+    expect(pagos[0]).toMatchObject({ turnoId: null, fechaPago: fecha, fechaInicioCiclo: vigenteHasta, fechaFinCiclo: fin });
+    expect(fechasMiembro).toEqual([{ pago: fecha, fin }]);
+  });
+
+  test("miembro sin el aviso y vencido ese día: crea un ciclo nuevo que arranca en la fecha del pago", async () => {
+    const { deps, pagos, creadas, extensiones } = crearDeps({ porRegularizar: false });
+    const fecha = hace(3);
+    await registrarPago(deps, input({ fechaPago: fecha }));
+    expect(extensiones).toEqual([]);
+    expect(creadas).toHaveLength(1);
+    expect(pagos[0].fechaInicioCiclo).toEqual(fecha);
+    expect(pagos[0].fechaFinCiclo!.getTime() - fecha.getTime()).toBe(30 * DIA);
+  });
+
+  test("miembro sin el aviso: más de 15 días atrás → FechaPagoInvalidaError", async () => {
     const { deps, pagos } = crearDeps({ porRegularizar: false });
-    await expect(registrarPago(deps, input())).rejects.toBeInstanceOf(PagoRetroactivoNoDisponibleError);
+    await expect(registrarPago(deps, input({ fechaPago: hace(20) }))).rejects.toBeInstanceOf(FechaPagoInvalidaError);
     expect(pagos).toEqual([]);
   });
 

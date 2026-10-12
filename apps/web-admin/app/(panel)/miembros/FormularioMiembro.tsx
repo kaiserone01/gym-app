@@ -806,6 +806,8 @@ export function FormularioMiembro({
                   monto={precioActual}
                   onCambio={setSeleccionMetodo}
                   idFormulario={idFormulario}
+                  // Con inscripción pasada el pago inicial se fecha ese día: la tasa y el monto en Bs son los de esa fecha.
+                  fechaTasa={fechaInscripcion && fechaInscripcion < hoyISO() ? fechaInscripcion : undefined}
                 />
               ) : (
                 <p className="text-sm" style={{ color: "var(--gx-muted)" }}>

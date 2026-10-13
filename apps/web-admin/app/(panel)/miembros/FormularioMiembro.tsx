@@ -12,6 +12,7 @@ import { Badge } from "@gym-app/ui/components/Badge";
 import { useFeedback } from "@gym-app/ui/components/FeedbackOverlay";
 import { actualizarFotoMiembroAction, type EstadoFormularioMiembro } from "./actions";
 import { SelectorMetodoPago } from "../pagos/SelectorMetodoPago";
+import { LineaPagoMiembroCampos, type LineaPagoMiembro } from "./LineaPagoMiembro";
 import { formatearBs } from "../tasaBcvFija";
 import { ProveedorCambiosSinGuardar } from "./ContextoCambiosSinGuardar";
 import { SelectorFotoPerfil } from "./SelectorFotoPerfil";
@@ -210,7 +211,7 @@ export function FormularioMiembro({
     if (!valoresIniciales) return planesActivos[0]?.id ?? "";
     return valoresIniciales.planId ?? "";
   });
-  const [precio, setPrecio] = useState<string>(String(valoresIniciales?.precioPlan ?? ""));
+  const [precio, setPrecio] = useState<string>(String(valoresIniciales?.precioPlan ?? planesActivos[0]?.precioUSD ?? ""));
   const [errorPrecio, setErrorPrecio] = useState<string | null>(null);
   const [seleccionMetodo, setSeleccionMetodo] = useState<{
     metodoPagoId: string | null;
@@ -249,11 +250,17 @@ export function FormularioMiembro({
   // Primer pago de un miembro nuevo: vacío = el precio completo; menos que el precio queda como abono.
   const [montoHoy, setMontoHoy] = useState("");
   const [errorMontoHoy, setErrorMontoHoy] = useState<string | null>(null);
-  const montoAPagar = montoHoy === "" ? precioActual : Number(montoHoy) || 0;
+  // Primer pago dividido en dos métodos (p. ej. dos pagos móviles): cada línea trae su método y su monto.
+  const [dividirPago, setDividirPago] = useState(false);
+  const [lineasDivididas, setLineasDivididas] = useState<(LineaPagoMiembro | null)[]>([null, null]);
+  const totalDividido = lineasDivididas.reduce((suma, linea) => suma + (linea?.monto ?? 0), 0);
+  const montoAPagar = dividirPago ? Math.round(totalDividido * 100) / 100 : montoHoy === "" ? precioActual : Number(montoHoy) || 0;
   const esAbonoInicial = montoAPagar > 0 && montoAPagar < precioActual;
   const nombrePlanActual = planSeleccionado?.nombre ?? "—";
   const nombreEntrenadorActual = entrenadores.find((e) => e.id === entrenadorId)?.nombre ?? null;
-  const nombreMetodoPagoActual = seleccionMetodo.metodo || null;
+  const nombreMetodoPagoActual = dividirPago
+    ? lineasDivididas.map((linea) => linea?.metodo).filter(Boolean).join(" + ") || null
+    : seleccionMetodo.metodo || null;
   // El ciclo más reciente (por fechaFinCiclo) entre los que tienen datos
   // de ciclo — su fechaInicioCiclo es la "última fecha de renovación", y
   // su fechaFinCiclo es la fecha de vencimiento vigente (próximo cobro).
@@ -275,7 +282,13 @@ export function FormularioMiembro({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- solo debe re-evaluar cuando cambia la sede, no en cada render de `entrenadores`
   }, [sucursalId]);
-  const montoBsActual = seleccionMetodo.tasaCambio !== null ? montoAPagar * seleccionMetodo.tasaCambio : null;
+  const montoBsActual = dividirPago
+    ? lineasDivididas.some((linea) => linea && linea.tasaCambio !== null)
+      ? lineasDivididas.reduce((suma, linea) => suma + (linea && linea.tasaCambio !== null ? linea.monto * linea.tasaCambio : 0), 0)
+      : null
+    : seleccionMetodo.tasaCambio !== null
+      ? montoAPagar * seleccionMetodo.tasaCambio
+      : null;
 
   // "Cambiar de plan" (panelLateral) redirige a /miembros al confirmar —
   // si hay cambios de Datos personales sin guardar en este momento, se
@@ -321,7 +334,16 @@ export function FormularioMiembro({
     }
 
     setErrorPrecio(null);
-    if (!esEdicion && precioActual > 0 && (montoAPagar <= 0 || montoAPagar > precioActual)) {
+    if (!esEdicion && dividirPago) {
+      if (!lineasDivididas.every((linea) => linea && linea.monto > 0 && linea.metodoPagoId)) {
+        setErrorMontoHoy("Elegí el método y el monto de cada pago.");
+        return;
+      }
+      if (montoAPagar > precioActual + toleranciaDiferenciaPagoUSD(precioActual)) {
+        setErrorMontoHoy("Los pagos suman más que el precio del plan.");
+        return;
+      }
+    } else if (!esEdicion && precioActual > 0 && (montoAPagar <= 0 || montoAPagar > precioActual)) {
       setErrorMontoHoy("El monto debe ser mayor a 0 y no pasar el precio del plan.");
       return;
     }
@@ -411,6 +433,27 @@ export function FormularioMiembro({
         {!esEdicion && (
           <>
             <input type="hidden" name="montoInicial" value={montoAPagar} />
+            {dividirPago && (
+              <input
+                type="hidden"
+                name="lineas"
+                value={JSON.stringify(
+                  lineasDivididas.flatMap((linea) =>
+                    linea
+                      ? [
+                          {
+                            monto: Math.round(linea.monto * 100) / 100,
+                            metodo: linea.metodo,
+                            metodoPagoId: linea.metodoPagoId,
+                            numeroOperacion: linea.numeroOperacion || null,
+                            tasaCambio: linea.tasaCambio,
+                          },
+                        ]
+                      : []
+                  )
+                )}
+              />
+            )}
             <input type="hidden" name="metodo" value={seleccionMetodo.metodo} />
             <input type="hidden" name="metodoPagoId" value={seleccionMetodo.metodoPagoId ?? ""} />
             <input type="hidden" name="tasaCambio" value={seleccionMetodo.tasaCambio ?? ""} />
@@ -679,7 +722,7 @@ export function FormularioMiembro({
           </div>
           )}
 
-          {editandoPlan && (
+          {editandoPlan && esEdicion && (
           <div className="mt-4 flex flex-col gap-3 rounded-lg border p-4" style={{ borderColor: "var(--gx-edge)" }}>
             {planEsCortesia ? (
               <label className="flex flex-col gap-1.5 text-sm" style={{ color: "var(--gx-muted)" }}>
@@ -711,7 +754,7 @@ export function FormularioMiembro({
           </div>
           )}
 
-          <label className="mt-4 flex flex-col gap-1.5 text-sm" style={{ color: "var(--gx-muted)" }}>
+          <label className={`mt-4 flex flex-col gap-1.5 text-sm ${requiereEntrenador ? "" : "hidden"}`} style={{ color: "var(--gx-muted)" }}>
             Entrenador asignado
             {(() => {
               const bloqueado = !requiereEntrenador || (esEdicion && !editandoPlan && !editandoEntrenador);
@@ -821,7 +864,7 @@ export function FormularioMiembro({
                 tener que entrar después a &quot;Registrar pago&quot;.
               </p>
 
-              {precioActual > 0 && planSeleccionado?.permitePagoParcial !== false && (
+              {precioActual > 0 && planSeleccionado?.permitePagoParcial !== false && !dividirPago && (
                 <div className="mb-4">
                   <CurrencyInput
                     name="montoHoy"
@@ -849,7 +892,39 @@ export function FormularioMiembro({
                 </div>
               )}
 
-              {precioActual > 0 ? (
+              {precioActual > 0 && dividirPago ? (
+                <>
+                  {[0, 1].map((indice) => (
+                    <LineaPagoMiembroCampos
+                      key={indice}
+                      nombre={`pago${indice + 1}`}
+                      titulo={`Pago ${indice + 1}`}
+                      metodosPago={metodosPago}
+                      idFormulario={idFormulario}
+                      fechaTasa={fechaInscripcion && fechaInscripcion < hoyISO() ? fechaInscripcion : undefined}
+                      montoInicial=""
+                      onCambio={(linea) =>
+                        setLineasDivididas((previas) => previas.map((previa, i) => (i === indice ? linea : previa)))
+                      }
+                    />
+                  ))}
+                  <p className="mb-2 text-sm" style={{ color: "var(--gx-muted)" }}>
+                    Total de los dos pagos: <strong style={{ color: "var(--gx-ink)" }}>${montoAPagar.toFixed(2)}</strong> de ${precioActual.toFixed(2)}
+                    {esAbonoInicial && (
+                      <>
+                        {" "}
+                        — quedan ${(precioActual - montoAPagar).toFixed(2)} pendientes
+                        {precioActual - montoAPagar <= toleranciaDiferenciaPagoUSD(precioActual) ? " (diferencia aceptada)" : " (abono)"}.
+                      </>
+                    )}
+                  </p>
+                  {errorMontoHoy && (
+                    <p className="mb-2 text-sm" style={{ color: "var(--gx-bad)" }}>
+                      {errorMontoHoy}
+                    </p>
+                  )}
+                </>
+              ) : precioActual > 0 ? (
                 <SelectorMetodoPago
                   metodos={metodosPago}
                   monto={montoAPagar}
@@ -862,6 +937,21 @@ export function FormularioMiembro({
                 <p className="text-sm" style={{ color: "var(--gx-muted)" }}>
                   Este plan no tiene costo — no hace falta elegir método de pago.
                 </p>
+              )}
+
+              {precioActual > 0 && (
+                <Button
+                  type="button"
+                  variant="secundario"
+                  className="mt-4 w-full"
+                  onClick={() => {
+                    setDividirPago((v) => !v);
+                    setErrorMontoHoy(null);
+                    setLineasDivididas([null, null]);
+                  }}
+                >
+                  {dividirPago ? "Pagar con un solo método" : "Dividir el pago en dos métodos"}
+                </Button>
               )}
             </Card>
         ) : (

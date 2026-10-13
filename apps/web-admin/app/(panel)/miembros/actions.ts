@@ -63,6 +63,24 @@ function resolverPlanId(formData: FormData): string | null {
 }
 
 // "yyyy-mm-dd" del <input type="date"> → fecha local a las 00:00; vacío o inválido → null.
+// Líneas del primer pago dividido en dos métodos. null si no vienen o no son válidas (se usa el pago de una sola línea).
+function leerLineasDePago(valor: FormDataEntryValue | null) {
+  try {
+    const lineas = JSON.parse(valor?.toString() ?? "");
+    if (!Array.isArray(lineas) || lineas.length === 0) return null;
+    const validas = lineas.map((l) => ({
+      monto: Number(l.monto),
+      metodo: String(l.metodo ?? ""),
+      metodoPagoId: l.metodoPagoId ? String(l.metodoPagoId) : null,
+      numeroOperacion: l.numeroOperacion ? String(l.numeroOperacion) : null,
+      tasaCambio: l.tasaCambio !== null && l.tasaCambio !== undefined ? Number(l.tasaCambio) : null,
+    }));
+    return validas.every((l) => l.monto > 0 && l.metodoPagoId) ? validas : null;
+  } catch {
+    return null;
+  }
+}
+
 function leerFecha(valor: FormDataEntryValue | null): Date | null {
   const texto = valor?.toString();
   if (!texto) return null;
@@ -97,6 +115,8 @@ export async function crearMiembroAction(
   // Primer pago: por defecto el precio completo; menos que eso se registra como abono.
   const montoInicial = Number(formData.get("montoInicial"));
   const montoPago = montoInicial > 0 && montoInicial < precioPlan ? montoInicial : precioPlan;
+  // Primer pago dividido en dos métodos: llega como JSON desde el formulario (null = un solo método, como siempre).
+  const lineasDivididas = leerLineasDePago(formData.get("lineas"));
   const metodo = formData.get("metodo")?.toString();
   const metodoPagoId = formData.get("metodoPagoId")?.toString() || null;
   const tasaCambioRaw = formData.get("tasaCambio")?.toString();
@@ -111,7 +131,7 @@ export async function crearMiembroAction(
   // Un plan de cortesía ($0) no tiene nada que cobrar — el método de pago
   // solo es obligatorio cuando hay un monto real de por medio (ver diseño
   // acordado, membresías con beneficio que no pagan en el gym).
-  if (precioPlan > 0 && (!metodo || !metodoPagoId)) {
+  if (precioPlan > 0 && lineasDivididas === null && (!metodo || !metodoPagoId)) {
     return { error: "Elegí un método de pago." };
   }
 
@@ -180,7 +200,7 @@ export async function crearMiembroAction(
         // cuentan desde ese día (ver primerPagoDeInscripcion).
         fechaPago: miembro.fechaInscripcion ?? undefined,
         primerPagoDeInscripcion: true,
-        lineas: [
+        lineas: lineasDivididas ?? [
           {
             monto: montoPago,
             metodo: metodo || "Cortesía",

@@ -102,6 +102,28 @@ describe("registrarPago con fecha pasada (aviso 'Por regularizar')", () => {
     expect(fechasMiembro).toEqual([{ pago: fecha, fin: pagos[0].fechaFinCiclo }]);
   });
 
+  test("primer pago dividido en dos pagos móviles: ambos con la tasa del día y un mismo grupo de pago", async () => {
+    const { deps, pagos, fechasTasa } = crearDeps({ porRegularizar: false, hayActiva: false });
+    const fecha = hace(1);
+    await registrarPago(
+      deps,
+      input({
+        fechaPago: fecha,
+        primerPagoDeInscripcion: true,
+        lineas: [
+          { monto: 15, metodo: "Pago Móvil", metodoPagoId: "mp1", numeroOperacion: "1111", tasaCambio: 99 },
+          { monto: 10, metodo: "Pago Móvil", metodoPagoId: "mp1", numeroOperacion: "2222", tasaCambio: 99 },
+        ],
+      })
+    );
+    expect(pagos).toHaveLength(2);
+    expect(pagos.map((p) => p.tasaCambio)).toEqual([40, 40]);
+    expect(pagos.map((p) => p.montoBs)).toEqual([600, 400]);
+    expect(pagos[0].grupoPagoId).not.toBeNull();
+    expect(pagos[0].grupoPagoId).toBe(pagos[1].grupoPagoId);
+    expect(fechasTasa).toEqual([fecha]);
+  });
+
   test("una línea en USD no lleva tasa ni busca la del día", async () => {
     const { deps, pagos, fechasTasa } = crearDeps();
     await registrarPago(

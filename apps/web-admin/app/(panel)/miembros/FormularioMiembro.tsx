@@ -6,6 +6,7 @@ import { Button } from "@gym-app/ui/components/Button";
 import { Input } from "@gym-app/ui/components/Input";
 import { InputFecha } from "@gym-app/ui/components/InputFecha";
 import { CurrencyInput } from "@gym-app/ui/components/CurrencyInput";
+import { toleranciaDiferenciaPagoUSD } from "@gym-app/domain/entities/Pago";
 import { Card } from "@gym-app/ui/components/Card";
 import { Badge } from "@gym-app/ui/components/Badge";
 import { useFeedback } from "@gym-app/ui/components/FeedbackOverlay";
@@ -834,7 +835,9 @@ export function FormularioMiembro({
                   />
                   {esAbonoInicial && (
                     <p className="mt-1 text-xs" style={{ color: "var(--gx-muted)" }}>
-                      Queda como abono: el acceso se da en proporción a lo pagado y quedan{" "}
+                      {precioActual - montoAPagar <= toleranciaDiferenciaPagoUSD(precioActual)
+                        ? "Diferencia aceptada: el acceso cubre el ciclo completo y quedan "
+                        : "Queda como abono: el acceso se da en proporción a lo pagado y quedan "}
                       ${(precioActual - montoAPagar).toFixed(2)} pendientes.
                     </p>
                   )}

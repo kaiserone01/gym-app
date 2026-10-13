@@ -15,6 +15,7 @@ import {
   LineasDePagoInvalidasError,
   MAX_DIAS_ATRAS_PAGO_RETROACTIVO,
   MAX_DIAS_ATRAS_PAGO_FECHADO,
+  toleranciaDiferenciaPagoUSD,
 } from "../entities/Pago";
 import { RolUsuario } from "../entities/UsuarioAdmin";
 import { IAuthorizationService } from "../ports/IAuthorizationService";
@@ -138,7 +139,7 @@ export interface DatosRegistrarPago {
 }
 
 // Valida un abono parcial (el plan debe admitirlo y el monto acumulado cubrir el mínimo de la regla) y devuelve hasta
-// cuándo da acceso lo acumulado (null si ninguna regla aplica).
+// cuándo da acceso lo acumulado (null si ninguna regla aplica, o si el faltante entra en la tolerancia: acceso completo).
 async function evaluarAbonoParcial(
   deps: RegistrarPagoDeps,
   organizacionId: string,
@@ -147,6 +148,7 @@ async function evaluarAbonoParcial(
   montoAcumulado: number,
   base: Date
 ): Promise<Date | null> {
+  if (precioObjetivo - montoAcumulado <= toleranciaDiferenciaPagoUSD(precioObjetivo)) return null;
   if (!plan.permitePagoParcial) {
     throw new AbonoNoPermitidoError();
   }
@@ -375,7 +377,8 @@ async function registrarPagoRetroactivo(
   // el resto de los pagos con fecha pasada deben cubrir el precio completo.
   const montoAcumulado = ctx.montoTotal + ctx.saldoAConsumir;
   const esAbonoParcial = montoAcumulado < ctx.precioObjetivo;
-  if (esAbonoParcial && !input.primerPagoDeInscripcion) throw new PagoRetroactivoIncompletoError();
+  const faltaMasQueLaTolerancia = ctx.precioObjetivo - montoAcumulado > toleranciaDiferenciaPagoUSD(ctx.precioObjetivo);
+  if (faltaMasQueLaTolerancia && !input.primerPagoDeInscripcion) throw new PagoRetroactivoIncompletoError();
   const fechaLimiteAbono = esAbonoParcial
     ? await evaluarAbonoParcial(deps, input.organizacionId, ctx.plan, ctx.precioObjetivo, montoAcumulado, ctx.fechaPago)
     : null;

@@ -16,6 +16,8 @@ export function PanelRemanentePago({
   modalidad,
   deudaProductos = 0,
   abonadoPrevio = 0,
+  tolerancia = 0,
+  faltanteAceptado = false,
   acoplado = false,
 }: {
   lineas: LineaMostrada[];
@@ -37,6 +39,9 @@ export function PanelRemanentePago({
   deudaProductos?: number;
   // Lo ya abonado en este ciclo antes de este pago (0 = nada): montoObjetivo es entonces solo el saldo que falta.
   abonadoPrevio?: number;
+  // Diferencia que se acepta (ver toleranciaDiferenciaPagoUSD) y si el faltante de este pago entra en ella.
+  tolerancia?: number;
+  faltanteAceptado?: boolean;
   // true = va dentro de la columna lateral del asistente en vez de flotar abajo a la derecha.
   acoplado?: boolean;
 }) {
@@ -111,7 +116,16 @@ export function PanelRemanentePago({
                 ≈ Bs. {(remanente * tasaReferencia).toFixed(2)}
               </p>
             )}
+            {faltanteAceptado && (
+              <p className="mt-1 text-xs" style={{ color: "var(--gx-muted)" }}>
+                Diferencia aceptada: el acceso cubre el ciclo completo y este saldo queda pendiente por cobrar.
+              </p>
+            )}
           </>
+        ) : excedente > 0 && excedente <= tolerancia ? (
+          <p className="text-sm font-semibold" style={{ color: "var(--gx-accent)" }}>
+            Sobra ${excedente.toFixed(2)} — diferencia aceptada
+          </p>
         ) : excedente > 0 && !excedenteEsAdelantoValido ? (
           <>
             <p className="text-sm font-semibold" style={{ color: "var(--gx-accent)" }}>

@@ -4,7 +4,11 @@ import { useActionState, useEffect, useState } from "react";
 import type { Miembro } from "@gym-app/domain/entities/Miembro";
 import type { MetodoPago } from "@gym-app/domain/entities/MetodoPago";
 import type { FrecuenciaPago } from "@gym-app/domain/entities/Plan";
-import { MAX_DIAS_ATRAS_PAGO_RETROACTIVO, MAX_DIAS_ATRAS_PAGO_FECHADO } from "@gym-app/domain/entities/Pago";
+import {
+  MAX_DIAS_ATRAS_PAGO_RETROACTIVO,
+  MAX_DIAS_ATRAS_PAGO_FECHADO,
+  toleranciaDiferenciaPagoUSD,
+} from "@gym-app/domain/entities/Pago";
 import { Button } from "@gym-app/ui/components/Button";
 import { InputFecha } from "@gym-app/ui/components/InputFecha";
 import { CurrencyInput } from "@gym-app/ui/components/CurrencyInput";
@@ -613,6 +617,11 @@ function ContenidoPaso3({
       );
   // Este pago salda el ciclo del abono previo: no hay plazo ni período parcial que proyectar.
   const saldaCicloPrevio = !!abonoPrevio && pagadoPrevio + montoObjetivo >= abonoPrevio.precioUSD - 0.005;
+  // Faltante por centavos o unos bolívares: se acepta, el acceso cubre el ciclo completo y el saldo queda pendiente.
+  const precioCiclo = abonoPrevio?.precioUSD ?? montoSugerido;
+  const tolerancia = toleranciaDiferenciaPagoUSD(precioCiclo);
+  const faltanteTrasPago = precioCiclo - pagadoPrevio - montoObjetivo;
+  const faltanteAceptado = esAbono && faltanteTrasPago > 0.005 && faltanteTrasPago <= tolerancia;
 
   useEffect(() => {
     if (estado.error) mostrarError(estado.error);
@@ -1024,10 +1033,12 @@ function ContenidoPaso3({
           // Proyección + detalle de períodos, siempre visible (ver diseño
           // acordado: "que el cliente vea que cubre su pago"), calculada
           // sobre la SUMA de todas las líneas activas — se actualiza en vivo.
-          proyeccion={sumaLineas > 0 && montoObjetivo > 0 && !saldaCicloPrevio ? proyeccionAbono : null}
+          proyeccion={sumaLineas > 0 && montoObjetivo > 0 && !saldaCicloPrevio && !faltanteAceptado ? proyeccionAbono : null}
           modalidad={modalidad}
           deudaProductos={deudaAPagar}
           abonadoPrevio={pagadoPrevio}
+          tolerancia={tolerancia}
+          faltanteAceptado={faltanteAceptado}
         />
       )}
 

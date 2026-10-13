@@ -170,6 +170,26 @@ describe("registrarPago con fecha pasada (aviso 'Por regularizar')", () => {
     expect(pagos).toEqual([]);
   });
 
+  test("un faltante dentro de la tolerancia se acepta con fecha pasada (queda como saldo, acceso completo)", async () => {
+    const { deps, pagos, ciclos } = crearDeps();
+    await registrarPago(
+      deps,
+      input({ lineas: [{ monto: 24.5, metodo: "Efectivo", metodoPagoId: "mp2", numeroOperacion: null, tasaCambio: null }] })
+    );
+    expect(pagos[0]).toMatchObject({ monto: 24.5 });
+    expect(ciclos).toHaveLength(1);
+  });
+
+  test("un faltante mayor que la tolerancia con fecha pasada se rechaza", async () => {
+    const { deps } = crearDeps();
+    await expect(
+      registrarPago(
+        deps,
+        input({ lineas: [{ monto: 23.5, metodo: "Efectivo", metodoPagoId: "mp2", numeroOperacion: null, tasaCambio: null }] })
+      )
+    ).rejects.toBeInstanceOf(PagoRetroactivoIncompletoError);
+  });
+
   test("miembro sin el aviso: más de 15 días atrás → FechaPagoInvalidaError", async () => {
     const { deps, pagos } = crearDeps({ porRegularizar: false });
     await expect(registrarPago(deps, input({ fechaPago: hace(20) }))).rejects.toBeInstanceOf(FechaPagoInvalidaError);

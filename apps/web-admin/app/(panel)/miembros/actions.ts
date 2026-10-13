@@ -94,6 +94,9 @@ export async function crearMiembroAction(
   const cedula = formData.get("cedula")?.toString().trim();
   const sucursalId = formData.get("sucursalId")?.toString();
   const precioPlan = Number(formData.get("precioPlan"));
+  // Primer pago: por defecto el precio completo; menos que eso se registra como abono.
+  const montoInicial = Number(formData.get("montoInicial"));
+  const montoPago = montoInicial > 0 && montoInicial < precioPlan ? montoInicial : precioPlan;
   const metodo = formData.get("metodo")?.toString();
   const metodoPagoId = formData.get("metodoPagoId")?.toString() || null;
   const tasaCambioRaw = formData.get("tasaCambio")?.toString();
@@ -179,7 +182,7 @@ export async function crearMiembroAction(
         primerPagoDeInscripcion: true,
         lineas: [
           {
-            monto: precioPlan,
+            monto: montoPago,
             metodo: metodo || "Cortesía",
             metodoPagoId,
             numeroOperacion,

@@ -97,6 +97,7 @@ export function FormularioMiembro({
   miembroId,
   ultimosCiclos,
   saldoPendiente,
+  accesoHastaAbono,
   totalPagos,
   valoresIniciales,
   tieneCicloVigente,
@@ -131,6 +132,8 @@ export function FormularioMiembro({
   // pendiente (ver diseño acordado: los pagos se registran desde Caja, acá
   // solo se informa si debe algo).
   saldoPendiente?: number;
+  // yyyy-mm-dd: hasta cuándo alcanza el acceso con lo abonado, si hay saldo pendiente con plazo de abono.
+  accesoHastaAbono?: string;
   // Cantidad total de pagos del miembro — solo para el contador del link
   // "Ver historial de pagos". Undefined en modo creación.
   totalPagos?: number;
@@ -242,6 +245,11 @@ export function FormularioMiembro({
   // precio de algo que ya se definió como gratuito.
   const planEsCortesia = planSeleccionado?.precioUSD === 0;
   const precioActual = Number(precio) || 0;
+  // Primer pago de un miembro nuevo: vacío = el precio completo; menos que el precio queda como abono.
+  const [montoHoy, setMontoHoy] = useState("");
+  const [errorMontoHoy, setErrorMontoHoy] = useState<string | null>(null);
+  const montoAPagar = montoHoy === "" ? precioActual : Number(montoHoy) || 0;
+  const esAbonoInicial = montoAPagar > 0 && montoAPagar < precioActual;
   const nombrePlanActual = planSeleccionado?.nombre ?? "—";
   const nombreEntrenadorActual = entrenadores.find((e) => e.id === entrenadorId)?.nombre ?? null;
   const nombreMetodoPagoActual = seleccionMetodo.metodo || null;
@@ -266,7 +274,7 @@ export function FormularioMiembro({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- solo debe re-evaluar cuando cambia la sede, no en cada render de `entrenadores`
   }, [sucursalId]);
-  const montoBsActual = seleccionMetodo.tasaCambio !== null ? precioActual * seleccionMetodo.tasaCambio : null;
+  const montoBsActual = seleccionMetodo.tasaCambio !== null ? montoAPagar * seleccionMetodo.tasaCambio : null;
 
   // "Cambiar de plan" (panelLateral) redirige a /miembros al confirmar —
   // si hay cambios de Datos personales sin guardar en este momento, se
@@ -312,6 +320,11 @@ export function FormularioMiembro({
     }
 
     setErrorPrecio(null);
+    if (!esEdicion && precioActual > 0 && (montoAPagar <= 0 || montoAPagar > precioActual)) {
+      setErrorMontoHoy("El monto debe ser mayor a 0 y no pasar el precio del plan.");
+      return;
+    }
+    setErrorMontoHoy(null);
     // Al editar se guarda directo (el aviso de "Cambios guardados" sale tras el redirect); el resumen es solo del alta.
     if (esEdicion) form.requestSubmit();
     else setMostrarTicket(true);
@@ -396,6 +409,7 @@ export function FormularioMiembro({
         <input type="hidden" name="planNombre" value={nombrePlanActual} />
         {!esEdicion && (
           <>
+            <input type="hidden" name="montoInicial" value={montoAPagar} />
             <input type="hidden" name="metodo" value={seleccionMetodo.metodo} />
             <input type="hidden" name="metodoPagoId" value={seleccionMetodo.metodoPagoId ?? ""} />
             <input type="hidden" name="tasaCambio" value={seleccionMetodo.tasaCambio ?? ""} />
@@ -770,6 +784,12 @@ export function FormularioMiembro({
                   <span>${saldoPendiente.toFixed(2)}</span>
                 </div>
               )}
+              {!!saldoPendiente && saldoPendiente > 0 && accesoHastaAbono && (
+                <p className="text-sm" style={{ color: "var(--gx-muted)" }}>
+                  Acceso por el abono hasta el <strong style={{ color: "var(--gx-ink)" }}>{formatearFecha(accesoHastaAbono)}</strong>.
+                  Si no paga el saldo antes, se le bloquea el acceso.
+                </p>
+              )}
               {miembroId && (
                 <Link
                   href={`/miembros/${miembroId}/pagos`}
@@ -800,10 +820,36 @@ export function FormularioMiembro({
                 tener que entrar después a &quot;Registrar pago&quot;.
               </p>
 
+              {precioActual > 0 && planSeleccionado?.permitePagoParcial !== false && (
+                <div className="mb-4">
+                  <CurrencyInput
+                    name="montoHoy"
+                    label="Monto a pagar hoy"
+                    moneda="USD"
+                    value={montoHoy === "" ? String(precioActual) : montoHoy}
+                    onChange={(valor) => {
+                      setMontoHoy(valor);
+                      setErrorMontoHoy(null);
+                    }}
+                  />
+                  {esAbonoInicial && (
+                    <p className="mt-1 text-xs" style={{ color: "var(--gx-muted)" }}>
+                      Queda como abono: el acceso se da en proporción a lo pagado y quedan{" "}
+                      ${(precioActual - montoAPagar).toFixed(2)} pendientes.
+                    </p>
+                  )}
+                  {errorMontoHoy && (
+                    <p className="mt-1 text-sm" style={{ color: "var(--gx-bad)" }}>
+                      {errorMontoHoy}
+                    </p>
+                  )}
+                </div>
+              )}
+
               {precioActual > 0 ? (
                 <SelectorMetodoPago
                   metodos={metodosPago}
-                  monto={precioActual}
+                  monto={montoAPagar}
                   onCambio={setSeleccionMetodo}
                   idFormulario={idFormulario}
                   // Con inscripción pasada el pago inicial se fecha ese día: la tasa y el monto en Bs son los de esa fecha.
@@ -861,12 +907,17 @@ export function FormularioMiembro({
 
             <div className="flex items-baseline justify-between">
               <span className="text-sm font-medium" style={{ color: "var(--gx-muted)" }}>
-                Total
+                {esAbonoInicial ? "Abono hoy" : "Total"}
               </span>
               <span className="text-2xl font-bold" style={{ color: "var(--gx-ink)" }}>
-                ${precioActual.toFixed(2)}
+                ${montoAPagar.toFixed(2)}
               </span>
             </div>
+            {esAbonoInicial && (
+              <p className="text-right text-sm" style={{ color: "var(--gx-muted)" }}>
+                Pendiente ${(precioActual - montoAPagar).toFixed(2)} de ${precioActual.toFixed(2)}
+              </p>
+            )}
             {montoBsActual !== null && (
               <p className="text-right text-sm" style={{ color: "var(--gx-muted)" }}>
                 Bs. {formatearBs(montoBsActual)}

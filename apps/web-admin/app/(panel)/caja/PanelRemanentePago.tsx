@@ -15,6 +15,7 @@ export function PanelRemanentePago({
   proyeccion,
   modalidad,
   deudaProductos = 0,
+  abonadoPrevio = 0,
   acoplado = false,
 }: {
   lineas: LineaMostrada[];
@@ -34,6 +35,8 @@ export function PanelRemanentePago({
   // Productos fiados que se cobran junto con esta membresía (0 = ninguno): las líneas ya los incluyen,
   // así que suman al objetivo y se descuentan de lo que cubre la membresía.
   deudaProductos?: number;
+  // Lo ya abonado en este ciclo antes de este pago (0 = nada): montoObjetivo es entonces solo el saldo que falta.
+  abonadoPrevio?: number;
   // true = va dentro de la columna lateral del asistente en vez de flotar abajo a la derecha.
   acoplado?: boolean;
 }) {
@@ -74,6 +77,11 @@ export function PanelRemanentePago({
         </div>
       )}
 
+      {abonadoPrevio > 0 && (
+        <p className="mb-2 text-sm" style={{ color: "var(--gx-muted)" }}>
+          Ya abonado en este ciclo: ${abonadoPrevio.toFixed(2)}
+        </p>
+      )}
       <p className="text-xs font-semibold uppercase" style={{ color: "var(--gx-muted)" }}>
         {modalidad === "combinado" ? "Distribución del pago" : "Canal de pago"}
       </p>

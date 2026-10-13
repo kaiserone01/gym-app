@@ -23,6 +23,7 @@ import { PanelRemanentePago } from "./PanelRemanentePago";
 import { ModalDetalleDeuda } from "./ModalDetalleDeuda";
 import { Badge } from "@gym-app/ui/components/Badge";
 import type { GrupoDeudasMiembro } from "@gym-app/domain/use-cases/ListarDeudasPendientes";
+import type { AbonoPendiente } from "@gym-app/domain/use-cases/ListarAbonosPendientes";
 import { formatearFechaCorta } from "./ProyeccionCiclosUI";
 import type { ReglaAbonoPorFrecuencia } from "@gym-app/domain/entities/ReglaAbono";
 import { FormularioCambiarPlan, type EntrenadorParaCambio, type ProyeccionCambioPlan } from "../miembros/FormularioCambiarPlan";
@@ -163,6 +164,7 @@ function ContenidoPaso2({
   entrenadores,
   metodosPago,
   accionCambiarPlan,
+  abonoPrevio,
   onVolver,
   onContinuar,
   onCerrar,
@@ -177,6 +179,8 @@ function ContenidoPaso2({
   entrenadores: EntrenadorParaCambio[];
   metodosPago: MetodoPago[];
   accionCambiarPlan: (estado: EstadoCambioPlan, formData: FormData) => Promise<EstadoCambioPlan>;
+  // Abono ya hecho en el ciclo abierto de este mismo plan: el pago que sigue lo completa, no abre otro ciclo.
+  abonoPrevio: AbonoPendiente | null;
   onVolver: () => void;
   onContinuar: (plan: PlanParaModal) => void;
   onCerrar: () => void;
@@ -367,7 +371,17 @@ function ContenidoPaso2({
         </div>
       )}
 
-      {!cambiandoPlan && proyeccionRenovacionNormal && (
+      {!cambiandoPlan && abonoPrevio && (
+        <div className="rounded-lg border p-4" style={{ borderColor: "var(--gx-accent)" }}>
+          <p style={{ color: "var(--gx-ink)" }}>
+            Ya abonó <strong>${abonoPrevio.pagadoUSD.toFixed(2)}</strong> de ${abonoPrevio.precioUSD.toFixed(2)} en este
+            ciclo. Falta <strong>${abonoPrevio.saldoUSD.toFixed(2)}</strong>: al pagarlo, el ciclo queda saldado hasta el{" "}
+            <strong>{formatearFechaCorta(abonoPrevio.finCiclo)}</strong>.
+          </p>
+        </div>
+      )}
+
+      {!cambiandoPlan && !abonoPrevio && proyeccionRenovacionNormal && (
         <div className="rounded-lg border p-4" style={{ borderColor: "var(--gx-edge)" }}>
           <p style={{ color: "var(--gx-ink)" }}>
             Al pagar la renovación, disfrutará de <strong>{proyeccionRenovacionNormal.diasDelPlan} días</strong>
@@ -436,6 +450,7 @@ function ContenidoPaso3({
   tasaActual: tasaVigente,
   deudaMiembro,
   porRegularizar,
+  abonoPrevio,
   onVolver,
   onPagoRegistrado,
 }: {
@@ -471,6 +486,8 @@ function ContenidoPaso3({
   deudaMiembro: GrupoDeudasMiembro | null;
   // Con el aviso "Por regularizar" el pago se puede fechar hasta 365 días atrás; el resto, hasta 15.
   porRegularizar: boolean;
+  // Abono ya hecho en el ciclo abierto de este mismo plan (null = no hay): el monto a cobrar es su saldo.
+  abonoPrevio: AbonoPendiente | null;
   onVolver: () => void;
   onPagoRegistrado: (fechaFinCicloISO: string | undefined) => void;
 }) {
@@ -574,14 +591,28 @@ function ContenidoPaso3({
   const ahora = new Date();
   const fechaInicioCicloEstimada =
     fechaVencimiento !== null && fechaVencimiento > ahora ? fechaVencimiento : ahora;
-  const proyeccionAbono = calcularProyeccionAbono(
-    { minimoAbonoTipo, minimoAbonoValor, frecuencia: frecuenciaDelPlan, diasCiclo, precioUSD: montoSugerido },
-    reglasAbono,
-    montoObjetivo,
-    fechaInicioCicloEstimada,
-    fechaVencimiento,
-    ahora
-  );
+  // Con un abono previo en el ciclo, lo acumulado es lo ya abonado más este pago, contra el precio completo del
+  // ciclo (montoSugerido ya es solo el saldo), y el ciclo arranca donde empezó el abono.
+  const pagadoPrevio = abonoPrevio?.pagadoUSD ?? 0;
+  const proyeccionAbono = abonoPrevio
+    ? calcularProyeccionAbono(
+        { minimoAbonoTipo, minimoAbonoValor, frecuencia: frecuenciaDelPlan, diasCiclo, precioUSD: abonoPrevio.precioUSD },
+        reglasAbono,
+        pagadoPrevio + montoObjetivo,
+        abonoPrevio.inicioCiclo,
+        null,
+        abonoPrevio.inicioCiclo
+      )
+    : calcularProyeccionAbono(
+        { minimoAbonoTipo, minimoAbonoValor, frecuencia: frecuenciaDelPlan, diasCiclo, precioUSD: montoSugerido },
+        reglasAbono,
+        montoObjetivo,
+        fechaInicioCicloEstimada,
+        fechaVencimiento,
+        ahora
+      );
+  // Este pago salda el ciclo del abono previo: no hay plazo ni período parcial que proyectar.
+  const saldaCicloPrevio = !!abonoPrevio && pagadoPrevio + montoObjetivo >= abonoPrevio.precioUSD - 0.005;
 
   useEffect(() => {
     if (estado.error) mostrarError(estado.error);
@@ -993,9 +1024,10 @@ function ContenidoPaso3({
           // Proyección + detalle de períodos, siempre visible (ver diseño
           // acordado: "que el cliente vea que cubre su pago"), calculada
           // sobre la SUMA de todas las líneas activas — se actualiza en vivo.
-          proyeccion={sumaLineas > 0 && montoObjetivo > 0 ? proyeccionAbono : null}
+          proyeccion={sumaLineas > 0 && montoObjetivo > 0 && !saldaCicloPrevio ? proyeccionAbono : null}
           modalidad={modalidad}
           deudaProductos={deudaAPagar}
+          abonadoPrevio={pagadoPrevio}
         />
       )}
 
@@ -1076,6 +1108,7 @@ export function ModalRegistrarPagoCaja({
   accionCambiarPlan,
   miembroInicialId,
   deudas,
+  abonos,
   onCerrar,
 }: {
   miembros: Miembro[];
@@ -1089,6 +1122,8 @@ export function ModalRegistrarPagoCaja({
   miembroInicialId?: string;
   // Productos fiados pendientes por miembro (sucursal activa), para ofrecer cobrarlos junto con la membresía.
   deudas: GrupoDeudasMiembro[];
+  // Saldos de abonos de membresía (ciclos abiertos sin saldar) de los miembros de la sucursal.
+  abonos: AbonoPendiente[];
   onCerrar: () => void;
 }) {
   const [miembroInicial] = useState(() => {
@@ -1101,6 +1136,12 @@ export function ModalRegistrarPagoCaja({
   const [modalidadElegida, setModalidadElegida] = useState<Modalidad>("total");
   const [confirmandoCierre, setConfirmandoCierre] = useState(false);
   const [fechaFinCicloFinal, setFechaFinCicloFinal] = useState<Date | null>(null);
+  // El abono previo solo cuenta si se paga el mismo plan que el miembro tiene: otro plan abre un ciclo distinto.
+  const planEfectivoId = planElegidoId ?? miembroElegido?.plan?.id ?? null;
+  const abonoPrevio =
+    miembroElegido && planEfectivoId === miembroElegido.plan?.id
+      ? (abonos.find((a) => a.miembroId === miembroElegido.id) ?? null)
+      : null;
 
   // Pasos 2 y 3: el asistente ocupa el 98% de la pantalla, con columna lateral de contexto, para no hacer scroll.
   const ancho = paso === 2 || paso === 3;
@@ -1192,6 +1233,7 @@ export function ModalRegistrarPagoCaja({
             entrenadores={entrenadores}
             metodosPago={metodosPago}
             accionCambiarPlan={accionCambiarPlan}
+            abonoPrevio={abonoPrevio}
             onCerrar={onCerrar}
             onVolver={() => setPaso(1)}
             onContinuar={(plan) => {
@@ -1206,7 +1248,7 @@ export function ModalRegistrarPagoCaja({
             miembroId={miembroElegido.id}
             planId={planElegidoId}
             monto={
-              (planes.find((p) => p.id === planElegidoId) ?? miembroElegido.plan)?.precioUSD ?? 0
+              abonoPrevio?.saldoUSD ?? (planes.find((p) => p.id === planElegidoId) ?? miembroElegido.plan)?.precioUSD ?? 0
             }
             frecuenciaDelPlan={
               (planes.find((p) => p.id === planElegidoId) ?? miembroElegido.plan)?.frecuencia ?? "MENSUAL"
@@ -1229,6 +1271,7 @@ export function ModalRegistrarPagoCaja({
             metodosPago={metodosPago}
             deudaMiembro={deudas.find((g) => g.miembroId === miembroElegido.id) ?? null}
             porRegularizar={miembroElegido.porRegularizar}
+            abonoPrevio={abonoPrevio}
             tasaActual={tasaActual}
             onVolver={() => setPaso(2)}
             onPagoRegistrado={(fechaFinCicloISO) => {

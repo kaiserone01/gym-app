@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest";
 import {
   registrarPago,
   FechaPagoInvalidaError,
+  AbonoNoPermitidoError,
   PagoRetroactivoIncompletoError,
   SinTasaParaFechaError,
   type RegistrarPagoDeps,
@@ -11,8 +12,8 @@ import type { DatosNuevoPago, Pago } from "../entities/Pago";
 
 const DIA = 24 * 60 * 60 * 1000;
 
-function crearDeps(opciones: { porRegularizar?: boolean; tasa?: number | null; hayActiva?: boolean; vigenteHasta?: Date } = {}) {
-  const { porRegularizar = true, tasa = 40, hayActiva = true, vigenteHasta } = opciones;
+function crearDeps(opciones: { porRegularizar?: boolean; tasa?: number | null; hayActiva?: boolean; vigenteHasta?: Date; permitePagoParcial?: boolean } = {}) {
+  const { porRegularizar = true, tasa = 40, hayActiva = true, vigenteHasta, permitePagoParcial = true } = opciones;
   const extensiones: Date[] = [];
   const pagos: DatosNuevoPago[] = [];
   const ciclos: { inicio: Date; fin: Date; planId?: string }[] = [];
@@ -49,7 +50,7 @@ function crearDeps(opciones: { porRegularizar?: boolean; tasa?: number | null; h
         fechasMiembro.push({ pago, fin });
       },
     },
-    planes: { buscarPorId: async () => ({ id: "plan1", activo: true, precioUSD: 25, diasCiclo: 30, frecuencia: "MENSUAL", permitePagoParcial: true }) },
+    planes: { buscarPorId: async () => ({ id: "plan1", activo: true, precioUSD: 25, diasCiclo: 30, frecuencia: "MENSUAL", permitePagoParcial }) },
     turnos: { buscarAbiertoPorSucursal: async () => ({ id: "turno-hoy" }) },
     sucursales: {},
     autorizacion: { tienePermiso: async () => true },
@@ -138,6 +139,35 @@ describe("registrarPago con fecha pasada (aviso 'Por regularizar')", () => {
     expect(creadas).toHaveLength(1);
     expect(pagos[0].fechaInicioCiclo).toEqual(fecha);
     expect(pagos[0].fechaFinCiclo!.getTime() - fecha.getTime()).toBe(30 * DIA);
+  });
+
+  test("primer pago de un miembro nuevo como abono: se registra y el ciclo queda abierto desde esa fecha", async () => {
+    const { deps, pagos, creadas } = crearDeps({ porRegularizar: false, hayActiva: false });
+    const fecha = hace(7);
+    await registrarPago(
+      deps,
+      input({
+        fechaPago: fecha,
+        primerPagoDeInscripcion: true,
+        lineas: [{ monto: 12.5, metodo: "Efectivo", metodoPagoId: "mp2", numeroOperacion: null, tasaCambio: null }],
+      })
+    );
+    expect(pagos[0]).toMatchObject({ monto: 12.5, turnoId: null, fechaPago: fecha, fechaInicioCiclo: fecha });
+    expect(creadas).toHaveLength(1);
+  });
+
+  test("primer pago como abono en un plan que no admite abonos → AbonoNoPermitidoError", async () => {
+    const { deps, pagos } = crearDeps({ porRegularizar: false, hayActiva: false, permitePagoParcial: false });
+    await expect(
+      registrarPago(
+        deps,
+        input({
+          primerPagoDeInscripcion: true,
+          lineas: [{ monto: 12.5, metodo: "Efectivo", metodoPagoId: "mp2", numeroOperacion: null, tasaCambio: null }],
+        })
+      )
+    ).rejects.toBeInstanceOf(AbonoNoPermitidoError);
+    expect(pagos).toEqual([]);
   });
 
   test("miembro sin el aviso: más de 15 días atrás → FechaPagoInvalidaError", async () => {

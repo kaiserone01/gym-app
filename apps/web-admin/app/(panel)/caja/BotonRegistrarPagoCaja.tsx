@@ -7,6 +7,7 @@ import type { MetodoPago } from "@gym-app/domain/entities/MetodoPago";
 import type { ReglaAbonoPorFrecuencia } from "@gym-app/domain/entities/ReglaAbono";
 import type { EntrenadorResumen } from "@gym-app/domain/entities/EntrenadorResumen";
 import type { GrupoDeudasMiembro } from "@gym-app/domain/use-cases/ListarDeudasPendientes";
+import type { AbonoPendiente } from "@gym-app/domain/use-cases/ListarAbonosPendientes";
 import { Button } from "@gym-app/ui/components/Button";
 import { ModalRegistrarPagoCaja } from "./ModalRegistrarPagoCaja";
 import type { PlanParaModal } from "./SelectorMiembroModal";
@@ -22,6 +23,7 @@ export function BotonRegistrarPagoCaja({
   accionCambiarPlan,
   miembroInicialId,
   deudas,
+  abonos,
 }: {
   miembros: Miembro[];
   planes: PlanParaModal[];
@@ -37,6 +39,8 @@ export function BotonRegistrarPagoCaja({
   miembroInicialId?: string;
   // Productos fiados pendientes por miembro: se ofrecen cobrar junto con la membresía.
   deudas: GrupoDeudasMiembro[];
+  // Saldos de abonos de membresía pendientes: el cobro de un miembro con abono previo completa su ciclo.
+  abonos: AbonoPendiente[];
 }) {
   const router = useRouter();
   const [modalAbierta, setModalAbierta] = useState(!!miembroInicialId);
@@ -55,6 +59,7 @@ export function BotonRegistrarPagoCaja({
           accionCambiarPlan={accionCambiarPlan}
           miembroInicialId={miembroInicialId}
           deudas={deudas}
+          abonos={abonos}
           onCerrar={() => {
             setModalAbierta(false);
             // Quita ?cobrar para que recargar la página no reabra el wizard.

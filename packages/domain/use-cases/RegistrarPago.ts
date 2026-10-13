@@ -19,6 +19,7 @@ import {
 import { RolUsuario } from "../entities/UsuarioAdmin";
 import { IAuthorizationService } from "../ports/IAuthorizationService";
 import { resolverReglaAbono, calcularMontoMinimoAbono, calcularFechaLimiteAbono } from "../entities/ReglaAbono";
+import type { Plan } from "../entities/Plan";
 import { MiembroFueraDeSucursalError } from "./ObtenerMiembro";
 
 export { MiembroFueraDeSucursalError };
@@ -136,6 +137,34 @@ export interface DatosRegistrarPago {
   primerPagoDeInscripcion?: boolean;
 }
 
+// Valida un abono parcial (el plan debe admitirlo y el monto acumulado cubrir el mínimo de la regla) y devuelve hasta
+// cuándo da acceso lo acumulado (null si ninguna regla aplica).
+async function evaluarAbonoParcial(
+  deps: RegistrarPagoDeps,
+  organizacionId: string,
+  plan: Plan,
+  precioObjetivo: number,
+  montoAcumulado: number,
+  base: Date
+): Promise<Date | null> {
+  if (!plan.permitePagoParcial) {
+    throw new AbonoNoPermitidoError();
+  }
+
+  const reglaFrecuencia = await deps.reglasAbono.buscarPorOrganizacionYFrecuencia(organizacionId, plan.frecuencia);
+  const reglaEfectiva = resolverReglaAbono(
+    { minimoAbonoTipo: plan.minimoAbonoTipo, minimoAbonoValor: plan.minimoAbonoValor },
+    reglaFrecuencia
+  );
+  const montoMinimo = calcularMontoMinimoAbono(reglaEfectiva, precioObjetivo, plan.diasCiclo);
+
+  if (montoAcumulado < montoMinimo) {
+    throw new AbonoMenorAlMinimoError(montoMinimo);
+  }
+
+  return calcularFechaLimiteAbono(reglaEfectiva, montoAcumulado, precioObjetivo, base, plan.diasCiclo);
+}
+
 export async function registrarPago(deps: RegistrarPagoDeps, input: DatosRegistrarPago): Promise<Pago[]> {
   if (!(await deps.autorizacion.tienePermiso(input.registradoPorId, "PAGOS", "CREAR"))) {
     throw new RolNoAutorizadoError();
@@ -244,36 +273,9 @@ export async function registrarPago(deps: RegistrarPagoDeps, input: DatosRegistr
     (esAbonoDeCicloAbierto ? totalPagado(pagosDelCicloAbierto) : 0) + montoTotal + saldoAConsumir;
   const esAbonoParcial = montoAcumuladoDelCiclo < precioObjetivo;
 
-  let fechaLimiteAbonoCalculada: Date | null = null;
-
-  if (esAbonoParcial) {
-    if (!plan.permitePagoParcial) {
-      throw new AbonoNoPermitidoError();
-    }
-
-    const reglaFrecuencia = await deps.reglasAbono.buscarPorOrganizacionYFrecuencia(
-      input.organizacionId,
-      plan.frecuencia
-    );
-    const reglaEfectiva = resolverReglaAbono(
-      { minimoAbonoTipo: plan.minimoAbonoTipo, minimoAbonoValor: plan.minimoAbonoValor },
-      reglaFrecuencia
-    );
-    const diasDelCiclo = plan.diasCiclo;
-    const montoMinimo = calcularMontoMinimoAbono(reglaEfectiva, precioObjetivo, diasDelCiclo);
-
-    if (montoAcumuladoDelCiclo < montoMinimo) {
-      throw new AbonoMenorAlMinimoError(montoMinimo);
-    }
-
-    fechaLimiteAbonoCalculada = calcularFechaLimiteAbono(
-      reglaEfectiva,
-      montoAcumuladoDelCiclo,
-      precioObjetivo,
-      base,
-      diasDelCiclo
-    );
-  }
+  const fechaLimiteAbonoCalculada = esAbonoParcial
+    ? await evaluarAbonoParcial(deps, input.organizacionId, plan, precioObjetivo, montoAcumuladoDelCiclo, base)
+    : null;
 
   if (esAbonoDeCicloAbierto) {
     await deps.suscripciones.actualizarFechaLimiteAbono(activa!.id, fechaLimiteAbonoCalculada);
@@ -351,7 +353,7 @@ async function registrarPagoRetroactivo(
   input: DatosRegistrarPago,
   ctx: {
     miembro: { id: string; porRegularizar: boolean };
-    plan: { diasCiclo: number; precioUSD: number };
+    plan: Plan;
     huboCambioDePlan: boolean;
     precioObjetivo: number;
     montoTotal: number;
@@ -369,7 +371,14 @@ async function registrarPagoRetroactivo(
   limite.setDate(limite.getDate() - maxDias);
   if (ctx.fechaPago < limite) throw new FechaPagoInvalidaError(maxDias);
 
-  if (ctx.montoTotal + ctx.saldoAConsumir < ctx.precioObjetivo) throw new PagoRetroactivoIncompletoError();
+  // Solo el primer pago de un miembro nuevo puede ser un abono (queda con plazo de acceso desde esa fecha);
+  // el resto de los pagos con fecha pasada deben cubrir el precio completo.
+  const montoAcumulado = ctx.montoTotal + ctx.saldoAConsumir;
+  const esAbonoParcial = montoAcumulado < ctx.precioObjetivo;
+  if (esAbonoParcial && !input.primerPagoDeInscripcion) throw new PagoRetroactivoIncompletoError();
+  const fechaLimiteAbono = esAbonoParcial
+    ? await evaluarAbonoParcial(deps, input.organizacionId, ctx.plan, ctx.precioObjetivo, montoAcumulado, ctx.fechaPago)
+    : null;
 
   // La tasa de cada línea en Bs se reemplaza por la BCV de la fecha del pago (la del formulario es la de hoy).
   let tasaDelDia: number | null = null;
@@ -387,7 +396,7 @@ async function registrarPagoRetroactivo(
     fin.setDate(fin.getDate() + ctx.plan.diasCiclo);
     const ajustada = await deps.suscripciones.ajustarCicloMasReciente(input.miembroId, ctx.fechaPago, fin, planId);
     if (!ajustada) {
-      await deps.suscripciones.crear({ miembroId: input.miembroId, planId, inicio: ctx.fechaPago, fin, fechaLimiteAbono: null });
+      await deps.suscripciones.crear({ miembroId: input.miembroId, planId, inicio: ctx.fechaPago, fin, fechaLimiteAbono });
     }
   } else {
     const activa = await deps.suscripciones.buscarActivaVigentePorMiembroYPlan(input.miembroId, planId, ctx.fechaPago);

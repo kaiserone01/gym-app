@@ -5,6 +5,7 @@ import { obtenerUsuarioDeSesionActual } from "@/lib/sesion";
 import { PrismaMemberRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaMemberRepository";
 import { PrismaPagoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaPagoRepository";
 import { PrismaPlanRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaPlanRepository";
+import { PrismaSuscripcionRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaSuscripcionRepository";
 import { PrismaMetodoPagoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaMetodoPagoRepository";
 import { obtenerMiembro, MiembroNoEncontradoError, MiembroFueraDeSucursalError } from "@gym-app/domain/use-cases/ObtenerMiembro";
 import { listarPagos } from "@gym-app/domain/use-cases/ListarPagos";
@@ -74,6 +75,15 @@ export default async function PaginaEditarMiembro({ params }: { params: Promise<
     ? Math.max(0, miembro.precioPlan - totalPagado(pagosDelCicloVigente))
     : 0;
 
+  // Hasta cuándo alcanza el acceso con lo abonado (Suscripcion.fechaLimiteAbono): solo con saldo pendiente.
+  const suscripcionVigente =
+    saldoPendiente > 0
+      ? await new PrismaSuscripcionRepository(prisma).buscarActivaVigentePorMiembro(id, new Date())
+      : null;
+  const accesoHastaAbono = suscripcionVigente?.fechaLimiteAbono
+    ? formatearFechaISO(suscripcionVigente.fechaLimiteAbono)
+    : undefined;
+
   // Últimos 5 ciclos con datos de rango — listarPagos ya devuelve los
   // pagos ordenados por fechaPago desc (ver PrismaPagoRepository), así
   // que basta filtrar y tomar los primeros 5.
@@ -101,6 +111,7 @@ export default async function PaginaEditarMiembro({ params }: { params: Promise<
         ultimosCiclos={ultimosCiclos}
         tieneCicloVigente={tieneCicloVigente}
         saldoPendiente={saldoPendiente}
+        accesoHastaAbono={accesoHastaAbono}
         totalPagos={pagos.length}
         porRegularizar={miembro.porRegularizar}
         vieneDelExcel={miembro.vieneDelExcel}

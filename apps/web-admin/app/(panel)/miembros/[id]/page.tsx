@@ -89,6 +89,8 @@ export default async function PaginaEditarMiembro({ params }: { params: Promise<
   // que basta filtrar y tomar los primeros 5.
   const ultimosCiclos = pagos
     .filter((pago) => pago.fechaInicioCiclo !== null && pago.fechaFinCiclo !== null)
+    // Un ciclo pagado en varias partes (abonos o pago dividido) tiene varios pagos: se muestra una sola vez.
+    .filter((pago, i, todos) => todos.findIndex((p) => p.fechaFinCiclo?.getTime() === pago.fechaFinCiclo?.getTime()) === i)
     .slice(0, 5)
     .map((pago) => ({ id: pago.id, fechaInicioCiclo: pago.fechaInicioCiclo, fechaFinCiclo: pago.fechaFinCiclo }));
 

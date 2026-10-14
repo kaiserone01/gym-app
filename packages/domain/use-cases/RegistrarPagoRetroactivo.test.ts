@@ -12,8 +12,8 @@ import type { DatosNuevoPago, Pago } from "../entities/Pago";
 
 const DIA = 24 * 60 * 60 * 1000;
 
-function crearDeps(opciones: { porRegularizar?: boolean; tasa?: number | null; hayActiva?: boolean; vigenteHasta?: Date; permitePagoParcial?: boolean } = {}) {
-  const { porRegularizar = true, tasa = 40, hayActiva = true, vigenteHasta, permitePagoParcial = true } = opciones;
+function crearDeps(opciones: { porRegularizar?: boolean; tasa?: number | null; hayActiva?: boolean; vigenteHasta?: Date; permitePagoParcial?: boolean; saldoAFavor?: number } = {}) {
+  const { porRegularizar = true, tasa = 40, hayActiva = true, vigenteHasta, permitePagoParcial = true, saldoAFavor = 0 } = opciones;
   const extensiones: Date[] = [];
   const cambiosMiembro: Record<string, unknown>[] = [];
   const pagos: DatosNuevoPago[] = [];
@@ -45,7 +45,7 @@ function crearDeps(opciones: { porRegularizar?: boolean; tasa?: number | null; h
       },
     },
     miembros: {
-      buscarPorId: async () => ({ id: "m1", sucursalId: "s1", planId: "plan1", precioPlan: 25, saldoAFavorUSD: 0, porRegularizar }),
+      buscarPorId: async () => ({ id: "m1", sucursalId: "s1", planId: "plan1", precioPlan: 25, saldoAFavorUSD: saldoAFavor, porRegularizar }),
       actualizar: async (_org: string, _id: string, cambios: Record<string, unknown>) => {
         cambiosMiembro.push(cambios);
         return null;
@@ -165,6 +165,31 @@ describe("registrarPago con fecha pasada (aviso 'Por regularizar')", () => {
       })
     );
     expect(pagos.map((p) => p.montoBs)).toEqual([400.2, 600]);
+  });
+
+  test("saldo a favor: se consume solo lo que hace falta para completar el ciclo", async () => {
+    const { deps, pagos, cambiosMiembro } = crearDeps({ porRegularizar: false, hayActiva: false, saldoAFavor: 2 });
+    await registrarPago(
+      deps,
+      input({
+        fechaPago: undefined,
+        lineas: [{ monto: 23, metodo: "Efectivo", metodoPagoId: "mp2", numeroOperacion: null, tasaCambio: null }],
+      })
+    );
+    expect(pagos[0]).toMatchObject({ monto: 23 });
+    expect(cambiosMiembro).toContainEqual({ saldoAFavorUSD: 0 });
+  });
+
+  test("saldo a favor: si el efectivo ya cubre el ciclo, el crédito no se toca", async () => {
+    const { deps, cambiosMiembro } = crearDeps({ porRegularizar: false, hayActiva: false, saldoAFavor: 2 });
+    await registrarPago(
+      deps,
+      input({
+        fechaPago: undefined,
+        lineas: [{ monto: 25, metodo: "Efectivo", metodoPagoId: "mp2", numeroOperacion: null, tasaCambio: null }],
+      })
+    );
+    expect(cambiosMiembro.some((c) => "saldoAFavorUSD" in c)).toBe(false);
   });
 
   test("una línea en USD no lleva tasa ni busca la del día", async () => {

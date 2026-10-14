@@ -354,7 +354,13 @@ function ContenidoPaso2({
           className="rounded-lg px-3 py-2 text-sm font-medium"
           style={{ background: "color-mix(in srgb, var(--gx-accent) 15%, transparent)", color: "var(--gx-accent)" }}
         >
-          Saldo a favor: ${miembro.saldoAFavorUSD.toFixed(2)} — se descuenta automáticamente del pago.
+          Saldo a favor: ${miembro.saldoAFavorUSD.toFixed(2)} — se descuenta automáticamente del pago
+          {planEfectivo && planEfectivo.precioUSD > 0 && (
+            <>
+              : se cobrarán ${Math.max(0, (abonoPrevio?.saldoUSD ?? planEfectivo.precioUSD) - miembro.saldoAFavorUSD).toFixed(2)}
+            </>
+          )}
+          .
         </p>
       )}
 
@@ -441,7 +447,8 @@ function nuevaLineaVacia(): LineaFormulario {
 function ContenidoPaso3({
   miembroId,
   planId,
-  monto: montoSugerido,
+  monto: precioPlan,
+  saldoAFavor,
   frecuenciaDelPlan,
   diasCiclo,
   permitePagoParcial,
@@ -492,6 +499,8 @@ function ContenidoPaso3({
   porRegularizar: boolean;
   // Abono ya hecho en el ciclo abierto de este mismo plan (null = no hay): el monto a cobrar es su saldo.
   abonoPrevio: AbonoPendiente | null;
+  // Crédito del miembro (pago de más o cambio de plan a la baja): se descuenta de lo que se cobra.
+  saldoAFavor: number;
   onVolver: () => void;
   onPagoRegistrado: (fechaFinCicloISO: string | undefined) => void;
 }) {
@@ -528,6 +537,12 @@ function ContenidoPaso3({
   // AbonoNoPermitidoError en RegistrarPago.ts, hallazgo de la revisión final).
   // Deuda de productos a cobrar junto con la membresía (un plan de cortesía no la incluye). Lo que
   // se carga en las líneas es el total pagado: la parte de la membresía es lo que excede a la deuda.
+  // Lo que falta del ciclo (precio menos lo ya abonado) y, de ahí, lo que se cobra: se resta el saldo a favor.
+  const pagadoPrevio = abonoPrevio?.pagadoUSD ?? 0;
+  const precioCiclo = abonoPrevio?.precioUSD ?? precioPlan;
+  const faltanteCiclo = Math.max(0, precioCiclo - pagadoPrevio);
+  const creditoAplicable = Math.min(saldoAFavor, faltanteCiclo);
+  const montoSugerido = Math.round((faltanteCiclo - creditoAplicable) * 100) / 100;
   const deudaAPagar = montoSugerido > 0 && deudaMiembro && incluirDeudas && !esFechaPasada ? deudaMiembro.totalUSD : 0;
   const menosDeuda = (total: number) => Math.max(0, Math.round((total - deudaAPagar) * 100) / 100);
 
@@ -595,33 +610,28 @@ function ContenidoPaso3({
   const ahora = new Date();
   const fechaInicioCicloEstimada =
     fechaVencimiento !== null && fechaVencimiento > ahora ? fechaVencimiento : ahora;
-  // Con un abono previo en el ciclo, lo acumulado es lo ya abonado más este pago, contra el precio completo del
-  // ciclo (montoSugerido ya es solo el saldo), y el ciclo arranca donde empezó el abono.
-  const pagadoPrevio = abonoPrevio?.pagadoUSD ?? 0;
-  const proyeccionAbono = abonoPrevio
-    ? calcularProyeccionAbono(
-        { minimoAbonoTipo, minimoAbonoValor, frecuencia: frecuenciaDelPlan, diasCiclo, precioUSD: abonoPrevio.precioUSD },
-        reglasAbono,
-        pagadoPrevio + montoObjetivo,
-        abonoPrevio.inicioCiclo,
-        null,
-        abonoPrevio.inicioCiclo
-      )
-    : calcularProyeccionAbono(
-        { minimoAbonoTipo, minimoAbonoValor, frecuencia: frecuenciaDelPlan, diasCiclo, precioUSD: montoSugerido },
-        reglasAbono,
-        montoObjetivo,
-        fechaInicioCicloEstimada,
-        fechaVencimiento,
-        ahora
-      );
-  // Este pago salda el ciclo del abono previo: no hay plazo ni período parcial que proyectar.
-  const saldaCicloPrevio = !!abonoPrevio && pagadoPrevio + montoObjetivo >= abonoPrevio.precioUSD - 0.005;
+  // Lo acumulado del ciclo es lo ya abonado, más el crédito que este pago realmente usa (solo lo que hace falta:
+  // si el efectivo ya cubre, no se toca), más este pago; contra el precio completo del ciclo.
+  const creditoUsado = Math.min(saldoAFavor, Math.max(0, faltanteCiclo - montoObjetivo));
+  const proyeccionAbono = calcularProyeccionAbono(
+    { minimoAbonoTipo, minimoAbonoValor, frecuencia: frecuenciaDelPlan, diasCiclo, precioUSD: precioCiclo },
+    reglasAbono,
+    pagadoPrevio + creditoUsado + montoObjetivo,
+    abonoPrevio?.inicioCiclo ?? fechaInicioCicloEstimada,
+    abonoPrevio ? null : fechaVencimiento,
+    abonoPrevio?.inicioCiclo ?? ahora
+  );
+  // Este pago salda el ciclo de un abono previo o con crédito: no hay plazo ni período parcial que proyectar.
+  const saldaCicloPrevio =
+    (!!abonoPrevio || saldoAFavor > 0) && pagadoPrevio + creditoUsado + montoObjetivo >= precioCiclo - 0.005;
   // Faltante por centavos o unos bolívares: se acepta, el acceso cubre el ciclo completo y el saldo queda pendiente.
-  const precioCiclo = abonoPrevio?.precioUSD ?? montoSugerido;
   const tolerancia = toleranciaDiferenciaPagoUSD(precioCiclo);
-  const faltanteTrasPago = precioCiclo - pagadoPrevio - montoObjetivo;
+  const faltanteTrasPago = precioCiclo - pagadoPrevio - creditoUsado - montoObjetivo;
   const faltanteAceptado = esAbono && faltanteTrasPago > 0.005 && faltanteTrasPago <= tolerancia;
+  // Pagó de más: sin límite; el cajero elige si es de otro cobro o se guarda como saldo a favor.
+  const excedenteCaja = Math.max(0, Math.round((montoObjetivo - faltanteCiclo) * 100) / 100);
+  const hayExcedenteCaja = (esAbono || modalidad === "combinado") && excedenteCaja > 0.005;
+  const [excedenteElegido, setExcedenteElegido] = useState<"otro" | "saldo">("otro");
 
   useEffect(() => {
     if (estado.error) mostrarError(estado.error);
@@ -640,13 +650,19 @@ function ContenidoPaso3({
   // la deuda primero y en orden, y lo que sobra es la membresía.
   const lineasParaEnviar = lineasActivas
     .filter((l) => Number(l.monto) > 0)
-    .map((l) => ({
-      monto: Math.round(Number(l.monto) * 100) / 100,
-      metodo: l.seleccion.metodo,
-      metodoPagoId: l.seleccion.metodoPagoId,
-      numeroOperacion: l.seleccion.numeroOperacion || null,
-      tasaCambio: l.seleccion.tasaCambio,
-    }));
+    .map((l) => {
+      // Bs que el cajero tecleó (lo recibido de verdad): el servidor los respeta si cuadran con el USD.
+      const textoBs = modalidad === "combinado" ? montosBsCombinadas[l.clave] : esAbono ? montoAbonoBsTexto : "";
+      const bsTecleados = Number(textoBs);
+      return {
+        monto: Math.round(Number(l.monto) * 100) / 100,
+        montoBs: l.seleccion.tasaCambio !== null && bsTecleados > 0 ? bsTecleados : null,
+        metodo: l.seleccion.metodo,
+        metodoPagoId: l.seleccion.metodoPagoId,
+        numeroOperacion: l.seleccion.numeroOperacion || null,
+        tasaCambio: l.seleccion.tasaCambio,
+      };
+    });
 
   // El gate del mínimo de abono NO se aplica acá a propósito (hallazgo de
   // la revisión final): esta proyección es una réplica del cliente que no
@@ -667,12 +683,13 @@ function ContenidoPaso3({
       <input type="hidden" name="origen" value="caja" />
       {esFechaPasada && <input type="hidden" name="fechaPago" value={fechaPago} />}
       {deudaAPagar > 0 && <input type="hidden" name="incluirDeudas" value="1" />}
+      {hayExcedenteCaja && excedenteElegido === "saldo" && <input type="hidden" name="excedenteSaldo" value="1" />}
       <input
         type="hidden"
         name="lineas"
         value={JSON.stringify(
           montoSugerido === 0
-            ? [{ monto: 0, metodo: "Cortesía", metodoPagoId: null, numeroOperacion: null, tasaCambio: null }]
+            ? [{ monto: 0, metodo: creditoAplicable > 0 ? "Saldo a favor" : "Cortesía", metodoPagoId: null, numeroOperacion: null, tasaCambio: null }]
             : lineasParaEnviar
         )}
       />
@@ -965,7 +982,9 @@ function ContenidoPaso3({
 
       {montoSugerido === 0 && (
         <p className="text-sm" style={{ color: "var(--gx-muted)" }}>
-          Este plan no tiene costo — no hace falta elegir método de pago.
+          {creditoAplicable > 0
+            ? `El saldo a favor ($${creditoAplicable.toFixed(2)}) cubre este pago — no hace falta elegir método de pago.`
+            : "Este plan no tiene costo — no hace falta elegir método de pago."}
         </p>
       )}
 
@@ -1020,6 +1039,37 @@ function ContenidoPaso3({
           diseño acordado: evita saturar/refrescar el modal). En Total y
           Abono, lineasActivas ya resuelve a una sola línea equivalente
           (ver definición arriba); en Fraccionado, a las N fracciones. */}
+      {hayExcedenteCaja && (
+        <fieldset className="flex flex-col gap-2 rounded-lg border p-3 text-sm" style={{ borderColor: "var(--gx-edge)" }}>
+          <legend className="px-1" style={{ color: "var(--gx-ink)" }}>
+            Sobran ${excedenteCaja.toFixed(2)}. ¿Qué hacemos con ese dinero?
+          </legend>
+          {excedenteCaja > precioCiclo && (
+            <p style={{ color: "var(--gx-bad)" }}>
+              Sobra más que el precio del plan: revisa que no hayas escrito bolívares en un campo de dólares.
+            </p>
+          )}
+          <label className="flex min-h-11 items-center gap-2" style={{ color: "var(--gx-muted)" }}>
+            <input
+              type="radio"
+              checked={excedenteElegido === "otro"}
+              onChange={() => setExcedenteElegido("otro")}
+              className="h-5 w-5 accent-[var(--gx-accent)]"
+            />
+            Es de otro cobro (wifi u otra cosa): solo queda registrado
+          </label>
+          <label className="flex min-h-11 items-center gap-2" style={{ color: "var(--gx-muted)" }}>
+            <input
+              type="radio"
+              checked={excedenteElegido === "saldo"}
+              onChange={() => setExcedenteElegido("saldo")}
+              className="h-5 w-5 accent-[var(--gx-accent)]"
+            />
+            Guardarlo como saldo a favor para su próximo pago
+          </label>
+        </fieldset>
+      )}
+
       {montoSugerido > 0 && (
         <PanelRemanentePago
           acoplado
@@ -1037,6 +1087,7 @@ function ContenidoPaso3({
           modalidad={modalidad}
           deudaProductos={deudaAPagar}
           abonadoPrevio={pagadoPrevio}
+          creditoAplicado={creditoUsado}
           tolerancia={tolerancia}
           faltanteAceptado={faltanteAceptado}
         />
@@ -1258,9 +1309,8 @@ export function ModalRegistrarPagoCaja({
           <ContenidoPaso3
             miembroId={miembroElegido.id}
             planId={planElegidoId}
-            monto={
-              abonoPrevio?.saldoUSD ?? (planes.find((p) => p.id === planElegidoId) ?? miembroElegido.plan)?.precioUSD ?? 0
-            }
+            monto={(planes.find((p) => p.id === planElegidoId) ?? miembroElegido.plan)?.precioUSD ?? 0}
+            saldoAFavor={miembroElegido.saldoAFavorUSD}
             frecuenciaDelPlan={
               (planes.find((p) => p.id === planElegidoId) ?? miembroElegido.plan)?.frecuencia ?? "MENSUAL"
             }

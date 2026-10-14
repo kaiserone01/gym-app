@@ -154,6 +154,7 @@ export async function registrarPagoAction(
     metodoPagoId: string | null;
     numeroOperacion: string | null;
     tasaCambio: number | null;
+    montoBs?: number | null;
   }> = [];
   const esPagoConFechaPasada =
     !!fechaPagoTexto && new Date(`${fechaPagoTexto}T12:00:00`) < new Date(new Date().setHours(0, 0, 0, 0));
@@ -191,6 +192,8 @@ export async function registrarPagoAction(
       registradoPorId: usuario.id,
       rolUsuario: usuario.rol,
       ...(fechaPagoTexto ? { fechaPago: new Date(`${fechaPagoTexto}T12:00:00`) } : {}),
+      // Si pagó de más: guardar el sobrante como saldo a favor (si no, es de otro cobro y solo queda registrado).
+      excedenteASaldoAFavor: formData.get("excedenteSaldo")?.toString() === "1",
     };
 
     // Con productos pendientes incluidos, cobrar las deudas y registrar la

@@ -16,6 +16,7 @@ export function PanelRemanentePago({
   modalidad,
   deudaProductos = 0,
   abonadoPrevio = 0,
+  creditoAplicado = 0,
   tolerancia = 0,
   faltanteAceptado = false,
   acoplado = false,
@@ -39,6 +40,8 @@ export function PanelRemanentePago({
   deudaProductos?: number;
   // Lo ya abonado en este ciclo antes de este pago (0 = nada): montoObjetivo es entonces solo el saldo que falta.
   abonadoPrevio?: number;
+  // Saldo a favor del miembro que este pago usa (0 = ninguno): ya está descontado del monto a cobrar.
+  creditoAplicado?: number;
   // Diferencia que se acepta (ver toleranciaDiferenciaPagoUSD) y si el faltante de este pago entra en ella.
   tolerancia?: number;
   faltanteAceptado?: boolean;
@@ -82,6 +85,11 @@ export function PanelRemanentePago({
         </div>
       )}
 
+      {creditoAplicado > 0 && (
+        <p className="mb-2 text-sm" style={{ color: "var(--gx-muted)" }}>
+          Saldo a favor aplicado: ${creditoAplicado.toFixed(2)}
+        </p>
+      )}
       {abonadoPrevio > 0 && (
         <p className="mb-2 text-sm" style={{ color: "var(--gx-muted)" }}>
           Ya abonado en este ciclo: ${abonadoPrevio.toFixed(2)}

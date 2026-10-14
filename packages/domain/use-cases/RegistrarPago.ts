@@ -129,6 +129,11 @@ function montoBsDeLinea(linea: DatosLineaPago, tasa: number | null): number | nu
   return linea.montoBs != null && Math.abs(linea.montoBs - calculado) <= 0.01 * tasa ? linea.montoBs : calculado;
 }
 
+// Crédito que de verdad hace falta para completar lo que falta del ciclo después de este pago (nunca más que eso).
+function saldoNecesario(saldoDisponible: number, faltante: number, montoTotal: number): number {
+  return Math.min(saldoDisponible, Math.max(0, Math.round((faltante - montoTotal) * 100) / 100));
+}
+
 // Lo que sobra del precio del ciclo y el cajero eligió guardar como saldo a favor (0 si no aplica).
 function excedenteASaldo(input: DatosRegistrarPago, montoAcumulado: number, precioObjetivo: number): number {
   return input.excedenteASaldoAFavor ? Math.max(0, Math.round((montoAcumulado - precioObjetivo) * 100) / 100) : 0;
@@ -224,24 +229,20 @@ export async function registrarPago(deps: RegistrarPagoDeps, input: DatosRegistr
 
   const montoTotal = input.lineas.reduce((suma, linea) => suma + linea.monto, 0);
 
-  // Saldo a favor (generado por un cambio de plan a la baja, ver
-  // CambiarPlanConPago) — se descuenta automáticamente del monto que este
-  // pago necesita cubrir, sin importar el plan de este pago. Nunca deja
-  // el saldo negativo; el consumo se persiste junto con el resto de los
-  // cambios de este pago (más abajo), no antes, para no gastarlo si el
-  // pago falla por otra validación.
+  // Saldo a favor (generado por un cambio de plan a la baja o por un pago de más guardado como crédito) — se
+  // descuenta automáticamente de lo que este pago necesita cubrir, sin importar el plan de este pago, y solo en lo
+  // que hace falta (ver saldoNecesario): si el efectivo ya cubre el ciclo, el crédito no se toca. Nunca deja
+  // el saldo negativo; el consumo se persiste junto con el resto de los cambios de este pago (más abajo), no
+  // antes, para no gastarlo si el pago falla por otra validación.
   const saldoDisponible = miembro.saldoAFavorUSD;
-  const saldoAConsumir = Math.min(saldoDisponible, montoTotal > 0 ? montoTotal : precioObjetivo);
-
-  if (precioObjetivo > 0 && montoTotal <= 0 && saldoAConsumir < precioObjetivo) {
-    throw new MontoInvalidoError();
-  }
 
   const ahora = new Date();
 
   const inicioDeHoy = new Date(ahora);
   inicioDeHoy.setHours(0, 0, 0, 0);
   if (input.fechaPago && input.fechaPago < inicioDeHoy) {
+    const saldoAConsumir = saldoNecesario(saldoDisponible, precioObjetivo, montoTotal);
+    if (precioObjetivo > 0 && montoTotal <= 0 && saldoAConsumir < precioObjetivo) throw new MontoInvalidoError();
     return registrarPagoRetroactivo(deps, input, {
       miembro,
       plan,
@@ -273,6 +274,11 @@ export async function registrarPago(deps: RegistrarPagoDeps, input: DatosRegistr
   }
   const esAbonoDeCicloAbierto =
     pagosDelCicloAbierto.length > 0 && totalPagado(pagosDelCicloAbierto) < precioObjetivo;
+  const pagadoPrevio = esAbonoDeCicloAbierto ? totalPagado(pagosDelCicloAbierto) : 0;
+  const saldoAConsumir = saldoNecesario(saldoDisponible, precioObjetivo - pagadoPrevio, montoTotal);
+  if (precioObjetivo > 0 && montoTotal <= 0 && pagadoPrevio + saldoAConsumir < precioObjetivo) {
+    throw new MontoInvalidoError();
+  }
 
   let base: Date;
   let fin: Date;
@@ -289,8 +295,7 @@ export async function registrarPago(deps: RegistrarPagoDeps, input: DatosRegistr
   // Motor de reglas de abono: solo aplica cuando el pago resultante deja
   // el ciclo sin saldar (es decir, es un abono real, no un pago total).
   // montoTotal ya viene calculado más arriba como suma de input.lineas.
-  const montoAcumuladoDelCiclo =
-    (esAbonoDeCicloAbierto ? totalPagado(pagosDelCicloAbierto) : 0) + montoTotal + saldoAConsumir;
+  const montoAcumuladoDelCiclo = pagadoPrevio + montoTotal + saldoAConsumir;
   const esAbonoParcial = montoAcumuladoDelCiclo < precioObjetivo;
 
   const fechaLimiteAbonoCalculada = esAbonoParcial

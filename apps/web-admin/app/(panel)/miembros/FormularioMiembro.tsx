@@ -264,6 +264,15 @@ export function FormularioMiembro({
   const hayExcedente = precioActual > 0 && montoAPagar - precioActual > 0.005;
   const excedenteUSD = Math.max(0, montoAPagar - precioActual);
   const [excedente, setExcedente] = useState<"otro" | "saldo">("otro");
+  // En pantallas angostas el resumen y los avisos del pago quedan lejos del botón Guardar: se lleva la vista hasta ellos.
+  const ticketRef = useRef<HTMLDivElement>(null);
+  const errorPagoRef = useRef<HTMLParagraphElement>(null);
+  useEffect(() => {
+    if (mostrarTicket) ticketRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [mostrarTicket]);
+  useEffect(() => {
+    if (errorMontoHoy) errorPagoRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [errorMontoHoy]);
   const nombrePlanActual = planSeleccionado?.nombre ?? "—";
   const nombreEntrenadorActual = entrenadores.find((e) => e.id === entrenadorId)?.nombre ?? null;
   const nombreMetodoPagoActual = dividirPago
@@ -346,8 +355,13 @@ export function FormularioMiembro({
 
     setErrorPrecio(null);
     if (!esEdicion && dividirPago) {
-      if (!lineasDivididas.every(({ linea }) => linea && linea.monto > 0 && linea.metodoPagoId)) {
-        setErrorMontoHoy("Elegí el método y el monto de cada pago.");
+      const incompleta = lineasDivididas.findIndex(({ linea }) => !linea || !linea.metodoPagoId || linea.monto <= 0);
+      if (incompleta >= 0) {
+        setErrorMontoHoy(
+          lineasDivididas[incompleta].linea?.metodoPagoId
+            ? `Pago ${incompleta + 1}: falta el monto.`
+            : `Pago ${incompleta + 1}: falta elegir el método completo (el banco o la moneda).`
+        );
         return;
       }
     } else if (!esEdicion && precioActual > 0 && montoAPagar <= 0) {
@@ -894,7 +908,7 @@ export function FormularioMiembro({
                     </p>
                   )}
                   {errorMontoHoy && (
-                    <p className="mt-1 text-sm" style={{ color: "var(--gx-bad)" }}>
+                    <p ref={errorPagoRef} className="mt-1 text-sm" style={{ color: "var(--gx-bad)" }}>
                       {errorMontoHoy}
                     </p>
                   )}
@@ -911,9 +925,11 @@ export function FormularioMiembro({
                       metodosPago={metodosPago}
                       idFormulario={idFormulario}
                       fechaTasa={fechaInscripcion && fechaInscripcion < hoyISO() ? fechaInscripcion : undefined}
-                      onCambio={(linea) =>
-                        setLineasDivididas((previas) => previas.map((previa) => (previa.id === id ? { id, linea } : previa)))
-                      }
+                      onCambio={(linea) => {
+                        // El aviso del pago se borra solo en cuanto se corrige algo.
+                        setErrorMontoHoy(null);
+                        setLineasDivididas((previas) => previas.map((previa) => (previa.id === id ? { id, linea } : previa)));
+                      }}
                       onQuitar={
                         lineasDivididas.length > 2
                           ? () => setLineasDivididas((previas) => previas.filter((previa) => previa.id !== id))
@@ -943,7 +959,7 @@ export function FormularioMiembro({
                     )}
                   </p>
                   {errorMontoHoy && (
-                    <p className="mb-2 text-sm" style={{ color: "var(--gx-bad)" }}>
+                    <p ref={errorPagoRef} className="mb-2 text-sm" style={{ color: "var(--gx-bad)" }}>
                       {errorMontoHoy}
                     </p>
                   )}
@@ -1015,6 +1031,7 @@ export function FormularioMiembro({
             </Card>
         ) : (
           <div
+            ref={ticketRef}
             className="rounded-2xl border-2 border-dashed p-5"
             style={{ borderColor: "var(--gx-edge)", background: "var(--gx-surface)" }}
           >

@@ -968,6 +968,11 @@ export function FormularioMiembro({
                   <legend className="px-1" style={{ color: "var(--gx-ink)" }}>
                     Sobran ${excedenteUSD.toFixed(2)}. ¿Qué hacemos con ese dinero?
                   </legend>
+                  {excedenteUSD > precioActual && (
+                    <p className="text-sm" style={{ color: "var(--gx-bad)" }}>
+                      Sobra más que el precio del plan: revisa que no hayas escrito bolívares en un campo de dólares.
+                    </p>
+                  )}
                   <label className="flex min-h-11 items-center gap-2" style={{ color: "var(--gx-muted)" }}>
                     <input
                       type="radio"

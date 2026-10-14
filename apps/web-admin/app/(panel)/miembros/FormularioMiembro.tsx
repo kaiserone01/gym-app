@@ -252,14 +252,22 @@ export function FormularioMiembro({
   const [errorMontoHoy, setErrorMontoHoy] = useState<string | null>(null);
   // Primer pago dividido en dos métodos (p. ej. dos pagos móviles): cada línea trae su método y su monto.
   const [dividirPago, setDividirPago] = useState(false);
-  const [lineasDivididas, setLineasDivididas] = useState<(LineaPagoMiembro | null)[]>([null, null]);
-  const totalDividido = lineasDivididas.reduce((suma, linea) => suma + (linea?.monto ?? 0), 0);
+  const [lineasDivididas, setLineasDivididas] = useState<{ id: number; linea: LineaPagoMiembro | null }[]>([
+    { id: 1, linea: null },
+    { id: 2, linea: null },
+  ]);
+  const [siguienteIdLinea, setSiguienteIdLinea] = useState(3);
+  const totalDividido = lineasDivididas.reduce((suma, { linea }) => suma + (linea?.monto ?? 0), 0);
   const montoAPagar = dividirPago ? Math.round(totalDividido * 100) / 100 : montoHoy === "" ? precioActual : Number(montoHoy) || 0;
   const esAbonoInicial = montoAPagar > 0 && montoAPagar < precioActual;
+  // Lo pagado supera el precio (wifi u otro cobro, o pagar de más): sin límite; se elige qué hacer con el sobrante.
+  const hayExcedente = precioActual > 0 && montoAPagar - precioActual > 0.005;
+  const excedenteUSD = Math.max(0, montoAPagar - precioActual);
+  const [excedente, setExcedente] = useState<"otro" | "saldo">("otro");
   const nombrePlanActual = planSeleccionado?.nombre ?? "—";
   const nombreEntrenadorActual = entrenadores.find((e) => e.id === entrenadorId)?.nombre ?? null;
   const nombreMetodoPagoActual = dividirPago
-    ? lineasDivididas.map((linea) => linea?.metodo).filter(Boolean).join(" + ") || null
+    ? lineasDivididas.map(({ linea }) => linea?.metodo).filter(Boolean).join(" + ") || null
     : seleccionMetodo.metodo || null;
   // El ciclo más reciente (por fechaFinCiclo) entre los que tienen datos
   // de ciclo — su fechaInicioCiclo es la "última fecha de renovación", y
@@ -283,8 +291,11 @@ export function FormularioMiembro({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- solo debe re-evaluar cuando cambia la sede, no en cada render de `entrenadores`
   }, [sucursalId]);
   const montoBsActual = dividirPago
-    ? lineasDivididas.some((linea) => linea && linea.tasaCambio !== null)
-      ? lineasDivididas.reduce((suma, linea) => suma + (linea && linea.tasaCambio !== null ? linea.monto * linea.tasaCambio : 0), 0)
+    ? lineasDivididas.some(({ linea }) => linea && linea.tasaCambio !== null)
+      ? lineasDivididas.reduce(
+          (suma, { linea }) => suma + (linea && linea.tasaCambio !== null ? (linea.montoBs ?? linea.monto * linea.tasaCambio) : 0),
+          0
+        )
       : null
     : seleccionMetodo.tasaCambio !== null
       ? montoAPagar * seleccionMetodo.tasaCambio
@@ -335,16 +346,12 @@ export function FormularioMiembro({
 
     setErrorPrecio(null);
     if (!esEdicion && dividirPago) {
-      if (!lineasDivididas.every((linea) => linea && linea.monto > 0 && linea.metodoPagoId)) {
+      if (!lineasDivididas.every(({ linea }) => linea && linea.monto > 0 && linea.metodoPagoId)) {
         setErrorMontoHoy("Elegí el método y el monto de cada pago.");
         return;
       }
-      if (montoAPagar > precioActual + toleranciaDiferenciaPagoUSD(precioActual)) {
-        setErrorMontoHoy("Los pagos suman más que el precio del plan.");
-        return;
-      }
-    } else if (!esEdicion && precioActual > 0 && (montoAPagar <= 0 || montoAPagar > precioActual)) {
-      setErrorMontoHoy("El monto debe ser mayor a 0 y no pasar el precio del plan.");
+    } else if (!esEdicion && precioActual > 0 && montoAPagar <= 0) {
+      setErrorMontoHoy("El monto a pagar debe ser mayor a 0.");
       return;
     }
     setErrorMontoHoy(null);
@@ -433,16 +440,18 @@ export function FormularioMiembro({
         {!esEdicion && (
           <>
             <input type="hidden" name="montoInicial" value={montoAPagar} />
+            <input type="hidden" name="excedente" value={hayExcedente ? excedente : ""} />
             {dividirPago && (
               <input
                 type="hidden"
                 name="lineas"
                 value={JSON.stringify(
-                  lineasDivididas.flatMap((linea) =>
+                  lineasDivididas.flatMap(({ linea }) =>
                     linea
                       ? [
                           {
                             monto: Math.round(linea.monto * 100) / 100,
+                            montoBs: linea.montoBs,
                             metodo: linea.metodo,
                             metodoPagoId: linea.metodoPagoId,
                             numeroOperacion: linea.numeroOperacion || null,
@@ -894,22 +903,37 @@ export function FormularioMiembro({
 
               {precioActual > 0 && dividirPago ? (
                 <>
-                  {[0, 1].map((indice) => (
+                  {lineasDivididas.map(({ id }, indice) => (
                     <LineaPagoMiembroCampos
-                      key={indice}
-                      nombre={`pago${indice + 1}`}
+                      key={id}
+                      nombre={`pago${id}`}
                       titulo={`Pago ${indice + 1}`}
                       metodosPago={metodosPago}
                       idFormulario={idFormulario}
                       fechaTasa={fechaInscripcion && fechaInscripcion < hoyISO() ? fechaInscripcion : undefined}
-                      montoInicial=""
                       onCambio={(linea) =>
-                        setLineasDivididas((previas) => previas.map((previa, i) => (i === indice ? linea : previa)))
+                        setLineasDivididas((previas) => previas.map((previa) => (previa.id === id ? { id, linea } : previa)))
+                      }
+                      onQuitar={
+                        lineasDivididas.length > 2
+                          ? () => setLineasDivididas((previas) => previas.filter((previa) => previa.id !== id))
+                          : undefined
                       }
                     />
                   ))}
+                  <Button
+                    type="button"
+                    variant="secundario"
+                    className="mb-3 w-full"
+                    onClick={() => {
+                      setLineasDivididas((previas) => [...previas, { id: siguienteIdLinea, linea: null }]);
+                      setSiguienteIdLinea((n) => n + 1);
+                    }}
+                  >
+                    Agregar otro método de pago
+                  </Button>
                   <p className="mb-2 text-sm" style={{ color: "var(--gx-muted)" }}>
-                    Total de los dos pagos: <strong style={{ color: "var(--gx-ink)" }}>${montoAPagar.toFixed(2)}</strong> de ${precioActual.toFixed(2)}
+                    Total de los pagos: <strong style={{ color: "var(--gx-ink)" }}>${montoAPagar.toFixed(2)}</strong> de ${precioActual.toFixed(2)}
                     {esAbonoInicial && (
                       <>
                         {" "}
@@ -939,6 +963,32 @@ export function FormularioMiembro({
                 </p>
               )}
 
+              {hayExcedente && (
+                <fieldset className="mt-4 flex flex-col gap-2 rounded-lg border p-3 text-sm" style={{ borderColor: "var(--gx-edge)" }}>
+                  <legend className="px-1" style={{ color: "var(--gx-ink)" }}>
+                    Sobran ${excedenteUSD.toFixed(2)}. ¿Qué hacemos con ese dinero?
+                  </legend>
+                  <label className="flex min-h-11 items-center gap-2" style={{ color: "var(--gx-muted)" }}>
+                    <input
+                      type="radio"
+                      checked={excedente === "otro"}
+                      onChange={() => setExcedente("otro")}
+                      className="h-5 w-5 accent-[var(--gx-accent)]"
+                    />
+                    Es de otro cobro (wifi u otra cosa): solo queda registrado
+                  </label>
+                  <label className="flex min-h-11 items-center gap-2" style={{ color: "var(--gx-muted)" }}>
+                    <input
+                      type="radio"
+                      checked={excedente === "saldo"}
+                      onChange={() => setExcedente("saldo")}
+                      className="h-5 w-5 accent-[var(--gx-accent)]"
+                    />
+                    Guardarlo como saldo a favor para su próximo pago
+                  </label>
+                </fieldset>
+              )}
+
               {precioActual > 0 && (
                 <Button
                   type="button"
@@ -947,7 +997,11 @@ export function FormularioMiembro({
                   onClick={() => {
                     setDividirPago((v) => !v);
                     setErrorMontoHoy(null);
-                    setLineasDivididas([null, null]);
+                    setLineasDivididas([
+                      { id: 1, linea: null },
+                      { id: 2, linea: null },
+                    ]);
+                    setSiguienteIdLinea(3);
                   }}
                 >
                   {dividirPago ? "Pagar con un solo método" : "Dividir el pago en dos métodos"}
@@ -1009,6 +1063,11 @@ export function FormularioMiembro({
             {esAbonoInicial && (
               <p className="text-right text-sm" style={{ color: "var(--gx-muted)" }}>
                 Pendiente ${(precioActual - montoAPagar).toFixed(2)} de ${precioActual.toFixed(2)}
+              </p>
+            )}
+            {hayExcedente && (
+              <p className="text-right text-sm" style={{ color: "var(--gx-muted)" }}>
+                Sobran ${excedenteUSD.toFixed(2)} — {excedente === "saldo" ? "se guardan como saldo a favor" : "de otro cobro"}
               </p>
             )}
             {montoBsActual !== null && (

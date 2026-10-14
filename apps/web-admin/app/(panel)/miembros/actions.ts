@@ -70,6 +70,7 @@ function leerLineasDePago(valor: FormDataEntryValue | null) {
     if (!Array.isArray(lineas) || lineas.length === 0) return null;
     const validas = lineas.map((l) => ({
       monto: Number(l.monto),
+      montoBs: l.montoBs !== null && l.montoBs !== undefined && Number(l.montoBs) > 0 ? Number(l.montoBs) : null,
       metodo: String(l.metodo ?? ""),
       metodoPagoId: l.metodoPagoId ? String(l.metodoPagoId) : null,
       numeroOperacion: l.numeroOperacion ? String(l.numeroOperacion) : null,
@@ -114,7 +115,7 @@ export async function crearMiembroAction(
   const precioPlan = Number(formData.get("precioPlan"));
   // Primer pago: por defecto el precio completo; menos que eso se registra como abono.
   const montoInicial = Number(formData.get("montoInicial"));
-  const montoPago = montoInicial > 0 && montoInicial < precioPlan ? montoInicial : precioPlan;
+  const montoPago = montoInicial > 0 ? montoInicial : precioPlan;
   // Primer pago dividido en dos métodos: llega como JSON desde el formulario (null = un solo método, como siempre).
   const lineasDivididas = leerLineasDePago(formData.get("lineas"));
   const metodo = formData.get("metodo")?.toString();
@@ -200,6 +201,8 @@ export async function crearMiembroAction(
         // cuentan desde ese día (ver primerPagoDeInscripcion).
         fechaPago: miembro.fechaInscripcion ?? undefined,
         primerPagoDeInscripcion: true,
+        // Si pagó de más: guardar el sobrante como saldo a favor (si no, es de otro cobro y solo queda registrado).
+        excedenteASaldoAFavor: formData.get("excedente")?.toString() === "saldo",
         lineas: lineasDivididas ?? [
           {
             monto: montoPago,

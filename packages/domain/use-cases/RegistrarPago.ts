@@ -117,6 +117,21 @@ export interface DatosLineaPago {
   metodoPagoId: string | null;
   numeroOperacion: string | null;
   tasaCambio: number | null;
+  // Bs realmente recibidos (lo que tecleó el cajero): se guarda tal cual si coincide con monto × tasa a un centavo
+  // de dólar; el monto en USD queda redondeado a centavos y la tasa no es rígida (ver montoBsDeLinea).
+  montoBs?: number | null;
+}
+
+// Monto en Bs de una línea: el recibido de verdad si cuadra con el USD (dentro de un centavo de dólar), si no el calculado.
+function montoBsDeLinea(linea: DatosLineaPago, tasa: number | null): number | null {
+  if (tasa === null) return null;
+  const calculado = linea.monto * tasa;
+  return linea.montoBs != null && Math.abs(linea.montoBs - calculado) <= 0.01 * tasa ? linea.montoBs : calculado;
+}
+
+// Lo que sobra del precio del ciclo y el cajero eligió guardar como saldo a favor (0 si no aplica).
+function excedenteASaldo(input: DatosRegistrarPago, montoAcumulado: number, precioObjetivo: number): number {
+  return input.excedenteASaldoAFavor ? Math.max(0, Math.round((montoAcumulado - precioObjetivo) * 100) / 100) : 0;
 }
 
 export interface DatosRegistrarPago {
@@ -136,6 +151,9 @@ export interface DatosRegistrarPago {
   fechaPago?: Date;
   // Primer pago de un miembro que se acaba de inscribir con fecha pasada: permite fechaPago sin el aviso "Por regularizar".
   primerPagoDeInscripcion?: boolean;
+  // Si lo pagado supera el precio del ciclo, el sobrante se guarda como saldo a favor del miembro (el próximo pago lo
+  // descuenta). Sin esto, el sobrante es de otro cobro (wifi, etc.) y solo queda registrado en el pago.
+  excedenteASaldoAFavor?: boolean;
 }
 
 // Valida un abono parcial (el plan debe admitirlo y el monto acumulado cubrir el mínimo de la regla) y devuelve hasta
@@ -310,10 +328,9 @@ export async function registrarPago(deps: RegistrarPagoDeps, input: DatosRegistr
     await deps.miembros.actualizarFechasPago(input.miembroId, ahora, fin);
   }
 
-  if (saldoAConsumir > 0) {
-    await deps.miembros.actualizar(input.organizacionId, input.miembroId, {
-      saldoAFavorUSD: saldoDisponible - saldoAConsumir,
-    });
+  const saldoFinal = Math.round((saldoDisponible - saldoAConsumir + excedenteASaldo(input, montoAcumuladoDelCiclo, precioObjetivo)) * 100) / 100;
+  if (saldoFinal !== saldoDisponible) {
+    await deps.miembros.actualizar(input.organizacionId, input.miembroId, { saldoAFavorUSD: saldoFinal });
   }
 
   const turnoAbierto = await deps.turnos.buscarAbiertoPorSucursal(input.sucursalId);
@@ -334,7 +351,7 @@ export async function registrarPago(deps: RegistrarPagoDeps, input: DatosRegistr
       metodoPagoId: linea.metodoPagoId,
       numeroOperacion: linea.numeroOperacion,
       tasaCambio: linea.tasaCambio,
-      montoBs: linea.tasaCambio !== null ? linea.monto * linea.tasaCambio : null,
+      montoBs: montoBsDeLinea(linea, linea.tasaCambio),
       fechaInicioCiclo: base,
       fechaFinCiclo: fin,
       grupoPagoId,
@@ -418,10 +435,9 @@ async function registrarPagoRetroactivo(
     ...(ctx.huboCambioDePlan ? { precioPlan: ctx.plan.precioUSD } : {}),
   });
   await deps.miembros.actualizarFechasPago(input.miembroId, ctx.fechaPago, fin);
-  if (ctx.saldoAConsumir > 0) {
-    await deps.miembros.actualizar(input.organizacionId, input.miembroId, {
-      saldoAFavorUSD: ctx.saldoDisponible - ctx.saldoAConsumir,
-    });
+  const saldoFinal = Math.round((ctx.saldoDisponible - ctx.saldoAConsumir + excedenteASaldo(input, montoAcumulado, ctx.precioObjetivo)) * 100) / 100;
+  if (saldoFinal !== ctx.saldoDisponible) {
+    await deps.miembros.actualizar(input.organizacionId, input.miembroId, { saldoAFavorUSD: saldoFinal });
   }
 
   const grupoPagoId = input.lineas.length > 1 ? randomUUID() : null;
@@ -439,7 +455,7 @@ async function registrarPagoRetroactivo(
         metodoPagoId: linea.metodoPagoId,
         numeroOperacion: linea.numeroOperacion,
         tasaCambio,
-        montoBs: tasaCambio !== null ? linea.monto * tasaCambio : null,
+        montoBs: montoBsDeLinea(linea, tasaCambio),
         fechaInicioCiclo: inicioCiclo,
         fechaFinCiclo: fin,
         grupoPagoId,

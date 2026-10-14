@@ -72,6 +72,9 @@ export function CurrencyInput({
   }
 
   const valorNumericoActual = value !== undefined ? value : aValorNumerico(interno);
+  // Dólares en verde con "$", bolívares en ámbar con "Bs": se distinguen a simple vista al pagar.
+  const esUSD = moneda === "USD";
+  const color = esUSD ? "var(--gx-accent)" : "var(--gx-warn)";
 
   return (
     <label className="flex flex-col gap-1.5 text-sm" style={{ color: "var(--gx-muted)" }}>
@@ -85,11 +88,14 @@ export function CurrencyInput({
           onChange={(e) => manejarCambio(e.target.value)}
           onBlur={() => setInterno(formatearVisual(valorNumericoActual))}
           placeholder="0,00"
-          className={`min-h-11 w-full rounded-lg border pl-3 pr-14 ${className} gx-campo`}
+          className={`min-h-11 w-full rounded-lg border ${esUSD ? "pl-9" : "pl-11"} pr-16 ${className} gx-campo`}
         />
+        <span className="pointer-events-none absolute left-3 text-lg font-bold" style={{ color }}>
+          {esUSD ? "$" : "Bs"}
+        </span>
         <span
-          className="pointer-events-none absolute right-3 text-xs font-semibold"
-          style={{ color: "var(--gx-muted)" }}
+          className="pointer-events-none absolute right-2 rounded px-1.5 py-0.5 text-sm font-bold"
+          style={{ color, background: `color-mix(in srgb, ${color} 16%, transparent)` }}
         >
           {moneda}
         </span>

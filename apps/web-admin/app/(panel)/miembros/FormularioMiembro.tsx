@@ -1032,7 +1032,7 @@ export function FormularioMiembro({
         ) : (
           <div
             ref={ticketRef}
-            className="rounded-2xl border-2 border-dashed p-5"
+            className="resplandor-confirmacion rounded-2xl border-2 border-dashed p-5"
             style={{ borderColor: "var(--gx-edge)", background: "var(--gx-surface)" }}
           >
             <p

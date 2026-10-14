@@ -37,6 +37,22 @@ body {
   }
 }
 
+/* Cuadro de confirmación final: un halo verde que late suave para que se note antes de guardar. */
+@keyframes resplandor-confirmacion {
+  0%, 100% { box-shadow: 0 0 10px 1px color-mix(in srgb, var(--gx-accent) 35%, transparent); }
+  50% { box-shadow: 0 0 28px 6px color-mix(in srgb, var(--gx-accent) 65%, transparent); }
+}
+.resplandor-confirmacion {
+  border-color: var(--gx-accent);
+  animation: 2s ease-in-out infinite resplandor-confirmacion;
+}
+@media (prefers-reduced-motion: reduce) {
+  .resplandor-confirmacion {
+    animation: none;
+    box-shadow: 0 0 22px 4px color-mix(in srgb, var(--gx-accent) 55%, transparent);
+  }
+}
+
 @media print {
   body {
     background: #ffffff;

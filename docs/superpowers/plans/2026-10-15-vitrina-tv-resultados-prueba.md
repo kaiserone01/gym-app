@@ -11,6 +11,9 @@ Dispositivo: **dispositivo de prueba, no la TV real** (pendiente anotar modelo).
 | 3 | Reloj tras un corte de luz | Pendiente (desenchufar 10 s y volver a encender sin internet; anotar si aparece "RELOJ ATRASADO" y a qué fecha vuelve). | |
 | 4 | Arranque automático | Parcial: **la pantalla del permiso "Mostrar sobre otras aplicaciones" sí apareció** al abrir la app. Falta confirmar que tras activar el permiso la app abre sola al apagar y encender. | |
 
+## Decisión (2026-10-15)
+Se cierra el gate de forma **provisional** y se sigue con las Tasks 11 a 13: aún no hay acceso a la TV real y el smartphone de prueba es un equipo parecido (mismos parámetros que el APK del kiosco). El diseño ya es conservador para lo que falta por probar (un video activo por franja, reloj efectivo con el último `servidorAhora`, arranque sin red, permiso de arranque pedido desde la app). Las pruebas 3 y 4 y el rendimiento se repiten en la TV real en la checklist de la Task 14, Step 9; si fallan, se corrige en ese momento.
+
 ## Pendiente
 - Repetir 1 a 4 en la **TV real** y anotar su modelo.
 - Pruebas 3 y 4 (reloj y arranque automático).

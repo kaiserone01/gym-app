@@ -248,7 +248,8 @@ export function FormularioMiembro({
   const planEsCortesia = planSeleccionado?.precioUSD === 0;
   const precioActual = Number(precio) || 0;
   // Primer pago de un miembro nuevo: vacío = el precio completo; menos que el precio queda como abono.
-  const [montoHoy, setMontoHoy] = useState("");
+  // null = sin tocar (se ve el precio del plan); "" = el cajero borró el campo para escribir otro monto.
+  const [montoHoy, setMontoHoy] = useState<string | null>(null);
   const [errorMontoHoy, setErrorMontoHoy] = useState<string | null>(null);
   // Primer pago dividido en dos métodos (p. ej. dos pagos móviles): cada línea trae su método y su monto.
   const [dividirPago, setDividirPago] = useState(false);
@@ -258,7 +259,7 @@ export function FormularioMiembro({
   ]);
   const [siguienteIdLinea, setSiguienteIdLinea] = useState(3);
   const totalDividido = lineasDivididas.reduce((suma, { linea }) => suma + (linea?.monto ?? 0), 0);
-  const montoAPagar = dividirPago ? Math.round(totalDividido * 100) / 100 : montoHoy === "" ? precioActual : Number(montoHoy) || 0;
+  const montoAPagar = dividirPago ? Math.round(totalDividido * 100) / 100 : montoHoy === null ? precioActual : Number(montoHoy) || 0;
   const esAbonoInicial = montoAPagar > 0 && montoAPagar < precioActual;
   // Lo pagado supera el precio (wifi u otro cobro, o pagar de más): sin límite; se elige qué hacer con el sobrante.
   const hayExcedente = precioActual > 0 && montoAPagar - precioActual > 0.005;
@@ -895,7 +896,7 @@ export function FormularioMiembro({
                     name="montoHoy"
                     label="Monto a pagar hoy"
                     moneda="USD"
-                    value={montoHoy === "" ? String(precioActual) : montoHoy}
+                    value={montoHoy ?? String(precioActual)}
                     onChange={(valor) => {
                       setMontoHoy(valor);
                       setErrorMontoHoy(null);

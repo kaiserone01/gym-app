@@ -287,6 +287,7 @@ export function FormularioMiembro({
   // ceil sobre el delta en horas para no perder un día por horas sueltas
   // (p. ej. faltan 23h50m -> "falta 1 día", no "0 días").
   const diasHastaProximoCobro = cicloMasReciente?.fechaFinCiclo
+    // eslint-disable-next-line react-hooks/purity -- los dias hasta el cobro se calculan con la hora actual en cada render; congelarlos cambiaria el comportamiento
     ? Math.ceil((new Date(cicloMasReciente.fechaFinCiclo).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
     : null;
 
@@ -295,6 +296,7 @@ export function FormularioMiembro({
   // entrenadorId "fantasma" que el usuario ya no ve en el select.
   useEffect(() => {
     if (entrenadorId && !entrenadores.some((e) => e.id === entrenadorId)) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- limpia el entrenador si no pertenece a la sede elegida (depende solo de sucursalId)
       setEntrenadorId("");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- solo debe re-evaluar cuando cambia la sede, no en cada render de `entrenadores`

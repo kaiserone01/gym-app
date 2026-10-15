@@ -147,7 +147,7 @@ export function BuscadorMiembro({
 
         {busquedaAplicada !== "" && resultados.length === 0 && (
           <p className="py-8 text-center" style={{ color: "var(--gx-muted)" }}>
-            Ningún miembro coincide con "{busqueda.trim()}".
+            Ningún miembro coincide con &quot;{busqueda.trim()}&quot;.
           </p>
         )}
 

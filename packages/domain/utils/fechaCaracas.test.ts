@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { esCumpleanos, medianocheCaracasDeFechaUtc } from "./fechaCaracas";
+import { esCumpleanos, medianocheCaracasDeFechaUtc, rangoDiaCaracas } from "./fechaCaracas";
 
 // fechaNacimiento se guarda como fecha local a las 00:00 (igual que fechaInscripcion): se crea con el
 // constructor local para que el test no dependa de la zona horaria de la máquina.
@@ -53,5 +53,13 @@ describe("medianocheCaracasDeFechaUtc", () => {
   test("antes y después de la era UTC-4:30 vuelve a 04:00Z", () => {
     expect(medianocheCaracasDeFechaUtc(new Date("2007-12-08T00:00:00Z")).toISOString()).toBe("2007-12-08T04:00:00.000Z");
     expect(medianocheCaracasDeFechaUtc(new Date("2016-05-02T00:00:00Z")).toISOString()).toBe("2016-05-02T04:00:00.000Z");
+  });
+});
+
+describe("rangoDiaCaracas", () => {
+  test("va de las 00:00 a las 23:59:59.999 de Caracas (UTC-4)", () => {
+    const { inicio, fin } = rangoDiaCaracas("2026-10-20");
+    expect(inicio.toISOString()).toBe("2026-10-20T04:00:00.000Z");
+    expect(fin.toISOString()).toBe("2026-10-21T03:59:59.999Z");
   });
 });

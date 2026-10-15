@@ -7,3 +7,4 @@
 !.env.example
 docs
 handoff.md
+packages/db/prisma7.local.config.ts

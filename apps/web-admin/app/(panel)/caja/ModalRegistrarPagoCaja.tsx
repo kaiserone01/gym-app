@@ -509,10 +509,12 @@ function ContenidoPaso3({
   const [fechaPago, setFechaPago] = useState("");
   const hoyISO = fechaALocalISO(new Date());
   const maxDiasAtras = porRegularizar ? MAX_DIAS_ATRAS_PAGO_RETROACTIVO : MAX_DIAS_ATRAS_PAGO_FECHADO;
+  // eslint-disable-next-line react-hooks/purity -- el limite minimo debe calcularse con la hora actual en cada render; congelarlo cambiaria el comportamiento
   const minFechaISO = fechaALocalISO(new Date(Date.now() - maxDiasAtras * 24 * 60 * 60 * 1000));
   const esFechaPasada = fechaPago !== "" && fechaPago < hoyISO;
   const [tasaDelDia, setTasaDelDia] = useState<number | null>(null);
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- limpia la tasa del dia al cambiar la fecha antes de pedir la nueva; flujo de cobro, sin cambiar el comportamiento
     setTasaDelDia(null);
     if (!esFechaPasada) return;
     let vigente = true;

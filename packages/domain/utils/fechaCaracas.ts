@@ -18,6 +18,12 @@ export function inicioDelDiaCaracas(ahora: Date): Date {
   return new Date(diaCalendarioCaracas(ahora).getTime() + 4 * 3_600_000);
 }
 
+// "2026-10-20" → de las 00:00 a las 23:59:59.999 de ese día en Caracas (UTC-4, sin horario de verano).
+export function rangoDiaCaracas(fechaIso: string): { inicio: Date; fin: Date } {
+  const inicio = inicioDelDiaCaracas(new Date(`${fechaIso}T12:00:00Z`));
+  return { inicio, fin: new Date(inicio.getTime() + 86_400_000 - 1) };
+}
+
 // ¿Hoy (día calendario de Caracas) es el cumpleaños? fechaNacimiento se guarda como fecha local a las
 // 00:00, igual que fechaInscripcion, y se lee con getters locales. Quien nació un 29 de febrero solo
 // cumple los años bisiestos.

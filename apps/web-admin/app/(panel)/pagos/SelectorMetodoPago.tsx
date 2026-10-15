@@ -200,6 +200,7 @@ export function SelectorMetodoPago({
   // Se carga la tasa al elegir un método en Bs y de nuevo si cambia la fecha del pago (la tasa de otra fecha no sirve).
   useEffect(() => {
     if (esEnBs && (tasa === null || fechaTasa !== undefined)) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- dispara la carga de la tasa (fetch) al elegir metodo en Bs o cambiar la fecha; el setState ocurre dentro de cargarTasa
       cargarTasa();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- solo debe disparar cuando se elige un método en Bs o cambia la fecha
@@ -224,6 +225,7 @@ export function SelectorMetodoPago({
   // pierde los datos ya cargados.
   useEffect(() => {
     if (avisoServidor?.tasaNueva !== undefined) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- aplica la tasa nueva devuelta por la Server Action; sincroniza con una respuesta externa
       setTasa(avisoServidor.tasaNueva);
       setCargadaEnMs(Date.now());
     }

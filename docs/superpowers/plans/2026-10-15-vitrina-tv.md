@@ -12,8 +12,10 @@
 
 ## Global Constraints
 
-- Todo texto de UI, commits y documentación va en español. Commits: **una sola línea, en español, sin cuerpo y sin firmas** (`Co-Authored-By`, `Claude-Session`, etc.). Tras cada tarea: `git push origin main`.
-- **Nunca** ejecutar `prisma migrate dev`, `migrate deploy`, `migrate reset` ni `db push` contra el `.env` local (es producción). Toda operación de Prisma de este plan usa `--config prisma7.local.config.ts`.
+- Todo texto de UI, commits y documentación va en español.
+- **Git: el agente nunca ejecuta `git add`, `git commit` ni `git push`.** Deja los cambios en el working tree y, al final de cada tarea, sugiere el mensaje de commit (una sola línea, en español, sin cuerpo y sin firmas: nada de `Co-Authored-By` ni `Claude-Session`). El usuario hace commit, push y deploy.
+- **Prohibido ejecutar con la config por defecto (`prisma7.config.ts`, que carga el `.env` de producción):** `npx prisma db seed`, `prisma migrate dev`, `migrate deploy`, `migrate reset`, `db push` y **cualquier script `db:*` del repo** (`npm run db:...`, `npm run migrate:dev`, etc.). No hace falta seed: la organización `zip-gym` ya existe. Toda operación de Prisma de este plan usa `--config prisma7.local.config.ts`, que solo acepta una base en `localhost`.
+- **Dos deploys, los hace el usuario** (ver "Despliegues y puntos de control"): el primero al terminar la Task 6, el segundo al final del plan.
 - La migración es **solo aditiva** (tablas, enums y columnas con valor por defecto; sin `DROP`, `RENAME` ni `ALTER COLUMN`): `docker-entrypoint.sh` corre `migrate deploy` con `set -e` y, si falla, web-admin y el check-in no arrancan.
 - No se modifica ningún archivo bajo `apps/kiosk-tv/` ni `.github/workflows/apk-kiosco.yml`. `apps/kiosk` no cambia (salvo lo que este plan nombre explícitamente: nada).
 - `apps/vitrina` importa de `@gym-app/domain` **solo funciones puras por ruta** (`@gym-app/domain/utils/...`, `.../services/...`, `.../entities/...`), nunca `@gym-app/infrastructure` ni `@gym-app/db`.
@@ -25,7 +27,18 @@
 - SSE: latido cada 25 s; sondeo de respaldo cada 10 min que **siempre** aplica el manifiesto completo; reconexión 2 s → 60 s; `vitrina:cambio` se emite **después** del commit.
 - APK: `loggingBehavior: "none"`, `webContentsDebuggingEnabled: false`, sin `CapacitorHttp`, sin `server.url` salvo `VITRINA_DEV_URL`; keystore fijo y versionado (no cambiar nunca); `versionCode` = `github.run_number`; se desactiva la depuración por adb al terminar de instalar.
 - Todo ítem nuevo nace `activo = false`.
-- Pruebas manuales con datos reales: solo en la organización `zip-gym` (espejo de pruebas), nunca en `gym-demo`.
+- Toda prueba manual se hace contra la base de producción **con la sede y la API key de `zip-gym`** (organización espejo de pruebas), **nunca** con las de `gym-demo` ni las de otra organización.
+- Para probar el aviso de cambios (SSE), el dashboard y la vitrina deben apuntar **al mismo web-admin**: los dos al local (`localhost:3000`) o los dos a producción tras el deploy final. El emisor de eventos vive en la memoria de cada proceso: un panel en un servidor y una vitrina en otro nunca se ven.
+
+## Despliegues y puntos de control
+
+El agente no despliega nada. Hay dos deploys, ambos del usuario:
+
+1. **Deploy 1, al terminar la Task 6** (Tasks 1 a 6 en el working tree: cáscara Android y workflow, dominio y migración ya validada contra el Postgres local). Al arrancar el contenedor, `docker-entrypoint.sh` aplica la migración en producción.
+   **PUNTO DE CONTROL A: el agente se detiene aquí y espera la confirmación explícita del usuario de que la migración quedó aplicada en producción.** No se empieza la Task 7 ni la Task 8 sin ella (la Task 8 consulta las tablas nuevas contra la base de producción). Tras la confirmación se ejecuta el Step 15 de la Task 1 (APK de prueba en el TV real).
+2. **Deploy 2, al final del plan** (Tasks 7 a 13 en el working tree y verificadas en local). **PUNTO DE CONTROL B:** el agente se detiene antes del Step 5 de la Task 14 y espera la confirmación del usuario de que el commit, el push y el deploy ya están hechos; el workflow del APK compila desde GitHub, no desde el working tree.
+
+Entre el Punto A y el Punto B, todas las verificaciones se hacen en local: `web-admin` en `localhost:3000` y la vitrina en `localhost:3002`, ambos apuntando a ese mismo web-admin, con la sede y la API key de `zip-gym`.
 
 ## Trazabilidad de la revisión (dónde quedó resuelto cada punto)
 
@@ -61,7 +74,7 @@ Entradas que la spec implica y ningún camino feliz ejercita; cada una tiene su 
 
 ### Task 1: Cáscara Android propia, workflow y prueba en la TV real (gate)
 
-Esta tarea va primero a propósito: valida en el equipo físico lo que decide el diseño (3 videos a la vez, arranque en frío sin red, reloj tras un corte de luz y arranque automático) antes de construir el resto.
+Esta tarea va primero a propósito: valida en el equipo físico lo que decide el diseño (3 videos a la vez, arranque en frío sin red, reloj tras un corte de luz y arranque automático) antes de construir la API y la app. Los Steps 1 a 14 se hacen en el working tree; el Step 15 (compilar el APK de prueba y probarlo en el TV) necesita el código en GitHub, así que se ejecuta en el **Punto de control A**, tras el Deploy 1 que hace el usuario, y antes de empezar la Task 7.
 
 **Files:**
 - Create: `apps/vitrina-tv/capacitor/` (copia adaptada de `apps/kiosk-tv/capacitor/android/`), `package.json`, `.gitignore`, `scripts/configuracion.mjs`, `scripts/configuracion.test.mjs`, `scripts/preparar.mjs`, `scripts/generar-iconos.mjs`, `assets/escudo.png`, `android/app/src/main/java/com/adrenalina/vitrina/{MainActivity,ArranqueReceiver}.java`
@@ -645,7 +658,7 @@ adb shell appops get com.adrenalina.vitrina SYSTEM_ALERT_WINDOW
 
 y **6. Al terminar**: desactivar la depuración USB/por red en Opciones de desarrollador y ejecutar `adb disconnect` (el APK es de debug y lleva la clave de la sede); **7. Rotar clave** (actualizar el secreto, recompilar, `adb install -r`).
 
-- [ ] **Step 14: Guarda de no regresión y commit**
+- [ ] **Step 14: Guarda de no regresión y sugerir el commit**
 
 ```bash
 cd /c/dev/gym-app
@@ -654,14 +667,17 @@ git diff --stat -- apps/kiosk-tv .github/workflows/apk-kiosco.yml
 
 Expected: sin salida (el kiosco no cambió).
 
-```bash
-git add apps/vitrina-tv .github/workflows/apk-vitrina.yml
-git update-index --chmod=+x apps/vitrina-tv/capacitor/android/gradlew
-git commit -m "agrega la cáscara Android de la vitrina, su workflow y una página de prueba para el TV"
-git push origin main
+Dejar los cambios en el working tree: **no** ejecutar `git add`, `git commit` ni `git push` (el usuario hace commit, push y deploy). Mensaje de commit sugerido (una línea, en español):
+
+```text
+agrega la cáscara Android de la vitrina, su workflow y una página de prueba para el TV
 ```
 
-- [ ] **Step 15: Compilar la prueba y verificarla en el TV real (gate manual)**
+Nota para quien haga el commit: después del `git add`, ejecutar `git update-index --chmod=+x apps/vitrina-tv/capacitor/android/gradlew` para conservar el bit ejecutable del wrapper de Gradle.
+
+- [ ] **Step 15: Compilar la prueba y verificarla en el TV real (gate manual; se ejecuta en el Punto de control A)**
+
+**No ejecutar este paso ahora.** El workflow compila desde GitHub, así que necesita el código ya subido: se hace después del Deploy 1 (final de la Task 6) y de la confirmación del usuario (ver "Despliegues y puntos de control"). La prueba no usa la API ni la base de datos: la página de prueba va dentro del APK.
 
 ```bash
 gh workflow run apk-vitrina.yml -f sucursal=prueba -f api_url=https://example.invalid -f modo=prueba
@@ -676,15 +692,15 @@ Instalar `salida-prueba/vitrina-prueba.apk` (`adb install -r`), conceder los per
 3. **Reloj tras corte de luz:** con la app abierta unos segundos, **desenchufar el TV**, esperar 10 s, enchufarlo **sin internet** y abrir la app: si aparece "RELOJ ATRASADO", el equipo pierde la hora y el reloj efectivo (Task 2) es imprescindible; anotar a qué fecha vuelve.
 4. **Arranque automático:** con los permisos concedidos por adb, apagar y encender el TV: la app abre sola. Si no abre: probar fijarla como launcher; si tampoco, documentar el ajuste de "autoinicio" del fabricante en el README.
 
-Guardar los resultados en `docs/superpowers/plans/2026-10-15-vitrina-tv-resultados-prueba.md` (una línea por prueba: resultado y modelo del TV) y commitear:
+Guardar los resultados en `docs/superpowers/plans/2026-10-15-vitrina-tv-resultados-prueba.md` (una línea por prueba: resultado y modelo del TV) y sugerir el commit:
 
-```bash
-git add docs/superpowers/plans/2026-10-15-vitrina-tv-resultados-prueba.md
-git commit -m "registra los resultados de la prueba de la vitrina en el TV real"
-git push origin main
+Dejar los cambios en el working tree: **no** ejecutar `git add`, `git commit` ni `git push` (el usuario hace commit, push y deploy). Mensaje de commit sugerido (una línea, en español):
+
+```text
+registra los resultados de la prueba de la vitrina en el TV real
 ```
 
-Si la prueba 3 o la 4 fallan de forma que invalide el diseño, **detenerse y avisar** antes de la Task 2.
+Si la prueba 3 o la 4 fallan de forma que invalide el diseño, **detenerse y avisar** antes de la Task 7.
 
 ---
 
@@ -859,12 +875,12 @@ export { formatearBs };
 Run: `npm test --workspace packages/domain`. Expected: todo en verde (incluidos los tests existentes de `ObtenerTasaVigente`).
 Run: `cd apps/web-admin && npx tsc --noEmit`. Expected: sin errores.
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 4: Sugerir el mensaje de commit**
 
-```bash
-git add packages/domain apps/web-admin/app/\(panel\)/tasaBcvFija.ts
-git commit -m "agrega estadoDeTasa, reloj efectivo y rango de día de Caracas y mueve formatearBs al dominio"
-git push origin main
+Dejar los cambios en el working tree: **no** ejecutar `git add`, `git commit` ni `git push` (el usuario hace commit, push y deploy). Mensaje de commit sugerido (una línea, en español):
+
+```text
+agrega estadoDeTasa, reloj efectivo y rango de día de Caracas y mueve formatearBs al dominio
 ```
 
 ---
@@ -1217,12 +1233,12 @@ export function numeroDeDiapositiva(secuencia: Diapositiva[]): Map<string, numbe
 
 Run: `npm test --workspace packages/domain -- services/secuenciaVitrina`. Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 5: Sugerir el mensaje de commit**
 
-```bash
-git add packages/domain/entities packages/domain/services
-git commit -m "agrega la entidad de la vitrina y la secuencia de diapositivas con franjas de 3 entrenadores"
-git push origin main
+Dejar los cambios en el working tree: **no** ejecutar `git add`, `git commit` ni `git push` (el usuario hace commit, push y deploy). Mensaje de commit sugerido (una línea, en español):
+
+```text
+agrega la entidad de la vitrina y la secuencia de diapositivas con franjas de 3 entrenadores
 ```
 
 ---
@@ -1576,12 +1592,12 @@ export function urlsDeManifiesto(manifiesto: ManifiestoVitrina): string[] {
 
 Run: `npm test --workspace packages/domain`. Expected: todo en verde.
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 4: Sugerir el mensaje de commit**
 
-```bash
-git add packages/domain
-git commit -m "agrega badges de precio, validación de ítems y armado del manifiesto de la vitrina"
-git push origin main
+Dejar los cambios en el working tree: **no** ejecutar `git add`, `git commit` ni `git push` (el usuario hace commit, push y deploy). Mensaje de commit sugerido (una línea, en español):
+
+```text
+agrega badges de precio, validación de ítems y armado del manifiesto de la vitrina
 ```
 
 ---
@@ -2008,22 +2024,25 @@ y la firma pasa a `export function extensionDeImagen(contentType: string, bytes:
 
 Run: `npm test --workspace packages/domain`. Expected: todo en verde.
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 4: Sugerir el mensaje de commit**
 
-```bash
-git add packages/domain
-git commit -m "agrega el lector de MP4, la validación de video, el tope de imágenes de la vitrina y el emisor de eventos"
-git push origin main
+Dejar los cambios en el working tree: **no** ejecutar `git add`, `git commit` ni `git push` (el usuario hace commit, push y deploy). Mensaje de commit sugerido (una línea, en español):
+
+```text
+agrega el lector de MP4, la validación de video, el tope de imágenes de la vitrina y el emisor de eventos
 ```
 
 ---
 
 ### Task 6: Migración sin tocar producción
 
+> **Esta tarea no toca producción en ningún momento.** El Postgres local de Docker existe **solo** para validar la migración: aplicar el historial completo y comprobar que no hay drift. No se usa para correr web-admin ni para sembrar datos (zip-gym ya existe en producción). La migración llegará a producción en el **Deploy 1**, que hace el usuario al terminar esta tarea. Prohibido en toda esta tarea: `prisma db seed`, `migrate dev`, `migrate reset`, `db push`, y `migrate deploy` o cualquier `npm run db:*` con la config por defecto.
+
 **Files:**
 - Modify: `packages/db/prisma/schema.prisma`
 - Create: `packages/db/prisma7.local.config.ts`
 - Create: `packages/db/prisma/migrations/20261015000000_vitrina/migration.sql`
+- Modify: `.dockerignore` (añadir `packages/db/prisma7.local.config.ts`)
 
 **Interfaces:**
 - Produces: modelo `VitrinaItem`, enums `TipoVitrinaItem` y `TipoMedioVitrina`, columnas `Sucursal.vitrinaDuracionSeg`, `Sucursal.vitrinaTransicion`, `Sucursal.vitrinaVersion`; el cliente Prisma regenerado los expone.
@@ -2129,6 +2148,23 @@ export default defineConfig({
 });
 ```
 
+- [ ] **Step 2b: Excluir la config local de la imagen de producción**
+
+`docker-entrypoint.sh` corre `prisma migrate deploy` **sin `--config`** dentro de `migrate-toolkit/packages/db`, y esa carpeta se copia desde el contexto de build. `prisma7.local.config.ts` aborta si falta `DATABASE_URL_LOCAL`, así que no debe llegar al contenedor: así este solo ve `prisma7.config.ts`, como hoy. Añadir al final de `.dockerignore` (raíz del repo):
+
+```text
+packages/db/prisma7.local.config.ts
+```
+
+Comprobar:
+
+```bash
+cd /c/dev/gym-app
+tail -3 .dockerignore
+```
+
+Expected: la última línea es `packages/db/prisma7.local.config.ts`. (`.env.local` de `packages/db` solo contiene credenciales de `localhost` y no es secreto; el patrón `.env*` del `.dockerignore` solo cubre la raíz, no esa carpeta.)
+
 - [ ] **Step 3: Postgres local desechable**
 
 ```bash
@@ -2138,6 +2174,19 @@ git check-ignore packages/db/.env.local
 ```
 
 Expected: el último comando imprime la ruta (el archivo está ignorado por `.env*`).
+
+**Alternativa si Docker no está instalado** (caso de esta máquina: hay PostgreSQL 18 en `C:\Program Files\PostgreSQL\18\bin`, pero no Docker): un clúster desechable propio, en otro puerto, solo en localhost y sin tocar el servicio de Postgres instalado ni sus credenciales:
+
+```bash
+PGBIN="/c/Program Files/PostgreSQL/18/bin"
+PGDIR="$(mktemp -d)/pgdata"
+"$PGBIN/initdb" -D "$PGDIR" -U postgres --auth=trust -E UTF8
+"$PGBIN/pg_ctl" -D "$PGDIR" -o "-p 54329 -c listen_addresses=127.0.0.1" -l "$PGDIR/../pg.log" -w start
+printf 'DATABASE_URL_LOCAL=postgresql://postgres@localhost:54329/postgres\n' > packages/db/.env.local
+git check-ignore packages/db/.env.local
+```
+
+Al terminar (Step 9) se detiene y se borra en lugar de `docker rm -f`: `"$PGBIN/pg_ctl" -D "$PGDIR" stop -m fast && rm -rf "$(dirname "$PGDIR")"` y se elimina `packages/db/.env.local`. Mismas garantías: la config local solo acepta `localhost`/`127.0.0.1`.
 
 - [ ] **Step 4: Confirmar las opciones de `migrate diff` de esta versión de Prisma**
 
@@ -2166,7 +2215,7 @@ Expected: `CREATE TYPE "TipoVitrinaItem"`, `CREATE TYPE "TipoMedioVitrina"`, `AL
 - [ ] **Step 6: Comprobar que es solo aditiva**
 
 ```bash
-grep -Ei "DROP |RENAME|ALTER COLUMN|DELETE |UPDATE |TRUNCATE" prisma/migrations/20261015000000_vitrina/migration.sql && echo "NO ADITIVA" || echo "ADITIVA"
+grep -Ei "^(DROP |DELETE FROM|UPDATE |TRUNCATE)|RENAME|ALTER COLUMN|DROP COLUMN|DROP TABLE" prisma/migrations/20261015000000_vitrina/migration.sql && echo "NO ADITIVA" || echo "ADITIVA"
 ```
 
 Expected: `ADITIVA`. Si imprime `NO ADITIVA`, revisar el esquema (algo existente cambió) antes de seguir.
@@ -2181,30 +2230,50 @@ echo "exit=$?"
 
 Expected: `migrate deploy` aplica todas las migraciones (la nueva incluida) sin error; el `diff` termina con `exit=0` (sin diferencias entre la base resultante y el esquema).
 
-- [ ] **Step 8: Regenerar el cliente y comprobar tipos**
+- [ ] **Step 8: Regenerar el cliente y comprobar que web-admin compila (tipos, build y lint)**
+
+El Deploy 1 cambia código de producción (`formatearBs` movido al dominio, `ObtenerTasaVigente` refactorizado y cliente de Prisma regenerado), así que no basta con `tsc`. Hacerlo **con el Postgres local todavía levantado**, pasando su URL inline para que el build no toque la base de producción:
 
 ```bash
+cd /c/dev/gym-app/packages/db
 npx prisma generate --config prisma7.local.config.ts
-cd /c/dev/gym-app/apps/web-admin && npx tsc --noEmit
+cd /c/dev/gym-app
+(cd apps/web-admin && npx tsc --noEmit)
+DATABASE_URL=postgresql://postgres:local@localhost:54329/postgres npm run build --workspace apps/web-admin
+npm run lint --workspace apps/web-admin
+npm test --workspace packages/domain
 ```
 
-Expected: sin errores.
+Expected: todo sin errores. **Si algo falla, corregirlo antes de pasar al Punto de control A: no se le pide el Deploy 1 al usuario con un build o un lint rotos.**
 
-- [ ] **Step 9: Limpiar y commit**
+- [ ] **Step 9: Limpiar y sugerir el commit**
 
 ```bash
 docker rm -f gym-vitrina-pg
 cd /c/dev/gym-app
-git add packages/db/prisma/schema.prisma packages/db/prisma7.local.config.ts packages/db/prisma/migrations/20261015000000_vitrina
-git commit -m "agrega la migración aditiva de la vitrina y una config de Prisma solo para base local"
-git push origin main
 ```
 
-(El push despliega la migración en producción al arrancar el contenedor: es solo aditiva, verificada en el Step 6.)
+Dejar los cambios en el working tree: **no** ejecutar `git add`, `git commit` ni `git push` (el usuario hace commit, push y deploy). Mensaje de commit sugerido (una línea, en español):
+
+```text
+agrega la migración aditiva de la vitrina y una config de Prisma solo para base local
+```
+
+- [ ] **Step 10: PUNTO DE CONTROL A: detenerse y esperar al usuario (Deploy 1)**
+
+El agente no hace push ni despliega. **Precondición:** el Step 8 terminó con `build`, `lint` y tests en verde. Avisar al usuario de que **las Tasks 1 a 6 están completas en el working tree** (incluida la línea nueva de `.dockerignore`) y pedirle, en este orden:
+
+1. Revisar el working tree y hacer commit y push (con los mensajes sugeridos de las Tasks 1 a 6; recordar el `git update-index --chmod=+x` del `gradlew`).
+2. Hacer el **Deploy 1**: al arrancar el contenedor, `docker-entrypoint.sh` aplica la migración `20261015000000_vitrina` en producción. Es solo aditiva (verificada en el Step 6), pero si `migrate deploy` fallara, web-admin y el check-in no arrancan: el usuario debe vigilar el arranque.
+3. **Confirmar explícitamente que la migración quedó aplicada en producción.**
+
+**No empezar la Task 7 ni la Task 8 sin esa confirmación** (la Task 8 consulta las tablas nuevas contra la base de producción). Con la confirmación, ejecutar primero el **Step 15 de la Task 1** (APK de prueba en el TV real) y registrar sus resultados; si invalidan el diseño, detenerse y avisar.
 
 ---
 
 ### Task 7: Repositorio de la vitrina y almacenamiento R2 con subida prefirmada
+
+> **Precondición:** el usuario ya confirmó el Punto de control A (Deploy 1 hecho y migración aplicada en producción) y se registró el resultado de la prueba en el TV real. Sin eso, no empezar.
 
 **Files:**
 - Create: `packages/domain/ports/IVitrinaRepository.ts`
@@ -2541,17 +2610,19 @@ cd /c/dev/gym-app/apps/web-admin && npx tsc --noEmit
 
 Expected: sin errores (`cacheControl` es opcional: `guardarImagen` de kiosko y `guardarFoto` de usuarios no cambian).
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 7: Sugerir el mensaje de commit**
 
-```bash
-git add packages/domain/ports packages/infrastructure package-lock.json
-git commit -m "agrega el repositorio de la vitrina y la subida prefirmada, inspección y borrado en R2"
-git push origin main
+Dejar los cambios en el working tree: **no** ejecutar `git add`, `git commit` ni `git push` (el usuario hace commit, push y deploy). Mensaje de commit sugerido (una línea, en español):
+
+```text
+agrega el repositorio de la vitrina y la subida prefirmada, inspección y borrado en R2
 ```
 
 ---
 
 ### Task 8: API del manifiesto y del flujo SSE
+
+> **Precondición:** el usuario confirmó que la migración `20261015000000_vitrina` ya está aplicada en producción (Punto de control A, Deploy 1). Este paso consulta las tablas nuevas contra la base de producción: sin esa confirmación, **no empezar**. Todo se prueba en local (`web-admin` en `localhost:3000`), con la sede y la API key de `zip-gym`; no hay deploy en esta tarea.
 
 **Files:**
 - Modify: `apps/web-admin/lib/kiosco.ts` (exportar `CORS_HEADERS`; añadir `tasaBcvParaKiosco`)
@@ -2747,7 +2818,7 @@ export async function GET(req: NextRequest) {
 cd /c/dev/gym-app && npm run dev --workspace apps/web-admin
 ```
 
-En otra consola, con la API key de la sucursal de **zip-gym** (Configuraciones → Sucursales → "API Key del kiosco"):
+Este `web-admin` local usa la base de producción (`.env`): **no crear ni modificar nada fuera de la organización `zip-gym`**. En otra consola, con la API key de la sucursal de **zip-gym** (Configuraciones → Sucursales → "API Key del kiosco"; nunca la de `gym-demo`):
 
 ```bash
 curl -i http://localhost:3000/api/kiosco/vitrina                                   # 401, "Falta el header X-Kiosk-Api-Key."
@@ -2756,14 +2827,16 @@ curl -s http://localhost:3000/api/kiosco/estado  -H "X-Kiosk-Api-Key: <CLAVE>"  
 curl -N http://localhost:3000/api/kiosco/vitrina/eventos -H "X-Kiosk-Api-Key: <CLAVE>"   # imprime ": conectado" y, a los 25 s, ": latido"
 ```
 
-Expected: como se indica en cada línea; el `-N` queda abierto hasta Ctrl+C. (Requiere la migración ya desplegada en producción: se hizo en la Task 6.)
+Expected: como se indica en cada línea; el `-N` queda abierto hasta Ctrl+C. Si la respuesta es un error 500 por "tabla VitrinaItem inexistente", la migración no está aplicada en producción: detenerse y avisar al usuario.
 
-- [ ] **Step 7: Commit**
+**Aviso de cambios:** el emisor de eventos vive en la memoria de este proceso, así que el `curl -N` y cualquier cambio hecho desde el dashboard solo se ven entre sí si **los dos apuntan a este mismo web-admin local** (`localhost:3000`). El dashboard de producción no avisará a este `curl`. Esa comprobación se hace en la Task 10 (Step 7, punto 7).
 
-```bash
-git add apps/web-admin/lib apps/web-admin/app/api
-git commit -m "agrega el manifiesto de la vitrina y el flujo SSE de avisos, y comparte la tasa con el kiosco"
-git push origin main
+- [ ] **Step 7: Sugerir el mensaje de commit**
+
+Dejar los cambios en el working tree: **no** ejecutar `git add`, `git commit` ni `git push` (el usuario hace commit, push y deploy). Mensaje de commit sugerido (una línea, en español):
+
+```text
+agrega el manifiesto de la vitrina y el flujo SSE de avisos, y comparte la tasa con el kiosco
 ```
 
 ---
@@ -3278,12 +3351,12 @@ cd /c/dev/gym-app/apps/web-admin && npx tsc --noEmit && npm run lint
 
 Expected: sin errores. Abrir `http://localhost:3000/vitrina` con la sesión de la organización **zip-gym**: aparece "Vitrina" en el menú y la vista Secuencia vacía.
 
-- [ ] **Step 8: Commit**
+- [ ] **Step 8: Sugerir el mensaje de commit**
 
-```bash
-git add apps/web-admin
-git commit -m "agrega el menú Vitrina con la vista Secuencia y las acciones del servidor"
-git push origin main
+Dejar los cambios en el working tree: **no** ejecutar `git add`, `git commit` ni `git push` (el usuario hace commit, push y deploy). Mensaje de commit sugerido (una línea, en español):
+
+```text
+agrega el menú Vitrina con la vista Secuencia y las acciones del servidor
 ```
 
 ---
@@ -3863,7 +3936,7 @@ Las lecturas (`<video>`, `<img>`, y la descarga nativa de la TV) no necesitan CO
 
 - [ ] **Step 7: Verificación manual (organización `zip-gym`)**
 
-Con el CORS del paso 6 ya configurado y `npm run dev --workspace apps/web-admin`:
+Con el CORS del paso 6 ya configurado y `npm run dev --workspace apps/web-admin` (el panel en `http://localhost:3000`, que usa la base de producción: **iniciar sesión con la organización `zip-gym` y trabajar solo en su sede**, nunca en `gym-demo`):
 
 1. Entrenadores → Nuevo: subir una foto vertical (≥ 3000 px). Debe quedar en R2 (`vitrina/…webp`, ≤ 1920 px).
 2. Subir un **video H.264** de más de 50 MB: barra de progreso, queda en R2 como `vitrina/…mp4` más su póster.
@@ -3871,18 +3944,21 @@ Con el CORS del paso 6 ya configurado y `npm run dev --workspace apps/web-admin`
 4. Subir un video H.264 **con marca de rotación**: se acepta como vertical para un entrenador.
 5. Guardar: el ítem nace **inactivo**; "Mostrar en la TV" lo activa; en Secuencia aparece con su número de diapositiva; ↑/↓ lo reordenan.
 6. Editar y reemplazar el medio: el archivo anterior desaparece de R2. Eliminar el ítem: sus archivos desaparecen.
-7. Con `curl -N .../api/kiosco/vitrina/eventos` abierto: cada acción (activar, mover, guardar, eliminar, ajustes) imprime `event: vitrina:cambio`.
+7. Con `curl -N http://localhost:3000/api/kiosco/vitrina/eventos -H "X-Kiosk-Api-Key: <CLAVE de zip-gym>"` abierto contra **este mismo** web-admin local (si el panel fuera el de producción, el aviso no llegaría: el emisor es en memoria por proceso): cada acción (activar, mover, guardar, eliminar, ajustes) imprime `event: vitrina:cambio`.
 8. Ajustes: duración 2 → error; 15 → guarda.
 9. Datos hostiles: oferta mayor que el precio, "abc" en precio, descuento 150, fechas invertidas → mensaje de error sin guardar.
 
-- [ ] **Step 8: Tipos, lint y commit**
+- [ ] **Step 8: Tipos, lint y sugerir el commit**
 
 ```bash
 cd /c/dev/gym-app/apps/web-admin && npx tsc --noEmit && npm run lint
 cd /c/dev/gym-app
-git add apps/web-admin docs/superpowers/plans/2026-10-15-vitrina-tv-cors-r2.md
-git commit -m "agrega los formularios de la vitrina con subida de fotos y videos a R2 y la pestaña de ajustes"
-git push origin main
+```
+
+Dejar los cambios en el working tree: **no** ejecutar `git add`, `git commit` ni `git push` (el usuario hace commit, push y deploy). Mensaje de commit sugerido (una línea, en español):
+
+```text
+agrega los formularios de la vitrina con subida de fotos y videos a R2 y la pestaña de ajustes
 ```
 
 ---
@@ -4156,12 +4232,12 @@ done
 
 Expected: `Dockerfile: npm ci OK` y `apps/kiosk/Dockerfile: npm ci OK`. Si alguno falla, **detenerse**: añadir `COPY apps/vitrina/package.json apps/vitrina/package.json` en ese Dockerfile (o quitar la dependencia que rompe) antes de seguir: un fallo aquí tumba el deploy de producción.
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 7: Sugerir el mensaje de commit**
 
-```bash
-git add apps/vitrina apps/vitrina-tv docs/adr/ADR-002-vitrina-importa-dominio-puro.md turbo.json package-lock.json
-git commit -m "agrega el andamiaje de la app de TV de la vitrina y la excepción al ADR-001"
-git push origin main
+Dejar los cambios en el working tree: **no** ejecutar `git add`, `git commit` ni `git push` (el usuario hace commit, push y deploy). Mensaje de commit sugerido (una línea, en español):
+
+```text
+agrega el andamiaje de la app de TV de la vitrina y la excepción al ADR-001
 ```
 
 ---
@@ -4801,7 +4877,7 @@ export function useVitrina(): EstadoVitrina {
 }
 ```
 
-- [ ] **Step 6: Verificar y commit**
+- [ ] **Step 6: Verificar y sugerir el commit**
 
 ```bash
 cd /c/dev/gym-app
@@ -4809,12 +4885,17 @@ npm test --workspace apps/vitrina
 npm run lint --workspace apps/vitrina
 cd apps/vitrina && npx tsc --noEmit
 cd /c/dev/gym-app
-git add apps/vitrina
-git commit -m "agrega el almacén en disco, la sincronización de medios y el aviso SSE de la app de TV"
-git push origin main
+```
+
+Dejar los cambios en el working tree: **no** ejecutar `git add`, `git commit` ni `git push` (el usuario hace commit, push y deploy). Mensaje de commit sugerido (una línea, en español):
+
+```text
+agrega el almacén en disco, la sincronización de medios y el aviso SSE de la app de TV
 ```
 
 Expected: tests en verde, lint y tipos sin errores.
+
+**Verificación manual del aviso de cambios y de la sincronización (se completa en la Task 13, Step 7):** el hook solo se puede observar con la app corriendo. Con `web-admin` en `localhost:3000` y la vitrina en `localhost:3002`, ambos apuntando **al mismo web-admin local**, abrir la consola del navegador de la vitrina y comprobar que: al arrancar pide el manifiesto; al activar, mover o eliminar algo en el panel local llega `vitrina:cambio` y se vuelve a pedir; y al cortar la red (DevTools → Offline) y restablecerla reconecta y se pone al día. Si el panel estuviera en producción y la vitrina en local (o al revés), el aviso **no** llegaría: el emisor es en memoria por proceso. Usar siempre la sede y la API key de `zip-gym`.
 
 ---
 
@@ -5116,7 +5197,7 @@ cd /c/dev/gym-app/apps/vitrina
 cp public/vitrina-config.ejemplo.json public/vitrina-config.json
 ```
 
-Editar `public/vitrina-config.json` con `apiUrl` de web-admin (local o producción) y la API key de la sede de **zip-gym**. Luego `npm run dev --workspace apps/vitrina` y abrir `http://localhost:3002` a 1920x1080 (modo TV del navegador):
+Editar `public/vitrina-config.json` con `"apiUrl": "http://localhost:3000"` y la API key de la sede de **zip-gym** (nunca la de `gym-demo`). **El panel y la vitrina deben apuntar al mismo web-admin**: abrir el panel en `http://localhost:3000` (con `npm run dev --workspace apps/web-admin`, sesión de la organización `zip-gym`) y la vitrina en el mismo proceso local. Si el panel fuera el de producción, el aviso de cambios (SSE) no llegaría a la vitrina, porque el emisor es en memoria por proceso. Luego `npm run dev --workspace apps/vitrina` y abrir `http://localhost:3002` a 1920x1080 (modo TV del navegador):
 
 1. Sin ítems activos: la pantalla de marca (no negro).
 2. Activar en el panel una promo con oferta y Bs: aparece en segundos (sin recargar), con el precio tachado, la oferta y "Bs. …".
@@ -5125,16 +5206,19 @@ Editar `public/vitrina-config.json` con `apiUrl` de web-admin (local o producci�
 5. Cortar la red (DevTools → Offline) y recargar: sigue mostrando lo último.
 6. Sustituir una pieza en el panel: la TV muestra primero la anterior y cambia solo cuando la nueva terminó de bajar.
 
-- [ ] **Step 8: Tipos, lint, build y commit**
+- [ ] **Step 8: Tipos, lint, build y sugerir el commit**
 
 ```bash
 cd /c/dev/gym-app
 npm test --workspace apps/vitrina
 npm run lint --workspace apps/vitrina
 npm run build --workspace apps/vitrina
-git add apps/vitrina
-git commit -m "agrega el reproductor de la vitrina con franjas de 3 entrenadores, carteles y badges de precio"
-git push origin main
+```
+
+Dejar los cambios en el working tree: **no** ejecutar `git add`, `git commit` ni `git push` (el usuario hace commit, push y deploy). Mensaje de commit sugerido (una línea, en español):
+
+```text
+agrega el reproductor de la vitrina con franjas de 3 entrenadores, carteles y badges de precio
 ```
 
 ---
@@ -5146,7 +5230,7 @@ git push origin main
 - Modify: `docs/superpowers/specs/2026-10-15-vitrina-tv-design.md` (desviaciones)
 - Modify: `CLAUDE.md` (comandos y arquitectura de la vitrina)
 - Modify: `handoff.md` (raíz; crear si no existe)
-- Delete: `apps/vitrina-tv/prueba/` y el modo `prueba` del workflow solo si el equipo de la Task 1 ya no hace falta (opcional; ver Step 5)
+- Delete: `apps/vitrina-tv/prueba/` y el modo `prueba` del workflow solo si el equipo de la Task 1 ya no hace falta (opcional; después del Step 9)
 
 **Interfaces:**
 - Consumes: todo lo anterior.
@@ -5160,7 +5244,7 @@ En `docs/superpowers/specs/2026-10-15-vitrina-tv-design.md`:
 
 - [ ] **Step 2: README completo del APK**
 
-Completar `apps/vitrina-tv/README.md` con: la tabla de secretos (`VITRINA_CLAVE_<SEDE>`, `KIOSCO_APK_PASSWORD`), el input `api_url`, el modo `prueba`, cómo desarrollar en el TV con `VITRINA_DEV_URL`, la lista de verificación del Step 5, y la advertencia "WebView ≥ 111; un cambio de diseño o de lógica de la app exige un APK nuevo, un cambio de contenido no".
+Completar `apps/vitrina-tv/README.md` con: la tabla de secretos (`VITRINA_CLAVE_<SEDE>`, `KIOSCO_APK_PASSWORD`), el input `api_url`, el modo `prueba`, cómo desarrollar en el TV con `VITRINA_DEV_URL`, la lista de verificación de los Steps 7 a 9, y la advertencia "WebView ≥ 111; un cambio de diseño o de lógica de la app exige un APK nuevo, un cambio de contenido no".
 
 - [ ] **Step 3: `CLAUDE.md`**
 
@@ -5181,17 +5265,57 @@ git diff --stat -- apps/kiosk-tv .github/workflows/apk-kiosco.yml apps/kiosk
 
 Expected: todo en verde y el último comando **sin salida** (el kiosco no cambió).
 
-- [ ] **Step 5: Compilar el APK real y verificar en el TV (checklist manual)**
+Mensaje de commit sugerido para lo de los Steps 1 a 3 (el agente no hace commit ni push):
 
-Crear el secreto de la sede de pruebas (sin pegar la clave en ningún chat ni log): `gh secret set VITRINA_CLAVE_ZIPGYM` (pide el valor por consola; la API key de la sede de zip-gym) y confirmar que existe `KIOSCO_APK_PASSWORD`.
+```text
+completa la documentación de la vitrina y corrige la spec
+```
+
+- [ ] **Step 5: PUNTO DE CONTROL B: detenerse y esperar al usuario (Deploy 2)**
+
+Avisar al usuario de que **las Tasks 7 a 14 (hasta el Step 4) están completas en el working tree** y pedirle: (1) revisar el working tree y hacer commit y push con los mensajes sugeridos de cada tarea; (2) hacer el **Deploy 2** de web-admin (API del manifiesto, SSE, dashboard de la vitrina, R2); (3) confirmar que el commit, el push y el deploy están hechos. **No continuar sin esa confirmación**: el workflow del APK compila desde GitHub, no desde el working tree, y la TV pedirá el manifiesto al web-admin de producción.
+
+Antes de pedirlo, recordarle un paso manual pendiente: el CORS (PUT) del bucket de R2 para el dominio de producción de web-admin (`docs/superpowers/plans/2026-10-15-vitrina-tv-cors-r2.md`).
+
+- [ ] **Step 6: Compilar el APK real y descargarlo**
+
+Con el Deploy 2 confirmado: crear el secreto de la sede de pruebas (sin pegar la clave en ningún chat ni log): `gh secret set VITRINA_CLAVE_ZIPGYM` (pide el valor por consola; la API key de la sede de **zip-gym**, nunca la de `gym-demo`) y confirmar que existe `KIOSCO_APK_PASSWORD`.
 
 ```bash
-git add -A && git commit -m "completa la documentación de la vitrina y corrige la spec" && git push origin main
-gh workflow run apk-vitrina.yml -f sucursal=zipgym -f api_url=<URL-de-web-admin> -f modo=vitrina
+gh workflow run apk-vitrina.yml -f sucursal=zipgym -f api_url=<URL-de-web-admin-de-producción> -f modo=vitrina
 gh run watch
 ```
 
-Descargar el artefacto, descifrar el `.7z` con la contraseña de `KIOSCO_APK_PASSWORD`, instalar con `adb install -r` y marcar cada punto en el TV real:
+Descargar el artefacto (`gh run download --name vitrina-zipgym --dir salida-vitrina`) y descifrar el `.7z` con la contraseña de `KIOSCO_APK_PASSWORD` para obtener `vitrina-zipgym.apk`. **No instalar todavía en el TV real:** primero los Steps 7 y 8.
+
+- [ ] **Step 7: Revisar el APK con Android Studio (Build → Analyze APK)**
+
+Abrir `vitrina-zipgym.apk` en Android Studio (Build → Analyze APK…; alternativa por consola: `apkanalyzer manifest print`, `apkanalyzer files list`) y comprobar:
+
+1. **`applicationId` y `versionCode`:** `com.adrenalina.vitrina` y un `versionCode` igual al `run_number` de la ejecución del workflow (no `1`).
+2. **Manifiesto:** declara `ArranqueReceiver` con `BOOT_COMPLETED`/`QUICKBOOT_POWERON`, los permisos `RECEIVE_BOOT_COMPLETED` y `SYSTEM_ALERT_WINDOW`, `usesCleartextTraffic="false"`, `LEANBACK_LAUNCHER` y orientación horizontal.
+3. **Ícono:** los mipmap `ic_launcher*` y el `banner` muestran el escudo (no el del kiosco ni el de Capacitor).
+4. **`assets/public/vitrina-config.json`:** la `apiUrl` es la de producción pasada al workflow (sin `/` final) y `clave` no está vacía (comprobarlo sin copiar ni pegar la clave en ningún lado).
+5. **`assets/capacitor.config.json`:** sin `server.url`, `loggingBehavior: "none"`, `webContentsDebuggingEnabled: false` y sin `plugins.CapacitorHttp`.
+6. **Contenido web:** `assets/public/index.html` y los assets de Next están dentro del APK (la app no depende de internet para abrir).
+
+Cualquier discrepancia: detenerse, corregir el workflow o los scripts y recompilar; no pasar al emulador.
+
+- [ ] **Step 8: Probar el APK en un emulador de Android TV 1080p**
+
+En Android Studio → Device Manager → crear un AVD "Television (1080p)" (imagen de Android TV de API 34, con o sin Google Play), arrancarlo e instalar: `adb -s emulator-5554 install -r vitrina-zipgym.apk`. Conceder los permisos del README por adb (`appops` y `deviceidle`) y comprobar:
+
+1. **Ícono y nombre:** el launcher del emulador muestra "Vitrina AX" con el escudo.
+2. **Arranque sin red:** activar el modo avión del emulador (`adb shell cmd connectivity airplane-mode enable`, o Extended controls → Cellular/Wi-Fi apagados), cerrar la app y abrirla: carga el contenido guardado, o la pantalla de marca si aún no había nada; **nunca negro**. Restablecer la red y comprobar que se pone al día.
+3. **Almacén en disco:** con contenido cargado, `adb shell run-as com.adrenalina.vitrina ls files/vitrina` lista los archivos de las piezas (sin `.part` sobrantes); sustituir una pieza en el panel de zip-gym borra el archivo viejo y descarga solo el nuevo.
+4. **Arranque tras reiniciar:** `adb reboot` y esperar: la app abre sola (con los permisos concedidos). Repetirlo sin red.
+5. **Resolución:** a 1920x1080 las franjas de 3 columnas, los carteles y los badges se ven completos y sin recortes.
+
+Si algo falla aquí, corregir antes de tocar el TV real.
+
+- [ ] **Step 9: Instalar en el TV real y marcar la checklist**
+
+Con el panel y la vitrina ya apuntando **al mismo web-admin (el de producción)**, instalar con `adb install -r` en el TV real y marcar cada punto:
 
 1. **Cifrado:** el artefacto es un `.7z` cifrado; no hay `.apk` suelto en el `.zip`.
 2. **Ícono y nombre:** el launcher del TV muestra "Vitrina AX" con el escudo; el banner de Android TV también.
@@ -5204,16 +5328,16 @@ Descargar el artefacto, descifrar el `.7z` con la contraseña de `KIOSCO_APK_PAS
 9. **Tasa desactualizada:** con la tasa de ayer (esperar al cambio de día o con una tasa antigua en la sede de pruebas), el equivalente en Bs desaparece y el USD se mantiene; un feriado largo con la tasa de ayer al día siguiente de sincronizar **no** lo oculta sin motivo.
 10. **Depuración apagada:** desactivar la depuración USB/por red del TV y `adb disconnect`.
 
-- [ ] **Step 6: `handoff.md`**
+- [ ] **Step 10: `handoff.md`**
 
 Actualizar (o crear) `handoff.md` en la raíz con exactamente las 5 secciones que pide `CLAUDE.md`: **Objetivo**, **Estado actual** (qué funciona y qué falta, incluyendo el resultado de la checklist), **Archivos y cambios** (por archivo), **Intentos fallidos** (conservar las entradas previas y añadir los aprendizajes de esta sesión, p. ej. que `@capacitor/file-transfer` no tiene serie 8) y **Próximos pasos**.
 
-- [ ] **Step 7: Commit final**
+- [ ] **Step 11: Sugerir el mensaje de commit final**
 
-```bash
-git add handoff.md
-git commit -m "actualiza el handoff con el estado de la vitrina de TV"
-git push origin main
+Dejar los cambios en el working tree: **no** ejecutar `git add`, `git commit` ni `git push` (el usuario hace commit, push y deploy). Mensaje de commit sugerido (una línea, en español):
+
+```text
+actualiza el handoff con el estado de la vitrina de TV
 ```
 
 ---

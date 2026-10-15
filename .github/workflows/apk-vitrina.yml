@@ -1,0 +1,137 @@
+name: Compilar APK de la vitrina
+
+# El repositorio es público: un APK con la clave de la sede dentro SOLO se publica cifrado (7-Zip AES-256).
+# Modo "prueba": página de rendimiento para el TV real (3 videos a la vez, reloj, sin red); no lleva clave.
+on:
+  workflow_dispatch:
+    inputs:
+      sucursal:
+        description: "Nombre corto de la sede (minúsculas, números y _). Su clave es el secreto VITRINA_CLAVE_<SEDE>"
+        required: true
+        default: principal
+      api_url:
+        description: "URL base de web-admin, sin / final (la app pide ahí /api/kiosco/vitrina)"
+        required: true
+      modo:
+        description: "vitrina = app real; prueba = página de prueba de rendimiento"
+        required: true
+        type: choice
+        options:
+          - vitrina
+          - prueba
+        default: vitrina
+
+permissions:
+  contents: read
+
+jobs:
+  apk:
+    runs-on: ubuntu-24.04
+    env:
+      SUCURSAL: ${{ inputs.sucursal }}
+      MODO: ${{ inputs.modo }}
+      VITRINA_API_URL: ${{ inputs.api_url }}
+    steps:
+      - name: Validar la sede
+        run: |
+          if ! [[ "$SUCURSAL" =~ ^[a-z0-9_]+$ ]]; then
+            echo "Sede inválida: usa solo minúsculas, números y _"
+            exit 1
+          fi
+
+      - name: Enmascarar la clave en los logs
+        env:
+          VITRINA_CLAVE: ${{ secrets[format('VITRINA_CLAVE_{0}', inputs.sucursal)] }}
+        run: |
+          if [ -n "$VITRINA_CLAVE" ]; then echo "::add-mask::$VITRINA_CLAVE"; fi
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            apps/vitrina-tv/capacitor/package-lock.json
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Instalar el monorepo
+        if: inputs.modo == 'vitrina'
+        run: npm ci
+
+      - name: Probar el dominio y la app
+        if: inputs.modo == 'vitrina'
+        run: |
+          npm test --workspace packages/domain
+          npm test --workspace apps/vitrina
+
+      - name: Compilar la app web (export estático)
+        if: inputs.modo == 'vitrina'
+        run: npx turbo run build --filter=vitrina
+
+      - name: Generar los videos de prueba
+        if: inputs.modo == 'prueba'
+        working-directory: apps/vitrina-tv/prueba
+        run: |
+          for par in "testsrc2:1" "smptebars:2" "rgbtestsrc:3"; do
+            fuente="${par%%:*}"; n="${par##*:}"
+            ffmpeg -loglevel error -f lavfi -i "${fuente}=size=1080x1920:rate=30" -t 30 \
+              -c:v libx264 -profile:v high -pix_fmt yuv420p -b:v 8M "video${n}.mp4"
+          done
+          ls -l
+
+      - name: Instalar dependencias de Capacitor
+        working-directory: apps/vitrina-tv/capacitor
+        run: npm ci
+
+      - name: Probar los scripts
+        working-directory: apps/vitrina-tv/capacitor
+        run: npm test
+
+      - name: Preparar y sincronizar (inyecta la URL y la clave)
+        working-directory: apps/vitrina-tv/capacitor
+        env:
+          VITRINA_CLAVE: ${{ secrets[format('VITRINA_CLAVE_{0}', inputs.sucursal)] }}
+          VITRINA_WEB_DIR: ${{ inputs.modo == 'prueba' && '../prueba' || '../../vitrina/out' }}
+        run: npm run sync
+
+      - name: Compilar el APK de debug
+        working-directory: apps/vitrina-tv/capacitor/android
+        run: ./gradlew assembleDebug --no-daemon -PversionCode=${{ github.run_number }}
+
+      - name: Preparar el archivo a publicar
+        working-directory: apps/vitrina-tv/capacitor
+        env:
+          VITRINA_CLAVE: ${{ secrets[format('VITRINA_CLAVE_{0}', inputs.sucursal)] }}
+          APK_PASSWORD: ${{ secrets.KIOSCO_APK_PASSWORD }}
+        run: |
+          mkdir -p salida
+          cp android/app/build/outputs/apk/debug/app-debug.apk "salida/vitrina-${SUCURSAL}.apk"
+          if [ -n "$VITRINA_CLAVE" ]; then
+            if [ -z "$APK_PASSWORD" ]; then
+              echo "Falta el secreto KIOSCO_APK_PASSWORD: no se publica un APK con clave sin cifrar."
+              exit 1
+            fi
+            sudo apt-get update
+            sudo apt-get install -y -q p7zip-full
+            (cd salida && 7z a -t7z -mhe=on -p"$APK_PASSWORD" "vitrina-${SUCURSAL}.7z" "vitrina-${SUCURSAL}.apk" > /dev/null && rm "vitrina-${SUCURSAL}.apk")
+            if ls salida/*.apk > /dev/null 2>&1; then
+              echo "Quedó un APK sin cifrar en salida/: se aborta."
+              exit 1
+            fi
+          else
+            echo "::warning::Sin secreto VITRINA_CLAVE_${SUCURSAL^^}: se publica un APK genérico sin clave (¿error de tipeo en la sede?)"
+          fi
+          ls -l salida
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vitrina-${{ inputs.sucursal }}
+          path: apps/vitrina-tv/capacitor/salida/*
+          retention-days: 7
+          if-no-files-found: error

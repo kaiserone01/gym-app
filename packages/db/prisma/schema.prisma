@@ -48,6 +48,9 @@ model Sucursal {
   reposoFrases    String[]    @default([]) // frases de la ficha en reposo del kiosco; vacío = las predeterminadas
   reposoImagenUrl String? // imagen del círculo de la ficha en reposo (R2); null = placeholder del kiosco
   reposoOpacidad  Int         @default(100) // % de opacidad del fondo de la ficha en reposo (20–100)
+  vitrinaDuracionSeg Int         @default(12) // duración por defecto de cada diapositiva de la vitrina (segundos)
+  vitrinaTransicion  String      @default("FUNDIDO") // FUNDIDO | DESLIZAR
+  vitrinaVersion     Int         @default(0) // se incrementa en cada cambio de contenido de la vitrina
 
   usuariosAdmin     UsuarioAdmin[]
   checkIns          CheckIn[]
@@ -59,6 +62,7 @@ model Sucursal {
   deudasProducto    DeudaProducto[]
   miembrosReferencia MiembroReferencia[]
   padronHojas        PadronHoja[]
+  vitrinaItems       VitrinaItem[]
 }
 
 enum RolUsuario {
@@ -662,4 +666,57 @@ model PadronHoja {
   importadoAt        DateTime     @default(now())
 
   @@unique([organizacionId, sucursalId])
+}
+
+enum TipoVitrinaItem {
+  ENTRENADOR
+  PROMO
+  PRODUCTO
+}
+
+enum TipoMedioVitrina {
+  IMAGEN
+  VIDEO
+}
+
+// Ítem de la secuencia de la TV (vitrina). Independiente de Producto y de UsuarioAdmin: el entrenador lleva su
+// propio nombre y medio. Orden global por sucursal; nace inactivo.
+model VitrinaItem {
+  id         String           @id @default(cuid())
+  sucursalId String
+  sucursal   Sucursal         @relation(fields: [sucursalId], references: [id], onDelete: Cascade)
+  tipo       TipoVitrinaItem
+  orden      Int
+  activo     Boolean          @default(false)
+
+  duracionSeg Int? // nulo = la de la sede
+  inicio      DateTime?
+  fin         DateTime?
+
+  mediaUrl  String
+  mediaTipo TipoMedioVitrina
+  posterUrl String?
+
+  precioUSD            Decimal? @db.Decimal(10, 2)
+  ofertaUSD            Decimal? @db.Decimal(10, 2)
+  descuentoPct         Int?
+  etiqueta             String?
+  mostrarPrecio        Boolean  @default(true)
+  mostrarOferta        Boolean  @default(true)
+  mostrarDescuento     Boolean  @default(true)
+  mostrarEtiqueta      Boolean  @default(true)
+  mostrarEquivalenteBs Boolean  @default(true)
+
+  nombre              String?
+  especialidad        String?
+  frase               String?
+  mostrarMedio        Boolean @default(true)
+  mostrarNombre       Boolean @default(true)
+  mostrarEspecialidad Boolean @default(true)
+  mostrarFrase        Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([sucursalId, orden])
 }

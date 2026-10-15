@@ -1,5 +1,6 @@
 import type { ITasaCambioRepository } from "../ports/ITasaCambioRepository";
 import type { TasaCambio } from "../entities/TasaCambio";
+import { estadoDeTasa, type EstadoTasa } from "../utils/estadoTasa";
 
 export class SinTasaDisponibleError extends Error {
   constructor() {
@@ -11,7 +12,7 @@ export class SinTasaDisponibleError extends Error {
 // No se difiere por fecha valor bajo ningún concepto.
 // AL_DIA: la última guardada tiene fecha valor >= hoy.
 // DESACTUALIZADA: fecha valor < hoy → casi seguro hay una publicación posterior sin sincronizar.
-export type EstadoTasa = "AL_DIA" | "DESACTUALIZADA";
+export type { EstadoTasa };
 
 export interface TasaVigente {
   tasa: TasaCambio;
@@ -24,5 +25,5 @@ export async function obtenerTasaVigente(
 ): Promise<TasaVigente> {
   const ultima = await deps.tasas.obtenerUltima();
   if (!ultima) throw new SinTasaDisponibleError();
-  return { tasa: ultima, estado: ultima.fecha < hoy ? "DESACTUALIZADA" : "AL_DIA" };
+  return { tasa: ultima, estado: estadoDeTasa(ultima.fecha, hoy) };
 }

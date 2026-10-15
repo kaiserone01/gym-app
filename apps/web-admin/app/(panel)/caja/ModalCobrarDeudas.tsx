@@ -144,6 +144,7 @@ export function ModalCobrarDeudas({
   // Lo marcado para cobrar ahora (al elegir un miembro arranca todo marcado); lo desmarcado queda pendiente.
   const [marcados, setMarcados] = useState<Set<string>>(new Set());
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reinicia lo marcado al cambiar de miembro (depende solo de miembroId); es estado de cobro, se conserva el comportamiento
     setMarcados(grupo ? new Set([...(grupo.abono ? [CLAVE_MEMBRESIA] : []), ...grupo.deudas.map((d) => d.id)]) : new Set());
     // eslint-disable-next-line react-hooks/exhaustive-deps -- solo al cambiar de miembro; si se anula un producto, su marca sobrante es inofensiva
   }, [miembroId]);

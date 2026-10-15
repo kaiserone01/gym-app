@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Prueba de la vitrina</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #0a0d07; color: #f3f6ec; font-family: Arial, sans-serif; }
+  #fila { display: flex; height: 76vh; }
+  video { width: 33.333%; height: 100%; object-fit: cover; background: #000; }
+  #info { padding: 1vh 2vw; font-size: 2.3vh; line-height: 1.35; white-space: pre; }
+  .mal { color: #ff3b4e; font-weight: bold; }
+</style>
+</head>
+<body>
+<div id="fila">
+  <video id="v1" src="video1.mp4" autoplay muted loop playsinline></video>
+  <video id="v2" src="video2.mp4" autoplay muted loop playsinline></video>
+  <video id="v3" src="video3.mp4" autoplay muted loop playsinline></video>
+</div>
+<div id="info"></div>
+<script>
+  var antes = null;
+  try { antes = Number(localStorage.getItem("ultimaHora")); } catch (e) {}
+  var arranque = Date.now();
+  var caracas = function () {
+    return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Caracas", dateStyle: "short", timeStyle: "medium" }).format(new Date());
+  };
+  function calidad(id) {
+    var v = document.getElementById(id);
+    var q = v.getVideoPlaybackQuality ? v.getVideoPlaybackQuality() : { droppedVideoFrames: "?", totalVideoFrames: "?" };
+    return id + ": t=" + v.currentTime.toFixed(1) + "s, cuadros perdidos " + q.droppedVideoFrames + " / " + q.totalVideoFrames + (v.error ? "  ERROR " + v.error.code : "");
+  }
+  setInterval(function () {
+    var ahora = Date.now();
+    try { localStorage.setItem("ultimaHora", String(ahora)); } catch (e) {}
+    var atrasado = antes && arranque < antes;
+    document.getElementById("info").innerHTML =
+      "Hora del TV (UTC): " + new Date(ahora).toISOString() + "\n" +
+      "Hora en Caracas:   " + caracas() + "\n" +
+      "Internet:          " + (navigator.onLine ? "SI" : "NO") + "\n" +
+      "Última hora guardada antes de este arranque: " + (antes ? new Date(antes).toISOString() : "(primer arranque)") + "\n" +
+      (atrasado ? '<span class="mal">RELOJ ATRASADO tras reiniciar: la vitrina debe usar el último servidorAhora guardado.</span>\n' : "") +
+      calidad("v1") + "\n" + calidad("v2") + "\n" + calidad("v3");
+  }, 1000);
+</script>
+</body>
+</html>

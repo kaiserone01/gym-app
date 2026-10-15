@@ -104,6 +104,7 @@ export function ModalHistorialTasas({ onCerrar }: { onCerrar: () => void }) {
 
   useEffect(() => {
     if (modo !== "recientes") return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sincroniza el estado de carga al iniciar el fetch del historial; derivarlo cambiaria el flujo de carga
     setCargando(true);
     fetch(`/api/tasa-cambio/historial?limite=${LIMITE}`)
       .then((res) => res.json())

@@ -1,0 +1,22 @@
+{
+  "name": "vitrina-tv-capacitor",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Cáscara Capacitor de Android TV para la vitrina (app empaquetada en el APK, sin URL remota).",
+  "scripts": {
+    "preparar": "node scripts/preparar.mjs",
+    "sync": "node scripts/preparar.mjs && cap sync android",
+    "test": "node --test \"scripts/*.test.mjs\"",
+    "iconos": "node scripts/generar-iconos.mjs"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.5.3",
+    "@capacitor/core": "^8.5.3",
+    "@capacitor/file-transfer": "^2.0.6",
+    "@capacitor/filesystem": "^8.1.4"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.5.3",
+    "sharp": "^0.35.5"
+  }
+}

@@ -13,9 +13,8 @@ export const METODOS_EN_BS = [
   "transferencia",
 ];
 
-export function formatearBs(monto: number): string {
-  return monto.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
+import { formatearBs } from "@gym-app/domain/utils/formatearBs";
+export { formatearBs };
 
 // "Bs. 6.659,91 (REF $8.00)" — cada canal de pago opera nominativamente en
 // su propia moneda, pero la equivalencia en USD (según la tasa vigente al

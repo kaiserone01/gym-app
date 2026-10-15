@@ -60,6 +60,7 @@ export function LineaPagoMiembroCampos({
   // Al elegir un método en Bs (o cambiar la tasa de la fecha) la casilla Bs se completa con el USD ya escrito.
   useEffect(() => {
     const numero = Number(montoUSD);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- recalcula el monto en Bs solo al cambiar la tasa; el usuario puede editarlo despues, no es derivable
     setMontoBs(tasa !== null && montoUSD !== "" && !Number.isNaN(numero) ? aCentavos(numero * tasa) : "");
     // eslint-disable-next-line react-hooks/exhaustive-deps -- solo debe reaccionar a la tasa, no a cada cambio del monto
   }, [tasa]);

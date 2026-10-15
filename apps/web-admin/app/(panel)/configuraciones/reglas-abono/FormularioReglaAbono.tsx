@@ -53,6 +53,7 @@ export function FormularioReglaAbono({
     if (enviandoAnterior && !enviando && !estado.error) {
       mostrarExito(`Regla de ${ETIQUETA_FRECUENCIA[frecuencia]} guardada.`);
     }
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- detecta el flanco de enviando para mostrar el exito; guarda el valor previo del envio
     setEnviandoAnterior(enviando);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- solo debe reaccionar a cambios de `enviando`, no a mostrarExito/frecuencia
   }, [enviando]);

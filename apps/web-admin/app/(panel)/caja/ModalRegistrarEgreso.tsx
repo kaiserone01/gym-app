@@ -82,6 +82,7 @@ export function ModalRegistrarEgreso({
 
   useEffect(() => {
     if (moneda !== "BS" || tasa !== null) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- dispara la carga de la tasa (fetch) al elegir moneda Bs; el setState ocurre dentro de cargarTasa
     cargarTasa();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- solo debe disparar al elegir un método en Bs
   }, [moneda]);
@@ -102,6 +103,7 @@ export function ModalRegistrarEgreso({
   // mismo (mostrar el aviso de las 3 opciones). No cierra el modal.
   useEffect(() => {
     if (estado.tasaNueva !== undefined) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- aplica la tasa nueva devuelta por la Server Action; sincroniza con una respuesta externa
       setTasa(estado.tasaNueva);
       setCargadaEnMs(Date.now());
     }

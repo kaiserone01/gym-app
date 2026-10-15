@@ -57,6 +57,7 @@ export default async function PanelLayout({ children }: { children: React.ReactN
               { href: "/miembros", label: "Miembros" },
               ...(puedeVerExcel ? [{ href: "/excel", label: "Excel" }] : []),
               ...(puedeEditarKiosko(usuario.rol) ? [{ href: "/kiosko", label: "Kiosko" }] : []),
+              ...(puedeEditarKiosko(usuario.rol) ? [{ href: "/vitrina", label: "Vitrina" }] : []),
               // Planes, Sucursales y Usuarios se administran desde las tabs
               // de Configuraciones (ver diseño acordado) — solo SOCIO llega
               // a ellas desde ahí.

@@ -28,7 +28,7 @@ function aCanvasCuadrado(fuente: CanvasImageSource, ancho: number, alto: number,
   return canvas;
 }
 
-function canvasABlob(canvas: HTMLCanvasElement, tipo: string, calidad: number): Promise<Blob | null> {
+export function canvasABlob(canvas: HTMLCanvasElement, tipo: string, calidad: number): Promise<Blob | null> {
   return new Promise((resolve) => canvas.toBlob(resolve, tipo, calidad));
 }
 

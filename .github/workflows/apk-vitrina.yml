@@ -78,6 +78,7 @@ jobs:
         if: inputs.modo == 'prueba'
         working-directory: apps/vitrina-tv/prueba
         run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
           for par in "testsrc2:1" "smptebars:2" "rgbtestsrc:3"; do
             fuente="${par%%:*}"; n="${par##*:}"
             ffmpeg -loglevel error -f lavfi -i "${fuente}=size=1080x1920:rate=30" -t 30 \

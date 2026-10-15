@@ -15,7 +15,11 @@
 - Todo texto de UI, commits y documentación va en español.
 - **Git: el agente nunca ejecuta `git add`, `git commit` ni `git push`.** Deja los cambios en el working tree y, al final de cada tarea, sugiere el mensaje de commit (una sola línea, en español, sin cuerpo y sin firmas: nada de `Co-Authored-By` ni `Claude-Session`). El usuario hace commit, push y deploy.
 - **Prohibido ejecutar con la config por defecto (`prisma7.config.ts`, que carga el `.env` de producción):** `npx prisma db seed`, `prisma migrate dev`, `migrate deploy`, `migrate reset`, `db push` y **cualquier script `db:*` del repo** (`npm run db:...`, `npm run migrate:dev`, etc.). No hace falta seed: la organización `zip-gym` ya existe. Toda operación de Prisma de este plan usa `--config prisma7.local.config.ts`, que solo acepta una base en `localhost`.
-- **Dos deploys, los hace el usuario** (ver "Despliegues y puntos de control"): el primero al terminar la Task 6, el segundo al final del plan.
+- **Dos deploys, los hace el usuario** (ver "Despliegues y puntos de control"): el primero (a `main`) al terminar la Task 6, ya hecho; el segundo al final del plan, uniendo la rama `vitrina` con `main`.
+- **Rama `vitrina`:** desde el Deploy 1 todo el trabajo va en la rama `vitrina` (el usuario hace los push ahí); `main` no se toca hasta el Deploy 2.
+- **PC limitado: nada pesado se ejecuta en local.** Solo se edita código y se corren los tests unitarios livianos de `packages/domain` (`npm test --workspace packages/domain`). **No** se ejecuta en local `npm run build`, `next dev`, `tsc`, `eslint`, `docker` ni emuladores. Tipos, lint, tests de `apps/vitrina` y build de Docker corren en la nube: el workflow `.github/workflows/verificar-vitrina.yml` (push a `vitrina`) y el servicio de pruebas de EasyPanel. Excepciones mínimas y ya acordadas en el plan: `npm install ... --package-lock-only` (solo actualiza `package-lock.json`, no baja paquetes), `npm run iconos` de `apps/vitrina-tv/capacitor` (script corto con dependencias ya instaladas), `curl` y `gh`.
+- **La rama `vitrina` no agrega migraciones.** El servicio de pruebas corre `migrate deploy` contra la base de producción al arrancar; si alguna tarea necesitara una migración, **detenerse y avisar al usuario**.
+- **Sin emulador de Android:** el APK se prueba directamente en la TV real.
 - La migración es **solo aditiva** (tablas, enums y columnas con valor por defecto; sin `DROP`, `RENAME` ni `ALTER COLUMN`): `docker-entrypoint.sh` corre `migrate deploy` con `set -e` y, si falla, web-admin y el check-in no arrancan.
 - No se modifica ningún archivo bajo `apps/kiosk-tv/` ni `.github/workflows/apk-kiosco.yml`. `apps/kiosk` no cambia (salvo lo que este plan nombre explícitamente: nada).
 - `apps/vitrina` importa de `@gym-app/domain` **solo funciones puras por ruta** (`@gym-app/domain/utils/...`, `.../services/...`, `.../entities/...`), nunca `@gym-app/infrastructure` ni `@gym-app/db`.
@@ -27,18 +31,53 @@
 - SSE: latido cada 25 s; sondeo de respaldo cada 10 min que **siempre** aplica el manifiesto completo; reconexión 2 s → 60 s; `vitrina:cambio` se emite **después** del commit.
 - APK: `loggingBehavior: "none"`, `webContentsDebuggingEnabled: false`, sin `CapacitorHttp`, sin `server.url` salvo `VITRINA_DEV_URL`; keystore fijo y versionado (no cambiar nunca); `versionCode` = `github.run_number`; se desactiva la depuración por adb al terminar de instalar.
 - Todo ítem nuevo nace `activo = false`.
-- Toda prueba manual se hace contra la base de producción **con la sede y la API key de `zip-gym`** (organización espejo de pruebas), **nunca** con las de `gym-demo` ni las de otra organización.
-- Para probar el aviso de cambios (SSE), el dashboard y la vitrina deben apuntar **al mismo web-admin**: los dos al local (`localhost:3000`) o los dos a producción tras el deploy final. El emisor de eventos vive en la memoria de cada proceso: un panel en un servidor y una vitrina en otro nunca se ven.
+- Toda prueba manual se hace contra la base de producción **con la sede y la API key de `zip-gym`** (organización espejo de pruebas), **nunca** con las de `gym-demo` ni las de otra organización. Las pruebas de las Tasks 8 a 13 usan el servicio de pruebas `gym-app-vitrina` de EasyPanel (ver "Entorno de pruebas"), que comparte base de datos y bucket R2 con producción.
+- Para probar el aviso de cambios (SSE), el dashboard y la vitrina deben apuntar **al mismo web-admin**: los dos al servicio de pruebas `gym-app-vitrina` (antes del Deploy 2) o los dos a producción (después). El emisor de eventos vive en la memoria de cada proceso: un panel en un servidor y una vitrina en otro nunca se ven.
 
 ## Despliegues y puntos de control
 
 El agente no despliega nada. Hay dos deploys, ambos del usuario:
 
-1. **Deploy 1, al terminar la Task 6** (Tasks 1 a 6 en el working tree: cáscara Android y workflow, dominio y migración ya validada contra el Postgres local). Al arrancar el contenedor, `docker-entrypoint.sh` aplica la migración en producción.
-   **PUNTO DE CONTROL A: el agente se detiene aquí y espera la confirmación explícita del usuario de que la migración quedó aplicada en producción.** No se empieza la Task 7 ni la Task 8 sin ella (la Task 8 consulta las tablas nuevas contra la base de producción). Tras la confirmación se ejecuta el Step 15 de la Task 1 (APK de prueba en el TV real).
-2. **Deploy 2, al final del plan** (Tasks 7 a 13 en el working tree y verificadas en local). **PUNTO DE CONTROL B:** el agente se detiene antes del Step 5 de la Task 14 y espera la confirmación del usuario de que el commit, el push y el deploy ya están hechos; el workflow del APK compila desde GitHub, no desde el working tree.
+1. **Deploy 1, al terminar la Task 6** (hecho: `main` en producción con la migración `20261015000000_vitrina` aplicada). **PUNTO DE CONTROL A (superado):** el usuario confirmó la migración y que web-admin, el check-in y Caja funcionan. Sigue el Step 15 de la Task 1 (APK de prueba en la TV real).
+2. **Deploy 2, al final del plan: unir la rama `vitrina` con `main`** (Tasks 7 a 14 ya probadas en el servicio de pruebas). **PUNTO DE CONTROL B:** el agente se detiene antes del Step 5 de la Task 14 y espera la confirmación del usuario de que el merge, el push y el deploy de producción están hechos; el workflow del APK compila desde GitHub, no desde el working tree.
 
-Entre el Punto A y el Punto B, todas las verificaciones se hacen en local: `web-admin` en `localhost:3000` y la vitrina en `localhost:3002`, ambos apuntando a ese mismo web-admin, con la sede y la API key de `zip-gym`.
+Entre el Punto A y el Punto B el trabajo vive en la rama `vitrina` y todas las verificaciones se hacen en la nube: web-admin en el servicio de pruebas `gym-app-vitrina` y la vista previa de la vitrina en el servicio estático `gym-app-vitrina-tv`, ambos de EasyPanel, con la sede y la API key de `zip-gym`. Al terminar (después de la checklist de la Task 14) el usuario elimina los dos servicios de prueba.
+
+**Cuándo se verifica a mano:** cada tarea se implementa en el working tree y el usuario hace push a `vitrina` tras cada una (así el workflow de verificación da tipos, lint y tests de cada tarea). Las comprobaciones manuales se agrupan en dos **puntos de verificación** en los que el agente pide el push y que el servicio esté desplegado, y espera: **V1 tras la Task 10** (API, SSE, dashboard y subidas contra `gym-app-vitrina`; incluye el Step 6 de la Task 8 y el Step 7 de la Task 10) y **V2 tras la Task 13** (vista previa en `gym-app-vitrina-tv`).
+
+## Entorno de pruebas (EasyPanel, lo crea el usuario)
+
+Comparte la base de datos y el bucket R2 de producción: **se trabaja solo en la organización `zip-gym`** y no se crea ni se toca nada de otras organizaciones.
+
+### Servicio `gym-app-vitrina` (web-admin de pruebas)
+
+1. EasyPanel → proyecto de gym-app → **Create Service → App**, nombre `gym-app-vitrina`.
+2. **Source → GitHub**: el mismo repositorio, rama `vitrina`.
+3. **Build → Dockerfile**: ruta `Dockerfile` (el de la raíz), contexto en la raíz del repo. Sin build args.
+4. **Environment**: las mismas variables que el servicio de producción (copiarlas desde allí, sin pegar valores en ningún chat). Son exactamente estas seis, que son todas las que lee el código (`process.env` en `apps/web-admin` y `packages`):
+
+   | Variable | Qué es |
+   |---|---|
+   | `DATABASE_URL` | cadena de conexión de la base de **producción** (la misma) |
+   | `R2_ACCOUNT_ID` | cuenta de Cloudflare R2 |
+   | `R2_ACCESS_KEY_ID` | clave de acceso a R2 |
+   | `R2_SECRET_ACCESS_KEY` | secreto de R2 |
+   | `R2_BUCKET_NAME` | bucket (`gym-app`) |
+   | `R2_PUBLIC_URL` | URL pública del bucket |
+
+   `NODE_ENV`, `PORT=3000`, `HOSTNAME` y `TZ=America/Caracas` ya vienen en el Dockerfile.
+5. **Domains**: un dominio propio (o el `*.easypanel.host` que asigna EasyPanel) con el **mismo puerto que el servicio de producción** (EasyPanel inyecta `PORT`: el log del arranque muestra `Local: http://localhost:80`, o sea 80, no 3000), HTTPS activo.
+6. **Deploy**. Al arrancar corre `prisma migrate deploy` contra producción; como la rama no agrega migraciones es un no-op. Si el log del arranque muestra una migración pendiente distinta de las ya aplicadas, detenerse y avisar.
+7. **CORS de R2** (Task 10, Step 6): añadir el dominio de este servicio a `AllowedOrigins`, además del de producción.
+8. **Auto deploy**: activarlo para que cada push a `vitrina` reconstruya el servicio.
+
+### Servicio `gym-app-vitrina-tv` (vista previa estática de la vitrina; se crea en la Task 11)
+
+1. **Create Service → App**, nombre `gym-app-vitrina-tv`; fuente GitHub, rama `vitrina`.
+2. **Build → Dockerfile**: ruta `apps/vitrina/Dockerfile`, contexto en la raíz del repo.
+3. **Environment**: solo `VITRINA_API_URL` = URL de `gym-app-vitrina` sin `/` final (p. ej. `https://gym-app-vitrina.<tu-dominio>`). La clave **no** va en una variable ni en la imagen: se pasa en el navegador con `#clave=<API key de zip-gym>` (el fragmento no llega al servidor).
+4. **Domains**: puerto 3000 (el Dockerfile ejecuta `serve -l 3000` y no lee `PORT`), HTTPS.
+5. Para ver la vitrina: `https://<dominio-de-gym-app-vitrina-tv>/#clave=<API key de zip-gym>` en el navegador del PC o del celular (a 1920x1080 con DevTools si se quiere).
 
 ## Trazabilidad de la revisión (dónde quedó resuelto cada punto)
 
@@ -680,7 +719,7 @@ Nota para quien haga el commit: después del `git add`, ejecutar `git update-ind
 **No ejecutar este paso ahora.** El workflow compila desde GitHub, así que necesita el código ya subido: se hace después del Deploy 1 (final de la Task 6) y de la confirmación del usuario (ver "Despliegues y puntos de control"). La prueba no usa la API ni la base de datos: la página de prueba va dentro del APK.
 
 ```bash
-gh workflow run apk-vitrina.yml -f sucursal=prueba -f api_url=https://example.invalid -f modo=prueba
+gh workflow run apk-vitrina.yml --ref vitrina -f sucursal=prueba -f api_url=https://example.invalid -f modo=prueba
 gh run watch
 gh run download --name vitrina-prueba --dir salida-prueba
 ```
@@ -873,7 +912,7 @@ export { formatearBs };
 - [ ] **Step 3: Ejecutar**
 
 Run: `npm test --workspace packages/domain`. Expected: todo en verde (incluidos los tests existentes de `ObtenerTasaVigente`).
-Run: `cd apps/web-admin && npx tsc --noEmit`. Expected: sin errores.
+Tipos: Tipos y lint no se ejecutan en local: tras el push del usuario a `vitrina`, el workflow `Verificar la rama vitrina` (`.github/workflows/verificar-vitrina.yml`) debe terminar en verde (`gh run list --workflow verificar-vitrina.yml --limit 1`; si falla, `gh run view <id> --log-failed`).
 
 - [ ] **Step 4: Sugerir el mensaje de commit**
 
@@ -2291,7 +2330,7 @@ El agente no hace push ni despliega. **Precondición:** el Step 8 terminó con `
 
 ```bash
 cd /c/dev/gym-app
-npm install @aws-sdk/s3-request-presigner@^3.1136.0 --workspace packages/infrastructure
+npm install @aws-sdk/s3-request-presigner@^3.1136.0 --workspace packages/infrastructure --package-lock-only
 git diff --stat -- package-lock.json packages/infrastructure/package.json
 ```
 
@@ -2604,11 +2643,9 @@ function normalizarTransicion(valor: string): TransicionVitrina {
 
 - [ ] **Step 6: Comprobar tipos y que los demás llamadores de `subir` siguen compilando**
 
-```bash
-cd /c/dev/gym-app/apps/web-admin && npx tsc --noEmit
-```
+Tipos y lint no se ejecutan en local: tras el push del usuario a `vitrina`, el workflow `Verificar la rama vitrina` (`.github/workflows/verificar-vitrina.yml`) debe terminar en verde (`gh run list --workflow verificar-vitrina.yml --limit 1`; si falla, `gh run view <id> --log-failed`).
 
-Expected: sin errores (`cacheControl` es opcional: `guardarImagen` de kiosko y `guardarFoto` de usuarios no cambian).
+Expected: verde (`cacheControl` es opcional: `guardarImagen` de kiosko y `guardarFoto` de usuarios no cambian).
 
 - [ ] **Step 7: Sugerir el mensaje de commit**
 
@@ -2812,24 +2849,20 @@ export async function GET(req: NextRequest) {
 }
 ```
 
-- [ ] **Step 6: Verificar a mano (la API no tiene tests automatizados)**
+- [ ] **Step 6: Verificar a mano en el servicio de pruebas (punto de verificación V1; la API no tiene tests automatizados)**
+
+No se levanta nada en local. Con el código ya subido por el usuario a `vitrina` y desplegado en el servicio `gym-app-vitrina` de EasyPanel (ver "Entorno de pruebas"), con la API key de la sucursal de **zip-gym** (Configuraciones → Sucursales → "API Key del kiosco"; nunca la de `gym-demo`) y `BASE=https://<dominio-de-gym-app-vitrina>`. Ese web-admin usa la base de producción: **no crear ni modificar nada fuera de la organización `zip-gym`**.
 
 ```bash
-cd /c/dev/gym-app && npm run dev --workspace apps/web-admin
+curl -i $BASE/api/kiosco/vitrina                                   # 401, "Falta el header X-Kiosk-Api-Key."
+curl -s $BASE/api/kiosco/vitrina -H "X-Kiosk-Api-Key: <CLAVE>"     # JSON: version, servidorAhora, duracionSeg, transicion, tasaBcv {valor, fecha}, items []
+curl -s $BASE/api/kiosco/estado  -H "X-Kiosk-Api-Key: <CLAVE>"     # sigue funcionando, con la misma tasaBcv
+curl -N $BASE/api/kiosco/vitrina/eventos -H "X-Kiosk-Api-Key: <CLAVE>"   # imprime ": conectado" y, a los 25 s, ": latido"
 ```
 
-Este `web-admin` local usa la base de producción (`.env`): **no crear ni modificar nada fuera de la organización `zip-gym`**. En otra consola, con la API key de la sucursal de **zip-gym** (Configuraciones → Sucursales → "API Key del kiosco"; nunca la de `gym-demo`):
+Expected: como se indica en cada línea; el `-N` queda abierto hasta Ctrl+C. Si el proxy de EasyPanel bufferiza el flujo y no llega ni `: conectado`, revisar que la respuesta lleve `X-Accel-Buffering: no` y `Cache-Control: no-cache, no-transform`. Si la respuesta es un error 500 por "tabla VitrinaItem inexistente", la migración no está aplicada en la base: detenerse y avisar al usuario.
 
-```bash
-curl -i http://localhost:3000/api/kiosco/vitrina                                   # 401, "Falta el header X-Kiosk-Api-Key."
-curl -s http://localhost:3000/api/kiosco/vitrina -H "X-Kiosk-Api-Key: <CLAVE>"     # JSON: version, servidorAhora, duracionSeg, transicion, tasaBcv {valor, fecha}, items []
-curl -s http://localhost:3000/api/kiosco/estado  -H "X-Kiosk-Api-Key: <CLAVE>"     # sigue funcionando, con la misma tasaBcv
-curl -N http://localhost:3000/api/kiosco/vitrina/eventos -H "X-Kiosk-Api-Key: <CLAVE>"   # imprime ": conectado" y, a los 25 s, ": latido"
-```
-
-Expected: como se indica en cada línea; el `-N` queda abierto hasta Ctrl+C. Si la respuesta es un error 500 por "tabla VitrinaItem inexistente", la migración no está aplicada en producción: detenerse y avisar al usuario.
-
-**Aviso de cambios:** el emisor de eventos vive en la memoria de este proceso, así que el `curl -N` y cualquier cambio hecho desde el dashboard solo se ven entre sí si **los dos apuntan a este mismo web-admin local** (`localhost:3000`). El dashboard de producción no avisará a este `curl`. Esa comprobación se hace en la Task 10 (Step 7, punto 7).
+**Aviso de cambios:** el emisor de eventos vive en la memoria de cada proceso, así que el `curl -N` y cualquier cambio hecho desde el dashboard solo se ven entre sí si **los dos apuntan al mismo servicio** (`gym-app-vitrina`). El dashboard de producción no avisará a este `curl`. Esa comprobación se hace en la Task 10 (Step 7, punto 7).
 
 - [ ] **Step 7: Sugerir el mensaje de commit**
 
@@ -3345,11 +3378,9 @@ export default async function PaginaSecuencia() {
 
 - [ ] **Step 7: Verificar**
 
-```bash
-cd /c/dev/gym-app/apps/web-admin && npx tsc --noEmit && npm run lint
-```
+Tipos y lint no se ejecutan en local: tras el push del usuario a `vitrina`, el workflow `Verificar la rama vitrina` (`.github/workflows/verificar-vitrina.yml`) debe terminar en verde (`gh run list --workflow verificar-vitrina.yml --limit 1`; si falla, `gh run view <id> --log-failed`).
 
-Expected: sin errores. Abrir `http://localhost:3000/vitrina` con la sesión de la organización **zip-gym**: aparece "Vitrina" en el menú y la vista Secuencia vacía.
+Expected: verde. En el punto de verificación V1, abrir `https://<dominio-de-gym-app-vitrina>/vitrina` con la sesión de la organización **zip-gym**: aparece "Vitrina" en el menú y la vista Secuencia vacía.
 
 - [ ] **Step 8: Sugerir el mensaje de commit**
 
@@ -3924,7 +3955,7 @@ Cloudflare → R2 → bucket `gym-app` → Settings → CORS policy → agregar:
 
     [
       {
-        "AllowedOrigins": ["https://<dominio-de-web-admin>", "http://localhost:3000"],
+        "AllowedOrigins": ["https://<dominio-de-web-admin-de-produccion>", "https://<dominio-de-gym-app-vitrina>"],
         "AllowedMethods": ["PUT"],
         "AllowedHeaders": ["Content-Type", "Cache-Control"],
         "MaxAgeSeconds": 3600
@@ -3936,7 +3967,7 @@ Las lecturas (`<video>`, `<img>`, y la descarga nativa de la TV) no necesitan CO
 
 - [ ] **Step 7: Verificación manual (organización `zip-gym`)**
 
-Con el CORS del paso 6 ya configurado y `npm run dev --workspace apps/web-admin` (el panel en `http://localhost:3000`, que usa la base de producción: **iniciar sesión con la organización `zip-gym` y trabajar solo en su sede**, nunca en `gym-demo`):
+Con el CORS del paso 6 ya configurado (incluye el dominio del servicio de pruebas) y el panel en `https://<dominio-de-gym-app-vitrina>` (el servicio de pruebas usa la base y el bucket de producción: **iniciar sesión con la organización `zip-gym` y trabajar solo en su sede**, nunca en `gym-demo`). Punto de verificación V1:
 
 1. Entrenadores → Nuevo: subir una foto vertical (≥ 3000 px). Debe quedar en R2 (`vitrina/…webp`, ≤ 1920 px).
 2. Subir un **video H.264** de más de 50 MB: barra de progreso, queda en R2 como `vitrina/…mp4` más su póster.
@@ -3944,16 +3975,13 @@ Con el CORS del paso 6 ya configurado y `npm run dev --workspace apps/web-admin`
 4. Subir un video H.264 **con marca de rotación**: se acepta como vertical para un entrenador.
 5. Guardar: el ítem nace **inactivo**; "Mostrar en la TV" lo activa; en Secuencia aparece con su número de diapositiva; ↑/↓ lo reordenan.
 6. Editar y reemplazar el medio: el archivo anterior desaparece de R2. Eliminar el ítem: sus archivos desaparecen.
-7. Con `curl -N http://localhost:3000/api/kiosco/vitrina/eventos -H "X-Kiosk-Api-Key: <CLAVE de zip-gym>"` abierto contra **este mismo** web-admin local (si el panel fuera el de producción, el aviso no llegaría: el emisor es en memoria por proceso): cada acción (activar, mover, guardar, eliminar, ajustes) imprime `event: vitrina:cambio`.
+7. Con `curl -N https://<dominio-de-gym-app-vitrina>/api/kiosco/vitrina/eventos -H "X-Kiosk-Api-Key: <CLAVE de zip-gym>"` abierto contra **este mismo** servicio de pruebas (si el panel fuera el de producción, el aviso no llegaría: el emisor es en memoria por proceso): cada acción (activar, mover, guardar, eliminar, ajustes) imprime `event: vitrina:cambio`.
 8. Ajustes: duración 2 → error; 15 → guarda.
 9. Datos hostiles: oferta mayor que el precio, "abc" en precio, descuento 150, fechas invertidas → mensaje de error sin guardar.
 
 - [ ] **Step 8: Tipos, lint y sugerir el commit**
 
-```bash
-cd /c/dev/gym-app/apps/web-admin && npx tsc --noEmit && npm run lint
-cd /c/dev/gym-app
-```
+Tipos y lint no se ejecutan en local: tras el push del usuario a `vitrina`, el workflow `Verificar la rama vitrina` (`.github/workflows/verificar-vitrina.yml`) debe terminar en verde (`gh run list --workflow verificar-vitrina.yml --limit 1`; si falla, `gh run view <id> --log-failed`).
 
 Dejar los cambios en el working tree: **no** ejecutar `git add`, `git commit` ni `git push` (el usuario hace commit, push y deploy). Mensaje de commit sugerido (una línea, en español):
 
@@ -3968,7 +3996,8 @@ agrega los formularios de la vitrina con subida de fotos y videos a R2 y la pest
 **Files:**
 - Create: `apps/vitrina/{package.json,tsconfig.json,next.config.ts,postcss.config.mjs,eslint.config.mjs,.gitignore}`
 - Create: `apps/vitrina/app/{layout.tsx,globals.css,page.tsx}` (la página real llega en Task 13; aquí una pantalla de marca mínima)
-- Create: `apps/vitrina/lib/config.ts`, `apps/vitrina/public/vitrina-config.ejemplo.json`
+- Create: `apps/vitrina/lib/config.ts`, `apps/vitrina/lib/config.test.ts`, `apps/vitrina/public/vitrina-config.ejemplo.json`
+- Create: `apps/vitrina/Dockerfile`, `apps/vitrina/docker-entrypoint.sh` (vista previa estática en EasyPanel; el APK no los usa)
 - Create: `docs/adr/ADR-002-vitrina-importa-dominio-puro.md`
 - Modify: `turbo.json`
 - Modify (regenera): `apps/vitrina/app/icon.png`, `apps/vitrina/app/apple-icon.png`, `apps/vitrina/public/branding/escudo.png` (vía `npm run iconos`)
@@ -4115,17 +4144,44 @@ export interface ConfigVitrina {
   clave: string;
 }
 
+// Clave de la sede en el fragmento de la URL (`#clave=<codificada>`): solo para la vista previa en navegador, donde la
+// imagen estática no lleva clave. El fragmento no llega al servidor ni a sus logs.
+export function claveDeFragmento(hash: string): string {
+  return new URLSearchParams(hash.replace(/^#/, "")).get("clave")?.trim() ?? "";
+}
+
 // La URL de web-admin y la clave de la sede las escribe apps/vitrina-tv/capacitor/scripts/preparar.mjs en
-// vitrina-config.json dentro del bundle del APK. En desarrollo se copia public/vitrina-config.ejemplo.json a
-// public/vitrina-config.json (ignorado por git).
+// vitrina-config.json dentro del bundle del APK. En la vista previa (apps/vitrina/Dockerfile) el contenedor escribe el
+// archivo al arrancar con VITRINA_API_URL y clave vacía, y la clave se toma del fragmento.
 export async function cargarConfig(): Promise<ConfigVitrina> {
   const respuesta = await fetch("/vitrina-config.json", { cache: "no-store" });
   if (!respuesta.ok) throw new Error("Falta vitrina-config.json en el bundle.");
   const datos: unknown = await respuesta.json();
   const { apiUrl, clave } = (datos ?? {}) as Partial<ConfigVitrina>;
   if (typeof apiUrl !== "string" || !apiUrl || typeof clave !== "string") throw new Error("vitrina-config.json no es válido.");
-  return { apiUrl: apiUrl.replace(/\/+$/, ""), clave };
+  return { apiUrl: apiUrl.replace(/\/+$/, ""), clave: clave || claveDeFragmento(window.location.hash) };
 }
+```
+
+`apps/vitrina/lib/config.test.ts`:
+
+```ts
+import { describe, expect, it } from "vitest";
+import { claveDeFragmento } from "./config";
+
+describe("claveDeFragmento", () => {
+  it("lee la clave del fragmento", () => {
+    expect(claveDeFragmento("#clave=abc123")).toBe("abc123");
+  });
+  it("decodifica y recorta espacios", () => {
+    expect(claveDeFragmento("#clave=%20a%2Bb%20")).toBe("a+b");
+  });
+  it("devuelve cadena vacía sin fragmento o sin clave", () => {
+    expect(claveDeFragmento("")).toBe("");
+    expect(claveDeFragmento("#otra=1")).toBe("");
+    expect(claveDeFragmento("#clave=")).toBe("");
+  });
+});
 ```
 
 - [ ] **Step 4: Layout, estilos y pantalla de marca mínima**
@@ -4204,33 +4260,91 @@ export default function PaginaVitrina() {
 }
 ```
 
-- [ ] **Step 5: Instalar, generar los íconos web y compilar**
+- [ ] **Step 5: Actualizar el lock y generar los íconos web (sin instalar ni compilar en local)**
 
 ```bash
 cd /c/dev/gym-app
-npm install
-cd apps/vitrina-tv/capacitor && npm run iconos && cd ../../..
-npm run build --workspace apps/vitrina
-npm run lint --workspace apps/vitrina
+npm install --package-lock-only --ignore-scripts
+(cd apps/vitrina-tv/capacitor && npm run iconos)
 ```
 
-Expected: `npm install` actualiza `package-lock.json` con el workspace `vitrina`; `npm run iconos` ahora también escribe `apps/vitrina/app/icon.png`, `apple-icon.png` y `public/branding/escudo.png`; el build genera `apps/vitrina/out/`; lint sin errores.
+Expected: `npm install --package-lock-only` solo reescribe `package-lock.json` con el workspace `vitrina` (no baja paquetes ni crea `node_modules`); `npm run iconos` ahora también escribe `apps/vitrina/app/icon.png`, `apple-icon.png` y `public/branding/escudo.png`. El build y el lint de `apps/vitrina` **no** se corren en local: los comprueban el workflow `verificar-vitrina.yml` y el build de Docker del Step 6. Tipos y lint no se ejecutan en local: tras el push del usuario a `vitrina`, el workflow `Verificar la rama vitrina` (`.github/workflows/verificar-vitrina.yml`) debe terminar en verde (`gh run list --workflow verificar-vitrina.yml --limit 1`; si falla, `gh run view <id> --log-failed`).
 
-- [ ] **Step 6: Simular el `npm ci` de los Dockerfiles de producción (un workspace nuevo no debe romperlos)**
+- [ ] **Step 6: Dockerfile de la vista previa estática y comprobación de que no rompe los `npm ci` existentes**
 
-```bash
-cd /c/dev/gym-app
-for DF in Dockerfile apps/kiosk/Dockerfile; do
-  T="$(mktemp -d)"
-  cp package.json package-lock.json "$T/"
-  grep -E '^COPY (apps|packages)/[^ ]+/package.json' "$DF" | while read -r _ origen destino; do
-    mkdir -p "$T/$(dirname "$destino")"; cp "$origen" "$T/$destino"
-  done
-  (cd "$T" && npm ci --ignore-scripts --dry-run > /dev/null && echo "$DF: npm ci OK" || echo "$DF: npm ci FALLA")
-done
+`apps/vitrina/Dockerfile` (patrón de `apps/kiosk/Dockerfile`; contexto de build: la raíz del repo; la URL de la API es de **runtime**, no de build):
+
+```dockerfile
+# syntax=docker/dockerfile:1
+# Vista previa en navegador de apps/vitrina (export estático, ver next.config.ts) para probar en EasyPanel.
+# El APK NO usa este Dockerfile: lleva el export dentro del bundle (apps/vitrina-tv).
+# Contexto de build requerido: la RAÍZ del repo (necesita el package-lock.json raíz para `npm ci`).
+
+ARG NODE_VERSION=22-alpine
+
+FROM node:${NODE_VERSION} AS builder
+WORKDIR /repo
+
+COPY package.json package-lock.json ./
+COPY apps/vitrina/package.json apps/vitrina/package.json
+COPY apps/web-admin/package.json apps/web-admin/package.json
+COPY apps/worker/package.json apps/worker/package.json
+COPY packages/db/package.json packages/db/package.json
+COPY packages/domain/package.json packages/domain/package.json
+COPY packages/infrastructure/package.json packages/infrastructure/package.json
+COPY packages/design-system/package.json packages/design-system/package.json
+COPY packages/theming/package.json packages/theming/package.json
+COPY packages/config/package.json packages/config/package.json
+COPY packages/ui/package.json packages/ui/package.json
+
+RUN npm ci
+
+COPY turbo.json turbo.json
+COPY apps/vitrina apps/vitrina
+# La vitrina importa código fuente de estos dos paquetes (ADR-002): arriba solo se copió su package.json.
+COPY packages/domain packages/domain
+COPY packages/theming packages/theming
+
+RUN npx turbo run build --filter=vitrina
+
+# ---- runner: sirve el export estático y escribe vitrina-config.json al arrancar -------------
+FROM node:${NODE_VERSION} AS runner
+WORKDIR /app
+
+ENV TZ=America/Caracas
+
+RUN npm install -g serve@14
+
+COPY --from=builder /repo/apps/vitrina/out ./out
+COPY apps/vitrina/docker-entrypoint.sh ./docker-entrypoint.sh
+RUN sed -i 's/\r$//' ./docker-entrypoint.sh && chmod +x ./docker-entrypoint.sh
+
+EXPOSE 3000
+ENTRYPOINT ["./docker-entrypoint.sh"]
 ```
 
-Expected: `Dockerfile: npm ci OK` y `apps/kiosk/Dockerfile: npm ci OK`. Si alguno falla, **detenerse**: añadir `COPY apps/vitrina/package.json apps/vitrina/package.json` en ese Dockerfile (o quitar la dependencia que rompe) antes de seguir: un fallo aquí tumba el deploy de producción.
+`apps/vitrina/docker-entrypoint.sh`:
+
+```sh
+#!/bin/sh
+# Escribe vitrina-config.json con la URL de web-admin y SIN clave: la clave de la sede se pasa en el navegador con
+# #clave=<API key> (lib/config.ts), para que no quede dentro de la imagen ni en un archivo público.
+set -e
+
+case "$VITRINA_API_URL" in
+  http://*|https://*) ;;
+  *) echo "VITRINA_API_URL es obligatoria y debe empezar por http:// o https://"; exit 1 ;;
+esac
+URL="${VITRINA_API_URL%/}"
+case "$URL" in
+  *\"*|*\\*|*" "*) echo "VITRINA_API_URL contiene caracteres no válidos"; exit 1 ;;
+esac
+
+printf '{"apiUrl":"%s","clave":""}\n' "$URL" > out/vitrina-config.json
+exec serve -s out -l 3000
+```
+
+**Comprobación de que el workspace nuevo no rompe los `npm ci` existentes (sin ejecutar nada en local):** el `Dockerfile` raíz **ya omite** `apps/kiosk` y `apps/worker` (workspaces presentes en el lock) y `apps/kiosk/Dockerfile` omite `apps/vitrina-tv`/`kiosk-host`, y ambos construyen hoy: `npm ci` tolera workspaces del lock cuyo `package.json` no se copia. `apps/vitrina` queda en la misma situación en esos dos Dockerfiles, así que **no se modifican**. La prueba real es el primer build de `gym-app-vitrina` en EasyPanel (Dockerfile raíz, rama `vitrina`) y el del propio `apps/vitrina/Dockerfile`: si alguno falla en `npm ci`, **detenerse y avisar** antes de seguir (un fallo igual tumbaría el Deploy 2). Tras el push, crear el servicio `gym-app-vitrina-tv` según "Entorno de pruebas".
 
 - [ ] **Step 7: Sugerir el mensaje de commit**
 
@@ -4879,13 +4993,7 @@ export function useVitrina(): EstadoVitrina {
 
 - [ ] **Step 6: Verificar y sugerir el commit**
 
-```bash
-cd /c/dev/gym-app
-npm test --workspace apps/vitrina
-npm run lint --workspace apps/vitrina
-cd apps/vitrina && npx tsc --noEmit
-cd /c/dev/gym-app
-```
+`npm test --workspace apps/vitrina` no se corre en local (no hay `node_modules` de ese workspace): lo ejecuta el workflow `verificar-vitrina.yml` junto con tipos y lint. Tipos y lint no se ejecutan en local: tras el push del usuario a `vitrina`, el workflow `Verificar la rama vitrina` (`.github/workflows/verificar-vitrina.yml`) debe terminar en verde (`gh run list --workflow verificar-vitrina.yml --limit 1`; si falla, `gh run view <id> --log-failed`).
 
 Dejar los cambios en el working tree: **no** ejecutar `git add`, `git commit` ni `git push` (el usuario hace commit, push y deploy). Mensaje de commit sugerido (una línea, en español):
 
@@ -4895,7 +5003,7 @@ agrega el almacén en disco, la sincronización de medios y el aviso SSE de la a
 
 Expected: tests en verde, lint y tipos sin errores.
 
-**Verificación manual del aviso de cambios y de la sincronización (se completa en la Task 13, Step 7):** el hook solo se puede observar con la app corriendo. Con `web-admin` en `localhost:3000` y la vitrina en `localhost:3002`, ambos apuntando **al mismo web-admin local**, abrir la consola del navegador de la vitrina y comprobar que: al arrancar pide el manifiesto; al activar, mover o eliminar algo en el panel local llega `vitrina:cambio` y se vuelve a pedir; y al cortar la red (DevTools → Offline) y restablecerla reconecta y se pone al día. Si el panel estuviera en producción y la vitrina en local (o al revés), el aviso **no** llegaría: el emisor es en memoria por proceso. Usar siempre la sede y la API key de `zip-gym`.
+**Verificación manual del aviso de cambios y de la sincronización (se completa en la Task 13, Step 7):** el hook solo se puede observar con la app corriendo. En el punto de verificación V2, con la vista previa `https://<dominio-de-gym-app-vitrina-tv>/#clave=<API key de zip-gym>` y el panel de `https://<dominio-de-gym-app-vitrina>` (el mismo web-admin al que apunta la vista previa), abrir la consola del navegador de la vista previa y comprobar que: al arrancar pide el manifiesto; al activar, mover o eliminar algo en el panel local llega `vitrina:cambio` y se vuelve a pedir; y al cortar la red (DevTools → Offline) y restablecerla reconecta y se pone al día. Si el panel estuviera en producción y la vista previa apuntara al servicio de pruebas (o al revés), el aviso **no** llegaría: el emisor es en memoria por proceso. Usar siempre la sede y la API key de `zip-gym`.
 
 ---
 
@@ -5197,7 +5305,7 @@ cd /c/dev/gym-app/apps/vitrina
 cp public/vitrina-config.ejemplo.json public/vitrina-config.json
 ```
 
-Editar `public/vitrina-config.json` con `"apiUrl": "http://localhost:3000"` y la API key de la sede de **zip-gym** (nunca la de `gym-demo`). **El panel y la vitrina deben apuntar al mismo web-admin**: abrir el panel en `http://localhost:3000` (con `npm run dev --workspace apps/web-admin`, sesión de la organización `zip-gym`) y la vitrina en el mismo proceso local. Si el panel fuera el de producción, el aviso de cambios (SSE) no llegaría a la vitrina, porque el emisor es en memoria por proceso. Luego `npm run dev --workspace apps/vitrina` y abrir `http://localhost:3002` a 1920x1080 (modo TV del navegador):
+Punto de verificación V2 (sin servidor local). Con el código subido a `vitrina` y los servicios `gym-app-vitrina` y `gym-app-vitrina-tv` desplegados, abrir la vista previa `https://<dominio-de-gym-app-vitrina-tv>/#clave=<API key de zip-gym>` (nunca la de `gym-demo`) a 1920x1080 (DevTools → modo dispositivo, o pantalla completa en un monitor Full HD). **El panel y la vista previa deben apuntar al mismo web-admin**: el panel en `https://<dominio-de-gym-app-vitrina>` con la sesión de la organización `zip-gym`. Si el panel fuera el de producción, el aviso de cambios (SSE) no llegaría a la vista previa, porque el emisor es en memoria por proceso:
 
 1. Sin ítems activos: la pantalla de marca (no negro).
 2. Activar en el panel una promo con oferta y Bs: aparece en segundos (sin recargar), con el precio tachado, la oferta y "Bs. …".
@@ -5206,14 +5314,9 @@ Editar `public/vitrina-config.json` con `"apiUrl": "http://localhost:3000"` y la
 5. Cortar la red (DevTools → Offline) y recargar: sigue mostrando lo último.
 6. Sustituir una pieza en el panel: la TV muestra primero la anterior y cambia solo cuando la nueva terminó de bajar.
 
-- [ ] **Step 8: Tipos, lint, build y sugerir el commit**
+- [ ] **Step 8: Verificación en la nube y sugerir el commit**
 
-```bash
-cd /c/dev/gym-app
-npm test --workspace apps/vitrina
-npm run lint --workspace apps/vitrina
-npm run build --workspace apps/vitrina
-```
+Tests, tipos y lint los comprueba el workflow `verificar-vitrina.yml`; el build estático, el de Docker de `gym-app-vitrina-tv`. Tipos y lint no se ejecutan en local: tras el push del usuario a `vitrina`, el workflow `Verificar la rama vitrina` (`.github/workflows/verificar-vitrina.yml`) debe terminar en verde (`gh run list --workflow verificar-vitrina.yml --limit 1`; si falla, `gh run view <id> --log-failed`).
 
 Dejar los cambios en el working tree: **no** ejecutar `git add`, `git commit` ni `git push` (el usuario hace commit, push y deploy). Mensaje de commit sugerido (una línea, en español):
 
@@ -5255,15 +5358,10 @@ En la sección **Per-workspace** añadir `apps/vitrina` (Next export, `dev` en :
 ```bash
 cd /c/dev/gym-app
 npm test --workspace packages/domain
-npm test --workspace apps/vitrina
-(cd apps/vitrina-tv/capacitor && npm test)
-npm run build --workspace apps/vitrina
-npm run lint --workspace apps/vitrina
-(cd apps/web-admin && npx tsc --noEmit && npm run lint)
-git diff --stat -- apps/kiosk-tv .github/workflows/apk-kiosco.yml apps/kiosk
+git diff --stat main -- apps/kiosk-tv .github/workflows/apk-kiosco.yml apps/kiosk
 ```
 
-Expected: todo en verde y el último comando **sin salida** (el kiosco no cambió).
+Expected: tests del dominio en verde y el último comando **sin salida** (el kiosco no cambió respecto de `main`). Lo demás (tests de `apps/vitrina` y de los scripts del APK, tipos y lint de web-admin y de la vitrina) lo comprueba el workflow `verificar-vitrina.yml`: Tipos y lint no se ejecutan en local: tras el push del usuario a `vitrina`, el workflow `Verificar la rama vitrina` (`.github/workflows/verificar-vitrina.yml`) debe terminar en verde (`gh run list --workflow verificar-vitrina.yml --limit 1`; si falla, `gh run view <id> --log-failed`).
 
 Mensaje de commit sugerido para lo de los Steps 1 a 3 (el agente no hace commit ni push):
 
@@ -5271,9 +5369,34 @@ Mensaje de commit sugerido para lo de los Steps 1 a 3 (el agente no hace commit 
 completa la documentación de la vitrina y corrige la spec
 ```
 
+- [ ] **Step 4b: Añadir al workflow la inspección automática del APK (sustituye a Android Studio → Analyze APK)**
+
+En `.github/workflows/apk-vitrina.yml`, justo después del paso "Compilar el APK de debug" y antes de "Preparar el archivo a publicar", añadir (el `aapt2` viene en el Android SDK del runner; la clave nunca se imprime):
+
+```yaml
+      - name: Inspeccionar el APK (applicationId, versionCode, manifiesto, ícono y configuración)
+        working-directory: apps/vitrina-tv/capacitor
+        run: |
+          APK=android/app/build/outputs/apk/debug/app-debug.apk
+          AAPT2="$(ls -d "$ANDROID_HOME"/build-tools/*/aapt2 | sort -V | tail -1)"
+          "$AAPT2" dump badging "$APK" > badging.txt
+          grep -E "^package:|^launchable-activity|^application-label:|^uses-permission:|leanback|^banner|^application-icon-" badging.txt
+          grep -q "name='com.adrenalina.vitrina'" badging.txt
+          grep -q "versionCode='${{ github.run_number }}'" badging.txt
+          grep -q "android.permission.RECEIVE_BOOT_COMPLETED" badging.txt
+          grep -q "android.permission.SYSTEM_ALERT_WINDOW" badging.txt
+          grep -q "android.software.leanback" badging.txt
+          unzip -p "$APK" assets/capacitor.config.json | jq -e '(.server.url // null) == null and .loggingBehavior == "none" and .android.webContentsDebuggingEnabled == false and ((.plugins // {}).CapacitorHttp // null) == null' > /dev/null
+          unzip -p "$APK" assets/public/vitrina-config.json | jq -e --arg u "${VITRINA_API_URL%/}" '.apiUrl == $u and (.clave | length) > 0' > /dev/null || { [ "$MODO" = "prueba" ] || exit 1; }
+          unzip -l "$APK" | grep -E "assets/public/index.html" > /dev/null
+          echo "Inspección del APK correcta"
+```
+
+Si el `aapt2` del runner imprime el `usesCleartextTraffic` o el nombre de la actividad de otra forma, ajustar los `grep` al formato real leyendo el log del primer run (no relajar las comprobaciones de `applicationId`, `versionCode`, `capacitor.config.json` ni `vitrina-config.json`). Mensaje de commit sugerido para este paso: `inspecciona automáticamente el APK de la vitrina en el workflow`.
+
 - [ ] **Step 5: PUNTO DE CONTROL B: detenerse y esperar al usuario (Deploy 2)**
 
-Avisar al usuario de que **las Tasks 7 a 14 (hasta el Step 4) están completas en el working tree** y pedirle: (1) revisar el working tree y hacer commit y push con los mensajes sugeridos de cada tarea; (2) hacer el **Deploy 2** de web-admin (API del manifiesto, SSE, dashboard de la vitrina, R2); (3) confirmar que el commit, el push y el deploy están hechos. **No continuar sin esa confirmación**: el workflow del APK compila desde GitHub, no desde el working tree, y la TV pedirá el manifiesto al web-admin de producción.
+Avisar al usuario de que **las Tasks 7 a 14 (hasta el Step 4b) están completas en la rama `vitrina`** y pedirle: (1) confirmar que el último push a `vitrina` tiene en verde el workflow `Verificar la rama vitrina` y que V1 y V2 pasaron; (2) hacer el **Deploy 2**: unir `vitrina` con `main` y desplegar web-admin de producción (API del manifiesto, SSE, dashboard de la vitrina, R2); (3) confirmar que el merge, el push y el deploy están hechos y que el CORS de R2 incluye el dominio de producción. **No continuar sin esa confirmación**: el workflow del APK compila desde GitHub, no desde el working tree, y la TV pedirá el manifiesto al web-admin de producción.
 
 Antes de pedirlo, recordarle un paso manual pendiente: el CORS (PUT) del bucket de R2 para el dominio de producción de web-admin (`docs/superpowers/plans/2026-10-15-vitrina-tv-cors-r2.md`).
 
@@ -5282,40 +5405,32 @@ Antes de pedirlo, recordarle un paso manual pendiente: el CORS (PUT) del bucket 
 Con el Deploy 2 confirmado: crear el secreto de la sede de pruebas (sin pegar la clave en ningún chat ni log): `gh secret set VITRINA_CLAVE_ZIPGYM` (pide el valor por consola; la API key de la sede de **zip-gym**, nunca la de `gym-demo`) y confirmar que existe `KIOSCO_APK_PASSWORD`.
 
 ```bash
-gh workflow run apk-vitrina.yml -f sucursal=zipgym -f api_url=<URL-de-web-admin-de-producción> -f modo=vitrina
+gh workflow run apk-vitrina.yml --ref main -f sucursal=zipgym -f api_url=<URL-de-web-admin-de-producción> -f modo=vitrina
 gh run watch
 ```
 
 Descargar el artefacto (`gh run download --name vitrina-zipgym --dir salida-vitrina`) y descifrar el `.7z` con la contraseña de `KIOSCO_APK_PASSWORD` para obtener `vitrina-zipgym.apk`. **No instalar todavía en el TV real:** primero los Steps 7 y 8.
 
-- [ ] **Step 7: Revisar el APK con Android Studio (Build → Analyze APK)**
+- [ ] **Step 7: Revisar el resultado de la inspección del APK (sustituye a Android Studio → Analyze APK)**
 
-Abrir `vitrina-zipgym.apk` en Android Studio (Build → Analyze APK…; alternativa por consola: `apkanalyzer manifest print`, `apkanalyzer files list`) y comprobar:
+Sin Android Studio en el PC: leer el log del paso "Inspeccionar el APK" (`gh run view <id> --log | grep -A40 "Inspeccionar el APK"`), que ya hizo fallar el workflow si algo no cuadra. Comprobar en ese log:
 
-1. **`applicationId` y `versionCode`:** `com.adrenalina.vitrina` y un `versionCode` igual al `run_number` de la ejecución del workflow (no `1`).
-2. **Manifiesto:** declara `ArranqueReceiver` con `BOOT_COMPLETED`/`QUICKBOOT_POWERON`, los permisos `RECEIVE_BOOT_COMPLETED` y `SYSTEM_ALERT_WINDOW`, `usesCleartextTraffic="false"`, `LEANBACK_LAUNCHER` y orientación horizontal.
-3. **Ícono:** los mipmap `ic_launcher*` y el `banner` muestran el escudo (no el del kiosco ni el de Capacitor).
-4. **`assets/public/vitrina-config.json`:** la `apiUrl` es la de producción pasada al workflow (sin `/` final) y `clave` no está vacía (comprobarlo sin copiar ni pegar la clave en ningún lado).
+1. **`applicationId` y `versionCode`:** `com.adrenalina.vitrina` y un `versionCode` igual al `run_number` de la ejecución (no `1`).
+2. **Manifiesto:** permisos `RECEIVE_BOOT_COMPLETED` y `SYSTEM_ALERT_WINDOW`, `LEANBACK_LAUNCHER` y la actividad lanzable; el `ArranqueReceiver` con `BOOT_COMPLETED`/`QUICKBOOT_POWERON` (no sale en `badging`: se confirma en el Step 9, punto 7) y orientación horizontal.
+3. **Ícono:** el log lista los `application-icon-*` y el `banner`; el aspecto del escudo se confirma en el launcher de la TV (Step 9, punto 2).
+4. **`assets/public/vitrina-config.json`:** `apiUrl` igual a la de producción pasada al workflow y `clave` no vacía (el workflow lo comprueba sin imprimirla).
 5. **`assets/capacitor.config.json`:** sin `server.url`, `loggingBehavior: "none"`, `webContentsDebuggingEnabled: false` y sin `plugins.CapacitorHttp`.
-6. **Contenido web:** `assets/public/index.html` y los assets de Next están dentro del APK (la app no depende de internet para abrir).
+6. **Contenido web:** `assets/public/index.html` está dentro del APK (la app no depende de internet para abrir).
 
-Cualquier discrepancia: detenerse, corregir el workflow o los scripts y recompilar; no pasar al emulador.
+Cualquier discrepancia: detenerse, corregir el workflow o los scripts y recompilar; no instalar en la TV.
 
-- [ ] **Step 8: Probar el APK en un emulador de Android TV 1080p**
+- [ ] **Step 8: (suprimido) Emulador de Android TV**
 
-En Android Studio → Device Manager → crear un AVD "Television (1080p)" (imagen de Android TV de API 34, con o sin Google Play), arrancarlo e instalar: `adb -s emulator-5554 install -r vitrina-zipgym.apk`. Conceder los permisos del README por adb (`appops` y `deviceidle`) y comprobar:
-
-1. **Ícono y nombre:** el launcher del emulador muestra "Vitrina AX" con el escudo.
-2. **Arranque sin red:** activar el modo avión del emulador (`adb shell cmd connectivity airplane-mode enable`, o Extended controls → Cellular/Wi-Fi apagados), cerrar la app y abrirla: carga el contenido guardado, o la pantalla de marca si aún no había nada; **nunca negro**. Restablecer la red y comprobar que se pone al día.
-3. **Almacén en disco:** con contenido cargado, `adb shell run-as com.adrenalina.vitrina ls files/vitrina` lista los archivos de las piezas (sin `.part` sobrantes); sustituir una pieza en el panel de zip-gym borra el archivo viejo y descarga solo el nuevo.
-4. **Arranque tras reiniciar:** `adb reboot` y esperar: la app abre sola (con los permisos concedidos). Repetirlo sin red.
-5. **Resolución:** a 1920x1080 las franjas de 3 columnas, los carteles y los badges se ven completos y sin recortes.
-
-Si algo falla aquí, corregir antes de tocar el TV real.
+Decisión del usuario: no hay emulador; el APK se prueba directamente en la TV real (Step 9). Los controles que iban aquí pasan al Step 9: ícono y nombre (punto 2), arranque sin red (punto 5), almacén en disco (punto 4) y arranque tras reiniciar (punto 7). A 1920x1080 deben verse las franjas de 3 columnas, los carteles y los badges completos y sin recortes (punto 3).
 
 - [ ] **Step 9: Instalar en el TV real y marcar la checklist**
 
-Con el panel y la vitrina ya apuntando **al mismo web-admin (el de producción)**, instalar con `adb install -r` en el TV real y marcar cada punto:
+Con el panel y la vitrina ya apuntando **al mismo web-admin (el de producción, tras el Deploy 2)**, instalar con `adb install -r` en el TV real (primer arranque con la TV conectada por adb, para leer `adb logcat` si algo falla) y marcar cada punto:
 
 1. **Cifrado:** el artefacto es un `.7z` cifrado; no hay `.apk` suelto en el `.zip`.
 2. **Ícono y nombre:** el launcher del TV muestra "Vitrina AX" con el escudo; el banner de Android TV también.
@@ -5332,7 +5447,9 @@ Con el panel y la vitrina ya apuntando **al mismo web-admin (el de producción)*
 
 Actualizar (o crear) `handoff.md` en la raíz con exactamente las 5 secciones que pide `CLAUDE.md`: **Objetivo**, **Estado actual** (qué funciona y qué falta, incluyendo el resultado de la checklist), **Archivos y cambios** (por archivo), **Intentos fallidos** (conservar las entradas previas y añadir los aprendizajes de esta sesión, p. ej. que `@capacitor/file-transfer` no tiene serie 8) y **Próximos pasos**.
 
-- [ ] **Step 11: Sugerir el mensaje de commit final**
+- [ ] **Step 11: Retirar el entorno de pruebas y sugerir el mensaje de commit final**
+
+Una vez marcada la checklist del Step 9, pedir al usuario que **elimine** los servicios `gym-app-vitrina` y `gym-app-vitrina-tv` de EasyPanel, quite del CORS de R2 el dominio del servicio de pruebas y, si ya no se usa, borre la rama `vitrina` (y el workflow `verificar-vitrina.yml` solo si no quiere conservarlo para futuras ramas).
 
 Dejar los cambios en el working tree: **no** ejecutar `git add`, `git commit` ni `git push` (el usuario hace commit, push y deploy). Mensaje de commit sugerido (una línea, en español):
 

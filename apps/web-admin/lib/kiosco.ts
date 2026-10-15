@@ -9,8 +9,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { KioskTokenValidator } from "@gym-app/infrastructure/auth/KioskTokenValidator";
 import type { Sucursal } from "@gym-app/domain/entities/Sucursal";
+import { orquestadorTasa } from "@/lib/tasaBcv";
+import { SinTasaDisponibleError } from "@gym-app/domain/use-cases/ObtenerTasaVigente";
 
-const CORS_HEADERS = {
+export const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, X-Kiosk-Api-Key",
@@ -34,4 +36,16 @@ export async function sucursalDeKiosco(req: NextRequest): Promise<Sucursal | Nex
   if (!sucursal) return jsonKiosco({ error: "API key de sucursal inválida." }, 401);
 
   return sucursal;
+}
+
+// Última tasa BCV para las pantallas del kiosco y de la vitrina, con la misma forma en ambas. Sin tasa guardada
+// devuelve null (las pantallas se ven igual, sin ese dato).
+export async function tasaBcvParaKiosco(): Promise<{ valor: number; fecha: string } | null> {
+  try {
+    const { tasa } = await orquestadorTasa.obtenerTasaVigenteFresca();
+    return { valor: tasa.valor, fecha: tasa.fecha.toISOString() };
+  } catch (error) {
+    if (!(error instanceof SinTasaDisponibleError)) console.error("Error al leer la tasa para el kiosco:", error);
+    return null;
+  }
 }

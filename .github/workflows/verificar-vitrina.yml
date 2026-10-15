@@ -1,0 +1,50 @@
+name: Verificar la rama vitrina
+
+# La rama vitrina se desarrolla desde un PC limitado: tipos, lint y tests corren aquí, no en local.
+# No toca la base de datos ni R2: solo compila y prueba.
+on:
+  push:
+    branches: [vitrina]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verificar:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Generar el cliente Prisma
+        run: cd packages/db && npx prisma generate
+
+      - name: Tests del dominio
+        run: npm test --workspace packages/domain
+
+      - name: Tipos y lint de web-admin
+        working-directory: apps/web-admin
+        run: |
+          npx tsc --noEmit
+          npm run lint
+
+      - name: Tests, tipos y lint de la vitrina
+        if: hashFiles('apps/vitrina/package.json') != ''
+        working-directory: apps/vitrina
+        run: |
+          npm test
+          npx tsc --noEmit
+          npm run lint
+
+      - name: Tests de los scripts del APK
+        working-directory: apps/vitrina-tv/capacitor
+        run: |
+          npm ci
+          npm test

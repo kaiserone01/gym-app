@@ -2,9 +2,7 @@
 // del reposo (frases, imagen y opacidad) hecha desde el menú Kiosko del panel.
 // Autenticado con la apiKey de la sucursal (ver lib/kiosco.ts).
 import { NextRequest, NextResponse } from "next/server";
-import { jsonKiosco, opcionesKiosco, sucursalDeKiosco } from "@/lib/kiosco";
-import { orquestadorTasa } from "@/lib/tasaBcv";
-import { SinTasaDisponibleError } from "@gym-app/domain/use-cases/ObtenerTasaVigente";
+import { jsonKiosco, opcionesKiosco, sucursalDeKiosco, tasaBcvParaKiosco } from "@/lib/kiosco";
 
 export async function OPTIONS() {
   return opcionesKiosco();
@@ -15,19 +13,10 @@ export async function GET(req: NextRequest) {
     const sucursal = await sucursalDeKiosco(req);
     if (sucursal instanceof NextResponse) return sucursal;
 
-    // Sin tasa guardada el reposo se ve igual, solo que sin ese dato.
-    let tasaBcv: { valor: number; fecha: string } | null = null;
-    try {
-      const { tasa } = await orquestadorTasa.obtenerTasaVigenteFresca();
-      tasaBcv = { valor: tasa.valor, fecha: tasa.fecha.toISOString() };
-    } catch (error) {
-      if (!(error instanceof SinTasaDisponibleError)) console.error("Error al leer la tasa para el kiosco:", error);
-    }
-
     return jsonKiosco(
       {
         sucursalNombre: sucursal.nombre,
-        tasaBcv,
+        tasaBcv: await tasaBcvParaKiosco(),
         reposo: { frases: sucursal.reposoFrases, imagenUrl: sucursal.reposoImagenUrl, opacidad: sucursal.reposoOpacidad },
       },
       200

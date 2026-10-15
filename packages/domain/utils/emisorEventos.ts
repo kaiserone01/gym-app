@@ -11,7 +11,8 @@ export function crearEmisor() {
       oyentes.set(clave, conjunto);
       return () => {
         conjunto.delete(oyente);
-        if (conjunto.size === 0) oyentes.delete(clave);
+        // Solo borra su propio conjunto: una baja repetida no debe llevarse el de otro cliente.
+        if (conjunto.size === 0 && oyentes.get(clave) === conjunto) oyentes.delete(clave);
       };
     },
     // Devuelve a cuántos oyentes llegó el evento; uno que lanza (conexión ya cerrada) no afecta a los demás.

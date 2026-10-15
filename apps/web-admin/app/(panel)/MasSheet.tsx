@@ -27,6 +27,7 @@ export function MasSheet({
     { href: "/productos", label: "Productos" },
     ...(puedeVerExcel ? [{ href: "/excel", label: "Excel" }] : []),
     ...(puedeEditarKiosko(rol) ? [{ href: "/kiosko", label: "Kiosko" }] : []),
+    ...(puedeEditarKiosko(rol) ? [{ href: "/vitrina", label: "Vitrina" }] : []),
     ...(rol === "SOCIO" ? [{ href: "/configuraciones", label: "Configuraciones" }] : []),
   ];
 

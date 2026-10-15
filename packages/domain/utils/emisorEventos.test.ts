@@ -40,4 +40,24 @@ describe("crearEmisor", () => {
     expect(emisor.emitir("s", "x")).toBe(1);
     expect(recibidos).toEqual(["x"]);
   });
+
+  test("darse de baja dos veces no afecta a otros oyentes de la misma clave", () => {
+    const emisor = crearEmisor();
+    const baja = emisor.suscribir("s", () => {});
+    baja();
+    const recibidos: string[] = [];
+    emisor.suscribir("s", (e) => recibidos.push(e));
+    baja();
+    expect(emisor.emitir("s", "x")).toBe(1);
+    expect(recibidos).toEqual(["x"]);
+  });
+
+  test("tras darse todos de baja, un nuevo suscriptor sigue funcionando", () => {
+    const emisor = crearEmisor();
+    emisor.suscribir("s", () => {})();
+    const recibidos: string[] = [];
+    emisor.suscribir("s", (e) => recibidos.push(e));
+    expect(emisor.emitir("s", "x")).toBe(1);
+    expect(recibidos).toEqual(["x"]);
+  });
 });

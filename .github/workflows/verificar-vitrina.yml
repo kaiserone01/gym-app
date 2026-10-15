@@ -32,6 +32,7 @@ jobs:
       - name: Tipos y lint de web-admin
         working-directory: apps/web-admin
         run: |
+          npx next typegen
           npx tsc --noEmit
           npm run lint
 

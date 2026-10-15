@@ -41,6 +41,8 @@ npm run start   # starts apps/web-admin only
 ## Per-workspace
 - `apps/web-admin` — Next.js admin panel. `dev` / `build` / `start` / `lint`.
 - `apps/kiosk` — Next.js check-in kiosk. `dev -p 3001` / `build` / `start` / `lint`.
+- `apps/vitrina` — Next export estático de la vitrina de TV. `dev` (:3002) / `test` / `build`. Sus tests son puros y ligeros (`npx vitest run apps/vitrina/lib/`); tipos y lint corren en `.github/workflows/verificar-vitrina.yml`.
+- `apps/vitrina-tv/capacitor` — cáscara Android (Capacitor) de la vitrina; no es workspace npm: `npm test` y `npm run sync` dentro de esa carpeta.
 - `apps/worker` — plain TS worker, no Next.js. Only script: `actualizar-tasa` (`tsx src/actualizar-tasa.ts`).
 - `packages/db` — Prisma layer. Scripts (run with `npm run <script> --workspace packages/db`):
   - `generate` (prisma generate), `migrate:dev` (prisma migrate dev), `db:seed`
@@ -94,6 +96,9 @@ Spec/plan: `docs/superpowers/specs/2026-10-08-padron-excel-activacion-bajo-deman
 ## Next.js apps
 - `apps/web-admin/app` — App Router with a `(panel)` route group: `caja`, `cambiar-password`, `configuraciones`, `en-sala`, `miembros`, `pagos`, `planes`, `sucursales`, `usuarios`; plus `app/login` and API route handlers under `app/api/{auth,caja,checkin,miembros,pagos,planes,tasa-cambio,usuarios}`.
 - `apps/kiosk` — separate app for member check-in, authenticates via the `Sucursal` API key described above.
+
+## Vitrina de TV
+Spec `docs/superpowers/specs/2026-10-15-vitrina-tv-design.md`, plan `docs/superpowers/plans/2026-10-15-vitrina-tv.md`, ADR-002. La app (`apps/vitrina`, empaquetada en el APK de `apps/vitrina-tv`) lee `GET /api/kiosco/vitrina` y recibe avisos por `/api/kiosco/vitrina/eventos` (SSE), ambos de web-admin con la API key de la sede. Los medios van en R2 bajo `vitrina/`. Las migraciones de la vitrina se generan con la config local de Prisma (`prisma7.local.config.ts`), sin tocar producción.
 
 ## Planning convention
 Feature work is generally preceded by a dated plan + design doc under `docs/superpowers/plans/` and `docs/superpowers/specs/` (Spanish filenames), and major architectural decisions are recorded as ADRs under `docs/adr/`. Check these before starting non-trivial features to see if a plan already exists.

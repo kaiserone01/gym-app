@@ -105,6 +105,23 @@ jobs:
         working-directory: apps/vitrina-tv/capacitor/android
         run: ./gradlew assembleDebug --no-daemon -PversionCode=${{ github.run_number }}
 
+      - name: Inspeccionar el APK (applicationId, versionCode, manifiesto, ícono y configuración)
+        working-directory: apps/vitrina-tv/capacitor
+        run: |
+          APK=android/app/build/outputs/apk/debug/app-debug.apk
+          AAPT2="$(ls -d "$ANDROID_HOME"/build-tools/*/aapt2 | sort -V | tail -1)"
+          "$AAPT2" dump badging "$APK" > badging.txt
+          grep -E "^package:|^launchable-activity|^application-label:|^uses-permission:|leanback|^banner|^application-icon-" badging.txt
+          grep -q "name='com.adrenalina.vitrina'" badging.txt
+          grep -q "versionCode='${{ github.run_number }}'" badging.txt
+          grep -q "android.permission.RECEIVE_BOOT_COMPLETED" badging.txt
+          grep -q "android.permission.SYSTEM_ALERT_WINDOW" badging.txt
+          grep -q "android.software.leanback" badging.txt
+          unzip -p "$APK" assets/capacitor.config.json | jq -e '(.server.url // null) == null and .loggingBehavior == "none" and .android.webContentsDebuggingEnabled == false and ((.plugins // {}).CapacitorHttp // null) == null' > /dev/null
+          unzip -p "$APK" assets/public/vitrina-config.json | jq -e --arg u "${VITRINA_API_URL%/}" '.apiUrl == $u and (.clave | length) > 0' > /dev/null || { [ "$MODO" = "prueba" ] || exit 1; }
+          unzip -l "$APK" | grep -E "assets/public/index.html" > /dev/null
+          echo "Inspección del APK correcta"
+
       - name: Preparar el archivo a publicar
         working-directory: apps/vitrina-tv/capacitor
         env:

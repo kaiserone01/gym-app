@@ -1,8 +1,11 @@
+"use client";
+
+import { PantallaMarca } from "@/components/PantallaMarca";
+import { Reproductor } from "@/components/Reproductor";
+import { useVitrina } from "@/lib/useVitrina";
+
 export default function PaginaVitrina() {
-  return (
-    <main className="flex h-full items-center justify-center">
-      {/* eslint-disable-next-line @next/next/no-img-element -- recurso local empaquetado */}
-      <img src="/branding/escudo.png" alt="Adrenalina Xtreme Gym" className="h-[60vh]" />
-    </main>
-  );
+  const { manifiesto, almacen, ahora } = useVitrina();
+  if (!manifiesto || !almacen) return <PantallaMarca />;
+  return <Reproductor manifiesto={manifiesto} almacen={almacen} ahora={ahora} />;
 }

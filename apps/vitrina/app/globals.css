@@ -26,3 +26,8 @@ body {
 }
 .trans-fundido { animation: entrada-fundido 700ms ease both; }
 .trans-deslizar { animation: entrada-deslizar 700ms ease both; }
+
+/* Con "reducir movimiento" no hay deslizamiento: solo el fundido. */
+@media (prefers-reduced-motion: reduce) {
+  .trans-deslizar { animation-name: entrada-fundido; }
+}

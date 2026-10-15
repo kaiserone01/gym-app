@@ -9,6 +9,10 @@
       "dependsOn": ["^build"],
       "outputs": ["out/**", ".next/**", "!.next/cache/**"]
     },
+    "vitrina#build": {
+      "dependsOn": ["^build"],
+      "outputs": ["out/**", ".next/**", "!.next/cache/**"]
+    },
     "dev": {
       "cache": false,
       "persistent": true

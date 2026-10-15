@@ -1,0 +1,28 @@
+@import "tailwindcss";
+
+/* Todo se mide en rem: 16 px a 1920x1080, y escala solo en cualquier TV (mismo criterio que el kiosco). */
+html {
+  font-size: clamp(9px, min(0.8333vw, 1.5vh), 32px);
+  cursor: none;
+}
+
+body {
+  font-family: var(--fuente-texto), Arial, Helvetica, sans-serif;
+}
+
+.titulo {
+  font-family: var(--fuente-titulo), Impact, sans-serif;
+  letter-spacing: 0.02em;
+}
+
+/* Transiciones de entrada de cada diapositiva (solo opacity/transform). */
+@keyframes entrada-fundido {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes entrada-deslizar {
+  from { opacity: 0; transform: translateX(6%); }
+  to { opacity: 1; transform: translateX(0); }
+}
+.trans-fundido { animation: entrada-fundido 700ms ease both; }
+.trans-deslizar { animation: entrada-deslizar 700ms ease both; }

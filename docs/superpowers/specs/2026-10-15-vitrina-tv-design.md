@@ -37,7 +37,12 @@ Más de una TV o sede, sonido, interacción, datos de miembros, promos en media 
 - Next con `output: "export"`, como `apps/kiosk`. Clave de sede por fragmento `#clave=`, reutilizando la lógica de `apps/kiosk/lib/claveFragmento.ts` y `config.ts` (moverla a un paquete compartido si procede, sin duplicarla).
 - Pantalla completa para promos y productos; franjas verticales para entrenadores; videos mudos en bucle; pocas transiciones al inicio.
 - Escala con `rem`/`clamp` como el kiosco (16 px a 1920x1080).
-- Offline: último contenido en `localStorage` y medios en Cache API o service worker (el `sw.js` del kiosco no cachea videos). Refresco cada ~30 s por versión, como `useInfoKiosco`. Nunca pantalla en negro.
+- Medios descargados una sola vez (cache-first):
+  - Cada pieza se identifica por su URL en R2. Al subir o reemplazar una pieza se genera un nombre nuevo (`randomUUID()`, como en `guardarImagen`), así que una pieza ya subida nunca cambia: una URL nueva significa pieza nueva. Los objetos se suben con `Cache-Control: public, max-age=31536000, immutable`.
+  - La app descarga cada pieza una sola vez y la guarda en la Cache API (persiste entre reinicios del TV). Al reproducir, lee de la caché y no de la red; en cada cambio de diapositiva no hay descargas. Los videos se leen de la caché como `Blob` y se reproducen con `URL.createObjectURL` (evita los problemas de Range del Cache API con `<video>`); con pocas piezas, el uso de memoria es pequeño.
+  - Con cada refresco del manifiesto: se descargan solo las URLs que no estén en caché y se borran de la caché las que ya no aparezcan en el manifiesto (piezas sustituidas o retiradas). Se precargan todas antes de mostrarlas y, mientras una pieza nueva no termina de bajar, se sigue mostrando lo anterior.
+  - Se pide `navigator.storage.persist()` para que el sistema no desaloje la caché.
+- Offline: último manifiesto en `localStorage` y medios en la caché anterior. Refresco cada ~30 s por versión (solo consulta el manifiesto, que es liviano), como `useInfoKiosco`. Nunca pantalla en negro.
 
 ## 4. APK y GitHub Action
 - Parametrizar `apps/kiosk-tv/capacitor` (`preparar.mjs`, `url.mjs`, plantilla Android) para reutilizarlo con otro `appId`, nombre, URL e ícono. Alternativa si es muy invasivo: `apps/vitrina-tv` con scripts compartidos.
@@ -57,6 +62,7 @@ Más de una TV o sede, sonido, interacción, datos de miembros, promos en media 
 - `npm test --workspace packages/domain` (fechas, orden, franjas).
 - `npm run build` y `npm run lint` en web-admin y vitrina.
 - API con y sin clave; cargar un entrenador, una promo y un producto desde el dashboard; ver la vitrina a 1920x1080 y sin red.
+- Con la TV ya cargada: pasar varias diapositivas y reiniciar la app sin red; no debe haber peticiones a R2 (revisar el log del servidor o la pestaña de red). Sustituir una pieza y comprobar que solo se descarga la nueva y que la vieja sale de la caché.
 - Subir una foto y un video grande (>50 MB) desde el dashboard y comprobar que quedan en R2 (`vitrina/`) y que el reemplazo borra el anterior.
 - Disparar el workflow y comprobar el artefacto cifrado; instalar el APK en un Android TV (offline, ícono) y apagar y encender el equipo para confirmar que la app arranca sola.
 - No correr `prisma migrate` contra el `.env` local (es producción); la migración se aplica en el deploy.

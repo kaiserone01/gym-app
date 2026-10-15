@@ -903,7 +903,7 @@ export function FormularioMiembro({
                     }}
                   />
                   {esAbonoInicial && (
-                    <p className="mt-1 text-xs" style={{ color: "var(--gx-muted)" }}>
+                    <p className="mt-2 text-sm font-bold" style={{ color: "var(--gx-ink)" }}>
                       {precioActual - montoAPagar <= toleranciaDiferenciaPagoUSD(precioActual)
                         ? "Diferencia aceptada: el acceso cubre el ciclo completo y quedan "
                         : "Queda como abono: el acceso se da en proporción a lo pagado y quedan "}
@@ -951,7 +951,7 @@ export function FormularioMiembro({
                   >
                     Agregar otro método de pago
                   </Button>
-                  <p className="mb-2 text-sm" style={{ color: "var(--gx-muted)" }}>
+                  <p className="mb-2 text-sm font-bold" style={{ color: "var(--gx-ink)" }}>
                     Total de los pagos: <strong style={{ color: "var(--gx-ink)" }}>${montoAPagar.toFixed(2)}</strong> de ${precioActual.toFixed(2)}
                     {esAbonoInicial && (
                       <>
@@ -984,7 +984,7 @@ export function FormularioMiembro({
 
               {hayExcedente && (
                 <fieldset className="mt-4 flex flex-col gap-2 rounded-lg border p-3 text-sm" style={{ borderColor: "var(--gx-edge)" }}>
-                  <legend className="px-1" style={{ color: "var(--gx-ink)" }}>
+                  <legend className="px-1 font-bold" style={{ color: "var(--gx-ink)" }}>
                     Sobran ${excedenteUSD.toFixed(2)}. ¿Qué hacemos con ese dinero?
                   </legend>
                   {excedenteUSD > precioActual && (
@@ -992,7 +992,7 @@ export function FormularioMiembro({
                       Sobra más que el precio del plan: revisa que no hayas escrito bolívares en un campo de dólares.
                     </p>
                   )}
-                  <label className="flex min-h-11 items-center gap-2" style={{ color: "var(--gx-muted)" }}>
+                  <label className="flex min-h-11 items-center gap-2 font-bold" style={{ color: "var(--gx-ink)" }}>
                     <input
                       type="radio"
                       checked={excedente === "otro"}
@@ -1001,7 +1001,7 @@ export function FormularioMiembro({
                     />
                     Es de otro cobro (wifi u otra cosa): solo queda registrado
                   </label>
-                  <label className="flex min-h-11 items-center gap-2" style={{ color: "var(--gx-muted)" }}>
+                  <label className="flex min-h-11 items-center gap-2 font-bold" style={{ color: "var(--gx-ink)" }}>
                     <input
                       type="radio"
                       checked={excedente === "saldo"}

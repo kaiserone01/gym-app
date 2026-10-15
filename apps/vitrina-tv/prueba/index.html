@@ -31,6 +31,18 @@
     var q = v.getVideoPlaybackQuality ? v.getVideoPlaybackQuality() : { droppedVideoFrames: "?", totalVideoFrames: "?" };
     return id + ": t=" + v.currentTime.toFixed(1) + "s, cuadros perdidos " + q.droppedVideoFrames + " / " + q.totalVideoFrames + (v.error ? "  ERROR " + v.error.code : "");
   }
+  // navigator.onLine solo dice si hay una red conectada (puede ser un Wi-Fi sin salida a internet): se sondea de verdad.
+  var salida = "?";
+  function sondear() {
+    var ctl = typeof AbortController === "function" ? new AbortController() : null;
+    var corte = setTimeout(function () { if (ctl) ctl.abort(); }, 4000);
+    fetch("https://www.gstatic.com/generate_204?_=" + Date.now(), { mode: "no-cors", cache: "no-store", signal: ctl ? ctl.signal : undefined })
+      .then(function () { salida = "SI"; })
+      .catch(function () { salida = "NO"; })
+      .then(function () { clearTimeout(corte); });
+  }
+  sondear();
+  setInterval(sondear, 5000);
   setInterval(function () {
     var ahora = Date.now();
     try { localStorage.setItem("ultimaHora", String(ahora)); } catch (e) {}
@@ -38,7 +50,7 @@
     document.getElementById("info").innerHTML =
       "Hora del TV (UTC): " + new Date(ahora).toISOString() + "\n" +
       "Hora en Caracas:   " + caracas() + "\n" +
-      "Internet:          " + (navigator.onLine ? "SI" : "NO") + "\n" +
+      "Internet (sondeo): " + salida + "   (red conectada: " + (navigator.onLine ? "SI" : "NO") + ")\n" +
       "Última hora guardada antes de este arranque: " + (antes ? new Date(antes).toISOString() : "(primer arranque)") + "\n" +
       (atrasado ? '<span class="mal">RELOJ ATRASADO tras reiniciar: la vitrina debe usar el último servidorAhora guardado.</span>\n' : "") +
       calidad("v1") + "\n" + calidad("v2") + "\n" + calidad("v3");

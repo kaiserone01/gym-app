@@ -15,9 +15,15 @@ GitHub Actions, workflow "Compilar APK de la vitrina" (`apk-vitrina.yml`). Secre
 
 ## 4. Instalar
 
+Por enlace (lo habitual): abrir el enlace de descarga del APK en el TV (navegador o app Downloader), permitir "Instalar apps desconocidas" a esa app y abrirlo. **El APK real lleva la clave de la sede dentro** (que también sirve para registrar check-ins): el enlace no puede ser público; el artefacto del workflow va cifrado y hay que descifrarlo antes de subirlo a un sitio con acceso restringido. El APK de prueba no lleva clave.
+
 Por USB, o por red: `adb connect <ip>` y luego `adb install -r vitrina-<sede>.apk`.
 
-## 5. Arranque automático
+## 5. Arranque automático (la instalación es por enlace, sin adb)
+
+Android 10+ solo deja abrir una app al encender el TV si tiene el permiso "Mostrar sobre otras aplicaciones". Con instalación por enlace no hay adb, así que la app lo pide sola al abrirse: muestra un aviso y abre la pantalla de ese permiso del sistema (activar "Vitrina AX"). Si ese TV no trae la pantalla, queda el ajuste de "autoinicio" del fabricante, o fijar la app como launcher; anótalo aquí al probar cada modelo.
+
+Con adb (solo para depurar, opcional):
 
 ```text
 adb shell appops set com.adrenalina.vitrina SYSTEM_ALERT_WINDOW allow

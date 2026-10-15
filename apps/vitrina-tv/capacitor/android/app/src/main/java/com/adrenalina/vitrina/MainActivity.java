@@ -1,8 +1,13 @@
 package com.adrenalina.vitrina;
 
+import android.content.ActivityNotFoundException;
+import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
+import android.provider.Settings;
 import android.view.View;
 import android.view.WindowManager;
+import android.widget.Toast;
 import com.getcapacitor.BridgeActivity;
 
 public class MainActivity extends BridgeActivity {
@@ -13,6 +18,7 @@ public class MainActivity extends BridgeActivity {
         // La vitrina no debe apagar la pantalla ni mostrar barras del sistema.
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         ocultarBarras();
+        pedirPermisoDeArranque();
     }
 
     @Override
@@ -20,6 +26,21 @@ public class MainActivity extends BridgeActivity {
         super.onWindowFocusChanged(hasFocus);
         if (hasFocus) {
             ocultarBarras();
+        }
+    }
+
+    // Para abrirse sola al encender el TV (Android 10+) la app necesita "Mostrar sobre otras aplicaciones". Como se instala
+    // por enlace y no por adb, se pide aquí, una sola vez por arranque de proceso: abre la pantalla del sistema si existe
+    // en este TV; si no existe, solo avisa del estado con un mensaje breve.
+    private void pedirPermisoDeArranque() {
+        if (Settings.canDrawOverlays(this)) {
+            return;
+        }
+        Toast.makeText(this, "Vitrina AX: falta el permiso \"Mostrar sobre otras aplicaciones\" para abrirse sola al encender", Toast.LENGTH_LONG).show();
+        try {
+            startActivity(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + getPackageName())));
+        } catch (ActivityNotFoundException e) {
+            // Algunos Android TV no traen esa pantalla: el arranque automático se resuelve con el ajuste del fabricante.
         }
     }
 

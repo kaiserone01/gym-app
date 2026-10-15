@@ -50,6 +50,7 @@ Más de una TV o sede, sonido, interacción, datos de miembros, promos en media 
   - Al recibir el evento, la TV pide el manifiesto y sincroniza el almacén (descarga lo nuevo y borra lo retirado). El manifiesto se pide también al arrancar y cada vez que la conexión se restablece, así recupera cualquier cambio ocurrido mientras estuvo desconectada.
   - Red de seguridad: un sondeo lento del manifiesto cada 10 minutos por si un evento se pierde. Reconexión automática con espera creciente (2 s hasta 60 s).
   - Las fechas `inicio`/`fin` no necesitan evento: la TV las evalúa localmente con el reloj, y también filtra por vencimiento sin red.
+  - Decisión: se eligió SSE sobre FCM (aunque el equipo trae Google Play Services) para no depender de Firebase ni guardar su configuración en un repo público. FCM queda como mejora futura si el latido llegara a molestar; el contrato "evento de cambio, luego pedir manifiesto" no cambiaría.
 - Offline: último manifiesto en `localStorage` y medios en el almacén local. Nunca pantalla en negro.
 
 ## 4. APK y GitHub Action

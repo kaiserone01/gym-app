@@ -23,6 +23,7 @@ import { FondoVideo, type Reaccion } from "@/components/FondoVideo";
 
 // Cuánto tiempo se queda la ficha real en pantalla antes de volver al reposo.
 const DURACION_FICHA_MS = 30_000;
+const REINTENTO_PENDIENTES_MS = 30_000;
 // Tope de espera por la foto antes de voltear la ficha (si falla, sale con iniciales).
 const ESPERA_FOTO_MS = 1_500;
 
@@ -94,7 +95,12 @@ export default function PaginaCheckIn() {
       reintentarPendientes(apiKey).then(actualizarPendientes);
     };
     window.addEventListener("online", alReconectar);
-    return () => window.removeEventListener("online", alReconectar);
+    // "online" no se dispara si la red nunca cayó y solo falló el servidor (timeout, reinicio): sin este reintento periódico la cola quedaba pegada por días.
+    const intervalo = setInterval(alReconectar, REINTENTO_PENDIENTES_MS);
+    return () => {
+      window.removeEventListener("online", alReconectar);
+      clearInterval(intervalo);
+    };
   }, [apiKey, actualizarPendientes]);
 
   // La ficha real vuelve sola al reposo a los 30 s; una respuesta nueva la reemplaza antes y su id

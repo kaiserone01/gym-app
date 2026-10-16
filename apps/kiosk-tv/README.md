@@ -75,4 +75,4 @@ El repositorio es **público**. Por eso el APK con clave solo se publica cifrado
 
 ## Desarrollo
 
-En `capacitor/`: `npm test` (pruebas de `scripts/`), `npm run sync` (con `KIOSCO_URL` y `KIOSCO_CLAVE` genera `capacitor.config.json`, `www/index.html` y `www/offline.html`, que están en `.gitignore`, y sincroniza Android). `scripts/generar-banner.ps1` regenera el banner de TV.
+En `capacitor/`: `npm test` (pruebas de `scripts/`), `npm run sync` (con `KIOSCO_URL` y `KIOSCO_CLAVE` genera `capacitor.config.json`, `www/index.html` y `www/offline.html`, que están en `.gitignore`, y sincroniza Android). `scripts/generar-iconos.ps1` regenera los íconos del launcher y el banner de TV a partir de `scripts/icono-kiosco.jpg`.

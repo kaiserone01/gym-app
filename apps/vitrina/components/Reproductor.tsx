@@ -49,7 +49,7 @@ export function Reproductor({ manifiesto, almacen, ahora }: { manifiesto: Manifi
   const turno = claveActual === undefined ? null : `${claveActual}#${ciclo}`;
   const [videosListos, setVideosListos] = useState<{ turno: string; fallo: boolean } | null>(null);
   const terminados = videosListos !== null && videosListos.turno === turno;
-  const inicioTurnoMs = useRef(Date.now());
+  const inicioTurnoMs = useRef(0); // lo fija el efecto de abajo al empezar cada turno (Date.now() no se llama en el render)
 
   useEffect(() => {
     inicioTurnoMs.current = Date.now();

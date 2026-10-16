@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Almacen } from "@/lib/almacen";
 import { colaAgotada, colaDeVideos, siguienteTurno } from "@/lib/reproduccion";
 import type { VitrinaItem } from "@gym-app/domain/entities/Vitrina";
@@ -22,20 +22,24 @@ export function Franja({
 }) {
   const cola = colaDeVideos(entrenadores);
   const [posicion, setPosicion] = useState(0);
-  const idActivo = cola[posicion] ?? null;
+  // En la diapositiva única, si la cola se acortó y la posición quedó fuera de rango, la cola vuelve al primer video.
+  const posicionEfectiva = unica && colaAgotada(posicion, cola.length) ? 0 : posicion;
+  const idActivo = cola[posicionEfectiva] ?? null;
 
   const finAvisado = useRef(false); // el fin de los videos se avisa una sola vez
   const avisarFin = useRef(alTerminarVideos);
-  avisarFin.current = alTerminarVideos;
+  useEffect(() => {
+    avisarFin.current = alTerminarVideos;
+  });
 
-  function avisar() {
+  const avisar = useCallback(() => {
     if (finAvisado.current) return;
     finAvisado.current = true;
     avisarFin.current();
-  }
+  }, []);
 
   function videoTerminado() {
-    const turno = siguienteTurno(posicion, cola.length, unica);
+    const turno = siguienteTurno(posicionEfectiva, cola.length, unica);
     setPosicion(turno.posicion);
     if (turno.terminada) avisar();
   }
@@ -46,13 +50,10 @@ export function Franja({
   }, [unica]);
 
   // Si la cola se acortó (cambio de secuencia con un video en curso) y la posición quedó fuera de rango, no se espera
-  // un evento que ya no llegará: se da por terminada (o se reinicia, en la diapositiva única).
+  // un evento que ya no llegará: se da por terminada.
   useEffect(() => {
-    if (!colaAgotada(posicion, cola.length)) return;
-    if (unica) setPosicion(0);
-    else avisar();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- avisar solo usa refs
-  }, [posicion, cola.length, unica]);
+    if (!unica && colaAgotada(posicion, cola.length)) avisar();
+  }, [posicion, cola.length, unica, avisar]);
 
   return (
     <div className="flex h-full w-full justify-center" style={{ background: "var(--gx-ground)" }}>

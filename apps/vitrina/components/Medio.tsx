@@ -34,7 +34,9 @@ export function Medio({ url, tipo, posterUrl, almacen, reproducir, ajuste, sonid
   const turnoDeFallido = tipo === "VIDEO" && reproducir && falloVideo === fuente;
   const falloEnEsteTurno = useRef(false);
   const alTerminarRef = useRef(alTerminar);
-  alTerminarRef.current = alTerminar;
+  useEffect(() => {
+    alTerminarRef.current = alTerminar;
+  });
   useEffect(() => {
     if (!reproducir) falloEnEsteTurno.current = false;
   }, [reproducir]);
@@ -75,9 +77,11 @@ function VideoEnTurno({ fuente, poster, clase, sonido, bucle, alTerminar }: { fu
   const video = useRef<HTMLVideoElement>(null);
   const avisado = useRef(false);
   const bucleRef = useRef(bucle);
-  bucleRef.current = bucle; // el tope de 10 min se activa si la secuencia pasa de 1 a varias diapositivas
   const alTerminarRef = useRef(alTerminar);
-  alTerminarRef.current = alTerminar;
+  useEffect(() => {
+    bucleRef.current = bucle; // el tope de 10 min se activa si la secuencia pasa de 1 a varias diapositivas
+    alTerminarRef.current = alTerminar;
+  });
 
   const terminar = (fallo: boolean) => {
     if (avisado.current) return;

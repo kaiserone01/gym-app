@@ -5491,6 +5491,32 @@ Cambio pedido por el usuario tras ver la vista previa: (1) un video se ve **comp
 - [ ] **Step 4:** Componentes de la TV (Medio, Cartel, Franja, Reproductor) y `MainActivity.java`.
 - [ ] **Step 5:** Sugerir el mensaje de commit: `agrega la reproducción completa del video y el sonido por video en la vitrina`
 
+### Task 16: Endurecimiento tras la revisión final
+
+Hallazgos de la revisión final de toda la rama (ver el ledger): dos Importantes y tres Menores que se corrigen antes del merge.
+
+**Files:**
+- Modify: `apps/vitrina-tv/capacitor/scripts/configuracion.mjs` y `configuracion.test.mjs` (https obligatorio)
+- Modify: `packages/domain/utils/vitrinaItem.ts` y `vitrinaItem.test.ts` (validación de números)
+- Modify: `apps/web-admin/app/(panel)/vitrina/actions.ts` (rechazar cambio de tipo; capturar errores de guardado)
+- Modify: `apps/vitrina/lib/sincronizar.ts`, `sincronizar.test.ts`, `useVitrina.ts`, `apps/vitrina/components/Reproductor.tsx` (+ helper puro nuevo `apps/vitrina/lib/reproducibles.ts` con test)
+- Modify: `docs/superpowers/specs/2026-10-15-vitrina-tv-design.md` (sonido y duración completa del video)
+
+**Requisitos (valores exactos):**
+1. **`api_url` https:** `construirConfiguracion` lanza error si `VITRINA_API_URL` no empieza por `https://` (se permite `http://` solo cuando hay `VITRINA_DEV_URL`, es decir, en desarrollo). Mensaje en español. Pruebas: https válido, `http://` rechazado, vacío rechazado, con `VITRINA_DEV_URL` se permite http.
+2. **Validación numérica en el dominio:** `descuentoPct` debe ser un entero entre 0 y 100 (mensaje claro; "12,5" ya llega como número no entero → error), `precioUSD` y `ofertaUSD` entre 0 y 99999999.99 con a lo sumo 2 decimales redondeables (columna `Decimal(10,2)`). El formulario debe mostrar el mensaje, nunca una página de error. Pruebas con 12.5, 150, -1, 1e9, 99999999.99, 10.456.
+3. **`guardarItemAction`:** si `datos.tipo !== anterior.tipo` devolver `{ error: "No se puede cambiar el tipo de un ítem." }` sin escribir nada; y envolver `crear`/`actualizar` en try/catch que devuelva `{ error: "No se pudo guardar. Inténtalo de nuevo." }` (registrar el error en consola del servidor) en lugar de lanzar.
+4. **La TV no se queda sin actualizar por una pieza que falla** (Important #1 de la revisión final): hoy el manifiesto nuevo solo se adopta si TODAS las piezas bajaron; con una pieza que da 404 o sin espacio, la TV queda congelada en el contenido viejo para siempre. Nuevo comportamiento: `sincronizar` devuelve además la lista `fallidas` (URLs). El hook cuenta intentos consecutivos fallidos por URL; cuando **todas** las URLs fallidas de una sincronización llevan **al menos 3 intentos consecutivos** (el reintento es cada 60 s), se adopta el manifiesto igualmente (mismo orden: adoptar y persistir, luego borrar obsoletos) y esas piezas quedan "omitidas": los ítems cuya `mediaUrl` no existe en el almacén local se EXCLUYEN de la secuencia (helper puro `itemsReproducibles(items, tieneLocal)` con tests; si todos quedan excluidos, pantalla de marca). Las piezas omitidas se siguen reintentando en cada sincronización (el contador no se reinicia mientras sigan fallando) y, cuando bajan, el ítem reaparece. Un éxito reinicia el contador de esa URL. Pruebas puras de `sincronizar` (fallidas devueltas, nada se borra si se decide no adoptar) y del helper de reproducibles.
+5. **Spec:** actualizar `2026-10-15-vitrina-tv-design.md`: el sonido ya NO está fuera de alcance (interruptor por video en el panel, apagado por defecto), la franja reproduce los videos uno tras otro completos (no rotación por tiempo), los videos duran su duración nativa (cartel: hasta `ended`; franja: suma de sus videos con mínimo `duracionSeg`) y la pieza que falla repetidamente se omite tras 3 intentos. Sin tocar el resto.
+
+**Restricciones:** sin migraciones, sin `git add/commit/push`; PC limitada (solo `npm test --workspace packages/domain`, `npx vitest run apps/vitrina/lib/` y `(cd apps/vitrina-tv/capacitor && npm test)`; nada de build/tsc/eslint/docker/prisma). Tipos y lint los verifica el workflow `verificar-vitrina.yml`; el lint de React no admite refs escritos durante el render ni `setState` síncrono en efectos: sigue el estilo de los componentes ya corregidos (refs actualizados en `useEffect`, valores derivados en el render).
+
+- [ ] **Step 1:** https en la configuración del APK (1).
+- [ ] **Step 2:** Validación numérica y acción de guardado (2, 3).
+- [ ] **Step 3:** Pieza fallida omitida tras 3 intentos (4).
+- [ ] **Step 4:** Spec (5).
+- [ ] **Step 5:** Sugerir el mensaje de commit: `endurece la vitrina tras la revisión final: https del APK, validación numérica y pieza fallida omitida`
+
 ---
 
 ## Self-Review

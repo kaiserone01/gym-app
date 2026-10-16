@@ -7,6 +7,7 @@ import { construirSecuencia } from "@gym-app/domain/services/secuenciaVitrina";
 import { itemsDeManifiesto } from "@gym-app/domain/services/manifiestoVitrina";
 import { estadoDeTasa } from "@gym-app/domain/utils/estadoTasa";
 import { diaCalendarioCaracas } from "@gym-app/domain/utils/fechaCaracas";
+import { itemsReproducibles } from "@/lib/reproducibles";
 import { posicionarIndice } from "@/lib/posicionarDiapositiva";
 import { colaDeVideos, msParaAvanzar, techoDiapositivaMs } from "@/lib/reproduccion";
 import { Cartel } from "./Cartel";
@@ -18,8 +19,15 @@ export function Reproductor({ manifiesto, almacen, ahora }: { manifiesto: Manifi
   // vence sale, aunque la TV no tenga red.
   const minuto = Math.floor(ahora.getTime() / 60_000);
   const secuencia = useMemo(
-    () => construirSecuencia(itemsDeManifiesto(manifiesto), new Date(minuto * 60_000), manifiesto.duracionSeg),
-    [manifiesto, minuto]
+    () =>
+      construirSecuencia(
+        // Las piezas omitidas (no descargadas tras varios intentos) quedan fuera; reaparecen al adoptarse el manifiesto
+        // que las trae, que es cuando cambia `manifiesto`.
+        itemsReproducibles(itemsDeManifiesto(manifiesto), (url) => almacen.rutaLocal(url) !== null),
+        new Date(minuto * 60_000),
+        manifiesto.duracionSeg
+      ),
+    [manifiesto, minuto, almacen]
   );
 
   // El Bs depende del estado de la tasa respecto del día de Caracas del instante efectivo (no de la hora de la TV).

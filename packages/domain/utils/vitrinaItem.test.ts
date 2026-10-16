@@ -56,6 +56,17 @@ describe("validarVitrinaItem", () => {
     expect(validarVitrinaItem(datos({ precioUSD: Number.NaN }))).toMatch(/precio/i);
     expect(validarVitrinaItem(datos({ ofertaUSD: -1 }))).toMatch(/oferta/i);
   });
+  test("montos fuera de la columna Decimal(10,2)", () => {
+    expect(validarVitrinaItem(datos({ precioUSD: 1e9, ofertaUSD: null }))).toMatch(/precio/i);
+    expect(validarVitrinaItem(datos({ precioUSD: 10.456, ofertaUSD: null }))).toMatch(/2 decimales/);
+    expect(validarVitrinaItem(datos({ precioUSD: 99999999.99, ofertaUSD: null }))).toBeNull();
+    expect(validarVitrinaItem(datos({ precioUSD: 20.1, ofertaUSD: 15.99 }))).toBeNull();
+  });
+  test("el descuento debe ser entero", () => {
+    expect(validarVitrinaItem(datos({ descuentoPct: 12.5 }))).toMatch(/entero/);
+    expect(validarVitrinaItem(datos({ descuentoPct: -1 }))).toMatch(/0 y 100/);
+    expect(validarVitrinaItem(datos({ descuentoPct: 12 }))).toBeNull();
+  });
   test("descuento fuera de rango", () => {
     expect(validarVitrinaItem(datos({ descuentoPct: 150 }))).toMatch(/0 y 100/);
     expect(validarVitrinaItem(datos({ descuentoPct: Number.NaN }))).toMatch(/0 y 100/);

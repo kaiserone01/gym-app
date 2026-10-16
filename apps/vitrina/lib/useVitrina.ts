@@ -8,7 +8,7 @@ import { abrirEventos, pedirManifiesto } from "./api";
 import { cargarConfig, type ConfigVitrina } from "./config";
 import { esperar } from "./esperar";
 import { crearSerializador } from "./serializar";
-import { sincronizar } from "./sincronizar";
+import { contarIntentos, debeOmitirFallidas, sincronizar, type IntentosFallidos } from "./sincronizar";
 
 const CLAVE_MANIFIESTO = "vitrina_manifiesto";
 const CLAVE_SERVIDOR_AHORA = "vitrina_servidor_ahora";
@@ -59,10 +59,12 @@ export function useVitrina(): EstadoVitrina {
       servidorAhora.current = new Date(iso);
     };
 
-    // Un ciclo a la vez, sin perder avisos (ver crearSerializador). Solo se adopta el manifiesto nuevo si TODAS sus
-    // piezas están en disco: mientras una baja (o falla), la TV sigue mostrando el anterior con sus archivos intactos.
+    // Un ciclo a la vez, sin perder avisos (ver crearSerializador). El manifiesto nuevo se adopta cuando TODAS sus
+    // piezas están en disco, o cuando las que fallan llevan 3 intentos seguidos (se omiten y el Reproductor las
+    // excluye hasta que bajen); mientras tanto la TV sigue mostrando el anterior con sus archivos intactos.
     // El manifiesto nuevo se adopta y persiste ANTES de que `sincronizar` borre las piezas obsoletas.
     const crearSincronizador = (config: ConfigVitrina, alm: Almacen) => {
+      let intentos: IntentosFallidos = new Map(); // intentos consecutivos fallidos por URL
       const programarReintento = () => {
         if (cancelado) return;
         clearTimeout(reintento);
@@ -73,13 +75,23 @@ export function useVitrina(): EstadoVitrina {
           const nuevo = await pedirManifiesto(config, controlador.signal);
           if (cancelado) return;
           recordarServidorAhora(nuevo.servidorAhora);
-          const resultado = await sincronizar(nuevo, alm, (adoptado) => {
-            // Tras desmontar no se adopta ni se borra nada: el manifiesto guardado sigue siendo el anterior.
-            if (cancelado) throw new Error("vitrina desmontada");
-            guardar(CLAVE_MANIFIESTO, adoptado);
-            setManifiesto(adoptado);
-          });
-          if (!resultado.completo) programarReintento();
+          const resultado = await sincronizar(
+            nuevo,
+            alm,
+            (adoptado) => {
+              // Tras desmontar no se adopta ni se borra nada: el manifiesto guardado sigue siendo el anterior.
+              if (cancelado) throw new Error("vitrina desmontada");
+              guardar(CLAVE_MANIFIESTO, adoptado);
+              setManifiesto(adoptado);
+            },
+            (fallidas) => {
+              // Una pieza que falla 3 veces seguidas no puede congelar la TV: se adopta el manifiesto sin ella.
+              intentos = contarIntentos(intentos, fallidas);
+              return debeOmitirFallidas(intentos, fallidas);
+            }
+          );
+          if (resultado.fallidas.length === 0) intentos = new Map(); // todo bajó: se reinician los contadores
+          if (!resultado.completo) programarReintento(); // las piezas omitidas se siguen reintentando
         } catch (error) {
           if (cancelado) return;
           console.warn("[vitrina] no se pudo sincronizar:", error);

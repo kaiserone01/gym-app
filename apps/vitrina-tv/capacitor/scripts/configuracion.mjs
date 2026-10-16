@@ -5,6 +5,10 @@ export function construirConfiguracion(env) {
   const clave = env.VITRINA_CLAVE || "";
   const devUrl = env.VITRINA_DEV_URL || "";
   if (!devUrl && !apiUrl) throw new Error("Falta VITRINA_API_URL (URL base de web-admin).");
+  // La clave de la sede viaja en cada petición: solo https en el APK real; http únicamente en desarrollo.
+  if (apiUrl && !apiUrl.startsWith("https://") && !(devUrl && apiUrl.startsWith("http://"))) {
+    throw new Error("VITRINA_API_URL debe empezar por https:// (http:// solo se permite con VITRINA_DEV_URL).");
+  }
 
   const capacitor = {
     appId: "com.adrenalina.vitrina",

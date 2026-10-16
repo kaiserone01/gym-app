@@ -2,6 +2,7 @@ import type { DatosVitrinaItem } from "../entities/Vitrina";
 
 export const DURACION_MIN_SEG = 3;
 export const DURACION_MAX_SEG = 300;
+export const MONTO_MAX_USD = 99999999.99;
 
 // Campo numérico de un formulario: vacío → null; con coma o punto decimal; texto no numérico → NaN (que la
 // validación rechaza con su mensaje).
@@ -33,9 +34,13 @@ export function validarVitrinaItem(d: DatosVitrinaItem): string | null {
 
   for (const [valor, que] of [[d.precioUSD, "El precio"], [d.ofertaUSD, "La oferta"]] as const) {
     if (valor !== null && (!Number.isFinite(valor) || valor < 0)) return `${que} no es un monto válido.`;
+    // Columna Decimal(10,2): hasta 99999999.99; a lo sumo 2 decimales (se tolera el ruido de coma flotante).
+    if (valor !== null && (valor > MONTO_MAX_USD || Math.abs(valor * 100 - Math.round(valor * 100)) > 1e-6)) {
+      return `${que} debe ser un monto de hasta ${MONTO_MAX_USD} con a lo sumo 2 decimales.`;
+    }
   }
-  if (d.descuentoPct !== null && (!Number.isFinite(d.descuentoPct) || d.descuentoPct < 0 || d.descuentoPct > 100)) {
-    return "El descuento debe estar entre 0 y 100 %.";
+  if (d.descuentoPct !== null && (!Number.isInteger(d.descuentoPct) || d.descuentoPct < 0 || d.descuentoPct > 100)) {
+    return "El descuento debe ser un número entero entre 0 y 100 %.";
   }
   if (d.precioUSD !== null && d.ofertaUSD !== null && d.ofertaUSD > d.precioUSD) {
     return "La oferta no puede ser mayor que el precio.";

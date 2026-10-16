@@ -24,6 +24,7 @@ export interface EstadoFormularioVitrina {
 }
 
 const SIN_PERMISO = "Solo el socio o el gerente pueden administrar la vitrina.";
+const ERROR_GUARDAR = "No se pudo guardar. Inténtalo de nuevo.";
 
 // Sesión válida con permiso (mismo criterio que Kiosko); sin sesión redirige al login, sin permiso devuelve null.
 async function sesionConPermiso() {
@@ -160,11 +161,22 @@ export async function guardarItemAction(_estadoPrevio: EstadoFormularioVitrina, 
   if (id) {
     const anterior = await repositorio().buscar(sucursalId, id);
     if (!anterior) return { error: "No se encontró el ítem." };
-    const actualizado = await repositorio().actualizar(sucursalId, id, datos);
-    if (!actualizado) return { error: "No se encontró el ítem." };
+    if (datos.tipo !== anterior.tipo) return { error: "No se puede cambiar el tipo de un ítem." };
+    try {
+      const actualizado = await repositorio().actualizar(sucursalId, id, datos);
+      if (!actualizado) return { error: "No se encontró el ítem." };
+    } catch (error) {
+      console.error("No se pudo guardar el ítem de la vitrina:", error);
+      return { error: ERROR_GUARDAR };
+    }
     await borrarArchivosSobrantes(anterior, datos);
   } else {
-    await repositorio().crear(sucursalId, datos);
+    try {
+      await repositorio().crear(sucursalId, datos);
+    } catch (error) {
+      console.error("No se pudo crear el ítem de la vitrina:", error);
+      return { error: ERROR_GUARDAR };
+    }
   }
 
   notificarCambioVitrina(sucursalId); // después del commit: el repositorio resuelve tras la transacción

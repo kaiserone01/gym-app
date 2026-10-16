@@ -13,7 +13,7 @@ Convertir una TV Android del gimnasio (horizontal) en una vitrina que presenta a
 - Enfoque: app propia `apps/vitrina` con APK propio (`apps/vitrina-tv`) y workflow propio.
 
 ## Fuera de alcance (v1)
-Más de una TV o sede, sonido, interacción, datos de miembros, promos en media pantalla, franja inferior, promos urgentes o por hora, vista previa, estado de la TV, deshacer.
+Más de una TV o sede, interacción, datos de miembros, promos en media pantalla, franja inferior, promos urgentes o por hora, vista previa, estado de la TV, deshacer.
 
 ## 1. Datos y API
 
@@ -35,7 +35,7 @@ Una sola tabla de contenido. Migración nueva en `packages/db/prisma/migrations/
 - Una franja con 1 o 2 entrenadores conserva el ancho de columna de las de 3 y se centra: nunca se estiran las fotos.
 - Duración de una franja: la `duracionSeg` de su primer entrenador, o la de la sede.
 - Fotos verticales 9:16 en columnas de ~640x1080 (1920/3): el recorte "cover" es de ~5% de la altura. Con 4 columnas (480 px) sería de ~21%, por eso se fija en 3.
-- **Videos en franjas:** en una franja solo se reproduce un video a la vez; los demás muestran su póster. La columna activa rota cada `duración de la franja / número de videos`. Esto limita el decodificado simultáneo en TV box modestos; el punto 0 del orden de construcción lo comprueba en el equipo real.
+- **Videos en franjas:** en una franja solo se reproduce un video a la vez; los demás muestran su póster. Los videos se reproducen uno tras otro, completos (no hay rotación por tiempo): la franja dura la suma de la duración nativa de sus videos, con un mínimo de `duracionSeg`. Esto limita el decodificado simultáneo en TV box modestos; el punto 0 del orden de construcción lo comprueba en el equipo real.
 
 ### Dominio puro (con tests en `packages/domain`)
 Función de secuencia: dado el instante efectivo, la lista de ítems y la duración de la sede, devuelve las diapositivas (carteles y franjas). Cubre fechas, orden, intercalado y los repartos 1 a 8. Es pura (sin Prisma, sin Next, sin red) porque **corre también en la TV** (ver "Excepción al ADR-001").
@@ -62,7 +62,8 @@ Todas las piezas (fotos y videos de entrenadores, carteles, posters) se almacena
 - Al reemplazar o borrar una pieza se elimina el objeto anterior en R2.
 
 ### Formato de video aceptado
-- **Solo H.264 en contenedor MP4** (se admite `.mov` si su códec es H.264). El códec puede venir como `avc1` o `avc3`: se aceptan ambos. Resolución máxima mostrada 1080x1920, sin audio necesario (se reproduce mudo), tope de tamaño propio (100 MB). WebM no se acepta.
+- **Solo H.264 en contenedor MP4** (se admite `.mov` si su códec es H.264). El códec puede venir como `avc1` o `avc3`: se aceptan ambos. Resolución máxima mostrada 1080x1920, tope de tamaño propio (100 MB). WebM no se acepta.
+- **Sonido y duración:** cada video tiene un interruptor de sonido en el panel (apagado por defecto; las imágenes no tienen sonido). Los videos duran su duración nativa: un cartel con video avanza al terminar el video (`ended`), con un techo para que la TV nunca quede pegada; una franja dura la suma de sus videos, con mínimo `duracionSeg`.
 - El navegador valida antes de subir leyendo las cajas MP4 hasta `stsd` (códec) y `tkhd` (matriz de transformación). Cualquier otro códec (`hvc1`/`hev1` = HEVC, el formato por defecto de los iPhone; VP9; etc.) se rechaza con un mensaje que explica cómo convertirlo: en el iPhone, Ajustes > Cámara > Formatos > "Más compatible", o convertir el archivo a H.264 (por ejemplo con HandBrake).
 - **Rotación:** los videos grabados en vertical suelen venir horizontales con una marca de rotación de 90°/270° en `tkhd`. El validador calcula las dimensiones **mostradas** (aplicando la rotación) para el límite de resolución y para exigir orientación vertical en los entrenadores. En la TV se usan las dimensiones mostradas (`videoWidth`/`videoHeight` ya las respetan en WebView) y se comprueba en el equipo real.
 - El navegador genera el poster (primer fotograma, con la rotación aplicada) y lo sube como JPEG. Si el `<video>` falla en la TV, se muestra el poster o se salta la pieza sin detener la rotación.
@@ -93,13 +94,14 @@ El `.env` local apunta a producción y `packages/db/prisma7.config.ts` lo carga.
 - Next con `output: "export"`. El APK incluye ese export como `webDir` y lo sirve localmente (`https://localhost`); no usa `server.url`. Así, al encender el TV sin internet la app abre igual y muestra el último contenido guardado: se cumple "nunca pantalla en negro". `server.url` queda solo para desarrollo, activado por una variable (`VITRINA_DEV_URL`).
 - La clave de sede y la URL de la API viajan en un `vitrina-config.json` dentro del bundle (`apiUrl`, `clave`), escrito por el script de preparación. La API ya responde con `Allow-Origin: *` y acepta `X-Kiosk-Api-Key`. Como el APK contiene la clave, sigue saliendo cifrado con 7z (repo público), se conserva `loggingBehavior: "none"` y `android.webContentsDebuggingEnabled: false`, y **no se activa `CapacitorHttp`**.
 - Consecuencia: cambiar el contenido no requiere APK nuevo; cambiar el diseño o la lógica de la app sí.
-- Pantalla completa para promos y productos; franjas de 3 columnas para entrenadores; videos mudos en bucle; pocas transiciones al inicio. Escala con `rem`/`clamp` como el kiosco (16 px a 1920x1080).
+- Pantalla completa para promos y productos; franjas de 3 columnas para entrenadores; videos con sonido opcional (por video, desde el panel) y a duración completa (en bucle solo si la secuencia tiene una sola diapositiva); pocas transiciones al inicio. Escala con `rem`/`clamp` como el kiosco (16 px a 1920x1080).
 
 ### Medios descargados una sola vez (cache-first)
 - Almacén en disco: las piezas se guardan como archivos en el almacenamiento interno de la app (`Directory.Data` de `@capacitor/filesystem` 8.x). Se descargan con **`@capacitor/file-transfer` en `^2.0.6`** (`FileTransfer.downloadFile`, nativo, apto para videos grandes; `Filesystem.downloadFile` está deprecado desde 7.1.0). Ese paquete no sigue la numeración de Capacitor: su serie 2.x es la que declara `@capacitor/core >=8`, que es lo que usa el kiosco (8.5.3). Se reproducen con `Capacitor.convertFileSrc(uri)`. La descarga va a un nombre temporal y se renombra al terminar, para no reproducir nunca un archivo a medias.
 - Un índice (`url` → archivo local, tamaño) se guarda en `localStorage`. La interfaz del almacén (`obtener`, `guardar`, `eliminar`, `listar`) tiene una implementación de disco (APK) y una de respaldo con Cache API para el navegador y el desarrollo.
 - Sustituir o eliminar: al sincronizar el manifiesto se descargan solo las URLs que falten y se borran del disco las que ya no aparezcan (pieza sustituida, retirada, **vencida** o eliminada). Se precargan antes de mostrarlas; mientras una pieza nueva baja, se sigue mostrando lo anterior. Los archivos huérfanos se limpian al arrancar comparando disco e índice.
 - Si no hay espacio para una pieza, no se descarga y se conserva lo anterior.
+- **Pieza que falla repetidamente:** el reintento es cada 60 s. Tras 3 intentos consecutivos fallidos de todas las piezas pendientes, la TV adopta el manifiesto nuevo igualmente (se persiste y luego se borran las obsoletas) y omite esas piezas: los ítems cuyo medio no está en disco salen de la secuencia (si no queda ninguno, pantalla de marca). Las piezas omitidas se siguen reintentando en cada sincronización y, cuando bajan, el ítem reaparece; un éxito reinicia el contador de esa pieza.
 
 ### Aviso de cambios (SSE) sin sondeo constante
 - La TV mantiene una conexión de salida a `GET /api/kiosco/vitrina/eventos` usando `fetch` con stream y la cabecera `X-Kiosk-Api-Key` (no `EventSource`, que no admite cabeceras). El servidor envía un latido cada ~25 s para que el proxy no la corte.

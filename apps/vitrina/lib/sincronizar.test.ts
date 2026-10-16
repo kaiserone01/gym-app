@@ -2,7 +2,7 @@ import { describe, expect, test } from "vitest";
 import { itemDePrueba } from "@gym-app/domain/entities/vitrinaItemDePrueba";
 import { armarManifiesto } from "@gym-app/domain/services/manifiestoVitrina";
 import type { Almacen } from "./almacen";
-import { sincronizar } from "./sincronizar";
+import { contarIntentos, debeOmitirFallidas, sincronizar } from "./sincronizar";
 
 function fakeAlmacen(inicial: string[] = [], fallan: string[] = []) {
   const guardadas = new Set(inicial);
@@ -35,6 +35,41 @@ const manifiestoCon = (...urls: string[]) =>
     tasaBcv: null,
     ahora: new Date("2026-10-15T16:00:00Z"),
   });
+
+describe("contarIntentos / debeOmitirFallidas", () => {
+  test("suma un intento por URL fallida y reinicia las que ya no fallan", () => {
+    const uno = contarIntentos(new Map(), ["a", "b"]);
+    expect([...uno]).toEqual([["a", 1], ["b", 1]]);
+    const dos = contarIntentos(uno, ["a"]);
+    expect([...dos]).toEqual([["a", 2]]);
+    expect([...contarIntentos(dos, [])]).toEqual([]);
+  });
+
+  test("omite solo cuando TODAS las fallidas llevan al menos 3 intentos", () => {
+    let intentos = new Map<string, number>();
+    const resultados: boolean[] = [];
+    for (let i = 0; i < 3; i++) {
+      intentos = contarIntentos(intentos, ["a"]);
+      resultados.push(debeOmitirFallidas(intentos, ["a"]));
+    }
+    expect(resultados).toEqual([false, false, true]);
+    // una pieza nueva que falla por primera vez frena la adopción aunque "a" ya lleve 3
+    intentos = contarIntentos(intentos, ["a", "b"]);
+    expect(debeOmitirFallidas(intentos, ["a", "b"])).toBe(false);
+  });
+
+  test("sin fallidas no hay nada que omitir", () => {
+    expect(debeOmitirFallidas(new Map(), [])).toBe(false);
+  });
+
+  test("un éxito reinicia el contador de esa URL", () => {
+    let intentos = contarIntentos(new Map(), ["a"]);
+    intentos = contarIntentos(intentos, ["a"]);
+    intentos = contarIntentos(intentos, []); // bajó bien
+    intentos = contarIntentos(intentos, ["a"]);
+    expect(intentos.get("a")).toBe(1);
+  });
+});
 
 describe("sincronizar", () => {
   test("descarga solo lo que falta", async () => {
@@ -132,6 +167,35 @@ describe("sincronizar", () => {
     const resultado = await sincronizar(manifiestoCon("https://r/nueva.webp"), almacen);
     expect(resultado.completo).toBe(true);
     expect(resultado.eliminadas).toEqual(["https://r/o2.webp"]);
+  });
+
+  test("si omitirFallidas dice que sí, adopta igual, borra lo obsoleto y devuelve las fallidas", async () => {
+    const almacen = fakeAlmacen(["https://r/vieja.webp"], ["https://r/rota.webp"]);
+    const orden: string[] = [];
+    const resultado = await sincronizar(
+      manifiestoCon("https://r/rota.webp", "https://r/ok.webp"),
+      almacen,
+      () => {
+        orden.push("adoptado");
+      },
+      (fallidas) => {
+        orden.push(`decide:${fallidas.join(",")}`);
+        return true;
+      }
+    );
+    expect(orden).toEqual(["decide:https://r/rota.webp", "adoptado"]);
+    expect(resultado).toMatchObject({ completo: false, adoptado: true, fallidas: ["https://r/rota.webp"], eliminadas: ["https://r/vieja.webp"] });
+  });
+
+  test("si omitirFallidas dice que no, no se adopta ni se borra nada", async () => {
+    const almacen = fakeAlmacen(["https://r/vieja.webp"], ["https://r/rota.webp"]);
+    let adoptado = false;
+    const resultado = await sincronizar(manifiestoCon("https://r/rota.webp"), almacen, () => {
+      adoptado = true;
+    }, () => false);
+    expect(adoptado).toBe(false);
+    expect(resultado).toMatchObject({ adoptado: false, eliminadas: [] });
+    expect(almacen.guardadas.has("https://r/vieja.webp")).toBe(true);
   });
 
   test("un manifiesto vacío borra todo lo guardado", async () => {

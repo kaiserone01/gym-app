@@ -1,20 +1,28 @@
 "use client";
 
+import type { ChangeEvent } from "react";
 import { startTransition, useActionState, useEffect, useRef, useState } from "react";
 import { Button } from "@gym-app/ui/components/Button";
 import { Input } from "@gym-app/ui/components/Input";
 import { useFeedback } from "@gym-app/ui/components/FeedbackOverlay";
-import type { TipoVitrinaItem, VitrinaItem } from "@gym-app/domain/entities/Vitrina";
+import type { TipoMedio, TipoVitrinaItem, VitrinaItem } from "@gym-app/domain/entities/Vitrina";
 import { diaCalendarioCaracas } from "@gym-app/domain/utils/fechaCaracas";
 import { guardarItemAction } from "./actions";
 import { SelectorMedio } from "./SelectorMedio";
 
 const dia = (fecha: Date | null) => (fecha ? diaCalendarioCaracas(fecha).toISOString().slice(0, 10) : "");
 
-function Interruptor({ nombre, etiqueta, marcado }: { nombre: string; etiqueta: string; marcado: boolean }) {
+// Con `alCambiar` el interruptor es controlado (conserva la elección mientras el formulario siga montado).
+function Interruptor({ nombre, etiqueta, marcado, alCambiar }: { nombre: string; etiqueta: string; marcado: boolean; alCambiar?: (marcado: boolean) => void }) {
   return (
     <label className="flex min-h-11 cursor-pointer items-center gap-2 text-sm" style={{ color: "var(--gx-ink)" }}>
-      <input type="checkbox" name={nombre} defaultChecked={marcado} className="h-5 w-5" style={{ accentColor: "var(--gx-accent)" }} />
+      <input
+        type="checkbox"
+        name={nombre}
+        {...(alCambiar ? { checked: marcado, onChange: (e: ChangeEvent<HTMLInputElement>) => alCambiar(e.target.checked) } : { defaultChecked: marcado })}
+        className="h-5 w-5"
+        style={{ accentColor: "var(--gx-accent)" }}
+      />
       {etiqueta}
     </label>
   );
@@ -34,6 +42,8 @@ export function FormularioVitrinaItem({
   const { mostrarError } = useFeedback();
   const [nombre, setNombre] = useState(item?.nombre ?? "");
   const [subiendo, setSubiendo] = useState(false);
+  const [sonido, setSonido] = useState(item?.sonido ?? false); // se conserva al ir video -> imagen -> video
+  const [tipoMedio, setTipoMedio] = useState<TipoMedio | null>(item?.mediaTipo ?? null);
   const formulario = useRef<HTMLFormElement>(null);
   const mensajeError = useRef<HTMLParagraphElement>(null);
 
@@ -47,6 +57,14 @@ export function FormularioVitrinaItem({
   }, [estado]);
 
   const esEntrenador = tipo === "ENTRENADOR";
+  const interruptorSonido = tipoMedio === "VIDEO" && (
+    <div>
+      <Interruptor nombre="sonido" etiqueta="Con sonido" marcado={sonido} alCambiar={setSonido} />
+      <p className="text-sm" style={{ color: "var(--gx-muted)" }}>
+        Si está activo, el video se oye en la TV. En una franja de entrenadores solo suena el video que se está reproduciendo.
+      </p>
+    </div>
+  );
 
   return (
     <form
@@ -65,6 +83,7 @@ export function FormularioVitrinaItem({
       <SelectorMedio
         tipoItem={tipo}
         alOcupar={setSubiendo}
+        alCambiarTipo={setTipoMedio}
         inicial={item ? { mediaUrl: item.mediaUrl, mediaTipo: item.mediaTipo, posterUrl: item.posterUrl } : undefined}
       />
 
@@ -105,6 +124,7 @@ export function FormularioVitrinaItem({
             <Interruptor nombre="mostrarNombre" etiqueta="Nombre" marcado={item?.mostrarNombre ?? true} />
             <Interruptor nombre="mostrarEspecialidad" etiqueta="Especialidad" marcado={item?.mostrarEspecialidad ?? true} />
             <Interruptor nombre="mostrarFrase" etiqueta="Frase" marcado={item?.mostrarFrase ?? true} />
+            {interruptorSonido}
           </fieldset>
         </>
       ) : (
@@ -122,6 +142,7 @@ export function FormularioVitrinaItem({
             <Interruptor nombre="mostrarDescuento" etiqueta="Descuento" marcado={item?.mostrarDescuento ?? true} />
             <Interruptor nombre="mostrarEtiqueta" etiqueta="Etiqueta" marcado={item?.mostrarEtiqueta ?? true} />
             <Interruptor nombre="mostrarEquivalenteBs" etiqueta="Equivalente en Bs (con la tasa BCV vigente)" marcado={item?.mostrarEquivalenteBs ?? true} />
+            {interruptorSonido}
           </fieldset>
         </>
       )}

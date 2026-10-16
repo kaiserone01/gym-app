@@ -11,6 +11,11 @@ export function numeroOpcional(valor: unknown): number | null {
   return texto === "" ? null : Number(texto);
 }
 
+// El sonido solo existe en los videos: con una imagen se normaliza a false (no es un error) y un valor ausente es false.
+export function normalizarSonido<T extends { mediaTipo: string; sonido?: boolean }>(d: T): T & { sonido: boolean } {
+  return { ...d, sonido: d.mediaTipo === "VIDEO" && d.sonido === true };
+}
+
 // Mensaje de error del primer problema de un ítem antes de guardarlo, o null si es válido.
 export function validarVitrinaItem(d: DatosVitrinaItem): string | null {
   if (!d.mediaUrl.trim()) return "Falta subir la imagen o el video.";

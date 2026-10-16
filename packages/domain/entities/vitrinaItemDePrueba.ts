@@ -17,6 +17,7 @@ export function itemDePrueba(parcial: Partial<VitrinaItem> = {}): VitrinaItem {
     mediaUrl: `https://r2.test/vitrina/${contador}.webp`,
     mediaTipo: "IMAGEN",
     posterUrl: null,
+    sonido: false,
     precioUSD: null,
     ofertaUSD: null,
     descuentoPct: null,

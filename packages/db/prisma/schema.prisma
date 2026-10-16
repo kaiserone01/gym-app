@@ -696,6 +696,7 @@ model VitrinaItem {
   mediaUrl  String
   mediaTipo TipoMedioVitrina
   posterUrl String?
+  sonido    Boolean          @default(false) // solo con VIDEO: si suena en la TV
 
   precioUSD            Decimal? @db.Decimal(10, 2)
   ofertaUSD            Decimal? @db.Decimal(10, 2)

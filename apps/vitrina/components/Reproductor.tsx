@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Almacen } from "@/lib/almacen";
 import type { ManifiestoVitrina } from "@gym-app/domain/entities/Vitrina";
 import { construirSecuencia } from "@gym-app/domain/services/secuenciaVitrina";
@@ -8,6 +8,7 @@ import { itemsDeManifiesto } from "@gym-app/domain/services/manifiestoVitrina";
 import { estadoDeTasa } from "@gym-app/domain/utils/estadoTasa";
 import { diaCalendarioCaracas } from "@gym-app/domain/utils/fechaCaracas";
 import { posicionarIndice } from "@/lib/posicionarDiapositiva";
+import { colaDeVideos, msParaAvanzar, techoDiapositivaMs } from "@/lib/reproduccion";
 import { Cartel } from "./Cartel";
 import { Franja } from "./Franja";
 import { PantallaMarca } from "./PantallaMarca";
@@ -39,26 +40,52 @@ export function Reproductor({ manifiesto, almacen, ahora }: { manifiesto: Manifi
   const claveActual = actual?.clave;
   const duracionActual = actual?.duracionSeg;
 
+  // Con una sola diapositiva los videos se repiten y el temporizador solo la mantiene viva.
+  const unica = secuencia.length === 1;
+  const videos = actual === null ? 0 : actual.tipo === "FRANJA" ? colaDeVideos(actual.entrenadores).length : actual.item.mediaTipo === "VIDEO" ? 1 : 0;
+  const conVideo = !unica && videos > 0;
+  const esFranja = actual?.tipo === "FRANJA";
+  // Identifica cada paso por la diapositiva (`ciclo` distingue vueltas de la misma): reposicionar no lo cambia.
+  const turno = claveActual === undefined ? null : `${claveActual}#${ciclo}`;
+  const [videosListos, setVideosListos] = useState<{ turno: string; fallo: boolean } | null>(null);
+  const terminados = videosListos !== null && videosListos.turno === turno;
+  const inicioTurnoMs = useRef(Date.now());
+
+  useEffect(() => {
+    inicioTurnoMs.current = Date.now();
+  }, [turno]);
+
   useEffect(() => {
     if (duracionActual === undefined) return;
+    const restante = msParaAvanzar({
+      conVideo,
+      esFranja,
+      videosTerminados: terminados,
+      huboFallo: terminados && (videosListos?.fallo ?? false),
+      transcurridoMs: Date.now() - inicioTurnoMs.current,
+      duracionSeg: duracionActual,
+    });
+    // Espera al evento de fin del último video, pero con un techo absoluto para que la TV nunca quede pegada.
+    const espera = restante ?? Math.max(0, techoDiapositivaMs(videos, duracionActual) - (Date.now() - inicioTurnoMs.current));
     const id = setTimeout(() => {
       setIndice((i) => i + 1);
       setCiclo((c) => c + 1);
-    }, duracionActual * 1000);
+    }, espera);
     return () => clearTimeout(id);
-  }, [claveActual, duracionActual, ciclo]);
+  }, [turno, duracionActual, conVideo, esFranja, terminados, videosListos, videos]);
 
   if (!actual) return <PantallaMarca />;
 
-  // Con una sola diapositiva no se vuelve a montar (ni se repite la transición ni se reinician los videos).
-  const clave = secuencia.length > 1 ? `${actual.clave}:${indice}` : actual.clave;
+  const alTerminarVideos = (fallo: boolean) => turno !== null && setVideosListos({ turno, fallo });
 
+  // La clave es la de la diapositiva: si la secuencia cambia pero la actual sigue, no se vuelve a montar (el video no
+  // se corta); con una sola diapositiva tampoco se repite la transición.
   return (
-    <main key={clave} className={`h-full w-full ${manifiesto.transicion === "DESLIZAR" ? "trans-deslizar" : "trans-fundido"}`}>
+    <main key={actual.clave} className={`h-full w-full ${manifiesto.transicion === "DESLIZAR" ? "trans-deslizar" : "trans-fundido"}`}>
       {actual.tipo === "FRANJA" ? (
-        <Franja entrenadores={actual.entrenadores} duracionSeg={actual.duracionSeg} almacen={almacen} />
+        <Franja entrenadores={actual.entrenadores} almacen={almacen} unica={unica} alTerminarVideos={() => alTerminarVideos(false)} />
       ) : (
-        <Cartel item={actual.item} almacen={almacen} tasa={tasa} />
+        <Cartel item={actual.item} almacen={almacen} tasa={tasa} bucle={unica} alTerminarVideo={alTerminarVideos} />
       )}
     </main>
   );

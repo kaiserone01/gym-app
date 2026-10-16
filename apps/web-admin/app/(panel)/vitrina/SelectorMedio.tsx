@@ -28,10 +28,12 @@ export function SelectorMedio({
   tipoItem,
   inicial,
   alOcupar,
+  alCambiarTipo,
 }: {
   tipoItem: TipoVitrinaItem;
   inicial?: Medio;
   alOcupar?: (ocupado: boolean) => void;
+  alCambiarTipo?: (tipo: TipoMedio | null) => void; // el formulario muestra "Con sonido" solo con un video
 }) {
   const [medio, setMedio] = useState<Medio | null>(inicial ?? null);
   const [progreso, setProgreso] = useState<number | null>(null);
@@ -42,6 +44,9 @@ export function SelectorMedio({
 
   // Si el componente se desmonta a mitad de una subida, se aborta el PUT.
   useEffect(() => () => controlador.current?.abort(), []);
+
+  const tipoMedio = medio?.mediaTipo ?? null;
+  useEffect(() => alCambiarTipo?.(tipoMedio), [tipoMedio, alCambiarTipo]);
 
   async function elegir(archivo: File) {
     setOcupado(true);

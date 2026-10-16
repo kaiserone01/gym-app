@@ -24,6 +24,7 @@ function mapear(fila: FilaVitrinaItem): VitrinaItem {
     mediaUrl: fila.mediaUrl,
     mediaTipo: fila.mediaTipo,
     posterUrl: fila.posterUrl,
+    sonido: fila.sonido,
     precioUSD: aNumero(fila.precioUSD),
     ofertaUSD: aNumero(fila.ofertaUSD),
     descuentoPct: fila.descuentoPct,

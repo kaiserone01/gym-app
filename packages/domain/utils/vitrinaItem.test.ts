@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 import { itemDePrueba } from "../entities/vitrinaItemDePrueba";
 import type { DatosVitrinaItem } from "../entities/Vitrina";
-import { numeroOpcional, validarVitrinaItem } from "./vitrinaItem";
+import { normalizarSonido, numeroOpcional, validarVitrinaItem } from "./vitrinaItem";
 
 function datos(parcial: Partial<DatosVitrinaItem> = {}): DatosVitrinaItem {
   const { id: _id, sucursalId: _s, orden: _o, activo: _a, ...resto } = itemDePrueba();
@@ -21,6 +21,20 @@ describe("numeroOpcional", () => {
   });
   test("texto no numérico → NaN (lo rechaza la validación)", () => {
     expect(Number.isNaN(numeroOpcional("abc"))).toBe(true);
+  });
+});
+
+describe("normalizarSonido", () => {
+  test("un video conserva el sonido pedido", () => {
+    expect(normalizarSonido(datos({ mediaTipo: "VIDEO", sonido: true })).sonido).toBe(true);
+  });
+  test("una imagen con sonido pedido queda en false y sigue siendo válida", () => {
+    const normalizado = normalizarSonido(datos({ mediaTipo: "IMAGEN", sonido: true }));
+    expect(normalizado.sonido).toBe(false);
+    expect(validarVitrinaItem(normalizado)).toBeNull();
+  });
+  test("valor ausente → false", () => {
+    expect(normalizarSonido({ mediaTipo: "VIDEO" }).sonido).toBe(false);
   });
 });
 

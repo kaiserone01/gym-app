@@ -5457,6 +5457,40 @@ Dejar los cambios en el working tree: **no** ejecutar `git add`, `git commit` ni
 actualiza el handoff con el estado de la vitrina de TV
 ```
 
+### Task 15: Video a duración completa y sonido por video
+
+Cambio pedido por el usuario tras ver la vista previa: (1) un video se ve **completo, con su duración nativa**; (2) el **sonido** del video lo decide el panel, por video. Autorizado por el usuario, incluida **una migración aditiva** (excepción a la regla "la rama vitrina no agrega migraciones").
+
+**Files:**
+- Create: `packages/db/prisma/migrations/20261016000000_vitrina_sonido/migration.sql`
+- Modify: `packages/db/prisma/schema.prisma` (`VitrinaItem.sonido Boolean @default(false)`)
+- Modify: `packages/domain/entities/Vitrina.ts`, `packages/domain/entities/vitrinaItemDePrueba.ts`, `packages/domain/utils/vitrinaItem.ts` (+ sus `.test.ts`)
+- Modify: `packages/infrastructure/persistence/prisma/PrismaVitrinaRepository.ts`
+- Modify: `apps/web-admin/app/(panel)/vitrina/actions.ts`, `FormularioVitrinaItem.tsx`, `FilaVitrina.tsx`
+- Modify: `apps/vitrina/components/{Medio,Cartel,Franja,Reproductor}.tsx`, `apps/vitrina/lib/rotarVideo.ts` (y/o helpers puros nuevos en `apps/vitrina/lib/` con tests)
+- Modify: `apps/vitrina-tv/capacitor/android/app/src/main/java/com/adrenalina/vitrina/MainActivity.java`
+
+**Requisitos (valores exactos):**
+1. **Migración aditiva**, exactamente: `ALTER TABLE "VitrinaItem" ADD COLUMN "sonido" BOOLEAN NOT NULL DEFAULT false;` (con el comentario `-- AlterTable` como las demás). Se comprueba SIN conectar a ninguna base: `prisma migrate diff --from-schema <schema del commit anterior> --to-schema prisma/schema.prisma --script` debe dar el mismo SQL (obtener el schema anterior con `git show HEAD:packages/db/prisma/schema.prisma > <archivo temporal fuera del repo>`; usar `--config prisma7.local.config.ts` solo si hace falta y NUNCA la config por defecto). Prohibido `migrate deploy|dev|reset`, `db push`, `db seed` y cualquier `npm run db:*`.
+2. **Dominio:** `VitrinaItem.sonido: boolean` y se acepta en `DatosVitrinaItem`/`CambiosVitrinaItem`. `validarVitrinaItem`: `sonido` solo tiene efecto con `mediaTipo === "VIDEO"`; con IMAGEN se normaliza a `false` (no es error). Pruebas: video con sonido, imagen con sonido pedido → false, valor ausente → false.
+3. **Repositorio y acciones:** mapear/crear/actualizar `sonido`; `leerDatos` lee el interruptor `sonido` (checkbox). El manifiesto ya lo incluye si `armarManifiesto` esparce el ítem (verificarlo y, si no, añadirlo).
+4. **Formulario del panel:** interruptor "Con sonido" dentro del `fieldset` "Qué se muestra en la TV", visible/habilitado solo cuando el medio es un VIDEO, con ayuda persistente ("Si está activo, el video se oye en la TV"; por defecto apagado). `FilaVitrina` muestra en texto "Con sonido" para videos con sonido (no solo color/ícono).
+5. **Duración nativa (TV):**
+   - **Cartel (promo/producto) con video:** la diapositiva dura lo que dure el video (avanza en el evento `ended`), sin `loop`. Si hay una sola diapositiva en toda la secuencia, el video se reinicia al terminar (bucle) en lugar de avanzar.
+   - **Franja de entrenadores con videos:** los videos de la franja se reproducen **uno tras otro, completos, en orden de columna** (una cola dirigida por `ended`, reemplaza la rotación por tiempo de `rotarVideo`); las demás columnas muestran su póster/foto mientras tanto. La diapositiva termina cuando acabó el último video **y** pasó al menos `duracionSeg`. Una franja sin videos usa `duracionSeg` como hasta ahora. Con una sola diapositiva, la cola se reinicia desde el primer video.
+   - **Salvaguardas obligatorias** (la TV nunca se queda pegada): si un video falla (`error`) se salta y cuenta como terminado; si la reproducción no avanza (`currentTime` sin cambios) durante 20 s se salta; tope absoluto por video de 10 min; si no hay forma de reproducir un video, se muestra su póster durante `duracionSeg` y se avanza.
+   - La lógica de tiempos/cola va en helpers **puros** de `apps/vitrina/lib/` con pruebas de vitest (`npx vitest run apps/vitrina/lib/`): cola de la franja, cuándo termina la diapositiva (fin del último video y mínimo `duracionSeg`), salto por error/estancamiento/tope.
+6. **Sonido (TV):** el `<video>` usa `muted={!item.sonido}`; solo suena el video en turno (en una franja nunca suenan dos). Si `play()` es rechazado por el navegador/WebView (autoplay con sonido bloqueado) se reintenta con `muted = true` (la vista previa en navegador lo necesitará: Chrome bloquea el sonido sin interacción) sin romper la secuencia. En `MainActivity.java`, tras `super.onCreate`, `getBridge().getWebView().getSettings().setMediaPlaybackRequiresUserGesture(false);` para que el WebView de la TV permita autoplay con sonido.
+7. Sin cambios en `apps/kiosk`, `apps/kiosk-tv` ni `.github/workflows/apk-kiosco.yml`. Textos en español, tokens `--gx-*`, sin hex.
+
+**Review Focus de esta tarea:** video corto (< `duracionSeg`) y video largo (minutos) en cartel y en franja; franja con mezcla de fotos y videos; franja con 2 videos y 1 foto; un video que falla a la mitad; un video con sonido en una vista previa que bloquea el autoplay con sonido; secuencia de una sola diapositiva con video; un cambio de secuencia (SSE) mientras suena un video; ítems existentes (sin la columna) nacen con `sonido = false`.
+
+- [ ] **Step 1:** Migración, schema, dominio y pruebas (`npm test --workspace packages/domain`).
+- [ ] **Step 2:** Repositorio, acciones, formulario y fila del panel.
+- [ ] **Step 3:** Helpers puros de tiempos y cola con pruebas (`npx vitest run apps/vitrina/lib/`).
+- [ ] **Step 4:** Componentes de la TV (Medio, Cartel, Franja, Reproductor) y `MainActivity.java`.
+- [ ] **Step 5:** Sugerir el mensaje de commit: `agrega la reproducción completa del video y el sonido por video en la vitrina`
+
 ---
 
 ## Self-Review

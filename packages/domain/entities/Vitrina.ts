@@ -18,6 +18,7 @@ export interface VitrinaItem {
   mediaUrl: string;
   mediaTipo: TipoMedio;
   posterUrl: string | null;
+  sonido: boolean; // solo tiene efecto con mediaTipo VIDEO
   // Badges (PROMO y PRODUCTO)
   precioUSD: number | null;
   ofertaUSD: number | null;

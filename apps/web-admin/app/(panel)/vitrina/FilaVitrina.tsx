@@ -43,7 +43,7 @@ export function FilaVitrina({
           {titulo}
         </p>
         <p className="text-sm" style={{ color: "var(--gx-muted)" }}>
-          {TITULO_DE_TIPO[item.tipo]} · {item.mediaTipo === "VIDEO" ? "Video" : "Imagen"}
+          {TITULO_DE_TIPO[item.tipo]} · {item.mediaTipo === "VIDEO" ? (item.sonido ? "Video · Con sonido" : "Video") : "Imagen"}
           {numeroDiapositiva ? ` · Diapositiva ${numeroDiapositiva}` : ""}
         </p>
         <p className="text-sm font-medium" style={{ color: estado.color }}>

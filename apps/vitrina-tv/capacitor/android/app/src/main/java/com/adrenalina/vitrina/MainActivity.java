@@ -15,6 +15,8 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        // Los videos con sonido arrancan solos: sin esto la WebView exige un toque del usuario para reproducir con audio.
+        getBridge().getWebView().getSettings().setMediaPlaybackRequiresUserGesture(false);
         // La vitrina no debe apagar la pantalla ni mostrar barras del sistema.
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         ocultarBarras();

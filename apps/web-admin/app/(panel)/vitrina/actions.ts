@@ -15,7 +15,7 @@ import type { SubidaPrefirmada } from "@gym-app/domain/ports/IArchivoStorageServ
 import { rangoDiaCaracas } from "@gym-app/domain/utils/fechaCaracas";
 import { extensionDeImagen, MAX_BYTES_IMAGEN_VITRINA } from "@gym-app/domain/utils/imagenSubida";
 import { MAX_BYTES_VIDEO_VITRINA } from "@gym-app/domain/utils/videoVitrina";
-import { DURACION_MAX_SEG, DURACION_MIN_SEG, numeroOpcional, validarVitrinaItem } from "@gym-app/domain/utils/vitrinaItem";
+import { DURACION_MAX_SEG, DURACION_MIN_SEG, normalizarSonido, numeroOpcional, validarVitrinaItem } from "@gym-app/domain/utils/vitrinaItem";
 import { conMensajeOk } from "../redirectConMensaje";
 import { SLUG_DE_TIPO } from "./slugs";
 
@@ -48,11 +48,12 @@ function leerDatos(formData: FormData): { datos: DatosVitrinaItem } | { error: s
   if ((inicio && !FECHA.test(inicio)) || (fin && !FECHA.test(fin))) return { error: "Fecha no válida." };
 
   return {
-    datos: {
+    datos: normalizarSonido({
       tipo,
       mediaTipo,
       mediaUrl: textoOpcional(formData.get("mediaUrl")) ?? "",
       posterUrl: textoOpcional(formData.get("posterUrl")),
+      sonido: marcada(formData, "sonido"),
       duracionSeg: numeroOpcional(formData.get("duracionSeg")),
       inicio: inicio ? rangoDiaCaracas(inicio).inicio : null,
       fin: fin ? rangoDiaCaracas(fin).fin : null,
@@ -72,7 +73,7 @@ function leerDatos(formData: FormData): { datos: DatosVitrinaItem } | { error: s
       mostrarNombre: marcada(formData, "mostrarNombre"),
       mostrarEspecialidad: marcada(formData, "mostrarEspecialidad"),
       mostrarFrase: marcada(formData, "mostrarFrase"),
-    },
+    }),
   };
 }
 

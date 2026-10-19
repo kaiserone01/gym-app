@@ -125,7 +125,7 @@ export function PanelRemanentePago({
               </p>
             )}
             {faltanteAceptado && (
-              <p className="mt-1 text-xs" style={{ color: "var(--gx-muted)" }}>
+              <p className="mt-1 text-sm font-bold" style={{ color: "var(--gx-ink)" }}>
                 Diferencia aceptada: el acceso cubre el ciclo completo y este saldo queda pendiente por cobrar.
               </p>
             )}

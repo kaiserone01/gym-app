@@ -1043,7 +1043,7 @@ function ContenidoPaso3({
           (ver definición arriba); en Fraccionado, a las N fracciones. */}
       {hayExcedenteCaja && (
         <fieldset className="flex flex-col gap-2 rounded-lg border p-3 text-sm" style={{ borderColor: "var(--gx-edge)" }}>
-          <legend className="px-1" style={{ color: "var(--gx-ink)" }}>
+          <legend className="px-1 font-bold" style={{ color: "var(--gx-ink)" }}>
             Sobran ${excedenteCaja.toFixed(2)}. ¿Qué hacemos con ese dinero?
           </legend>
           {excedenteCaja > precioCiclo && (
@@ -1051,7 +1051,7 @@ function ContenidoPaso3({
               Sobra más que el precio del plan: revisa que no hayas escrito bolívares en un campo de dólares.
             </p>
           )}
-          <label className="flex min-h-11 items-center gap-2" style={{ color: "var(--gx-muted)" }}>
+          <label className="flex min-h-11 items-center gap-2 font-bold" style={{ color: "var(--gx-ink)" }}>
             <input
               type="radio"
               checked={excedenteElegido === "otro"}
@@ -1060,7 +1060,7 @@ function ContenidoPaso3({
             />
             Es de otro cobro (wifi u otra cosa): solo queda registrado
           </label>
-          <label className="flex min-h-11 items-center gap-2" style={{ color: "var(--gx-muted)" }}>
+          <label className="flex min-h-11 items-center gap-2 font-bold" style={{ color: "var(--gx-ink)" }}>
             <input
               type="radio"
               checked={excedenteElegido === "saldo"}

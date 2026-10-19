@@ -248,7 +248,8 @@ export function FormularioMiembro({
   const planEsCortesia = planSeleccionado?.precioUSD === 0;
   const precioActual = Number(precio) || 0;
   // Primer pago de un miembro nuevo: vacío = el precio completo; menos que el precio queda como abono.
-  const [montoHoy, setMontoHoy] = useState("");
+  // null = sin tocar (se ve el precio del plan); "" = el cajero borró el campo para escribir otro monto.
+  const [montoHoy, setMontoHoy] = useState<string | null>(null);
   const [errorMontoHoy, setErrorMontoHoy] = useState<string | null>(null);
   // Primer pago dividido en dos métodos (p. ej. dos pagos móviles): cada línea trae su método y su monto.
   const [dividirPago, setDividirPago] = useState(false);
@@ -258,7 +259,7 @@ export function FormularioMiembro({
   ]);
   const [siguienteIdLinea, setSiguienteIdLinea] = useState(3);
   const totalDividido = lineasDivididas.reduce((suma, { linea }) => suma + (linea?.monto ?? 0), 0);
-  const montoAPagar = dividirPago ? Math.round(totalDividido * 100) / 100 : montoHoy === "" ? precioActual : Number(montoHoy) || 0;
+  const montoAPagar = dividirPago ? Math.round(totalDividido * 100) / 100 : montoHoy === null ? precioActual : Number(montoHoy) || 0;
   const esAbonoInicial = montoAPagar > 0 && montoAPagar < precioActual;
   // Lo pagado supera el precio (wifi u otro cobro, o pagar de más): sin límite; se elige qué hacer con el sobrante.
   const hayExcedente = precioActual > 0 && montoAPagar - precioActual > 0.005;
@@ -895,14 +896,14 @@ export function FormularioMiembro({
                     name="montoHoy"
                     label="Monto a pagar hoy"
                     moneda="USD"
-                    value={montoHoy === "" ? String(precioActual) : montoHoy}
+                    value={montoHoy ?? String(precioActual)}
                     onChange={(valor) => {
                       setMontoHoy(valor);
                       setErrorMontoHoy(null);
                     }}
                   />
                   {esAbonoInicial && (
-                    <p className="mt-1 text-xs" style={{ color: "var(--gx-muted)" }}>
+                    <p className="mt-2 text-sm font-bold" style={{ color: "var(--gx-ink)" }}>
                       {precioActual - montoAPagar <= toleranciaDiferenciaPagoUSD(precioActual)
                         ? "Diferencia aceptada: el acceso cubre el ciclo completo y quedan "
                         : "Queda como abono: el acceso se da en proporción a lo pagado y quedan "}
@@ -950,7 +951,7 @@ export function FormularioMiembro({
                   >
                     Agregar otro método de pago
                   </Button>
-                  <p className="mb-2 text-sm" style={{ color: "var(--gx-muted)" }}>
+                  <p className="mb-2 text-sm font-bold" style={{ color: "var(--gx-ink)" }}>
                     Total de los pagos: <strong style={{ color: "var(--gx-ink)" }}>${montoAPagar.toFixed(2)}</strong> de ${precioActual.toFixed(2)}
                     {esAbonoInicial && (
                       <>
@@ -983,7 +984,7 @@ export function FormularioMiembro({
 
               {hayExcedente && (
                 <fieldset className="mt-4 flex flex-col gap-2 rounded-lg border p-3 text-sm" style={{ borderColor: "var(--gx-edge)" }}>
-                  <legend className="px-1" style={{ color: "var(--gx-ink)" }}>
+                  <legend className="px-1 font-bold" style={{ color: "var(--gx-ink)" }}>
                     Sobran ${excedenteUSD.toFixed(2)}. ¿Qué hacemos con ese dinero?
                   </legend>
                   {excedenteUSD > precioActual && (
@@ -991,7 +992,7 @@ export function FormularioMiembro({
                       Sobra más que el precio del plan: revisa que no hayas escrito bolívares en un campo de dólares.
                     </p>
                   )}
-                  <label className="flex min-h-11 items-center gap-2" style={{ color: "var(--gx-muted)" }}>
+                  <label className="flex min-h-11 items-center gap-2 font-bold" style={{ color: "var(--gx-ink)" }}>
                     <input
                       type="radio"
                       checked={excedente === "otro"}
@@ -1000,7 +1001,7 @@ export function FormularioMiembro({
                     />
                     Es de otro cobro (wifi u otra cosa): solo queda registrado
                   </label>
-                  <label className="flex min-h-11 items-center gap-2" style={{ color: "var(--gx-muted)" }}>
+                  <label className="flex min-h-11 items-center gap-2 font-bold" style={{ color: "var(--gx-ink)" }}>
                     <input
                       type="radio"
                       checked={excedente === "saldo"}

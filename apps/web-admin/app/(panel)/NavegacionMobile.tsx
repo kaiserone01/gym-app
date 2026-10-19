@@ -17,13 +17,11 @@ export function NavegacionMobile({
   email,
   rol,
   puedeVerEnSala,
-  puedeVerExcel,
 }: {
   nombre: string;
   email: string;
   rol: string;
   puedeVerEnSala: boolean;
-  puedeVerExcel: boolean;
 }) {
   const [masAbierto, setMasAbierto] = useState(false);
 
@@ -80,7 +78,7 @@ export function NavegacionMobile({
   return (
     <>
       <BottomTabBar items={items} />
-      <MasSheet abierto={masAbierto} onCerrar={() => setMasAbierto(false)} nombre={nombre} email={email} rol={rol} puedeVerExcel={puedeVerExcel} />
+      <MasSheet abierto={masAbierto} onCerrar={() => setMasAbierto(false)} nombre={nombre} email={email} rol={rol} />
     </>
   );
 }

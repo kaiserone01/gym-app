@@ -11,21 +11,18 @@ export function MasSheet({
   nombre,
   email,
   rol,
-  puedeVerExcel,
 }: {
   abierto: boolean;
   onCerrar: () => void;
   nombre: string;
   email: string;
   rol: string;
-  puedeVerExcel: boolean;
 }) {
   // Usuarios, Sucursales y Planes se administran desde las tabs de
   // Configuraciones (ver diseño acordado) — solo SOCIO llega a ellos, igual
   // que en el sidebar de escritorio.
   const enlaces = [
     { href: "/productos", label: "Productos" },
-    ...(puedeVerExcel ? [{ href: "/excel", label: "Excel" }] : []),
     ...(puedeEditarKiosko(rol) ? [{ href: "/kiosko", label: "Kiosko" }] : []),
     ...(puedeEditarKiosko(rol) ? [{ href: "/vitrina", label: "Vitrina" }] : []),
     ...(rol === "SOCIO" ? [{ href: "/configuraciones", label: "Configuraciones" }] : []),

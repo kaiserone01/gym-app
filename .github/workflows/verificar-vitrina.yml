@@ -1,10 +1,11 @@
-name: Verificar la rama vitrina
+name: Verificar la vitrina y web-admin
 
-# La rama vitrina se desarrolla desde un PC limitado: tipos, lint y tests corren aquí, no en local.
+# Tipos, lint y tests de la vitrina y de web-admin corren aquí, no en local (PC de desarrollo limitado). Corre en `main`, en `vitrina` y en los pull requests.
 # No toca la base de datos ni R2: solo compila y prueba.
 on:
   push:
-    branches: [vitrina]
+    branches: [main, vitrina]
+  pull_request:
   workflow_dispatch:
 
 permissions:

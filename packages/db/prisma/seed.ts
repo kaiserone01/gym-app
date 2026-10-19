@@ -9,7 +9,7 @@ const prisma = new PrismaClient({ adapter });
 async function main() {
   // 1. Organización + Sucursal de prueba
   const organizacion = await prisma.organizacion.create({
-    data: { nombre: "Gym Demo", slug: "gym-demo" },
+    data: { nombre: "Adrenalina Xtreme Gym", slug: "adrenalina-xtreme-gym" },
   });
   console.log("✅ Organización creada:", organizacion.nombre);
 

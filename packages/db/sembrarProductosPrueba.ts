@@ -36,11 +36,11 @@ function storageR2(): R2StorageService {
 // Por defecto es un ensayo (no escribe nada); con --confirm crea los productos.
 // Idempotente: omite los productos cuyo nombre ya existe en la organización.
 // Las fotos y su atribución están en productos-prueba/ (ver productos.json).
-//   npm run db:sembrar-productos-prueba --workspace packages/db -- --org=gym-demo
-//   npm run db:sembrar-productos-prueba:confirm --workspace packages/db -- --org=gym-demo
+//   npm run db:sembrar-productos-prueba --workspace packages/db -- --org=adrenalina-xtreme-gym
+//   npm run db:sembrar-productos-prueba:confirm --workspace packages/db -- --org=adrenalina-xtreme-gym
 async function main() {
   const confirmar = process.argv.includes("--confirm");
-  const slugOrg = process.argv.find((a) => a.startsWith("--org="))?.slice("--org=".length) ?? "gym-demo";
+  const slugOrg = process.argv.find((a) => a.startsWith("--org="))?.slice("--org=".length) ?? "adrenalina-xtreme-gym";
 
   const organizacion = await prisma.organizacion.findUnique({ where: { slug: slugOrg } });
   if (!organizacion) throw new Error(`No existe la organización con slug "${slugOrg}".`);

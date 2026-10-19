@@ -11,9 +11,9 @@ import { AuthorizationService } from "@gym-app/domain/services/AuthorizationServ
 import { crearUsuarioAdmin, NoAutorizadoError } from "@gym-app/domain/use-cases/CrearUsuarioAdmin";
 
 async function main() {
-  const organizacion = await prisma.organizacion.findUnique({ where: { slug: "gym-demo" } });
+  const organizacion = await prisma.organizacion.findUnique({ where: { slug: "adrenalina-xtreme-gym" } });
   if (!organizacion) {
-    throw new Error("No se encontró la organización 'gym-demo' — corre `npx prisma db seed` primero.");
+    throw new Error("No se encontró la organización 'adrenalina-xtreme-gym' — corre `npx prisma db seed` primero.");
   }
 
   const usuarios = new PrismaUsuarioAdminRepository(prisma);

@@ -1,8 +1,8 @@
-// Espejo de Adrenalina (gym-demo · "Sede Principal") en la organización de pruebas zip-gym (sede "ZIPGYM").
+// Espejo de Adrenalina (adrenalina-xtreme-gym · "Sede Principal") en la organización de pruebas zip-gym (sede "ZIPGYM").
 // Plan: docs/superpowers/plans/2026-10-09-clon-zipgym.md
 //
 // BORRA todo el contenido de zip-gym (miembros, caja, catálogo, usuarios salvo zipnegocios@gmail.com, tema) y lo
-// vuelve a clonar desde la Sede Principal de gym-demo con ids nuevos. gym-demo es SOLO LECTURA: este script
+// vuelve a clonar desde la Sede Principal de adrenalina-xtreme-gym con ids nuevos. adrenalina-xtreme-gym es SOLO LECTURA: este script
 // nunca escribe en él. Origen y destino son fijos (no hay flags para cambiarlos). Repetible.
 //
 // Uso:
@@ -22,7 +22,7 @@ import { MapaIds } from "./clonarZipGym/mapaIds";
 
 config({ path: path.resolve(__dirname, "../../.env") });
 
-const SLUG_ORIGEN = "gym-demo";
+const SLUG_ORIGEN = "adrenalina-xtreme-gym";
 const SEDE_ORIGEN = "Sede Principal";
 const SLUG_DESTINO = "zip-gym";
 const SEDE_DESTINO = "ZIPGYM";
@@ -108,7 +108,7 @@ async function leerOrigen(ctx: Contexto) {
 type DatosOrigen = Awaited<ReturnType<typeof leerOrigen>>;
 
 // Aborta si algún registro del conjunto apunta (por FK) a algo que no se leyó: nunca se suelta una
-// referencia hacia gym-demo en el destino.
+// referencia hacia adrenalina-xtreme-gym en el destino.
 function validarReferencias(ctx: Contexto, datos: DatosOrigen) {
   const o = ctx.orgOrigen.id;
   const sp = ctx.sedeOrigen.id;
@@ -172,11 +172,11 @@ function validarReferencias(ctx: Contexto, datos: DatosOrigen) {
   }
 }
 
-// Movimiento de gym-demo fuera de la Sede Principal (no se clona; solo se avisa).
+// Movimiento de adrenalina-xtreme-gym fuera de la Sede Principal (no se clona; solo se avisa).
 async function contarFueraDeSede(ctx: Contexto) {
   const o = ctx.orgOrigen.id;
   const fuera = { not: ctx.sedeOrigen.id };
-  // Incluye las ventas de producto sin miembro hechas en otras sedes de gym-demo.
+  // Incluye las ventas de producto sin miembro hechas en otras sedes de adrenalina-xtreme-gym.
   const deOrigen = { OR: [{ sucursal: { organizacionId: o } }, { miembro: { is: { organizacionId: o } } }] };
   return {
     pagos: await prisma.pago.count({ where: { ...deOrigen, sucursalId: fuera } }),
@@ -441,7 +441,7 @@ async function clonar(tx: Tx, ctx: Contexto, datos: DatosOrigen, correos: Map<st
   }
 
   // grupoPagoId no es FK pero AnularPago → reabrirPorGrupo busca deudas por él SIN filtrar organización: si se
-  // copiara tal cual, anular un cobro en la copia reabriría deudas de gym-demo. Se renueva (mismo viejo → mismo nuevo).
+  // copiara tal cual, anular un cobro en la copia reabriría deudas de adrenalina-xtreme-gym. Se renueva (mismo viejo → mismo nuevo).
   const grupos = new Map<string, string>();
   const grupoNuevo = (viejo: string | null) => {
     if (viejo === null) return null;
@@ -629,7 +629,7 @@ async function metricas(orgId: string, sedeIds: string[], excluirUsuarioId: stri
   return m;
 }
 
-// Filas de zip-gym que apuntan a algo fuera de zip-gym (p. ej. ids de gym-demo).
+// Filas de zip-gym que apuntan a algo fuera de zip-gym (p. ej. ids de adrenalina-xtreme-gym).
 async function referenciasCruzadas(d: string) {
   const fuera = { organizacionId: { not: d } };
   const deFuera = { is: fuera };
@@ -753,7 +753,7 @@ async function main() {
   console.log("  - TasaCambio es global y compartida (no se copia). RegistroAuditoria no se copia.");
   console.log("  - Las fotos y logos conservan las mismas URLs de R2 (el código nunca borra objetos de R2).");
   console.log("  - Los ids son nuevos en cada ejecución (los genera Prisma); las fechas se copian tal cual.");
-  console.log("  - grupoPagoId de pagos y deudas se renueva (mismo grupo → mismo valor nuevo) para no cruzar cobros con gym-demo.");
+  console.log("  - grupoPagoId de pagos y deudas se renueva (mismo grupo → mismo valor nuevo) para no cruzar cobros con adrenalina-xtreme-gym.");
   console.log(`  - Movimiento de "${SLUG_ORIGEN}" fuera de "${SEDE_ORIGEN}" (no se clona):`, fueraDeSede);
   console.log(`  - Accesos a sede que se descartan (otras sedes): ${fueraDeSede.accesosOtrasSedes}.`);
 

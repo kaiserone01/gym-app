@@ -60,6 +60,13 @@ body {
   box-shadow: 0 0 14px 1px color-mix(in srgb, var(--gx-accent) 35%, transparent);
 }
 
+/* Barra de filtros de Miembros: títulos de los campos en blanco (el gris verdoso casi no se distinguía). */
+.etiquetas-blancas > label,
+.etiquetas-blancas > div {
+  color: #ffffff !important;
+  font-weight: 500;
+}
+
 @media print {
   body {
     background: #ffffff;

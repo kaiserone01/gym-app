@@ -155,7 +155,7 @@ export function ListaMiembros({
           </h1>
           {accionesHeader}
         </div>
-        <div className="hidden gap-1 rounded-lg border p-1 lg:flex" style={{ borderColor: "var(--gx-edge)" }}>
+        <div className="tarjeta-luminosa hidden gap-1 rounded-lg border p-1 lg:flex" style={{ borderColor: "var(--gx-edge)" }}>
           <Button type="button" variant={modo === "cards" ? "primario" : "fantasma"} onClick={() => setModo("cards")}>
             Cards
           </Button>
@@ -165,23 +165,24 @@ export function ListaMiembros({
         </div>
       </div>
 
-      <div className="mb-6 flex flex-wrap items-end gap-4 print:hidden">
+      <div className="etiquetas-blancas mb-6 flex flex-wrap items-end gap-4 print:hidden">
         <Input
           label="Nombre o cédula"
           type="text"
           placeholder="Mínimo 3 caracteres..."
+          className="tarjeta-luminosa"
           value={busqueda}
           onChange={(e) => setBusqueda(e.target.value)}
         />
-        <InputFecha label="Inscritos desde" value={inscritoDesde} onChange={setInscritoDesde} />
-        <InputFecha label="Vencidos hasta" value={venceHasta} onChange={setVenceHasta} />
+        <InputFecha label="Inscritos desde" value={inscritoDesde} onChange={setInscritoDesde} className="tarjeta-luminosa" />
+        <InputFecha label="Vencidos hasta" value={venceHasta} onChange={setVenceHasta} className="tarjeta-luminosa" />
 
         <label className="flex flex-col gap-1.5 text-sm" style={{ color: "var(--gx-muted)" }}>
           Plan
           <select
             value={planFiltro}
             onChange={(e) => setPlanFiltro(e.target.value)}
-            className="min-h-11 rounded-lg border px-3 gx-campo"
+            className="tarjeta-luminosa min-h-11 rounded-lg border px-3 gx-campo"
           >
             <option value="">Todos los planes</option>
             {planes.map((plan) => (
@@ -197,7 +198,7 @@ export function ListaMiembros({
           <select
             value={proximoCobroFiltro}
             onChange={(e) => setProximoCobroFiltro(e.target.value as FiltroProximoCobro)}
-            className="min-h-11 rounded-lg border px-3 gx-campo"
+            className="tarjeta-luminosa min-h-11 rounded-lg border px-3 gx-campo"
           >
             {OPCIONES_PROXIMO_COBRO.map((opcion) => (
               <option key={opcion.valor} value={opcion.valor}>

@@ -60,6 +60,12 @@ body {
   box-shadow: 0 0 14px 1px color-mix(in srgb, var(--gx-accent) 35%, transparent);
 }
 
+/* Misma tarjeta luminosa pero roja: vencidos y por regularizar (Miembros y En sala). */
+.tarjeta-luminosa-roja {
+  border-color: color-mix(in srgb, var(--gx-bad) 75%, transparent) !important;
+  box-shadow: 0 0 14px 1px color-mix(in srgb, var(--gx-bad) 40%, transparent);
+}
+
 /* Barra de filtros de Miembros: títulos de los campos en blanco (el gris verdoso casi no se distinguía). */
 .etiquetas-blancas > label,
 .etiquetas-blancas > div {

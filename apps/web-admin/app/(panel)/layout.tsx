@@ -44,11 +44,10 @@ export default async function PanelLayout({ children }: { children: React.ReactN
           <Sidebar
             encabezado={<EncabezadoSidebar sucursalNombre={sucursalActiva?.nombre ?? "—"} />}
             items={[
-              ...(puedeVerEnSala ? [{ href: "/en-sala", label: "En sala", extra: <ContadorEnSala /> }] : []),
               { href: "/caja", label: "Caja" },
-              { href: "/pagos", label: "Histórico de Pagos" },
-              { href: "/productos", label: "Productos" },
+              ...(puedeVerEnSala ? [{ href: "/en-sala", label: "En sala", extra: <ContadorEnSala /> }] : []),
               { href: "/miembros", label: "Miembros" },
+              { href: "/productos", label: "Productos" },
               ...(puedeEditarKiosko(usuario.rol) ? [{ href: "/kiosko", label: "Kiosko" }] : []),
               ...(puedeEditarKiosko(usuario.rol) ? [{ href: "/vitrina", label: "Vitrina" }] : []),
               // Planes, Sucursales y Usuarios se administran desde las tabs

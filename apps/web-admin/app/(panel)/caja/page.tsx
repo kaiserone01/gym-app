@@ -19,6 +19,7 @@ import { PrismaDeudaProductoRepository } from "@gym-app/infrastructure/persisten
 import { listarDeudasPendientes } from "@gym-app/domain/use-cases/ListarDeudasPendientes";
 import { Card } from "@gym-app/ui/components/Card";
 import { PageHeader } from "@gym-app/ui/components/PageHeader";
+import { EnlaceHistoricoPagos } from "./EnlaceHistoricoPagos";
 import { PrismaMetodoPagoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaMetodoPagoRepository";
 import { listarMetodosPagoActivos } from "@gym-app/domain/use-cases/ListarMetodosPago";
 import { PrismaReglaAbonoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaReglaAbonoRepository";
@@ -123,8 +124,9 @@ export default async function PaginaCaja({ searchParams }: { searchParams: Promi
       <div className="flex flex-col gap-6 p-6 pb-24 lg:p-8 lg:pb-8">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <PageHeader>Turno activo</PageHeader>
+          <div className="flex flex-wrap gap-2">
           {esPropio && (
-            <div className="flex gap-2">
+            <>
               <BotonRegistrarPagoCaja
                 miembros={miembrosActivos}
                 planes={planesActivos}
@@ -155,8 +157,10 @@ export default async function PaginaCaja({ searchParams }: { searchParams: Promi
                 accionAnular={anularDeudaAction}
               />
               <BotonRegistrarEgreso accion={registrarEgresoAction} turnoId={resumen.turno.id} />
-            </div>
+            </>
           )}
+          <EnlaceHistoricoPagos />
+          </div>
         </div>
 
         {/* Layout compacto: cuadro chico con el estado del turno (no
@@ -316,7 +320,10 @@ export default async function PaginaCaja({ searchParams }: { searchParams: Promi
 
   return (
     <div className="flex flex-col gap-6 p-6 pb-24 lg:p-8 lg:pb-8">
-      <PageHeader>Abrir turno</PageHeader>
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <PageHeader>Abrir turno</PageHeader>
+        <EnlaceHistoricoPagos />
+      </div>
 
       <FormularioAbrirTurno
         accion={abrirTurnoAction}

@@ -3,7 +3,6 @@
 import { useState } from "react";
 import {
   UsersThree,
-  CreditCard,
   Wallet,
   Barbell,
   DotsThreeCircle,
@@ -33,6 +32,13 @@ export function NavegacionMobile({
   );
 
   const items: ItemTab[] = [
+    {
+      tipo: "link",
+      href: "/caja",
+      label: "Caja",
+      icon: <Wallet size={24} />,
+      iconActivo: <Wallet size={24} weight="fill" />,
+    },
     ...(puedeVerEnSala
       ? [
           {
@@ -44,20 +50,6 @@ export function NavegacionMobile({
           },
         ]
       : []),
-    {
-      tipo: "link",
-      href: "/caja",
-      label: "Caja",
-      icon: <Wallet size={24} />,
-      iconActivo: <Wallet size={24} weight="fill" />,
-    },
-    {
-      tipo: "link",
-      href: "/pagos",
-      label: "Pagos",
-      icon: <CreditCard size={24} />,
-      iconActivo: <CreditCard size={24} weight="fill" />,
-    },
     {
       tipo: "link",
       href: "/miembros",

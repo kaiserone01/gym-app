@@ -162,7 +162,7 @@ export default async function PaginaHistoricoPagos({
         </div>
       </div>
 
-      {/* Detalle por turno (apertura/cierre, egresos, arqueo) — no se imprime, la lista de arriba ya cubre los pagos. */}
+      {/* Detalle por turno (apertura/cierre, egresos, arqueo) — no se imprime. Los pagos solo van en la lista de arriba, no se repiten aquí. */}
       <div className="flex flex-col gap-6 print:hidden">
       {reporte.turnos.map((fila) => {
         const metodosBsDelTurno = metodosEnBs(fila.pagos, fila.egresos);
@@ -184,47 +184,6 @@ export default async function PaginaHistoricoPagos({
             <span>Cobrado: ${fila.totalPagosUSD.toFixed(2)}</span>
             {fila.totalEgresosUSD > 0 && <span>Egresos (ref. USD): -${fila.totalEgresosUSD.toFixed(2)}</span>}
           </div>
-          {fila.pagos.filter((p) => !p.anuladoEn).length > 0 && (
-            <div className="mb-2 flex flex-col gap-1 border-b pb-2" style={{ borderColor: "var(--gx-edge)" }}>
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[420px] border-collapse text-left text-xs">
-                  <thead>
-                    <tr style={{ color: "var(--gx-muted)" }}>
-                      <th className="py-1">Miembro</th>
-                      <th className="py-1">Método</th>
-                      <th className="py-1">USD</th>
-                      <th className="py-1">Tasa</th>
-                      <th className="py-1">Bs</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {fila.pagos
-                      .filter((p) => !p.anuladoEn)
-                      .map((pago) => (
-                        <tr key={pago.id}>
-                          <td className="py-1" style={{ color: "var(--gx-ink)" }}>
-                            {conceptoPago(pago)}
-                          </td>
-                          <td className="py-1" style={{ color: "var(--gx-ink)" }}>
-                            {nombreMetodo(pago.metodo)}
-                          </td>
-                          <td className="py-1" style={{ color: "var(--gx-ink)" }}>
-                            ${pago.monto.toFixed(2)}
-                          </td>
-                          <td className="py-1" style={{ color: "var(--gx-ink)" }}>
-                            {pago.tasaCambio !== null ? pago.tasaCambio.toFixed(2) : "—"}
-                          </td>
-                          <td className="py-1" style={{ color: "var(--gx-ink)" }}>
-                            {pago.montoBs !== null ? `Bs. ${formatearBs(pago.montoBs)}` : "—"}
-                          </td>
-                        </tr>
-                      ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-
           {fila.egresos.length > 0 && (
             <div className="mb-2 flex flex-col gap-1 border-b pb-2" style={{ borderColor: "var(--gx-edge)" }}>
               {fila.egresos.map((egreso) => (

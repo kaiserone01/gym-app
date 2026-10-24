@@ -277,9 +277,9 @@ function VistaImpresion({ miembros }: { miembros: FilaMiembro[] }) {
   );
 }
 
-// Vencido o por regularizar: la tarjeta se resalta en rojo.
-function requiereAtencion(miembro: FilaMiembro): boolean {
-  return miembro.porRegularizar || (miembro.fechaVencimiento !== null && diasHastaVencimiento(miembro.fechaVencimiento) < 0);
+// Vencido: la tarjeta se resalta en rojo.
+function estaVencido(miembro: FilaMiembro): boolean {
+  return miembro.fechaVencimiento !== null && diasHastaVencimiento(miembro.fechaVencimiento) < 0;
 }
 
 function VistaCards({ miembros }: { miembros: FilaMiembro[] }) {
@@ -298,7 +298,7 @@ function VistaCards({ miembros }: { miembros: FilaMiembro[] }) {
       {miembros.map((miembro) => (
         <Link key={miembro.id} href={`/miembros/${miembro.id}`}>
           <Card
-            className={`${requiereAtencion(miembro) ? "tarjeta-luminosa-roja" : "tarjeta-luminosa"} flex h-full flex-col gap-3 transition-transform active:scale-[0.98]`}
+            className={`${estaVencido(miembro) ? "tarjeta-luminosa-roja" : "tarjeta-luminosa"} flex h-full flex-col gap-3 transition-transform active:scale-[0.98]`}
           >
             <div className="flex items-center gap-3">
               <Avatar fotoUrl={miembro.fotoUrl} nombre={miembro.nombre} tamano={40} />

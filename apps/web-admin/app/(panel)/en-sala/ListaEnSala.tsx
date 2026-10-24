@@ -64,7 +64,7 @@ export function ListaEnSala() {
         {personas?.map((persona) => (
           <Card
             key={persona.checkInId}
-            className={`${persona.requiereCobro || persona.porRegularizar ? "tarjeta-luminosa-roja" : "tarjeta-luminosa"} flex flex-wrap items-center gap-4`}
+            className={`${persona.requiereCobro ? "tarjeta-luminosa-roja" : "tarjeta-luminosa"} flex flex-wrap items-center gap-4`}
           >
             <Avatar fotoUrl={persona.fotoUrl} nombre={persona.nombre} tamano={56} />
             <div className="min-w-0 flex-1">

@@ -23,9 +23,7 @@ export function MasSheet({
   // que en el sidebar de escritorio.
   const enlaces = [
     { href: "/productos", label: "Productos" },
-    ...(puedeEditarKiosko(rol) ? [{ href: "/kiosko", label: "Kiosko" }] : []),
-    ...(puedeEditarKiosko(rol) ? [{ href: "/vitrina", label: "Vitrina" }] : []),
-    ...(rol === "SOCIO" ? [{ href: "/configuraciones", label: "Configuraciones" }] : []),
+    ...(puedeEditarKiosko(rol) ? [{ href: "/configuraciones", label: "Configuraciones" }] : []),
   ];
 
   return (
@@ -36,7 +34,7 @@ export function MasSheet({
             <Link
               href={enlace.href}
               onClick={onCerrar}
-              className="block min-h-11 content-center rounded-lg px-3 text-sm font-medium"
+              className="block min-h-11 content-center rounded-lg px-3 text-sm font-medium uppercase"
               style={{ color: "var(--gx-ink)" }}
             >
               {enlace.label}

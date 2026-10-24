@@ -32,13 +32,6 @@ export function NavegacionMobile({
   );
 
   const items: ItemTab[] = [
-    {
-      tipo: "link",
-      href: "/caja",
-      label: "Caja",
-      icon: <Wallet size={24} />,
-      iconActivo: <Wallet size={24} weight="fill" />,
-    },
     ...(puedeVerEnSala
       ? [
           {
@@ -56,6 +49,13 @@ export function NavegacionMobile({
       label: "Miembros",
       icon: <UsersThree size={24} />,
       iconActivo: <UsersThree size={24} weight="fill" />,
+    },
+    {
+      tipo: "link",
+      href: "/caja",
+      label: "Caja",
+      icon: <Wallet size={24} />,
+      iconActivo: <Wallet size={24} weight="fill" />,
     },
     {
       tipo: "accion",

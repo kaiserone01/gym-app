@@ -44,16 +44,14 @@ export default async function PanelLayout({ children }: { children: React.ReactN
           <Sidebar
             encabezado={<EncabezadoSidebar sucursalNombre={sucursalActiva?.nombre ?? "—"} />}
             items={[
-              { href: "/caja", label: "Caja" },
               ...(puedeVerEnSala ? [{ href: "/en-sala", label: "En sala", extra: <ContadorEnSala /> }] : []),
               { href: "/miembros", label: "Miembros" },
+              { href: "/caja", label: "Caja" },
               { href: "/productos", label: "Productos" },
-              ...(puedeEditarKiosko(usuario.rol) ? [{ href: "/kiosko", label: "Kiosko" }] : []),
-              ...(puedeEditarKiosko(usuario.rol) ? [{ href: "/vitrina", label: "Vitrina" }] : []),
               // Planes, Sucursales y Usuarios se administran desde las tabs
-              // de Configuraciones (ver diseño acordado) — solo SOCIO llega
+              // de Configuraciones (ver diseño acordado) — SOCIO y GERENTE llegan
               // a ellas desde ahí.
-              ...(usuario.rol === "SOCIO" ? [{ href: "/configuraciones", label: "Configuraciones" }] : []),
+              ...(puedeEditarKiosko(usuario.rol) ? [{ href: "/configuraciones", label: "Configuraciones" }] : []),
             ]}
             pie={<BarraUsuario nombre={usuario.nombre} email={usuario.email} fotoUrl={usuario.fotoUrl} />}
           />

@@ -14,6 +14,7 @@ export interface CheckInEnSala {
   id: string;
   miembroId: string;
   fechaHora: Date;
+  salidaAt: Date | null;
   miembro: {
     nombre: string;
     fotoUrl: string | null;

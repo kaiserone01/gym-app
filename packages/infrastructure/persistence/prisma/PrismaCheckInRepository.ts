@@ -40,9 +40,17 @@ export class PrismaCheckInRepository implements ICheckInRepository {
     return aEntidad(await this.prisma.checkIn.create({ data: datos }));
   }
 
-  async listarEnSala(sucursalId: string, desde: Date): Promise<CheckInEnSala[]> {
+  listarEnSala(sucursalId: string, desde: Date): Promise<CheckInEnSala[]> {
+    return this.listarConFiltro(sucursalId, desde, true);
+  }
+
+  listarDesde(sucursalId: string, desde: Date): Promise<CheckInEnSala[]> {
+    return this.listarConFiltro(sucursalId, desde, false);
+  }
+
+  private async listarConFiltro(sucursalId: string, desde: Date, soloAbiertos: boolean): Promise<CheckInEnSala[]> {
     const filas = await this.prisma.checkIn.findMany({
-      where: { sucursalId, fechaHora: { gte: desde }, salidaAt: null },
+      where: { sucursalId, fechaHora: { gte: desde }, ...(soloAbiertos ? { salidaAt: null } : {}) },
       orderBy: { fechaHora: "desc" },
       include: { miembro: { include: { plan: { select: { nombre: true } } } } },
     });
@@ -51,6 +59,7 @@ export class PrismaCheckInRepository implements ICheckInRepository {
       id: f.id,
       miembroId: f.miembroId,
       fechaHora: f.fechaHora,
+      salidaAt: f.salidaAt,
       miembro: {
         nombre: f.miembro.nombre,
         fotoUrl: f.miembro.fotoUrl,

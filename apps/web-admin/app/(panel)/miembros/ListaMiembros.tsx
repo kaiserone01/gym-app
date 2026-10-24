@@ -291,7 +291,7 @@ function VistaCards({ miembros }: { miembros: FilaMiembro[] }) {
     <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
       {miembros.map((miembro) => (
         <Link key={miembro.id} href={`/miembros/${miembro.id}`}>
-          <Card className="flex h-full flex-col gap-3 transition-transform active:scale-[0.98]">
+          <Card className="tarjeta-luminosa flex h-full flex-col gap-3 transition-transform active:scale-[0.98]">
             <div className="flex items-center gap-3">
               <Avatar fotoUrl={miembro.fotoUrl} nombre={miembro.nombre} tamano={40} />
               <div className="min-w-0 flex-1">

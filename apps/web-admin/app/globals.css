@@ -53,6 +53,13 @@ body {
   }
 }
 
+/* Tarjetas de Miembros y En sala: borde verde con halo para que resalten sobre el fondo negro.
+   !important porque Card fija su borderColor en línea. */
+.tarjeta-luminosa {
+  border-color: color-mix(in srgb, var(--gx-accent) 70%, transparent) !important;
+  box-shadow: 0 0 14px 1px color-mix(in srgb, var(--gx-accent) 35%, transparent);
+}
+
 @media print {
   body {
     background: #ffffff;

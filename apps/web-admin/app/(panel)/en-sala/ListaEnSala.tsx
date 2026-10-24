@@ -64,7 +64,7 @@ export function ListaEnSala() {
         {personas?.map((persona) => (
           <Card
             key={persona.checkInId}
-            className="flex flex-wrap items-center gap-4"
+            className="tarjeta-luminosa flex flex-wrap items-center gap-4"
           >
             <Avatar fotoUrl={persona.fotoUrl} nombre={persona.nombre} tamano={56} />
             <div className="min-w-0 flex-1">

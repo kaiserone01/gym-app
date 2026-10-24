@@ -277,9 +277,9 @@ function VistaImpresion({ miembros }: { miembros: FilaMiembro[] }) {
   );
 }
 
-// Vencido: la tarjeta se resalta en rojo.
+// Vencido: la tarjeta se resalta en rojo. Quien está por regularizar queda en verde: su fecha no es confiable.
 function estaVencido(miembro: FilaMiembro): boolean {
-  return miembro.fechaVencimiento !== null && diasHastaVencimiento(miembro.fechaVencimiento) < 0;
+  return !miembro.porRegularizar && miembro.fechaVencimiento !== null && diasHastaVencimiento(miembro.fechaVencimiento) < 0;
 }
 
 function VistaCards({ miembros }: { miembros: FilaMiembro[] }) {

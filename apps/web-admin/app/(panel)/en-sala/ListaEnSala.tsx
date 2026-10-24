@@ -64,7 +64,7 @@ export function ListaEnSala() {
         {personas?.map((persona) => (
           <Card
             key={persona.checkInId}
-            className={`${persona.requiereCobro ? "tarjeta-luminosa-roja" : "tarjeta-luminosa"} flex flex-wrap items-center gap-4`}
+            className={`${persona.requiereCobro && !persona.porRegularizar ? "tarjeta-luminosa-roja" : "tarjeta-luminosa"} flex flex-wrap items-center gap-4`}
           >
             <Avatar fotoUrl={persona.fotoUrl} nombre={persona.nombre} tamano={56} />
             <div className="min-w-0 flex-1">
@@ -75,7 +75,7 @@ export function ListaEnSala() {
                 Entró a las {hora(persona.fechaHora)}
                 {persona.planNombre ? ` · ${persona.planNombre}` : ""}
               </p>
-              {persona.requiereCobro ? (
+              {persona.requiereCobro && !persona.porRegularizar ? (
                 <p
                   className="mt-1 text-sm font-semibold"
                   style={{ color: persona.porRegularizar ? "var(--gx-warn)" : "var(--gx-bad)" }}

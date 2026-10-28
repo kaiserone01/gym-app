@@ -280,9 +280,9 @@ describe("registrarPago con fecha pasada (aviso 'Por regularizar')", () => {
     ).rejects.toBeInstanceOf(PagoRetroactivoIncompletoError);
   });
 
-  test("miembro sin el aviso: más de 15 días atrás → FechaPagoInvalidaError", async () => {
+  test("miembro sin el aviso: más de 90 días atrás → FechaPagoInvalidaError", async () => {
     const { deps, pagos } = crearDeps({ porRegularizar: false });
-    await expect(registrarPago(deps, input({ fechaPago: hace(20) }))).rejects.toBeInstanceOf(FechaPagoInvalidaError);
+    await expect(registrarPago(deps, input({ fechaPago: hace(100) }))).rejects.toBeInstanceOf(FechaPagoInvalidaError);
     expect(pagos).toEqual([]);
   });
 

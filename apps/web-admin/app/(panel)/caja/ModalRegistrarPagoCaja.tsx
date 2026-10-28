@@ -524,7 +524,7 @@ function ContenidoPaso3({
   tasaActual: number | null;
   // Productos fiados pendientes de este miembro en la sucursal (null = no debe nada).
   deudaMiembro: GrupoDeudasMiembro | null;
-  // Con el aviso "Por regularizar" el pago se puede fechar hasta 365 días atrás; el resto, hasta 15.
+  // Con el aviso "Por regularizar" el pago se puede fechar hasta 365 días atrás; el resto, hasta 90.
   porRegularizar: boolean;
   // Abono ya hecho en el ciclo abierto de este mismo plan (null = no hay): el monto a cobrar es su saldo.
   abonoPrevio: AbonoPendiente | null;
@@ -727,21 +727,24 @@ function ContenidoPaso3({
       />
 
       <div className="flex min-w-0 flex-col gap-4 lg:flex-1 lg:overflow-y-auto lg:pr-2">
-      <div className="flex flex-col gap-2 rounded-xl border p-4" style={{ borderColor: porRegularizar ? "var(--gx-warn)" : "var(--gx-edge)" }}>
+      <div
+        className="etiquetas-blancas flex max-w-md flex-col gap-2 rounded-xl border p-3"
+        style={{ borderColor: porRegularizar ? "var(--gx-warn)" : "var(--gx-accent)" }}
+      >
         <InputFecha
           label={porRegularizar ? 'Fecha del pago (aviso "Por regularizar")' : "Fecha del pago"}
           value={fechaPago}
           min={minFechaISO}
           max={hoyISO}
           onChange={setFechaPago}
-          className={porRegularizar ? "titilar-fecha" : undefined}
+          className={porRegularizar ? "titilar-fecha" : "tarjeta-luminosa"}
         />
-        <p className="text-xs" style={{ color: "var(--gx-muted)" }}>
+        <p className="text-xs" style={{ color: "#ffffff" }}>
           {esFechaPasada
             ? tasaDelDia !== null
               ? `El pago se registra el ${fechaPago.split("-").reverse().join("/")} con la tasa BCV de ese día (Bs. ${tasaDelDia}); no entra en ningún turno de caja y no admite abonos.`
               : "Buscando la tasa BCV de esa fecha…"
-            : `Déjala vacía para registrar el pago hoy. Si el cliente pagó antes (hasta ${maxDiasAtras} días atrás), elige ese día: se usa la tasa BCV de ese día.`}
+            : `Déjala vacía para registrar el pago de hoy. Solo elige una fecha si el cliente pagó antes y no se registró (hasta ${maxDiasAtras} días atrás), elige ese día: se usa la tasa BCV de ese día.`}
         </p>
       </div>
       {/* Abono: el método se elige ANTES que el monto (ver diseño acordado) — se le pasa el precio

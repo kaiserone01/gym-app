@@ -172,7 +172,7 @@ export interface DatosRegistrarPago {
   sucursalId: string;
   registradoPorId: string;
   rolUsuario: RolUsuario;
-  // Pago con fecha pasada: hasta 365 días con el aviso "Por regularizar" o con primerPagoDeInscripcion, hasta 15 para el
+  // Pago con fecha pasada: hasta 365 días con el aviso "Por regularizar" o con primerPagoDeInscripcion, hasta 90 para el
   // resto de los miembros. Si es de hoy, se ignora.
   fechaPago?: Date;
   // Primer pago de un miembro que se acaba de inscribir con fecha pasada: permite fechaPago sin el aviso "Por regularizar".

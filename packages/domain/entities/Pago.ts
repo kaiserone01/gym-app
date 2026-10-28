@@ -32,7 +32,7 @@ export interface Pago {
 // Máximo de días hacia atrás para fechar un pago retroactivo (ver RegistrarPago).
 export const MAX_DIAS_ATRAS_PAGO_RETROACTIVO = 365;
 // Máximo de días hacia atrás para fechar el pago de un miembro normal (sin regularización): cubre fines de semana y olvidos.
-export const MAX_DIAS_ATRAS_PAGO_FECHADO = 15;
+export const MAX_DIAS_ATRAS_PAGO_FECHADO = 90;
 
 // Meses que puede cubrir un solo pago adelantado (el precio y la duración del ciclo se multiplican).
 export const MAX_MESES_POR_PAGO = 6;

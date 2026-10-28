@@ -29,6 +29,9 @@ import { AuthorizationService } from "@gym-app/domain/services/AuthorizationServ
 import { storageR2 } from "@/lib/storageR2";
 import {
   registrarPago,
+  MesesInvalidosError,
+  MesesRequierenPagoCompletoError,
+  MesesNoDisponiblesError,
   MiembroNoEncontradoError as PagoMiembroNoEncontradoError,
   MiembroFueraDeSucursalError as PagoMiembroFueraDeSucursalError,
   PlanNoEncontradoError,
@@ -115,7 +118,9 @@ export async function crearMiembroAction(
   const precioPlan = Number(formData.get("precioPlan"));
   // Primer pago: por defecto el precio completo; menos que eso se registra como abono.
   const montoInicial = Number(formData.get("montoInicial"));
-  const montoPago = montoInicial > 0 ? montoInicial : precioPlan;
+  // Meses que cubre el primer pago (1 a 6); el dominio valida el rango.
+  const meses = Number(formData.get("meses")?.toString() || 1);
+  const montoPago = montoInicial > 0 ? montoInicial : precioPlan * meses;
   // Primer pago dividido en dos métodos: llega como JSON desde el formulario (null = un solo método, como siempre).
   const lineasDivididas = leerLineasDePago(formData.get("lineas"));
   const metodo = formData.get("metodo")?.toString();
@@ -201,6 +206,7 @@ export async function crearMiembroAction(
         // cuentan desde ese día (ver primerPagoDeInscripcion).
         fechaPago: miembro.fechaInscripcion ?? undefined,
         primerPagoDeInscripcion: true,
+        meses,
         // Si pagó de más: guardar el sobrante como saldo a favor (si no, es de otro cobro y solo queda registrado).
         excedenteASaldoAFavor: formData.get("excedente")?.toString() === "saldo",
         lineas: lineasDivididas ?? [
@@ -229,6 +235,9 @@ export async function crearMiembroAction(
       error instanceof AbonoMenorAlMinimoError ||
       error instanceof FechaPagoInvalidaError ||
       error instanceof PagoRetroactivoIncompletoError ||
+      error instanceof MesesInvalidosError ||
+      error instanceof MesesRequierenPagoCompletoError ||
+      error instanceof MesesNoDisponiblesError ||
       error instanceof SinTasaParaFechaError
     ) {
       return { error: `El miembro se creó, pero no se pudo registrar el pago inicial: ${error.message}` };

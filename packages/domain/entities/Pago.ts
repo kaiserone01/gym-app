@@ -34,6 +34,9 @@ export const MAX_DIAS_ATRAS_PAGO_RETROACTIVO = 365;
 // Máximo de días hacia atrás para fechar el pago de un miembro normal (sin regularización): cubre fines de semana y olvidos.
 export const MAX_DIAS_ATRAS_PAGO_FECHADO = 15;
 
+// Meses que puede cubrir un solo pago adelantado (el precio y la duración del ciclo se multiplican).
+export const MAX_MESES_POR_PAGO = 6;
+
 // Diferencia que se acepta sin tratar el pago como abono con plazo: faltantes o sobrantes por centavos o unos
 // bolívares (pago móvil o tarjeta rechazados por poco, efectivo redondeado). Hasta $1, sin pasar del 10% del precio
 // (en un plan de $3, $1 sería un tercio). El faltante queda como saldo pendiente, pero el acceso cubre el ciclo completo.

@@ -6,7 +6,7 @@ import { Button } from "@gym-app/ui/components/Button";
 import { Input } from "@gym-app/ui/components/Input";
 import { InputFecha } from "@gym-app/ui/components/InputFecha";
 import { CurrencyInput } from "@gym-app/ui/components/CurrencyInput";
-import { toleranciaDiferenciaPagoUSD } from "@gym-app/domain/entities/Pago";
+import { MAX_MESES_POR_PAGO, toleranciaDiferenciaPagoUSD } from "@gym-app/domain/entities/Pago";
 import { Card } from "@gym-app/ui/components/Card";
 import { Badge } from "@gym-app/ui/components/Badge";
 import { useFeedback } from "@gym-app/ui/components/FeedbackOverlay";
@@ -250,6 +250,9 @@ export function FormularioMiembro({
   // Primer pago de un miembro nuevo: vacío = el precio completo; menos que el precio queda como abono.
   // null = sin tocar (se ve el precio del plan); "" = el cajero borró el campo para escribir otro monto.
   const [montoHoy, setMontoHoy] = useState<string | null>(null);
+  // Meses que cubre el primer pago (1 a MAX_MESES_POR_PAGO): el total y la duración del ciclo se multiplican.
+  const [meses, setMeses] = useState(1);
+  const precioCiclo = precioActual * meses;
   const [errorMontoHoy, setErrorMontoHoy] = useState<string | null>(null);
   // Primer pago dividido en dos métodos (p. ej. dos pagos móviles): cada línea trae su método y su monto.
   const [dividirPago, setDividirPago] = useState(false);
@@ -259,11 +262,11 @@ export function FormularioMiembro({
   ]);
   const [siguienteIdLinea, setSiguienteIdLinea] = useState(3);
   const totalDividido = lineasDivididas.reduce((suma, { linea }) => suma + (linea?.monto ?? 0), 0);
-  const montoAPagar = dividirPago ? Math.round(totalDividido * 100) / 100 : montoHoy === null ? precioActual : Number(montoHoy) || 0;
-  const esAbonoInicial = montoAPagar > 0 && montoAPagar < precioActual;
+  const montoAPagar = dividirPago ? Math.round(totalDividido * 100) / 100 : montoHoy === null ? precioCiclo : Number(montoHoy) || 0;
+  const esAbonoInicial = montoAPagar > 0 && montoAPagar < precioCiclo;
   // Lo pagado supera el precio (wifi u otro cobro, o pagar de más): sin límite; se elige qué hacer con el sobrante.
-  const hayExcedente = precioActual > 0 && montoAPagar - precioActual > 0.005;
-  const excedenteUSD = Math.max(0, montoAPagar - precioActual);
+  const hayExcedente = precioActual > 0 && montoAPagar - precioCiclo > 0.005;
+  const excedenteUSD = Math.max(0, montoAPagar - precioCiclo);
   const [excedente, setExcedente] = useState<"otro" | "saldo">("otro");
   // En pantallas angostas el resumen y los avisos del pago quedan lejos del botón Guardar: se lleva la vista hasta ellos.
   const ticketRef = useRef<HTMLDivElement>(null);
@@ -371,6 +374,10 @@ export function FormularioMiembro({
       setErrorMontoHoy("El monto a pagar debe ser mayor a 0.");
       return;
     }
+    if (!esEdicion && meses > 1 && precioCiclo - montoAPagar > toleranciaDiferenciaPagoUSD(precioCiclo)) {
+      setErrorMontoHoy(`Para pagar ${meses} meses el monto debe cubrir el total ($${precioCiclo.toFixed(2)}).`);
+      return;
+    }
     setErrorMontoHoy(null);
     // Al editar se guarda directo (el aviso de "Cambios guardados" sale tras el redirect); el resumen es solo del alta.
     if (esEdicion) form.requestSubmit();
@@ -457,6 +464,7 @@ export function FormularioMiembro({
         {!esEdicion && (
           <>
             <input type="hidden" name="montoInicial" value={montoAPagar} />
+            {meses > 1 && <input type="hidden" name="meses" value={meses} />}
             <input type="hidden" name="excedente" value={hayExcedente ? excedente : ""} />
             {dividirPago && (
               <input
@@ -890,13 +898,42 @@ export function FormularioMiembro({
                 tener que entrar después a &quot;Registrar pago&quot;.
               </p>
 
-              {precioActual > 0 && planSeleccionado?.permitePagoParcial !== false && !dividirPago && (
+              {precioActual > 0 && (
+                <div className="mb-4">
+                  <p className="mb-2 text-sm font-semibold" style={{ color: "var(--gx-ink)" }}>
+                    Meses a pagar
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {Array.from({ length: MAX_MESES_POR_PAGO }, (_, i) => i + 1).map((n) => (
+                      <Button
+                        key={n}
+                        type="button"
+                        variant={meses === n ? "primario" : "secundario"}
+                        onClick={() => {
+                          setMeses(n);
+                          setMontoHoy(null);
+                          setErrorMontoHoy(null);
+                        }}
+                      >
+                        {n}
+                      </Button>
+                    ))}
+                  </div>
+                  {meses > 1 && (
+                    <p className="mt-2 text-sm font-bold" style={{ color: "var(--gx-ink)" }}>
+                      Total de {meses} meses: ${precioCiclo.toFixed(2)}. Se paga completo; puedes repartirlo en varios métodos.
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {precioActual > 0 && planSeleccionado?.permitePagoParcial !== false && !dividirPago && meses === 1 && (
                 <div className="mb-4">
                   <CurrencyInput
                     name="montoHoy"
                     label="Monto a pagar hoy"
                     moneda="USD"
-                    value={montoHoy ?? String(precioActual)}
+                    value={montoHoy ?? String(precioCiclo)}
                     onChange={(valor) => {
                       setMontoHoy(valor);
                       setErrorMontoHoy(null);
@@ -904,10 +941,10 @@ export function FormularioMiembro({
                   />
                   {esAbonoInicial && (
                     <p className="mt-2 text-sm font-bold" style={{ color: "var(--gx-ink)" }}>
-                      {precioActual - montoAPagar <= toleranciaDiferenciaPagoUSD(precioActual)
+                      {precioCiclo - montoAPagar <= toleranciaDiferenciaPagoUSD(precioCiclo)
                         ? "Diferencia aceptada: el acceso cubre el ciclo completo y quedan "
                         : "Queda como abono: el acceso se da en proporción a lo pagado y quedan "}
-                      ${(precioActual - montoAPagar).toFixed(2)} pendientes.
+                      ${(precioCiclo - montoAPagar).toFixed(2)} pendientes.
                     </p>
                   )}
                   {errorMontoHoy && (
@@ -952,12 +989,12 @@ export function FormularioMiembro({
                     Agregar otro método de pago
                   </Button>
                   <p className="mb-2 text-sm font-bold" style={{ color: "var(--gx-ink)" }}>
-                    Total de los pagos: <strong style={{ color: "var(--gx-ink)" }}>${montoAPagar.toFixed(2)}</strong> de ${precioActual.toFixed(2)}
+                    Total de los pagos: <strong style={{ color: "var(--gx-ink)" }}>${montoAPagar.toFixed(2)}</strong> de ${precioCiclo.toFixed(2)}
                     {esAbonoInicial && (
                       <>
                         {" "}
-                        — quedan ${(precioActual - montoAPagar).toFixed(2)} pendientes
-                        {precioActual - montoAPagar <= toleranciaDiferenciaPagoUSD(precioActual) ? " (diferencia aceptada)" : " (abono)"}.
+                        — quedan ${(precioCiclo - montoAPagar).toFixed(2)} pendientes
+                        {precioCiclo - montoAPagar <= toleranciaDiferenciaPagoUSD(precioCiclo) ? " (diferencia aceptada)" : " (abono)"}.
                       </>
                     )}
                   </p>
@@ -987,7 +1024,7 @@ export function FormularioMiembro({
                   <legend className="px-1 font-bold" style={{ color: "var(--gx-ink)" }}>
                     Sobran ${excedenteUSD.toFixed(2)}. ¿Qué hacemos con ese dinero?
                   </legend>
-                  {excedenteUSD > precioActual && (
+                  {excedenteUSD > precioCiclo && (
                     <p className="text-sm" style={{ color: "var(--gx-bad)" }}>
                       Sobra más que el precio del plan: revisa que no hayas escrito bolívares en un campo de dólares.
                     </p>
@@ -1070,7 +1107,7 @@ export function FormularioMiembro({
                 label="Sede"
                 valor={sucursalId === ID_AMBAS_SEDES ? "Ambas" : sucursalActivaNombre}
               />
-              <Fila label="Plan" valor={nombrePlanActual} />
+              <Fila label="Plan" valor={meses > 1 ? `${nombrePlanActual} · ${meses} meses` : nombrePlanActual} />
               <Fila label="Entrenador" valor={requiereEntrenador ? (nombreEntrenadorActual ?? "Sin asignar") : "No aplica"} />
               <Fila label="Método de pago" valor={nombreMetodoPagoActual ?? "—"} />
             </dl>
@@ -1087,7 +1124,7 @@ export function FormularioMiembro({
             </div>
             {esAbonoInicial && (
               <p className="text-right text-sm" style={{ color: "var(--gx-muted)" }}>
-                Pendiente ${(precioActual - montoAPagar).toFixed(2)} de ${precioActual.toFixed(2)}
+                Pendiente ${(precioCiclo - montoAPagar).toFixed(2)} de ${precioCiclo.toFixed(2)}
               </p>
             )}
             {hayExcedente && (

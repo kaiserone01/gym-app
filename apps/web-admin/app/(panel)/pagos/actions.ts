@@ -32,6 +32,9 @@ import {
   AbonoMenorAlMinimoError,
   FechaPagoInvalidaError,
   PagoRetroactivoIncompletoError,
+  MesesInvalidosError,
+  MesesRequierenPagoCompletoError,
+  MesesNoDisponiblesError,
   SinTasaParaFechaError,
 } from "@gym-app/domain/use-cases/RegistrarPago";
 import { registrarPagoConDeudas, MontoNoCubreDeudaError } from "@gym-app/domain/use-cases/RegistrarPagoConDeudas";
@@ -194,6 +197,8 @@ export async function registrarPagoAction(
       ...(fechaPagoTexto ? { fechaPago: new Date(`${fechaPagoTexto}T12:00:00`) } : {}),
       // Si pagó de más: guardar el sobrante como saldo a favor (si no, es de otro cobro y solo queda registrado).
       excedenteASaldoAFavor: formData.get("excedenteSaldo")?.toString() === "1",
+      // Meses que cubre el pago (1 a 6); el dominio valida el rango.
+      meses: Number(formData.get("meses")?.toString() || 1),
     };
 
     // Con productos pendientes incluidos, cobrar las deudas y registrar la
@@ -216,6 +221,9 @@ export async function registrarPagoAction(
       error instanceof AbonoMenorAlMinimoError ||
       error instanceof FechaPagoInvalidaError ||
       error instanceof PagoRetroactivoIncompletoError ||
+      error instanceof MesesInvalidosError ||
+      error instanceof MesesRequierenPagoCompletoError ||
+      error instanceof MesesNoDisponiblesError ||
       error instanceof SinTasaParaFechaError ||
       error instanceof MontoNoCubreDeudaError ||
       error instanceof DeudasYaCobradasError ||

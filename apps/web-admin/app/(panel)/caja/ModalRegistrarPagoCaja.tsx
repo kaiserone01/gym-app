@@ -7,6 +7,7 @@ import type { FrecuenciaPago } from "@gym-app/domain/entities/Plan";
 import {
   MAX_DIAS_ATRAS_PAGO_RETROACTIVO,
   MAX_DIAS_ATRAS_PAGO_FECHADO,
+  MAX_MESES_POR_PAGO,
   toleranciaDiferenciaPagoUSD,
 } from "@gym-app/domain/entities/Pago";
 import { Button } from "@gym-app/ui/components/Button";
@@ -165,6 +166,8 @@ function ContenidoPaso2({
   tasaActual,
   modalidadElegida,
   onCambiarModalidad,
+  meses,
+  onCambiarMeses,
   entrenadores,
   metodosPago,
   accionCambiarPlan,
@@ -180,6 +183,9 @@ function ContenidoPaso2({
   tasaActual: number | null;
   modalidadElegida: Modalidad;
   onCambiarModalidad: (modalidad: Modalidad) => void;
+  // Meses que cubre el pago (1 a MAX_MESES_POR_PAGO): multiplica el precio y la duración del ciclo.
+  meses: number;
+  onCambiarMeses: (meses: number) => void;
   entrenadores: EntrenadorParaCambio[];
   metodosPago: MetodoPago[];
   accionCambiarPlan: (estado: EstadoCambioPlan, formData: FormData) => Promise<EstadoCambioPlan>;
@@ -211,7 +217,7 @@ function ContenidoPaso2({
   // vigente (sin prorrateo, correcto acá — no hay cambio de plan de por
   // medio) usa calcularProyeccionRenovacion como siempre.
   const proyeccionRenovacionNormal =
-    !cambiandoPlan && planEfectivo ? calcularProyeccionRenovacion(miembro.fechaVencimiento, planEfectivo.diasCiclo) : null;
+    !cambiandoPlan && planEfectivo ? calcularProyeccionRenovacion(miembro.fechaVencimiento, planEfectivo.diasCiclo * meses) : null;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4 text-base lg:flex-row lg:gap-6">
@@ -271,8 +277,8 @@ function ContenidoPaso2({
         <div className="grid gap-4 rounded-xl border p-5 sm:grid-cols-3" style={{ borderColor: "var(--gx-edge)", background: "var(--gx-surface-2)" }}>
           {[
             ["Plan", planEfectivo.nombre],
-            ["Precio", `$${planEfectivo.precioUSD.toFixed(2)}/${ETIQUETA_FRECUENCIA[planEfectivo.frecuencia]}`],
-            ...(tasaActual !== null ? [["Equivale a", `Bs. ${formatearBs(planEfectivo.precioUSD * tasaActual)}`]] : []),
+            [meses > 1 ? `Total (${meses} meses)` : "Precio", meses > 1 ? `${(planEfectivo.precioUSD * meses).toFixed(2)}` : `${planEfectivo.precioUSD.toFixed(2)}/${ETIQUETA_FRECUENCIA[planEfectivo.frecuencia]}`],
+            ...(tasaActual !== null ? [["Equivale a", `Bs. ${formatearBs(planEfectivo.precioUSD * meses * tasaActual)}`]] : []),
           ].map(([etiqueta, valor]) => (
             <div key={etiqueta} className="flex flex-col gap-1">
               <span className="text-xs uppercase tracking-wide" style={{ color: "var(--gx-muted)" }}>
@@ -316,6 +322,26 @@ function ContenidoPaso2({
         </label>
       )}
 
+      {planEfectivo && planEfectivo.precioUSD > 0 && !cambiandoPlan && !abonoPrevio && (
+        <div className="flex flex-col gap-3">
+          <p className="text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--gx-muted)" }}>
+            Meses a pagar
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {Array.from({ length: MAX_MESES_POR_PAGO }, (_, i) => i + 1).map((n) => (
+              <Button key={n} type="button" variant={meses === n ? "primario" : "secundario"} onClick={() => onCambiarMeses(n)}>
+                {n}
+              </Button>
+            ))}
+          </div>
+          {meses > 1 && (
+            <p className="text-sm" style={{ color: "var(--gx-muted)" }}>
+              Se cobra el total de {meses} meses completo: puedes repartirlo en varios métodos de pago, sin abonos.
+            </p>
+          )}
+        </div>
+      )}
+
       {planEfectivo && planEfectivo.precioUSD > 0 && (
         <div className="flex flex-col gap-3">
           <p className="text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--gx-muted)" }}>
@@ -328,7 +354,7 @@ function ContenidoPaso2({
                 titulo={opcion.titulo}
                 descripcion={opcion.descripcion}
                 elegida={modalidadElegida === opcion.valor}
-                deshabilitada={opcion.valor === "abono" && !planEfectivo.permitePagoParcial}
+                deshabilitada={opcion.valor === "abono" && (!planEfectivo.permitePagoParcial || meses > 1)}
                 onClick={() => onCambiarModalidad(opcion.valor)}
               />
             ))}
@@ -357,7 +383,7 @@ function ContenidoPaso2({
           Saldo a favor: ${miembro.saldoAFavorUSD.toFixed(2)} — se descuenta automáticamente del pago
           {planEfectivo && planEfectivo.precioUSD > 0 && (
             <>
-              : se cobrarán ${Math.max(0, (abonoPrevio?.saldoUSD ?? planEfectivo.precioUSD) - miembro.saldoAFavorUSD).toFixed(2)}
+              : se cobrarán ${Math.max(0, (abonoPrevio?.saldoUSD ?? planEfectivo.precioUSD * meses) - miembro.saldoAFavorUSD).toFixed(2)}
             </>
           )}
           .
@@ -447,6 +473,7 @@ function nuevaLineaVacia(): LineaFormulario {
 function ContenidoPaso3({
   miembroId,
   planId,
+  meses,
   monto: precioPlan,
   saldoAFavor,
   frecuenciaDelPlan,
@@ -467,6 +494,8 @@ function ContenidoPaso3({
 }: {
   miembroId: string;
   planId: string;
+  // Meses que cubre el pago; `monto` y `diasCiclo` ya vienen multiplicados por esto.
+  meses: number;
   // Precio de lista del plan — punto de partida del monto objetivo, que
   // queda editable para poder registrar un abono parcial (pagos
   // fraccionados/mixtos, ver diseño acordado). Acá no se conoce el saldo
@@ -683,6 +712,7 @@ function ContenidoPaso3({
       <input type="hidden" name="miembroId" value={miembroId} />
       <input type="hidden" name="planId" value={planId} />
       <input type="hidden" name="origen" value="caja" />
+      {meses > 1 && <input type="hidden" name="meses" value={meses} />}
       {esFechaPasada && <input type="hidden" name="fechaPago" value={fechaPago} />}
       {deudaAPagar > 0 && <input type="hidden" name="incluirDeudas" value="1" />}
       {hayExcedenteCaja && excedenteElegido === "saldo" && <input type="hidden" name="excedenteSaldo" value="1" />}
@@ -1198,6 +1228,7 @@ export function ModalRegistrarPagoCaja({
   const [miembroElegido, setMiembroElegido] = useState<MiembroConPlan | null>(miembroInicial);
   const [planElegidoId, setPlanElegidoId] = useState<string | null>(null);
   const [modalidadElegida, setModalidadElegida] = useState<Modalidad>("total");
+  const [meses, setMeses] = useState(1);
   const [confirmandoCierre, setConfirmandoCierre] = useState(false);
   const [fechaFinCicloFinal, setFechaFinCicloFinal] = useState<Date | null>(null);
   // El abono previo solo cuenta si se paga el mismo plan que el miembro tiene: otro plan abre un ciclo distinto.
@@ -1280,6 +1311,7 @@ export function ModalRegistrarPagoCaja({
             onSeleccionar={(m) => {
               setMiembroElegido(m);
               setPlanElegidoId(null);
+              setMeses(1);
               setPaso(2);
             }}
           />
@@ -1294,6 +1326,11 @@ export function ModalRegistrarPagoCaja({
             tasaActual={tasaActual}
             modalidadElegida={modalidadElegida}
             onCambiarModalidad={setModalidadElegida}
+            meses={meses}
+            onCambiarMeses={(n) => {
+              setMeses(n);
+              if (n > 1 && modalidadElegida === "abono") setModalidadElegida("total");
+            }}
             entrenadores={entrenadores}
             metodosPago={metodosPago}
             accionCambiarPlan={accionCambiarPlan}
@@ -1311,13 +1348,14 @@ export function ModalRegistrarPagoCaja({
           <ContenidoPaso3
             miembroId={miembroElegido.id}
             planId={planElegidoId}
-            monto={(planes.find((p) => p.id === planElegidoId) ?? miembroElegido.plan)?.precioUSD ?? 0}
+            meses={meses}
+            monto={((planes.find((p) => p.id === planElegidoId) ?? miembroElegido.plan)?.precioUSD ?? 0) * meses}
             saldoAFavor={miembroElegido.saldoAFavorUSD}
             frecuenciaDelPlan={
               (planes.find((p) => p.id === planElegidoId) ?? miembroElegido.plan)?.frecuencia ?? "MENSUAL"
             }
             diasCiclo={
-              (planes.find((p) => p.id === planElegidoId) ?? miembroElegido.plan)?.diasCiclo ?? 30
+              ((planes.find((p) => p.id === planElegidoId) ?? miembroElegido.plan)?.diasCiclo ?? 30) * meses
             }
             permitePagoParcial={
               (planes.find((p) => p.id === planElegidoId) ?? miembroElegido.plan)?.permitePagoParcial ?? true

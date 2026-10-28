@@ -15,6 +15,7 @@ import {
   LineasDePagoInvalidasError,
   MAX_DIAS_ATRAS_PAGO_RETROACTIVO,
   MAX_DIAS_ATRAS_PAGO_FECHADO,
+  MAX_MESES_POR_PAGO,
   toleranciaDiferenciaPagoUSD,
 } from "../entities/Pago";
 import { RolUsuario } from "../entities/UsuarioAdmin";
@@ -76,6 +77,26 @@ export class AbonoNoPermitidoError extends Error {
 export class AbonoMenorAlMinimoError extends Error {
   constructor(minimoUSD: number) {
     super(`El abono mínimo para este plan es $${minimoUSD.toFixed(2)}.`);
+  }
+}
+
+export class MesesInvalidosError extends Error {
+  constructor() {
+    super(`Los meses a pagar deben ser un número entero entre 1 y ${MAX_MESES_POR_PAGO}.`);
+  }
+}
+
+// Con más de un mes el pago debe cubrir el total (varios métodos sí, abonos por cuotas no).
+export class MesesRequierenPagoCompletoError extends Error {
+  constructor() {
+    super("Para pagar más de un mes el monto debe cubrir el total de los meses (puedes repartirlo en varios métodos).");
+  }
+}
+
+// Más de un mes solo si el ciclo vigente no tiene un abono pendiente.
+export class MesesNoDisponiblesError extends Error {
+  constructor() {
+    super("No se pueden sumar meses mientras haya un abono pendiente en el ciclo vigente: cobra primero ese saldo.");
   }
 }
 
@@ -159,6 +180,9 @@ export interface DatosRegistrarPago {
   // Si lo pagado supera el precio del ciclo, el sobrante se guarda como saldo a favor del miembro (el próximo pago lo
   // descuenta). Sin esto, el sobrante es de otro cobro (wifi, etc.) y solo queda registrado en el pago.
   excedenteASaldoAFavor?: boolean;
+  // Meses que cubre este pago (1 a 6, por defecto 1): el precio y la duración del ciclo se multiplican. Con más de un
+  // mes el pago debe ser completo (sin abonos), pero puede repartirse en varios métodos.
+  meses?: number;
 }
 
 // Valida un abono parcial (el plan debe admitirlo y el monto acumulado cubrir el mínimo de la regla) y devuelve hasta
@@ -197,6 +221,9 @@ export async function registrarPago(deps: RegistrarPagoDeps, input: DatosRegistr
 
   validarLineasDePago(input.lineas, "conAbono");
 
+  const meses = input.meses ?? 1;
+  if (!Number.isInteger(meses) || meses < 1 || meses > MAX_MESES_POR_PAGO) throw new MesesInvalidosError();
+
   const miembro = await deps.miembros.buscarPorId(input.organizacionId, input.miembroId);
   if (!miembro) {
     throw new MiembroNoEncontradoError();
@@ -225,7 +252,8 @@ export async function registrarPago(deps: RegistrarPagoDeps, input: DatosRegistr
   // reportado: un abono menor al precio nuevo, pero mayor al precio viejo,
   // se aceptaba como pago total).
   const huboCambioDePlan = miembro.planId !== input.planId;
-  const precioObjetivo = huboCambioDePlan ? plan.precioUSD : miembro.precioPlan;
+  const precioMes = huboCambioDePlan ? plan.precioUSD : miembro.precioPlan;
+  const precioObjetivo = precioMes * meses;
 
   const montoTotal = input.lineas.reduce((suma, linea) => suma + linea.monto, 0);
 
@@ -248,6 +276,7 @@ export async function registrarPago(deps: RegistrarPagoDeps, input: DatosRegistr
       plan,
       huboCambioDePlan,
       precioObjetivo,
+      meses,
       montoTotal,
       saldoAConsumir,
       saldoDisponible,
@@ -273,7 +302,8 @@ export async function registrarPago(deps: RegistrarPagoDeps, input: DatosRegistr
     pagosDelCicloAbierto = pagosVigentesDelCiclo(pagosDelMiembro, activa.fin);
   }
   const esAbonoDeCicloAbierto =
-    pagosDelCicloAbierto.length > 0 && totalPagado(pagosDelCicloAbierto) < precioObjetivo;
+    pagosDelCicloAbierto.length > 0 && totalPagado(pagosDelCicloAbierto) < precioMes;
+  if (meses > 1 && esAbonoDeCicloAbierto) throw new MesesNoDisponiblesError();
   const pagadoPrevio = esAbonoDeCicloAbierto ? totalPagado(pagosDelCicloAbierto) : 0;
   const saldoAConsumir = saldoNecesario(saldoDisponible, precioObjetivo - pagadoPrevio, montoTotal);
   if (precioObjetivo > 0 && montoTotal <= 0 && pagadoPrevio + saldoAConsumir < precioObjetivo) {
@@ -289,7 +319,7 @@ export async function registrarPago(deps: RegistrarPagoDeps, input: DatosRegistr
   } else {
     base = activa && activa.fin > ahora ? activa.fin : ahora;
     fin = new Date(base);
-    fin.setDate(fin.getDate() + plan.diasCiclo);
+    fin.setDate(fin.getDate() + plan.diasCiclo * meses);
   }
 
   // Motor de reglas de abono: solo aplica cuando el pago resultante deja
@@ -297,6 +327,9 @@ export async function registrarPago(deps: RegistrarPagoDeps, input: DatosRegistr
   // montoTotal ya viene calculado más arriba como suma de input.lineas.
   const montoAcumuladoDelCiclo = pagadoPrevio + montoTotal + saldoAConsumir;
   const esAbonoParcial = montoAcumuladoDelCiclo < precioObjetivo;
+  if (meses > 1 && precioObjetivo - montoAcumuladoDelCiclo > toleranciaDiferenciaPagoUSD(precioObjetivo)) {
+    throw new MesesRequierenPagoCompletoError();
+  }
 
   const fechaLimiteAbonoCalculada = esAbonoParcial
     ? await evaluarAbonoParcial(deps, input.organizacionId, plan, precioObjetivo, montoAcumuladoDelCiclo, base)
@@ -380,6 +413,7 @@ async function registrarPagoRetroactivo(
     plan: Plan;
     huboCambioDePlan: boolean;
     precioObjetivo: number;
+    meses: number;
     montoTotal: number;
     saldoAConsumir: number;
     saldoDisponible: number;
@@ -400,6 +434,7 @@ async function registrarPagoRetroactivo(
   const montoAcumulado = ctx.montoTotal + ctx.saldoAConsumir;
   const esAbonoParcial = montoAcumulado < ctx.precioObjetivo;
   const faltaMasQueLaTolerancia = ctx.precioObjetivo - montoAcumulado > toleranciaDiferenciaPagoUSD(ctx.precioObjetivo);
+  if (faltaMasQueLaTolerancia && ctx.meses > 1) throw new MesesRequierenPagoCompletoError();
   if (faltaMasQueLaTolerancia && !input.primerPagoDeInscripcion) throw new PagoRetroactivoIncompletoError();
   const fechaLimiteAbono = esAbonoParcial
     ? await evaluarAbonoParcial(deps, input.organizacionId, ctx.plan, ctx.precioObjetivo, montoAcumulado, ctx.fechaPago)
@@ -418,7 +453,7 @@ async function registrarPagoRetroactivo(
   let fin: Date;
   if (regulariza) {
     fin = new Date(ctx.fechaPago);
-    fin.setDate(fin.getDate() + ctx.plan.diasCiclo);
+    fin.setDate(fin.getDate() + ctx.plan.diasCiclo * ctx.meses);
     const ajustada = await deps.suscripciones.ajustarCicloMasReciente(input.miembroId, ctx.fechaPago, fin, planId);
     if (!ajustada) {
       await deps.suscripciones.crear({ miembroId: input.miembroId, planId, inicio: ctx.fechaPago, fin, fechaLimiteAbono });
@@ -427,7 +462,7 @@ async function registrarPagoRetroactivo(
     const activa = await deps.suscripciones.buscarActivaVigentePorMiembroYPlan(input.miembroId, planId, ctx.fechaPago);
     if (activa) inicioCiclo = activa.fin;
     fin = new Date(inicioCiclo);
-    fin.setDate(fin.getDate() + ctx.plan.diasCiclo);
+    fin.setDate(fin.getDate() + ctx.plan.diasCiclo * ctx.meses);
     if (activa) {
       await deps.suscripciones.extenderFin(activa.id, fin);
       await deps.suscripciones.actualizarFechaLimiteAbono(activa.id, null);

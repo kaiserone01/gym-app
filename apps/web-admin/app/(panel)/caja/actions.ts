@@ -27,7 +27,8 @@ import { PrismaPlanRepository } from "@gym-app/infrastructure/persistence/prisma
 import { PrismaReglaAbonoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaReglaAbonoRepository";
 import { PrismaSuscripcionRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaSuscripcionRepository";
 import { cobrarAbonoPendiente, SinAbonoPendienteError, MontoNoCoincideConLoPendienteError } from "@gym-app/domain/use-cases/CobrarAbonoPendiente";
-import { AbonoMenorAlMinimoError } from "@gym-app/domain/use-cases/RegistrarPago";
+import { AbonoMenorAlMinimoError, FechaPagoInvalidaError, SinTasaParaFechaError } from "@gym-app/domain/use-cases/RegistrarPago";
+import { PrismaTasaCambioRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaTasaCambioRepository";
 import { PrismaMemberRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaMemberRepository";
 import { PrismaDeudaProductoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaDeudaProductoRepository";
 import {
@@ -366,8 +367,16 @@ export async function venderProductoAction(
 
   // Cada línea en Bs se revalida contra la tasa vigente del servidor (igual
   // que registrarPagoAction) — nunca se confía en la tasa del formulario.
+  // Venta de un día pasado (yyyy-mm-dd): el dominio pone la tasa BCV de ese día, así que no se revalida contra la de hoy.
+  const fechaVentaTexto = formData.get("fechaVenta")?.toString();
+  const fechaVenta = fechaVentaTexto ? new Date(`${fechaVentaTexto}T12:00:00`) : undefined;
+  const esVentaPasada = !!fechaVenta && fechaVenta < new Date(new Date().setHours(0, 0, 0, 0));
   const lineasValidadas: typeof lineas = [];
   for (const linea of lineas) {
+    if (esVentaPasada) {
+      lineasValidadas.push(linea);
+      continue;
+    }
     const validacionTasa = await validarTasaSiEsEnBs(linea.tasaCambio !== null ? String(linea.tasaCambio) : undefined);
     if (!validacionTasa.ok) return validacionTasa.estado;
     lineasValidadas.push({ ...linea, tasaCambio: validacionTasa.tasaCambio });
@@ -380,6 +389,7 @@ export async function venderProductoAction(
         productos: new PrismaProductoRepository(prisma),
         turnos: new PrismaTurnoRepository(prisma),
         autorizacion: new AuthorizationService(new PrismaPermisoRepository(prisma)),
+        tasas: new PrismaTasaCambioRepository(prisma),
       },
       {
         organizacionId: usuario.organizacionId,
@@ -387,6 +397,7 @@ export async function venderProductoAction(
         lineas: lineasValidadas,
         sucursalId: sucursalActivaId,
         registradoPorId: usuario.id,
+        fechaVenta,
       }
     );
   } catch (error) {
@@ -398,7 +409,9 @@ export async function venderProductoAction(
       error instanceof SinProductosError ||
       error instanceof SinTurnoAbiertoError ||
       error instanceof LineasDePagoInvalidasError ||
-      error instanceof MontoLineasNoCubreObjetivoError
+      error instanceof MontoLineasNoCubreObjetivoError ||
+      error instanceof FechaPagoInvalidaError ||
+      error instanceof SinTasaParaFechaError
     ) {
       return { error: error.message };
     }

@@ -729,7 +729,7 @@ function ContenidoPaso3({
 
       <div className="flex min-w-0 flex-col gap-4 lg:flex-1 lg:overflow-y-auto lg:pr-2">
       <div
-        className="etiquetas-blancas flex w-full max-w-xs flex-col gap-2 rounded-xl border p-3"
+        className="etiquetas-blancas mx-auto flex w-full max-w-xs flex-col gap-2 rounded-xl border p-3"
         style={{ borderColor: porRegularizar ? "var(--gx-warn)" : "var(--gx-accent)" }}
       >
         <InputFecha

@@ -728,7 +728,7 @@ function ContenidoPaso3({
 
       <div className="flex min-w-0 flex-col gap-4 lg:flex-1 lg:overflow-y-auto lg:pr-2">
       <div
-        className="etiquetas-blancas flex max-w-md flex-col gap-2 rounded-xl border p-3"
+        className="etiquetas-blancas flex w-full max-w-xs flex-col gap-2 rounded-xl border p-3"
         style={{ borderColor: porRegularizar ? "var(--gx-warn)" : "var(--gx-accent)" }}
       >
         <InputFecha
@@ -739,12 +739,12 @@ function ContenidoPaso3({
           onChange={setFechaPago}
           className={porRegularizar ? "titilar-fecha" : "tarjeta-luminosa"}
         />
-        <p className="text-xs" style={{ color: "#ffffff" }}>
+        <p className="text-sm font-medium" style={{ color: "#ffffff" }}>
           {esFechaPasada
             ? tasaDelDia !== null
               ? `El pago se registra el ${fechaPago.split("-").reverse().join("/")} con la tasa BCV de ese día (Bs. ${tasaDelDia}); no entra en ningún turno de caja y no admite abonos.`
               : "Buscando la tasa BCV de esa fecha…"
-            : `Déjala vacía para registrar el pago de hoy. Solo elige una fecha si el cliente pagó antes y no se registró (hasta ${maxDiasAtras} días atrás), elige ese día: se usa la tasa BCV de ese día.`}
+            : `Vacía = pago de hoy. Elige fecha solo si pagó antes (máx. ${maxDiasAtras} días).`}
         </p>
       </div>
       {/* Abono: el método se elige ANTES que el monto (ver diseño acordado) — se le pasa el precio

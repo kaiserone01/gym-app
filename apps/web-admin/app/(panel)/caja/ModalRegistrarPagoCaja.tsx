@@ -534,8 +534,9 @@ function ContenidoPaso3({
   onPagoRegistrado: (fechaFinCicloISO: string | undefined) => void;
 }) {
   const [estado, enviar, enviando] = useActionState(registrarPagoAction, {});
-  // Fecha del pago (yyyy-mm-dd, "" = hoy). Con una fecha pasada, todo el cálculo en Bs usa la tasa BCV de ese día.
-  const [fechaPago, setFechaPago] = useState("");
+  // Fecha del pago (yyyy-mm-dd; arranca en hoy, "" también cuenta como hoy). Con una fecha pasada, todo el cálculo en Bs
+  // usa la tasa BCV de ese día.
+  const [fechaPago, setFechaPago] = useState(() => fechaALocalISO(new Date()));
   const hoyISO = fechaALocalISO(new Date());
   const maxDiasAtras = porRegularizar ? MAX_DIAS_ATRAS_PAGO_RETROACTIVO : MAX_DIAS_ATRAS_PAGO_FECHADO;
   // eslint-disable-next-line react-hooks/purity -- el limite minimo debe calcularse con la hora actual en cada render; congelarlo cambiaria el comportamiento
@@ -744,7 +745,7 @@ function ContenidoPaso3({
             ? tasaDelDia !== null
               ? `El pago se registra el ${fechaPago.split("-").reverse().join("/")} con la tasa BCV de ese día (Bs. ${tasaDelDia}); no entra en ningún turno de caja y no admite abonos.`
               : "Buscando la tasa BCV de esa fecha…"
-            : `Vacía = pago de hoy. Elige fecha solo si pagó antes (máx. ${maxDiasAtras} días).`}
+            : `Cámbiala solo si pagó antes (máx. ${maxDiasAtras} días).`}
         </p>
       </div>
       {/* Abono: el método se elige ANTES que el monto (ver diseño acordado) — se le pasa el precio

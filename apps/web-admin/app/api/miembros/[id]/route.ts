@@ -7,6 +7,7 @@ import { obtenerUsuarioDeSesion } from "@/lib/sesion";
 import { PrismaMemberRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaMemberRepository";
 import { PrismaPlanRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaPlanRepository";
 import { PrismaSuscripcionRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaSuscripcionRepository";
+import { PrismaPagoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaPagoRepository";
 import { PrismaSucursalRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaSucursalRepository";
 import {
   obtenerMiembro,
@@ -86,6 +87,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         planes: new PrismaPlanRepository(prisma),
         suscripciones: new PrismaSuscripcionRepository(prisma),
         sucursales: new PrismaSucursalRepository(prisma),
+        pagos: new PrismaPagoRepository(prisma),
       },
       { organizacionId: usuario.organizacionId, id, sucursalActivaId, cambios }
     );

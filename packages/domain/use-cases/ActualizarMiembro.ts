@@ -1,6 +1,7 @@
 import { IMemberRepository } from "../ports/IMemberRepository";
 import { IPlanRepository } from "../ports/IPlanRepository";
 import { ISuscripcionRepository } from "../ports/ISuscripcionRepository";
+import { IPagoRepository } from "../ports/IPagoRepository";
 import { ISucursalRepository } from "../ports/ISucursalRepository";
 import { Miembro, CambiosMiembro } from "../entities/Miembro";
 import { prorratearVencimiento } from "./CalcularVencimientoPlan";
@@ -21,12 +22,6 @@ export class PlanNoEncontradoError extends Error {
   }
 }
 
-export class AjusteFechaNoDisponibleError extends Error {
-  constructor() {
-    super("Solo se pueden ajustar las fechas de pago y vencimiento de un miembro que viene del Excel o con el aviso \"Por regularizar\".");
-  }
-}
-
 export class FechasIncoherentesError extends Error {
   constructor() {
     super("La fecha de pago no puede ser posterior a la de vencimiento.");
@@ -39,6 +34,7 @@ export async function actualizarMiembro(
     planes: IPlanRepository;
     suscripciones: ISuscripcionRepository;
     sucursales: ISucursalRepository;
+    pagos: IPagoRepository;
   },
   input: { organizacionId: string; id: string; sucursalActivaId: string; cambios: CambiosMiembro }
 ): Promise<Miembro> {
@@ -63,15 +59,12 @@ export async function actualizarMiembro(
   const cambiaDePlan =
     input.cambios.planId !== undefined && input.cambios.planId !== null && input.cambios.planId !== antes.planId;
 
-  // Ajuste manual de las fechas de pago y vencimiento (solo si viene del Excel o tiene el aviso "Por
-  // regularizar"): se mantiene en sync con la Suscripcion (nunca por separado) y apaga el aviso.
+  // Ajuste manual de las fechas de pago y vencimiento (cualquier miembro, p. ej. para corregir un error): se mantiene en
+  // sync con la Suscripcion y con el fin del ciclo de sus pagos (nunca por separado) y apaga el aviso "Por regularizar".
   // fechaUltimoPago null = vaciarla; fechaVencimiento ausente/null = sin cambio (un vencimiento no se vacía).
   const nuevoPago = input.cambios.fechaUltimoPago;
   const nuevoVencimiento = input.cambios.fechaVencimiento ?? null;
   const cambiaFechas = nuevoPago !== undefined || nuevoVencimiento !== null;
-  if (cambiaFechas && !(antes.vieneDelExcel || antes.porRegularizar)) {
-    throw new AjusteFechaNoDisponibleError();
-  }
   const pagoFinal = nuevoPago !== undefined ? nuevoPago : antes.fechaUltimoPago;
   const vencimientoFinal = nuevoVencimiento ?? antes.fechaVencimiento;
   if (cambiaFechas && pagoFinal && vencimientoFinal && pagoFinal.getTime() > vencimientoFinal.getTime()) {
@@ -95,6 +88,11 @@ export async function actualizarMiembro(
       inicio.setDate(inicio.getDate() - (plan?.diasCiclo ?? 30));
     }
     const planNuevoId = cambiaDePlan ? (input.cambios.planId as string) : undefined;
+    // Los pagos del ciclo vigente terminan donde terminaba su vencimiento: si este se corre, ellos también (el saldo
+    // pendiente y los abonos buscan los pagos del ciclo por esa fecha de fin).
+    if (antes.fechaVencimiento && antes.fechaVencimiento.getTime() !== vencimientoFinal.getTime()) {
+      await deps.pagos.moverFinCiclo(input.id, antes.fechaVencimiento, vencimientoFinal);
+    }
     const sincronizada = await deps.suscripciones.ajustarCicloMasReciente(input.id, inicio, vencimientoFinal, planNuevoId);
     // Sin ninguna Suscripcion (el padrón no traía vencimiento o plan) el kiosco seguiría mostrando "vencido": se crea.
     const planId = planNuevoId ?? antes.planId;

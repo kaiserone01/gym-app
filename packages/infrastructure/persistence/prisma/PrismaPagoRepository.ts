@@ -87,6 +87,10 @@ export class PrismaPagoRepository implements IPagoRepository {
     return pagos.map(mapear);
   }
 
+  async moverFinCiclo(miembroId: string, finAnterior: Date, finNuevo: Date): Promise<void> {
+    await this.prisma.pago.updateMany({ where: { miembroId, fechaFinCiclo: finAnterior }, data: { fechaFinCiclo: finNuevo } });
+  }
+
   async listarPorMiembro(miembroId: string): Promise<Pago[]> {
     const pagos = await this.prisma.pago.findMany({
       where: { miembroId },

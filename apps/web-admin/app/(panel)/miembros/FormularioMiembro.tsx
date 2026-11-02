@@ -169,9 +169,8 @@ export function FormularioMiembro({
   const [fechaInscripcion, setFechaInscripcion] = useState(valoresIniciales?.fechaInscripcion ?? hoyISO());
   const [fechaUltimoPago, setFechaUltimoPago] = useState(valoresIniciales?.fechaUltimoPago ?? "");
   const [fechaVencimiento, setFechaVencimiento] = useState(valoresIniciales?.fechaVencimiento ?? "");
-  // Fechas de pago/vencimiento editables: siempre para quien viene del Excel, y mientras dure el aviso
-  // "Por regularizar" para el resto (la fecha de pago, solo para quien viene del Excel).
-  const editaFechas = esEdicion && (vieneDelExcel || porRegularizar);
+  // Fechas de pago y vencimiento: editables para cualquier miembro (p. ej. para corregir un error).
+  const editaFechas = esEdicion;
   const [fechaNacimiento, setFechaNacimiento] = useState(valoresIniciales?.fechaNacimiento ?? "");
   const [sucursalId, setSucursalId] = useState(
     valoresIniciales ? (valoresIniciales.sucursalId ?? ID_AMBAS_SEDES) : sucursalIdDefault ?? ""
@@ -286,7 +285,6 @@ export function FormularioMiembro({
   // de ciclo — su fechaInicioCiclo es la "última fecha de renovación", y
   // su fechaFinCiclo es la fecha de vencimiento vigente (próximo cobro).
   const cicloMasReciente = ultimosCiclos.find((c) => c.fechaInicioCiclo && c.fechaFinCiclo) ?? null;
-  const ultimaFechaRenovacion = cicloMasReciente?.fechaInicioCiclo ?? null;
   // Días hasta el próximo cobro — negativo si ya venció. Se redondea con
   // ceil sobre el delta en horas para no perder un día por horas sueltas
   // (p. ej. faltan 23h50m -> "falta 1 día", no "0 días").
@@ -327,7 +325,7 @@ export function FormularioMiembro({
     (nombre !== valoresIniciales.nombre ||
       celular !== valoresIniciales.celular ||
       fechaNacimiento !== valoresIniciales.fechaNacimiento ||
-      (editaFechas && vieneDelExcel && fechaUltimoPago !== (valoresIniciales.fechaUltimoPago ?? "")) ||
+      (editaFechas && fechaUltimoPago !== (valoresIniciales.fechaUltimoPago ?? "")) ||
       (editaFechas && fechaVencimiento !== (valoresIniciales.fechaVencimiento ?? "")) ||
       sucursalId !== (valoresIniciales.sucursalId ?? ID_AMBAS_SEDES) ||
       entrenadorId !== (valoresIniciales.entrenadorId ?? "") ||
@@ -611,21 +609,11 @@ export function FormularioMiembro({
             </div>
           )}
 
-          {/* Siempre editable para quien viene del Excel; para el resto, solo mientras tenga el aviso
-              "Por regularizar". Titila solo mientras dure el aviso. Se envía solo si cambia. */}
+          {/* Editables para todos; titila solo mientras dure el aviso "Por regularizar". Se envía solo si cambia. */}
           {editaFechas && (
-            <div className={`mb-4 grid gap-4 ${vieneDelExcel ? "sm:grid-cols-2" : "grid-cols-1"}`}>
-              {vieneDelExcel && (
-                <>
-                  <input type="hidden" name="fechaUltimoPagoOriginal" value={valoresIniciales?.fechaUltimoPago ?? ""} />
-                  <InputFecha
-                    name="fechaUltimoPago"
-                    label="Fecha de pago"
-                    value={fechaUltimoPago}
-                    onChange={setFechaUltimoPago}
-                  />
-                </>
-              )}
+            <div className="mb-4 grid gap-4 sm:grid-cols-2">
+              <input type="hidden" name="fechaUltimoPagoOriginal" value={valoresIniciales?.fechaUltimoPago ?? ""} />
+              <InputFecha name="fechaUltimoPago" label="Fecha de pago" value={fechaUltimoPago} onChange={setFechaUltimoPago} />
               <input type="hidden" name="fechaVencimientoOriginal" value={valoresIniciales?.fechaVencimiento ?? ""} />
               <InputFecha
                 id="campo-fecha-vencimiento"
@@ -657,15 +645,6 @@ export function FormularioMiembro({
                 <p className="mt-1 text-xs font-medium" style={{ color: "var(--gx-accent)" }}>
                   Entrenador: {nombreEntrenadorActual ?? "Sin asignar"}
                 </p>
-              )}
-              {/* Quien viene del Excel ya ve y edita sus fechas arriba. */}
-              {!vieneDelExcel && (
-                <div className="mt-2 flex justify-between text-xs" style={{ color: "var(--gx-muted)" }}>
-                  <span>Última fecha de renovación</span>
-                  <span className="font-medium" style={{ color: "var(--gx-ink)" }}>
-                    {ultimaFechaRenovacion ? formatearFechaCorta(ultimaFechaRenovacion) : "—"}
-                  </span>
-                </div>
               )}
               {!puedeCambiarPlanGratis && (
                 <p className="mt-2 text-xs" style={{ color: "var(--gx-muted)" }}>

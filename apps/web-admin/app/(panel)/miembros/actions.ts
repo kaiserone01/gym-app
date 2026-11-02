@@ -15,7 +15,6 @@ import {
   MiembroNoEncontradoError,
   MiembroFueraDeSucursalError,
   PlanNoEncontradoError as ActualizarPlanNoEncontradoError,
-  AjusteFechaNoDisponibleError,
   FechasIncoherentesError,
 } from "@gym-app/domain/use-cases/ActualizarMiembro";
 import { calcularCambiosFechas } from "@gym-app/domain/utils/cambiosFechasFicha";
@@ -288,6 +287,7 @@ export async function actualizarMiembroAction(
         planes: new PrismaPlanRepository(prisma),
         suscripciones: new PrismaSuscripcionRepository(prisma),
         sucursales: new PrismaSucursalRepository(prisma),
+        pagos: new PrismaPagoRepository(prisma),
       },
       {
         organizacionId: usuario.organizacionId,
@@ -310,7 +310,6 @@ export async function actualizarMiembroAction(
   } catch (error) {
     if (
       error instanceof CedulaDuplicadaError ||
-      error instanceof AjusteFechaNoDisponibleError ||
       error instanceof FechasIncoherentesError ||
       error instanceof MiembroNoEncontradoError ||
       error instanceof MiembroFueraDeSucursalError ||
@@ -350,6 +349,7 @@ export async function actualizarFotoMiembroAction(
         planes: new PrismaPlanRepository(prisma),
         suscripciones: new PrismaSuscripcionRepository(prisma),
         sucursales: new PrismaSucursalRepository(prisma),
+        pagos: new PrismaPagoRepository(prisma),
       },
       { organizacionId: usuario.organizacionId, id, sucursalActivaId, cambios: { fotoUrl } }
     );
@@ -376,6 +376,7 @@ export async function darDeBajaAction(id: string): Promise<void> {
       planes: new PrismaPlanRepository(prisma),
       suscripciones: new PrismaSuscripcionRepository(prisma),
       sucursales: new PrismaSucursalRepository(prisma),
+      pagos: new PrismaPagoRepository(prisma),
     },
     { organizacionId: usuario.organizacionId, id, sucursalActivaId, cambios: { activo: false } }
   );
@@ -394,6 +395,7 @@ export async function reactivarAction(id: string): Promise<void> {
       planes: new PrismaPlanRepository(prisma),
       suscripciones: new PrismaSuscripcionRepository(prisma),
       sucursales: new PrismaSucursalRepository(prisma),
+      pagos: new PrismaPagoRepository(prisma),
     },
     { organizacionId: usuario.organizacionId, id, sucursalActivaId, cambios: { activo: true } }
   );

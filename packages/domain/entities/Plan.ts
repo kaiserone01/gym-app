@@ -9,6 +9,12 @@ export type FrecuenciaPago =
   // verdad (el admin tipeó un número de días a medida, ver FormularioPlan.tsx).
   | "PERSONALIZADO";
 
+// Los días de gracia de la sede solo cuentan para los planes mensuales; el resto (semanal, diario, etc.) y quien no tiene
+// plan vence sin gracia.
+export function diasGraciaParaPlan(diasGraciaSede: number, frecuencia: FrecuenciaPago | null | undefined): number {
+  return frecuencia === "MENSUAL" ? diasGraciaSede : 0;
+}
+
 // Declarado acá (junto a FrecuenciaPago) en vez de en ReglaAbono.ts para
 // evitar un ciclo de importación: Plan necesita TipoMinimoAbono para sus
 // propios campos de mínimo de abono, y ReglaAbono.ts necesita

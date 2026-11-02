@@ -2,6 +2,8 @@ import { IMemberRepository } from "../ports/IMemberRepository";
 import { ICheckInRepository } from "../ports/ICheckInRepository";
 import { ISuscripcionRepository } from "../ports/ISuscripcionRepository";
 import { ISucursalRepository } from "../ports/ISucursalRepository";
+import { IPlanRepository } from "../ports/IPlanRepository";
+import { diasGraciaParaPlan } from "../entities/Plan";
 import { EstadoCheckIn } from "../entities/CheckIn";
 import { validarAccesoSucursal } from "./ValidarAccesoSucursalPorPlan";
 import type { Miembro } from "../entities/Miembro";
@@ -16,6 +18,7 @@ export interface RegistrarCheckInDeps {
   checkIns: ICheckInRepository;
   suscripciones: ISuscripcionRepository;
   sucursales: ISucursalRepository;
+  planes: IPlanRepository;
   // Si la cédula no es miembro, intenta activarla desde el padrón de la sede (null = no hay nada que activar).
   activarDesdePadron?: (input: ActivarMiembroInput) => Promise<Miembro | null>;
 }
@@ -76,7 +79,9 @@ export async function registrarCheckIn(
     : null;
 
   const sucursalDelCheckIn = await deps.sucursales.buscarPorId(input.organizacionId, input.sucursalId);
-  const diasGracia = sucursalDelCheckIn?.diasGracia ?? 0;
+  // Los días de gracia de la sede solo aplican si el miembro tiene un plan mensual.
+  const plan = miembro.planId ? await deps.planes.buscarPorId(input.organizacionId, miembro.planId) : null;
+  const diasGracia = diasGraciaParaPlan(sucursalDelCheckIn?.diasGracia ?? 0, plan?.frecuencia);
 
   const base = {
     nombre: miembro.nombre,

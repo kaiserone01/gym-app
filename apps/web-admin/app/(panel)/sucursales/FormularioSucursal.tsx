@@ -66,7 +66,7 @@ export function FormularioSucursal({
       />
       <Input
         name="diasGracia"
-        label="Días de gracia"
+        label="Días de gracia (solo planes mensuales)"
         type="number"
         required
         defaultValue={valoresIniciales?.diasGracia ?? 0}

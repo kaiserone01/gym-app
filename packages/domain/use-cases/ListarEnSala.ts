@@ -1,6 +1,7 @@
 import { ICheckInRepository } from "../ports/ICheckInRepository";
 import { ISuscripcionRepository } from "../ports/ISuscripcionRepository";
 import { ISucursalRepository } from "../ports/ISucursalRepository";
+import { diasGraciaParaPlan } from "../entities/Plan";
 import { CheckInEnSala, EstadoCheckIn } from "../entities/CheckIn";
 import { inicioDelDiaCaracas } from "../utils/fechaCaracas";
 import { validarAccesoSucursal } from "./ValidarAccesoSucursalPorPlan";
@@ -64,7 +65,7 @@ async function armarPersonas(
   if (abiertos.length === 0) return [];
 
   const sucursal = await deps.sucursales.buscarPorId(input.organizacionId, input.sucursalId);
-  const diasGracia = sucursal?.diasGracia ?? 0;
+  const diasGraciaSede = sucursal?.diasGracia ?? 0;
 
   // Un miembro puede tener varios check-ins en el rango: se muestra solo el más reciente.
   const vistos = new Set<string>();
@@ -79,7 +80,7 @@ async function armarPersonas(
         c.miembro.sucursalId,
         input.sucursalId,
         c.miembro.fechaVencimiento,
-        diasGracia,
+        diasGraciaParaPlan(diasGraciaSede, c.miembro.planFrecuencia),
         suscripcion?.fechaLimiteAbono ?? null,
         ahora
       );

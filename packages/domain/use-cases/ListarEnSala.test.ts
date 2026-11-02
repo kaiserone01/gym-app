@@ -9,13 +9,13 @@ import type { Suscripcion } from "../entities/Suscripcion";
 const AHORA = new Date("2026-09-29T15:00:00Z");
 const DIA = 86_400_000;
 
-function checkIn(id: string, miembroId: string, minutosAtras: number, fechaVencimiento: Date | null, porRegularizar = false, salidaAt: Date | null = null): CheckInEnSala {
+function checkIn(id: string, miembroId: string, minutosAtras: number, fechaVencimiento: Date | null, porRegularizar = false, salidaAt: Date | null = null, planFrecuencia: CheckInEnSala["miembro"]["planFrecuencia"] = "MENSUAL"): CheckInEnSala {
   return {
     id,
     miembroId,
     fechaHora: new Date(AHORA.getTime() - minutosAtras * 60_000),
     salidaAt,
-    miembro: { nombre: `Miembro ${miembroId}`, fotoUrl: null, sucursalId: null, fechaVencimiento, planNombre: null, porRegularizar },
+    miembro: { nombre: `Miembro ${miembroId}`, fotoUrl: null, sucursalId: null, fechaVencimiento, planNombre: null, planFrecuencia, porRegularizar },
   };
 }
 
@@ -72,6 +72,15 @@ describe("listarEnSala", () => {
     const [persona] = await listarEnSala(deps([checkIn("c1", "m1", 5, vencidoHace1Dia)], [], 3), input);
     expect(persona.estado).toBe("en_gracia");
     expect(persona.requiereCobro).toBe(true);
+  });
+
+  test("la gracia de la sede solo cuenta para planes mensuales: uno semanal vencido ayer ya está vencido", async () => {
+    const vencidoHace1Dia = new Date(AHORA.getTime() - DIA);
+    const personas = await listarEnSala(
+      deps([checkIn("c1", "mensual", 5, vencidoHace1Dia), checkIn("c2", "semanal", 6, vencidoHace1Dia, false, null, "SEMANAL")], [], 3),
+      input
+    );
+    expect(Object.fromEntries(personas.map((p) => [p.miembroId, p.estado]))).toEqual({ mensual: "en_gracia", semanal: "vencido" });
   });
 
   test("un miembro con dos check-ins abiertos aparece una sola vez (el más reciente)", async () => {

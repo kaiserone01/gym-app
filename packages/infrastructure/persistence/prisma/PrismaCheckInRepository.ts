@@ -52,7 +52,7 @@ export class PrismaCheckInRepository implements ICheckInRepository {
     const filas = await this.prisma.checkIn.findMany({
       where: { sucursalId, fechaHora: { gte: desde }, ...(soloAbiertos ? { salidaAt: null } : {}) },
       orderBy: { fechaHora: "desc" },
-      include: { miembro: { include: { plan: { select: { nombre: true } } } } },
+      include: { miembro: { include: { plan: { select: { nombre: true, frecuencia: true } } } } },
     });
 
     return filas.map((f) => ({
@@ -66,6 +66,7 @@ export class PrismaCheckInRepository implements ICheckInRepository {
         sucursalId: f.miembro.sucursalId,
         fechaVencimiento: f.miembro.fechaVencimiento,
         planNombre: f.miembro.plan?.nombre ?? null,
+        planFrecuencia: f.miembro.plan?.frecuencia ?? null,
         porRegularizar: f.miembro.porRegularizar,
       },
     }));

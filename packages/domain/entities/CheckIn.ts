@@ -1,3 +1,5 @@
+import type { FrecuenciaPago } from "./Plan";
+
 export type EstadoCheckIn = "activo" | "en_gracia" | "vencido" | "abono_vencido" | "sucursal_incorrecta";
 
 export interface CheckIn {
@@ -21,6 +23,7 @@ export interface CheckInEnSala {
     sucursalId: string | null;
     fechaVencimiento: Date | null;
     planNombre: string | null;
+    planFrecuencia: FrecuenciaPago | null;
     porRegularizar: boolean;
   };
 }

@@ -8,6 +8,7 @@ import { jsonKiosco, opcionesKiosco, sucursalDeKiosco } from "@/lib/kiosco";
 import { PrismaMemberRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaMemberRepository";
 import { PrismaCheckInRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaCheckInRepository";
 import { PrismaSuscripcionRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaSuscripcionRepository";
+import { PrismaPlanRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaPlanRepository";
 import { PrismaSucursalRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaSucursalRepository";
 import { activarMiembroEnTransaccion } from "@/lib/activacion";
 import { registrarCheckIn, MiembroNoEncontradoError } from "@gym-app/domain/use-cases/RegistrarCheckIn";
@@ -33,6 +34,7 @@ export async function POST(req: NextRequest) {
         checkIns: new PrismaCheckInRepository(prisma),
         suscripciones: new PrismaSuscripcionRepository(prisma),
         sucursales: new PrismaSucursalRepository(prisma),
+        planes: new PrismaPlanRepository(prisma),
         activarDesdePadron: activarMiembroEnTransaccion,
       },
       { organizacionId: sucursal.organizacionId, sucursalId: sucursal.id, cedula }

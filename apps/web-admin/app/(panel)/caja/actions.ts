@@ -520,8 +520,16 @@ export async function cobrarDeudasAction(
     return { error: "Cada línea del pago necesita un monto y un método." };
   }
 
+  // Cobro de un día pasado (yyyy-mm-dd): el dominio pone la tasa BCV de ese día, así que no se revalida contra la de hoy.
+  const fechaCobroTexto = formData.get("fechaCobro")?.toString();
+  const fechaCobro = fechaCobroTexto ? new Date(`${fechaCobroTexto}T12:00:00`) : undefined;
+  const esCobroPasado = !!fechaCobro && fechaCobro < new Date(new Date().setHours(0, 0, 0, 0));
   const lineasValidadas: typeof lineas = [];
   for (const linea of lineas) {
+    if (esCobroPasado) {
+      lineasValidadas.push(linea);
+      continue;
+    }
     const validacionTasa = await validarTasaSiEsEnBs(linea.tasaCambio !== null ? String(linea.tasaCambio) : undefined);
     if (!validacionTasa.ok) return validacionTasa.estado;
     lineasValidadas.push({ ...linea, tasaCambio: validacionTasa.tasaCambio });
@@ -558,6 +566,7 @@ export async function cobrarDeudasAction(
               autorizacion: new AuthorizationService(new PrismaPermisoRepository(prisma)),
               reglasAbono: new PrismaReglaAbonoRepository(prisma),
               deudas: new PrismaDeudaProductoRepository(tx),
+              tasas: new PrismaTasaCambioRepository(prisma),
             },
             {
               organizacionId: usuario.organizacionId,
@@ -567,6 +576,7 @@ export async function cobrarDeudasAction(
               registradoPorId: usuario.id,
               rolUsuario: usuario.rol,
               deudaIds,
+              fechaCobro,
             }
           )
         : cobrarDeudasMiembro(
@@ -575,6 +585,7 @@ export async function cobrarDeudasAction(
           pagos: new PrismaPagoRepository(tx),
           turnos: new PrismaTurnoRepository(tx),
           autorizacion: new AuthorizationService(new PrismaPermisoRepository(tx)),
+          tasas: new PrismaTasaCambioRepository(prisma),
         },
         {
           organizacionId: usuario.organizacionId,
@@ -583,6 +594,7 @@ export async function cobrarDeudasAction(
           sucursalId: sucursalActivaId,
           registradoPorId: usuario.id,
           deudaIds,
+          fechaCobro,
         }
       )
     );
@@ -596,7 +608,9 @@ export async function cobrarDeudasAction(
       error instanceof DeudasYaCobradasError ||
       error instanceof SinTurnoAbiertoCobrar ||
       error instanceof LineasDePagoInvalidasError ||
-      error instanceof MontoLineasNoCubreObjetivoError
+      error instanceof MontoLineasNoCubreObjetivoError ||
+      error instanceof FechaPagoInvalidaError ||
+      error instanceof SinTasaParaFechaError
     ) {
       return { error: error.message };
     }

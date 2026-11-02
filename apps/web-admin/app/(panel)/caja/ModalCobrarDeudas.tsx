@@ -11,6 +11,7 @@ import { SelectorMetodoPago } from "../pagos/SelectorMetodoPago";
 import { CampoNumeroOperacion } from "../pagos/CampoNumeroOperacion";
 import { MetodoYCampos } from "../pagos/MetodoYCampos";
 import { ColumnaLateral, ColumnaPrincipal, MarcoAsistente, TituloSeccion } from "./MarcoAsistente";
+import { CampoFechaCobro, useFechaCobro } from "./CampoFechaCobro";
 import { formatearBs } from "../tasaBcvFija";
 import { formatearFechaCorta } from "./ProyeccionCiclosUI";
 import type { EstadoCobrarDeudas } from "./actions";
@@ -107,6 +108,8 @@ export function ModalCobrarDeudas({
   const [anulando, iniciarTransicion] = useTransition();
   const [miembroId, setMiembroId] = useState<string | null>(null);
   const [seleccion, setSeleccion] = useState<Seleccion>(SELECCION_VACIA);
+  // Fecha del cobro (arranca en hoy): una fecha pasada registra un cobro que ya se hizo y no se anotó.
+  const { fecha: fechaCobro, setFecha: setFechaCobro, esPasada } = useFechaCobro();
 
   useEffect(() => {
     if (estado.error) mostrarError(estado.error);
@@ -245,7 +248,16 @@ export function ModalCobrarDeudas({
             {membresiaMarcada && <input type="hidden" name="incluirMembresia" value="1" />}
             <input type="hidden" name="deudaIds" value={JSON.stringify(deudasMarcadas.map((d) => d.id))} />
             <input type="hidden" name="lineas" value={JSON.stringify(lineas)} />
+            {esPasada && <input type="hidden" name="fechaCobro" value={fechaCobro} />}
             <ColumnaPrincipal>
+              <CampoFechaCobro
+                etiqueta="Fecha del cobro"
+                fecha={fechaCobro}
+                onChange={setFechaCobro}
+                esPasada={esPasada}
+                mensajePasada="Se registra con la tasa BCV de ese día, fuera del turno: no suma al arqueo de hoy."
+                mensajeHoy="Cámbiala solo si ya se cobró antes (máx. 90 días)."
+              />
               <TituloSeccion>Método de pago</TituloSeccion>
               <MetodoYCampos
                 vacio={seleccion.metodoPagoId ? "Este método no requiere número de operación." : "Elige un método de pago."}
@@ -256,6 +268,7 @@ export function ModalCobrarDeudas({
                     metodos={metodosPago}
                     monto={total}
                     idFormulario={ID_FORMULARIO}
+                    fechaTasa={esPasada ? fechaCobro : undefined}
                     onCambio={setSeleccion}
                     avisoServidor={{ tasaNueva: estado.tasaNueva, fallaTemporal: estado.fallaTemporal, tasaGuardada: estado.tasaGuardada }}
                     ocultarNumeroOperacion

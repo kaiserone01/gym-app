@@ -4,8 +4,8 @@ import { IProductoRepository } from "../ports/IProductoRepository";
 import { ITurnoRepository } from "../ports/ITurnoRepository";
 import { IAuthorizationService } from "../ports/IAuthorizationService";
 import { ITasaCambioRepository } from "../ports/ITasaCambioRepository";
-import { Pago, DatosLineaPago, validarLineasDePago, MAX_DIAS_ATRAS_PAGO_FECHADO } from "../entities/Pago";
-import { FechaPagoInvalidaError, SinTasaParaFechaError } from "./RegistrarPago";
+import { Pago, DatosLineaPago, validarLineasDePago } from "../entities/Pago";
+import { resolverCobroPasado, tasaDeLinea } from "./resolverCobroPasado";
 import { conceptoDeudas, totalDeudas } from "../entities/DeudaProducto";
 import {
   resolverItemsVenta,
@@ -62,22 +62,9 @@ export async function venderProducto(deps: VenderProductoDeps, input: DatosVende
   const renglones = items.map((i) => ({ productoNombre: i.producto.nombre, cantidad: i.cantidad, precioUnitarioUSD: i.producto.costoUSD }));
   validarLineasDePago(input.lineas, "exacto", totalDeudas(renglones));
 
-  const inicioDeHoy = new Date();
-  inicioDeHoy.setHours(0, 0, 0, 0);
-  const fechaPasada = input.fechaVenta && input.fechaVenta < inicioDeHoy ? input.fechaVenta : null;
-
+  const pasado = await resolverCobroPasado(deps.tasas, input.fechaVenta, input.lineas);
   let turnoId: string | null = null;
-  let tasaDelDia: number | null = null;
-  if (fechaPasada) {
-    const limite = new Date();
-    limite.setDate(limite.getDate() - MAX_DIAS_ATRAS_PAGO_FECHADO);
-    if (fechaPasada < limite) throw new FechaPagoInvalidaError(MAX_DIAS_ATRAS_PAGO_FECHADO);
-    if (input.lineas.some((linea) => linea.tasaCambio !== null)) {
-      const tasa = await deps.tasas?.buscarMasCercanaAnterior(fechaPasada);
-      if (!tasa) throw new SinTasaParaFechaError();
-      tasaDelDia = tasa.valor;
-    }
-  } else {
+  if (!pasado) {
     const turnoAbierto = await deps.turnos.buscarAbiertoPorSucursal(input.sucursalId);
     if (!turnoAbierto) {
       throw new SinTurnoAbiertoError();
@@ -96,7 +83,7 @@ export async function venderProducto(deps: VenderProductoDeps, input: DatosVende
 
   const pagosCreados: Pago[] = [];
   for (const linea of input.lineas) {
-    const tasaCambio = fechaPasada ? (linea.tasaCambio !== null ? tasaDelDia : null) : linea.tasaCambio;
+    const tasaCambio = tasaDeLinea(linea, pasado);
     pagosCreados.push(
       await deps.pagos.crear({
         miembroId: null,
@@ -115,7 +102,7 @@ export async function venderProducto(deps: VenderProductoDeps, input: DatosVende
         productoId: unico ? unico.producto.id : null,
         productoNombre: unico ? unico.producto.nombre : concepto,
         cantidad: unico ? unico.cantidad : null,
-        ...(fechaPasada ? { fechaPago: fechaPasada } : {}),
+        ...(pasado ? { fechaPago: pasado.fecha } : {}),
       })
     );
   }

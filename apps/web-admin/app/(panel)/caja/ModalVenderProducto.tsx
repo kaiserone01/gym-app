@@ -2,8 +2,6 @@
 
 import { useActionState, useEffect, useState } from "react";
 import { Button } from "@gym-app/ui/components/Button";
-import { InputFecha } from "@gym-app/ui/components/InputFecha";
-import { MAX_DIAS_ATRAS_PAGO_FECHADO } from "@gym-app/domain/entities/Pago";
 import { useFeedback } from "@gym-app/ui/components/FeedbackOverlay";
 import type { Producto } from "@gym-app/domain/entities/Producto";
 import type { MetodoPago } from "@gym-app/domain/entities/MetodoPago";
@@ -12,6 +10,7 @@ import { totalDeudas } from "@gym-app/domain/entities/DeudaProducto";
 import { SelectorMetodoPago } from "../pagos/SelectorMetodoPago";
 import { CampoNumeroOperacion } from "../pagos/CampoNumeroOperacion";
 import { MetodoYCampos } from "../pagos/MetodoYCampos";
+import { CampoFechaCobro, useFechaCobro } from "./CampoFechaCobro";
 import { ColumnaLateral, ColumnaPrincipal, MarcoAsistente, TarjetaOpcion, TituloSeccion } from "./MarcoAsistente";
 import { BuscadorMiembro, type MiembroConPlan, type PlanParaModal } from "./SelectorMiembroModal";
 import { formatearBs } from "../tasaBcvFija";
@@ -20,11 +19,6 @@ import type { EstadoVenderProducto, EstadoFiarProducto } from "./actions";
 
 const ID_FORMULARIO = "formulario-vender-producto";
 
-function fechaALocalISO(fecha: Date): string {
-  const mes = String(fecha.getMonth() + 1).padStart(2, "0");
-  const dia = String(fecha.getDate()).padStart(2, "0");
-  return `${fecha.getFullYear()}-${mes}-${dia}`;
-}
 
 interface Seleccion {
   metodoPagoId: string | null;
@@ -78,11 +72,8 @@ export function ModalVenderProducto({
   const [seleccion, setSeleccion] = useState<Seleccion>(SELECCION_VACIA);
   // Fecha de la venta (arranca en hoy). Una fecha pasada registra una venta que ya se cobró y no se anotó: fuera de turno
   // y con la tasa BCV de ese día.
-  const hoyISO = fechaALocalISO(new Date());
-  const [fechaVenta, setFechaVenta] = useState(hoyISO);
-  // eslint-disable-next-line react-hooks/purity -- el limite minimo debe calcularse con la hora actual en cada render
-  const minFechaISO = fechaALocalISO(new Date(Date.now() - MAX_DIAS_ATRAS_PAGO_FECHADO * 24 * 60 * 60 * 1000));
-  const esVentaPasada = !fiar && fechaVenta !== "" && fechaVenta < hoyISO;
+  const { fecha: fechaVenta, setFecha: setFechaVenta, esPasada } = useFechaCobro();
+  const esVentaPasada = !fiar && esPasada;
 
   // Cada acción tiene su propio estado: se muestra el error de la que se acaba
   // de enviar, no el de un intento anterior de la otra.
@@ -328,14 +319,14 @@ export function ModalVenderProducto({
                 </>
               ) : (
                 <>
-                  <div className="etiquetas-blancas mx-auto flex w-full max-w-xs flex-col gap-2 rounded-xl border p-3" style={{ borderColor: "var(--gx-accent)" }}>
-                    <InputFecha label="Fecha de la venta" value={fechaVenta} min={minFechaISO} max={hoyISO} onChange={setFechaVenta} className="tarjeta-luminosa" />
-                    <p className="text-sm font-medium" style={{ color: "#ffffff" }}>
-                      {esVentaPasada
-                        ? "Se registra con la tasa BCV de ese día, fuera del turno: no suma al arqueo de hoy."
-                        : `Cámbiala solo si ya se vendió antes (máx. ${MAX_DIAS_ATRAS_PAGO_FECHADO} días).`}
-                    </p>
-                  </div>
+                  <CampoFechaCobro
+                    etiqueta="Fecha de la venta"
+                    fecha={fechaVenta}
+                    onChange={setFechaVenta}
+                    esPasada={esVentaPasada}
+                    mensajePasada="Se registra con la tasa BCV de ese día, fuera del turno: no suma al arqueo de hoy."
+                    mensajeHoy="Cámbiala solo si ya se vendió antes (máx. 90 días)."
+                  />
                   <TituloSeccion>Método de pago</TituloSeccion>
                   <MetodoYCampos
                     vacio={seleccion.metodoPagoId ? "Este método no requiere número de operación." : "Elige un método de pago."}

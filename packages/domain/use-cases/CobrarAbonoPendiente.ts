@@ -35,6 +35,8 @@ export async function cobrarAbonoPendiente(
     rolUsuario: RolUsuario;
     // Productos marcados para cobrar junto con la membresía (vacío = solo la membresía); sin esto, todos.
     deudaIds?: string[];
+    // Cobro que ya se hizo en un día pasado y no se anotó (hasta 90 días): fuera de turno, tasa BCV de ese día.
+    fechaCobro?: Date;
   }
 ): Promise<Pago[]> {
   const miembro = await deps.miembros.buscarPorId(input.organizacionId, input.miembroId);
@@ -68,5 +70,6 @@ export async function cobrarAbonoPendiente(
     rolUsuario: input.rolUsuario,
     incluirDeudas: deudas.length > 0,
     deudaIds: deudas.map((d) => d.id),
+    ...(input.fechaCobro ? { fechaPago: input.fechaCobro, completarCicloAbierto: true } : {}),
   });
 }

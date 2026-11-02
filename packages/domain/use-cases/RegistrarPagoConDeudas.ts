@@ -46,7 +46,7 @@ export async function registrarPagoConDeudas(
   }
 
   await cobrarDeudasMiembro(
-    { deudas: deps.deudas, pagos: deps.pagos, turnos: deps.turnos, autorizacion: deps.autorizacion },
+    { deudas: deps.deudas, pagos: deps.pagos, turnos: deps.turnos, autorizacion: deps.autorizacion, tasas: deps.tasas },
     {
       organizacionId: input.organizacionId,
       miembroId: input.miembroId,
@@ -54,6 +54,7 @@ export async function registrarPagoConDeudas(
       sucursalId: input.sucursalId,
       registradoPorId: input.registradoPorId,
       deudaIds: deudas.map((d) => d.id),
+      fechaCobro: input.completarCicloAbierto ? input.fechaPago : undefined,
     }
   );
 

@@ -36,6 +36,7 @@ function crearDeps(opciones: { pagadoPrevio?: number } = {}) {
     autorizacion: { tienePermiso: async () => true },
     reglasAbono: { buscarPorOrganizacionYFrecuencia: async () => null },
     deudas: { listarPendientesPorMiembro: async () => [] },
+    tasas: { buscarMasCercanaAnterior: async () => ({ valor: 40 }) },
   } as unknown as Parameters<typeof cobrarAbonoPendiente>[0];
   return { deps, creados };
 }
@@ -67,5 +68,27 @@ describe("cobrarAbonoPendiente", () => {
   test("sin saldo pendiente → SinAbonoPendienteError", async () => {
     const { deps } = crearDeps({ pagadoPrevio: 0 });
     await expect(cobrarAbonoPendiente(deps, input(22))).rejects.toBeInstanceOf(SinAbonoPendienteError);
+  });
+});
+
+describe("cobrarAbonoPendiente con fecha pasada", () => {
+  test("cobra el saldo con la fecha elegida, fuera de turno, completando el mismo ciclo (sin abrir otro)", async () => {
+    const { deps, creados } = crearDeps();
+    const fecha = new Date(Date.now() - 1 * DIA);
+    await cobrarAbonoPendiente(deps, { ...input(12), fechaCobro: fecha });
+
+    expect(creados).toHaveLength(1);
+    expect(creados[0]).toMatchObject({ monto: 12, turnoId: null, fechaPago: fecha, fechaFinCiclo: fin });
+  });
+
+  test("las líneas en Bs usan la tasa BCV de ese día", async () => {
+    const { deps, creados } = crearDeps();
+    const fecha = new Date(Date.now() - 1 * DIA);
+    await cobrarAbonoPendiente(deps, {
+      ...input(12),
+      lineas: [{ monto: 12, metodo: "Pago Móvil", metodoPagoId: "mp1", numeroOperacion: "1234", tasaCambio: 99 }],
+      fechaCobro: fecha,
+    });
+    expect(creados[0]).toMatchObject({ tasaCambio: 40, montoBs: 480 });
   });
 });

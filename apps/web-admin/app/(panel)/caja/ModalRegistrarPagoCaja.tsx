@@ -11,6 +11,7 @@ import {
   toleranciaDiferenciaPagoUSD,
 } from "@gym-app/domain/entities/Pago";
 import { Button } from "@gym-app/ui/components/Button";
+import { fechaALocalISO } from "./CampoFechaCobro";
 import { InputFecha } from "@gym-app/ui/components/InputFecha";
 import { CurrencyInput } from "@gym-app/ui/components/CurrencyInput";
 import { useFeedback, DURACION_MS } from "@gym-app/ui/components/FeedbackOverlay";
@@ -34,12 +35,6 @@ import type { ReglaAbonoPorFrecuencia } from "@gym-app/domain/entities/ReglaAbon
 import { FormularioCambiarPlan, type EntrenadorParaCambio, type ProyeccionCambioPlan } from "../miembros/FormularioCambiarPlan";
 
 type Paso = 1 | 2 | 3 | 4;
-
-function fechaALocalISO(fecha: Date): string {
-  const mes = String(fecha.getMonth() + 1).padStart(2, "0");
-  const dia = String(fecha.getDate()).padStart(2, "0");
-  return `${fecha.getFullYear()}-${mes}-${dia}`;
-}
 
 const TITULOS_PASO: Record<Paso, string> = {
   1: "Elegí un miembro",

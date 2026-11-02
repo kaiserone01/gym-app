@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { cobrarDeudasMiembro, type CobrarDeudasMiembroDeps } from "./CobrarDeudasMiembro";
+import { FechaPagoInvalidaError, SinTasaParaFechaError } from "./RegistrarPago";
 import type { DeudaProducto } from "../entities/DeudaProducto";
 import type { DatosNuevoPago, Pago } from "../entities/Pago";
 
@@ -20,12 +21,12 @@ const deuda = (id: string, productoNombre: string, cantidad: number, precioUnita
 });
 
 function crearDeps(
-  opciones: { permitido?: boolean; turnoAbierto?: boolean; deudas?: DeudaProducto[]; cobradasPorLaBase?: number } = {}
+  opciones: { permitido?: boolean; turnoAbierto?: boolean; deudas?: DeudaProducto[]; cobradasPorLaBase?: number; tasaDelDia?: number | null } = {}
 ) {
-  const { permitido = true, turnoAbierto = true } = opciones;
+  const { permitido = true, turnoAbierto = true, tasaDelDia = 40 } = opciones;
   const deudas = opciones.deudas ?? [deuda("d1", "Agua", 2, 1.5), deuda("d2", "Gatorade", 1, 2.25)];
   const pagosCreados: DatosNuevoPago[] = [];
-  const marcadas: { ids: string[]; grupoPagoId: string }[] = [];
+  const marcadas: { ids: string[]; grupoPagoId: string; en: Date }[] = [];
   const consultas: { miembroId: string; sucursalId: string }[] = [];
 
   const deps = {
@@ -34,8 +35,8 @@ function crearDeps(
         consultas.push({ miembroId, sucursalId });
         return deudas;
       },
-      marcarCobradas: async (ids: string[], _por: string, _en: Date, grupoPagoId: string) => {
-        marcadas.push({ ids, grupoPagoId });
+      marcarCobradas: async (ids: string[], _por: string, en: Date, grupoPagoId: string) => {
+        marcadas.push({ ids, grupoPagoId, en });
         return opciones.cobradasPorLaBase ?? ids.length;
       },
     },
@@ -47,6 +48,7 @@ function crearDeps(
     },
     turnos: { buscarAbiertoPorSucursal: async () => (turnoAbierto ? { id: "turno1" } : null) },
     autorizacion: { tienePermiso: async () => permitido },
+    tasas: { buscarMasCercanaAnterior: async () => (tasaDelDia === null ? null : { valor: tasaDelDia }) },
   } as unknown as CobrarDeudasMiembroDeps;
 
   return { deps, pagosCreados, marcadas, consultas };
@@ -129,5 +131,40 @@ describe("cobrarDeudasMiembro", () => {
     const { deps, pagosCreados } = crearDeps({ cobradasPorLaBase: 1 });
     await expect(cobrarDeudasMiembro(deps, { ...base, lineas: [linea(5.25)] })).rejects.toThrow(/ya fueron cobradas/);
     expect(pagosCreados).toHaveLength(0);
+  });
+});
+
+describe("cobrarDeudasMiembro con fecha pasada", () => {
+  const DIA = 24 * 60 * 60 * 1000;
+  const hace = (dias: number) => new Date(Date.now() - dias * DIA);
+
+  test("el cobro queda fuera de turno, con la fecha elegida y la tasa BCV de ese día", async () => {
+    const { deps, pagosCreados, marcadas } = crearDeps({ turnoAbierto: false, tasaDelDia: 40 });
+    const fecha = hace(2);
+    await cobrarDeudasMiembro(deps, { ...base, lineas: [linea(5.25, 99)], fechaCobro: fecha });
+
+    expect(pagosCreados[0]).toMatchObject({ turnoId: null, fechaPago: fecha, tasaCambio: 40, montoBs: 210 });
+    expect(marcadas[0].en).toEqual(fecha);
+  });
+
+  test("más de 90 días atrás se rechaza y no marca nada", async () => {
+    const { deps, marcadas } = crearDeps();
+    await expect(cobrarDeudasMiembro(deps, { ...base, lineas: [linea(5.25)], fechaCobro: hace(100) })).rejects.toBeInstanceOf(
+      FechaPagoInvalidaError
+    );
+    expect(marcadas).toEqual([]);
+  });
+
+  test("sin tasa BCV de esa fecha, con una línea en Bs, se rechaza", async () => {
+    const { deps } = crearDeps({ tasaDelDia: null });
+    await expect(cobrarDeudasMiembro(deps, { ...base, lineas: [linea(5.25, 99)], fechaCobro: hace(1) })).rejects.toBeInstanceOf(
+      SinTasaParaFechaError
+    );
+  });
+
+  test("una fecha de hoy se cobra como siempre, en el turno abierto", async () => {
+    const { deps, pagosCreados } = crearDeps();
+    await cobrarDeudasMiembro(deps, { ...base, lineas: [linea(5.25)], fechaCobro: new Date() });
+    expect(pagosCreados[0].turnoId).toBe("turno1");
   });
 });

@@ -1,3 +1,4 @@
+import { resolverCobroPasado, tasaDeLinea } from "./resolverCobroPasado";
 import { randomUUID } from "node:crypto";
 import { IPagoRepository } from "../ports/IPagoRepository";
 import { ISuscripcionRepository } from "../ports/ISuscripcionRepository";
@@ -176,6 +177,9 @@ export interface DatosRegistrarPago {
   // Meses que cubre este pago (1 a 6, por defecto 1): el precio y la duración del ciclo se multiplican. Con más de un
   // mes el pago debe ser completo (sin abonos), pero puede repartirse en varios métodos.
   meses?: number;
+  // Solo con fechaPago pasada: el pago completa el abono pendiente del ciclo abierto (no abre un ciclo nuevo). El cobro
+  // queda fuera de turno y los Bs usan la tasa BCV de ese día. Lo usa "Cobrar deudas".
+  completarCicloAbierto?: boolean;
 }
 
 // Valida un abono parcial (el plan debe admitirlo y el monto acumulado cubrir el mínimo de la regla) y devuelve hasta
@@ -261,7 +265,7 @@ export async function registrarPago(deps: RegistrarPagoDeps, input: DatosRegistr
 
   const inicioDeHoy = new Date(ahora);
   inicioDeHoy.setHours(0, 0, 0, 0);
-  if (input.fechaPago && input.fechaPago < inicioDeHoy) {
+  if (input.fechaPago && input.fechaPago < inicioDeHoy && !input.completarCicloAbierto) {
     const saldoAConsumir = saldoNecesario(saldoDisponible, precioObjetivo, montoTotal);
     if (precioObjetivo > 0 && montoTotal <= 0 && saldoAConsumir < precioObjetivo) throw new MontoInvalidoError();
     return registrarPagoRetroactivo(deps, input, {
@@ -277,6 +281,8 @@ export async function registrarPago(deps: RegistrarPagoDeps, input: DatosRegistr
       ahora,
     });
   }
+
+  const cobroPasado = input.completarCicloAbierto ? await resolverCobroPasado(deps.tasas, input.fechaPago, input.lineas) : null;
 
   const activa = await deps.suscripciones.buscarActivaVigentePorMiembroYPlan(input.miembroId, input.planId, ahora);
 
@@ -375,17 +381,18 @@ export async function registrarPago(deps: RegistrarPagoDeps, input: DatosRegistr
     const pago = await deps.pagos.crear({
       miembroId: input.miembroId,
       sucursalId: input.sucursalId,
-      turnoId: turnoAbierto?.id ?? null,
+      turnoId: cobroPasado ? null : (turnoAbierto?.id ?? null),
       registradoPorId: input.registradoPorId,
       monto: linea.monto,
       metodo: linea.metodo,
       metodoPagoId: linea.metodoPagoId,
       numeroOperacion: linea.numeroOperacion,
-      tasaCambio: linea.tasaCambio,
-      montoBs: montoBsDeLinea(linea, linea.tasaCambio),
+      tasaCambio: tasaDeLinea(linea, cobroPasado),
+      montoBs: montoBsDeLinea(linea, tasaDeLinea(linea, cobroPasado)),
       fechaInicioCiclo: base,
       fechaFinCiclo: fin,
       grupoPagoId,
+      ...(cobroPasado ? { fechaPago: cobroPasado.fecha } : {}),
     });
     pagosCreados.push(pago);
   }

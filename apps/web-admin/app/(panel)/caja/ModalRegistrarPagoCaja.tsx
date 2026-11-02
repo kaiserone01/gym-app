@@ -743,7 +743,7 @@ function ContenidoPaso3({
         <p className="text-sm font-medium" style={{ color: "#ffffff" }}>
           {esFechaPasada
             ? tasaDelDia !== null
-              ? `El pago se registra el ${fechaPago.split("-").reverse().join("/")} con la tasa BCV de ese día (Bs. ${tasaDelDia}); no entra en ningún turno de caja y no admite abonos.`
+              ? `El pago se registra el ${fechaPago.split("-").reverse().join("/")} con la tasa BCV de ese día (Bs. ${tasaDelDia}); no entra en ningún turno de caja${porRegularizar ? "" : " ni en el arqueo de hoy"}.`
               : "Buscando la tasa BCV de esa fecha…"
             : `Cámbiala solo si pagó antes (máx. ${maxDiasAtras} días).`}
         </p>

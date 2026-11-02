@@ -3,7 +3,6 @@ import {
   registrarPago,
   FechaPagoInvalidaError,
   AbonoNoPermitidoError,
-  PagoRetroactivoIncompletoError,
   SinTasaParaFechaError,
   type RegistrarPagoDeps,
   type DatosRegistrarPago,
@@ -12,8 +11,9 @@ import type { DatosNuevoPago, Pago } from "../entities/Pago";
 
 const DIA = 24 * 60 * 60 * 1000;
 
-function crearDeps(opciones: { porRegularizar?: boolean; tasa?: number | null; hayActiva?: boolean; vigenteHasta?: Date; permitePagoParcial?: boolean; saldoAFavor?: number } = {}) {
-  const { porRegularizar = true, tasa = 40, hayActiva = true, vigenteHasta, permitePagoParcial = true, saldoAFavor = 0 } = opciones;
+function crearDeps(opciones: { porRegularizar?: boolean; tasa?: number | null; hayActiva?: boolean; vigenteHasta?: Date; permitePagoParcial?: boolean; saldoAFavor?: number; reglaActiva?: boolean } = {}) {
+  const { porRegularizar = true, tasa = 40, hayActiva = true, vigenteHasta, permitePagoParcial = true, saldoAFavor = 0, reglaActiva = false } = opciones;
+  const limites: (Date | null | undefined)[] = [];
   const extensiones: Date[] = [];
   const cambiosMiembro: Record<string, unknown>[] = [];
   const pagos: DatosNuevoPago[] = [];
@@ -35,9 +35,12 @@ function crearDeps(opciones: { porRegularizar?: boolean; tasa?: number | null; h
       extenderFin: async (_id: string, fin: Date) => {
         extensiones.push(fin);
       },
-      actualizarFechaLimiteAbono: async () => undefined,
-      ajustarCicloMasReciente: async (_m: string, inicio: Date, fin: Date, planId?: string) => {
+      actualizarFechaLimiteAbono: async (_id: string, limite: Date | null) => {
+        limites.push(limite);
+      },
+      ajustarCicloMasReciente: async (_m: string, inicio: Date, fin: Date, planId?: string, limite?: Date | null) => {
         ciclos.push({ inicio, fin, planId });
+        limites.push(limite);
         return hayActiva;
       },
       crear: async (datos: unknown) => {
@@ -58,7 +61,9 @@ function crearDeps(opciones: { porRegularizar?: boolean; tasa?: number | null; h
     turnos: { buscarAbiertoPorSucursal: async () => ({ id: "turno-hoy" }) },
     sucursales: {},
     autorizacion: { tienePermiso: async () => true },
-    reglasAbono: { buscarPorOrganizacionYFrecuencia: async () => null },
+    reglasAbono: {
+      buscarPorOrganizacionYFrecuencia: async () => (reglaActiva ? { id: "r1", organizacionId: "org", frecuencia: "MENSUAL", activo: true, tipo: "DIAS", valor: 1 } : null),
+    },
     tasas: {
       buscarMasCercanaAnterior: async (fecha: Date) => {
         fechasTasa.push(fecha);
@@ -66,7 +71,7 @@ function crearDeps(opciones: { porRegularizar?: boolean; tasa?: number | null; h
       },
     },
   } as unknown as RegistrarPagoDeps;
-  return { deps, pagos, ciclos, creadas, fechasMiembro, fechasTasa, extensiones, cambiosMiembro };
+  return { deps, pagos, ciclos, creadas, fechasMiembro, fechasTasa, extensiones, cambiosMiembro, limites };
 }
 
 const hace = (dias: number) => new Date(Date.now() - dias * DIA);
@@ -270,14 +275,15 @@ describe("registrarPago con fecha pasada (aviso 'Por regularizar')", () => {
     expect(ciclos).toHaveLength(1);
   });
 
-  test("un faltante mayor que la tolerancia con fecha pasada se rechaza", async () => {
-    const { deps } = crearDeps();
+  test("un faltante mayor que la tolerancia con fecha pasada es un abono; en un plan sin abonos se rechaza", async () => {
+    const { deps, pagos } = crearDeps({ permitePagoParcial: false });
     await expect(
       registrarPago(
         deps,
         input({ lineas: [{ monto: 23.5, metodo: "Efectivo", metodoPagoId: "mp2", numeroOperacion: null, tasaCambio: null }] })
       )
-    ).rejects.toBeInstanceOf(PagoRetroactivoIncompletoError);
+    ).rejects.toBeInstanceOf(AbonoNoPermitidoError);
+    expect(pagos).toEqual([]);
   });
 
   test("miembro sin el aviso: más de 90 días atrás → FechaPagoInvalidaError", async () => {
@@ -298,12 +304,45 @@ describe("registrarPago con fecha pasada (aviso 'Por regularizar')", () => {
     await expect(registrarPago(deps, input({ fechaPago: hace(400) }))).rejects.toBeInstanceOf(FechaPagoInvalidaError);
   });
 
-  test("un abono (no cubre el precio del plan) se rechaza", async () => {
-    const { deps, pagos } = crearDeps();
-    await expect(
-      registrarPago(deps, input({ lineas: [{ monto: 10, metodo: "Pago Móvil", metodoPagoId: "mp1", numeroOperacion: "1", tasaCambio: 99 }] }))
-    ).rejects.toBeInstanceOf(PagoRetroactivoIncompletoError);
-    expect(pagos).toEqual([]);
+  test("miembro normal: un abono con fecha pasada se acepta, fuera de turno, y el acceso cuenta desde esa fecha", async () => {
+    const { deps, pagos, creadas } = crearDeps({ porRegularizar: false, hayActiva: false, reglaActiva: true });
+    const fecha = hace(2);
+    await registrarPago(
+      deps,
+      input({ fechaPago: fecha, lineas: [{ monto: 12.5, metodo: "Pago Móvil", metodoPagoId: "mp1", numeroOperacion: "1", tasaCambio: 99 }] })
+    );
+    expect(pagos).toHaveLength(1);
+    expect(pagos[0]).toMatchObject({ monto: 12.5, turnoId: null, fechaPago: fecha, fechaInicioCiclo: fecha });
+    const limite = (creadas[0] as { fechaLimiteAbono: Date }).fechaLimiteAbono;
+    expect(limite.getTime() - fecha.getTime()).toBe(15 * DIA);
+  });
+
+  test("miembro normal con ciclo vigente en esa fecha: el abono se suma al final y fija el plazo desde ahí", async () => {
+    const vigenteHasta = new Date(Date.now() + 5 * DIA);
+    const { deps, limites, extensiones } = crearDeps({ porRegularizar: false, vigenteHasta, reglaActiva: true });
+    await registrarPago(
+      deps,
+      input({ fechaPago: hace(3), lineas: [{ monto: 12.5, metodo: "Efectivo", metodoPagoId: "mp2", numeroOperacion: null, tasaCambio: null }] })
+    );
+    expect(extensiones).toHaveLength(1);
+    expect(limites[0]!.getTime() - vigenteHasta.getTime()).toBe(15 * DIA);
+  });
+
+  test("regularizando: el abono con fecha pasada también se acepta y deja el plazo en el ciclo ajustado", async () => {
+    const { deps, pagos, limites } = crearDeps({ reglaActiva: true });
+    const fecha = hace(5);
+    await registrarPago(
+      deps,
+      input({ fechaPago: fecha, lineas: [{ monto: 10, metodo: "Pago Móvil", metodoPagoId: "mp1", numeroOperacion: "1", tasaCambio: 99 }] })
+    );
+    expect(pagos).toHaveLength(1);
+    expect(limites[0]!.getTime() - fecha.getTime()).toBe(12 * DIA);
+  });
+
+  test("un pago completo regularizando limpia el plazo de abono", async () => {
+    const { deps, limites } = crearDeps({ reglaActiva: true });
+    await registrarPago(deps, input());
+    expect(limites[0]).toBeNull();
   });
 
   test("sin tasa BCV para esa fecha ni anterior → SinTasaParaFechaError y no registra nada", async () => {

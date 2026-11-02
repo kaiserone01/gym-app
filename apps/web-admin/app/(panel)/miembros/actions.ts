@@ -41,7 +41,6 @@ import {
   AbonoNoPermitidoError,
   AbonoMenorAlMinimoError,
   FechaPagoInvalidaError,
-  PagoRetroactivoIncompletoError,
   SinTasaParaFechaError,
 } from "@gym-app/domain/use-cases/RegistrarPago";
 import { eliminarMiembro } from "@gym-app/domain/use-cases/EliminarMiembro";
@@ -234,7 +233,6 @@ export async function crearMiembroAction(
       error instanceof AbonoNoPermitidoError ||
       error instanceof AbonoMenorAlMinimoError ||
       error instanceof FechaPagoInvalidaError ||
-      error instanceof PagoRetroactivoIncompletoError ||
       error instanceof MesesInvalidosError ||
       error instanceof MesesRequierenPagoCompletoError ||
       error instanceof MesesNoDisponiblesError ||

@@ -106,13 +106,6 @@ export class FechaPagoInvalidaError extends Error {
   }
 }
 
-// Un pago con fecha pasada reemplaza el ciclo: debe cubrir el precio del plan completo.
-export class PagoRetroactivoIncompletoError extends Error {
-  constructor() {
-    super("Un pago con fecha pasada debe cubrir el precio completo del plan (no admite abonos).");
-  }
-}
-
 export class SinTasaParaFechaError extends Error {
   constructor() {
     super("No hay tasa de cambio BCV registrada para esa fecha ni anterior: no se puede calcular el monto en bolívares.");
@@ -401,7 +394,7 @@ export async function registrarPago(deps: RegistrarPagoDeps, input: DatosRegistr
 }
 
 // Pago con fecha pasada. Mismo flujo de siempre (líneas, métodos, monto) con una sola variación: la fecha. No se
-// enlaza a ningún turno (no entra en arqueos), la tasa de las líneas en Bs es la BCV de esa fecha y no admite abonos.
+// enlaza a ningún turno (no entra en arqueos) y la tasa de las líneas en Bs es la BCV de esa fecha. Admite abonos.
 // Regularizando (aviso "Por regularizar" o primer pago de un miembro nuevo) el ciclo nuevo reemplaza al anterior:
 // vencimiento = fecha del pago + días del plan, y se apaga el aviso. Para un miembro normal el ciclo se suma al
 // vigente en esa fecha, o arranca ese día si ya estaba vencido.
@@ -429,16 +422,19 @@ async function registrarPagoRetroactivo(
   limite.setDate(limite.getDate() - maxDias);
   if (ctx.fechaPago < limite) throw new FechaPagoInvalidaError(maxDias);
 
-  // Solo el primer pago de un miembro nuevo puede ser un abono (queda con plazo de acceso desde esa fecha);
-  // el resto de los pagos con fecha pasada deben cubrir el precio completo.
+  // Un pago con fecha pasada puede ser un abono (mismas reglas de siempre: el plan debe admitirlo y cubrir el mínimo); con
+  // más de un mes debe cubrir el total. El plazo de acceso del abono cuenta desde el inicio del ciclo.
   const montoAcumulado = ctx.montoTotal + ctx.saldoAConsumir;
   const esAbonoParcial = montoAcumulado < ctx.precioObjetivo;
   const faltaMasQueLaTolerancia = ctx.precioObjetivo - montoAcumulado > toleranciaDiferenciaPagoUSD(ctx.precioObjetivo);
   if (faltaMasQueLaTolerancia && ctx.meses > 1) throw new MesesRequierenPagoCompletoError();
-  if (faltaMasQueLaTolerancia && !input.primerPagoDeInscripcion) throw new PagoRetroactivoIncompletoError();
-  const fechaLimiteAbono = esAbonoParcial
-    ? await evaluarAbonoParcial(deps, input.organizacionId, ctx.plan, ctx.precioObjetivo, montoAcumulado, ctx.fechaPago)
-    : null;
+  const limiteDesde = (base: Date) =>
+    esAbonoParcial
+      ? evaluarAbonoParcial(deps, input.organizacionId, ctx.plan, ctx.precioObjetivo, montoAcumulado, base)
+      : Promise.resolve(null);
+  // Se valida siempre desde la fecha del pago (el plan debe admitir abonos y cubrir el mínimo); si el ciclo arranca en
+  // otra fecha (se suma a uno vigente), el plazo se recalcula más abajo.
+  const fechaLimiteAbono = await limiteDesde(ctx.fechaPago);
 
   // La tasa de cada línea en Bs se reemplaza por la BCV de la fecha del pago (la del formulario es la de hoy).
   let tasaDelDia: number | null = null;
@@ -454,7 +450,7 @@ async function registrarPagoRetroactivo(
   if (regulariza) {
     fin = new Date(ctx.fechaPago);
     fin.setDate(fin.getDate() + ctx.plan.diasCiclo * ctx.meses);
-    const ajustada = await deps.suscripciones.ajustarCicloMasReciente(input.miembroId, ctx.fechaPago, fin, planId);
+    const ajustada = await deps.suscripciones.ajustarCicloMasReciente(input.miembroId, ctx.fechaPago, fin, planId, fechaLimiteAbono);
     if (!ajustada) {
       await deps.suscripciones.crear({ miembroId: input.miembroId, planId, inicio: ctx.fechaPago, fin, fechaLimiteAbono });
     }
@@ -463,11 +459,12 @@ async function registrarPagoRetroactivo(
     if (activa) inicioCiclo = activa.fin;
     fin = new Date(inicioCiclo);
     fin.setDate(fin.getDate() + ctx.plan.diasCiclo * ctx.meses);
+    const limiteCiclo = activa ? await limiteDesde(inicioCiclo) : fechaLimiteAbono;
     if (activa) {
       await deps.suscripciones.extenderFin(activa.id, fin);
-      await deps.suscripciones.actualizarFechaLimiteAbono(activa.id, null);
+      await deps.suscripciones.actualizarFechaLimiteAbono(activa.id, limiteCiclo);
     } else {
-      await deps.suscripciones.crear({ miembroId: input.miembroId, planId, inicio: inicioCiclo, fin, fechaLimiteAbono: null });
+      await deps.suscripciones.crear({ miembroId: input.miembroId, planId, inicio: inicioCiclo, fin, fechaLimiteAbono: limiteCiclo });
     }
   }
   await deps.miembros.actualizar(input.organizacionId, input.miembroId, {

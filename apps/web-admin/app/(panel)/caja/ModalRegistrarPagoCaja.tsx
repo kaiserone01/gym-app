@@ -777,7 +777,7 @@ function ContenidoPaso3({
             const expandida = fraccionAbiertaClave === linea.clave;
             const montoLinea = Number(linea.monto) || 0;
             return (
-              <div key={linea.clave} className="rounded-lg border" style={{ borderColor: "var(--gx-edge)" }}>
+              <div key={linea.clave} className="rounded-lg border" style={{ borderColor: "var(--gx-accent)" }}>
                 <button
                   type="button"
                   onClick={() => setFraccionAbiertaClave(expandida ? null : linea.clave)}
@@ -793,7 +793,7 @@ function ContenidoPaso3({
                     {montoLinea > 0 ? `$${montoLinea.toFixed(2)}` : "Sin monto"}
                     {linea.seleccion.metodo && ` · ${linea.seleccion.metodo}`}
                   </span>
-                  <span style={{ color: "var(--gx-muted)" }}>{expandida ? "▲" : "▼"}</span>
+                  <span className="text-lg font-bold" style={{ color: "var(--gx-accent)" }}>{expandida ? "▲" : "▼"}</span>
                 </button>
                 {/* Siempre montado (nunca desmontado con {expandida && ...})
                     — SelectorMetodoPago guarda su propio estado interno

@@ -589,16 +589,9 @@ function ContenidoPaso3({
   // es solo la vista (ver diseño acordado); arranca en la primera.
   const [fraccionAbiertaClave, setFraccionAbiertaClave] = useState<string | null>(lineasCombinadas[0]?.clave ?? null);
 
-  // Modalidad Abono: el método de pago se elige ANTES que el monto (ver
-  // diseño acordado) — el precio del plan se muestra fijo como referencia
-  // hasta que hay un método elegido, y recién ahí aparece el campo "Monto
-  // a abonar". El monto en USD (lineaUnica.monto) es la fuente de verdad;
-  // si el método es en Bs, se agrega una segunda casilla que solo
-  // convierte visualmente, ver montoAbonoBsTexto más abajo.
+  // Abono y Fraccionado comparten el editor de fracciones: el abono también puede repartirse entre varios métodos.
   const esAbono = modalidad === "abono";
-  const metodoAbonoElegido = esAbono && lineaUnica.seleccion.metodoPagoId !== null;
-  const requiereNumeroOperacionAbono = lineaUnica.seleccion.requiereNumeroOperacion;
-  const [montoAbonoBsTexto, setMontoAbonoBsTexto] = useState("");
+  const usaFracciones = esAbono || modalidad === "combinado";
 
   // Fraccionado: ya no hay un campo de "total a pagar" separado — el
   // monto objetivo es la SUMA de lo que se cargó en cada fracción (ver
@@ -607,11 +600,9 @@ function ContenidoPaso3({
 
   const montoObjetivo = montoObjetivoBloqueado
     ? montoSugerido
-    : esAbono
-      ? menosDeuda(Number(lineaUnica.monto) || 0)
-      : modalidad === "combinado"
-        ? menosDeuda(sumaLineasCombinadas)
-        : Number(montoObjetivoTexto) || 0;
+    : usaFracciones
+      ? menosDeuda(sumaLineasCombinadas)
+      : Number(montoObjetivoTexto) || 0;
 
   // En modalidad total (no abono, no combinado), el monto real a enviar es
   // siempre montoObjetivo, nunca lineaUnica.monto — ese campo solo se
@@ -624,11 +615,9 @@ function ContenidoPaso3({
   // lo que se ve en pantalla. En abono y combinado, en cambio, el monto de
   // cada línea ES el campo editable — no se pisa.
   const lineasActivas =
-    modalidad === "combinado"
+    usaFracciones
       ? lineasCombinadas
-      : esAbono
-        ? [lineaUnica]
-        : [{ ...lineaUnica, monto: String(Math.round((montoObjetivo + deudaAPagar) * 100) / 100) }];
+      : [{ ...lineaUnica, monto: String(Math.round((montoObjetivo + deudaAPagar) * 100) / 100) }];
   const sumaLineas = lineasActivas.reduce((suma, l) => suma + (Number(l.monto) || 0), 0);
 
   // Réplica cliente del motor de reglas de abono (proyeccionAbono.ts) —
@@ -657,7 +646,7 @@ function ContenidoPaso3({
   const faltanteAceptado = esAbono && faltanteTrasPago > 0.005 && faltanteTrasPago <= tolerancia;
   // Pagó de más: sin límite; el cajero elige si es de otro cobro o se guarda como saldo a favor.
   const excedenteCaja = Math.max(0, Math.round((montoObjetivo - faltanteCiclo) * 100) / 100);
-  const hayExcedenteCaja = (esAbono || modalidad === "combinado") && excedenteCaja > 0.005;
+  const hayExcedenteCaja = usaFracciones && excedenteCaja > 0.005;
   const [excedenteElegido, setExcedenteElegido] = useState<"otro" | "saldo">("otro");
 
   useEffect(() => {
@@ -679,7 +668,7 @@ function ContenidoPaso3({
     .filter((l) => Number(l.monto) > 0)
     .map((l) => {
       // Bs que el cajero tecleó (lo recibido de verdad): el servidor los respeta si cuadran con el USD.
-      const textoBs = modalidad === "combinado" ? montosBsCombinadas[l.clave] : esAbono ? montoAbonoBsTexto : "";
+      const textoBs = usaFracciones ? montosBsCombinadas[l.clave] : "";
       const bsTecleados = Number(textoBs);
       return {
         monto: Math.round(Number(l.monto) * 100) / 100,
@@ -699,9 +688,8 @@ function ContenidoPaso3({
   // aceptaría. El texto informativo sigue mostrándose (ver más abajo); la
   // validación real y su mensaje de error quedan en RegistrarPago.ts
   // (AbonoMenorAlMinimoError), que sí conoce el estado real del ciclo.
-  const puedeEnviar = esAbono
-    ? montoObjetivo > 0 && lineaUnica.seleccion.metodoPagoId !== null
-    : montoSugerido === 0 || (lineasParaEnviar.length > 0 && montoObjetivo > 0 && lineasParaEnviar.every((l) => l.metodoPagoId));
+  const puedeEnviar =
+    montoSugerido === 0 || (lineasParaEnviar.length > 0 && montoObjetivo > 0 && lineasParaEnviar.every((l) => l.metodoPagoId));
 
   return (
     <form action={enviar} className="flex min-h-0 flex-1 flex-col gap-4 text-base lg:flex-row lg:gap-6">
@@ -743,89 +731,12 @@ function ContenidoPaso3({
             : `Cámbiala solo si pagó antes (máx. ${maxDiasAtras} días).`}
         </p>
       </div>
-      {/* Abono: el método se elige ANTES que el monto (ver diseño acordado) — se le pasa el precio
-          del plan como referencia para la tasa en Bs, no como monto a cobrar. El monto a abonar y
-          el número de operación viven en la tarjeta de la derecha. USD es la fuente de verdad;
-          escribir en Bs solo recalcula el USD. */}
-      {esAbono && montoSugerido > 0 && (
-        <MetodoYCampos
-          vacio="Elegí un método de pago para ingresar el monto a abonar."
-          selector={
-            <SelectorMetodoPago
-              compacto
-              fechaTasa={esFechaPasada ? fechaPago : undefined}
-              metodos={metodosPago}
-              monto={montoSugerido + deudaAPagar}
-              onCambio={(seleccion) =>
-                setLineaUnica((prev) => {
-                  // Cambiar de método en Bs a uno en USD (o viceversa) invalida la casilla Bs auxiliar.
-                  if (seleccion.tasaCambio === null) setMontoAbonoBsTexto("");
-                  return { ...prev, seleccion };
-                })
-              }
-              grande
-              avisoServidor={{ tasaNueva: estado.tasaNueva, fallaTemporal: estado.fallaTemporal, tasaGuardada: estado.tasaGuardada }}
-              ocultarNumeroOperacion
-              numeroOperacion={lineaUnica.seleccion.numeroOperacion}
-              onCambioNumeroOperacion={(valor) =>
-                setLineaUnica((prev) => ({ ...prev, seleccion: { ...prev.seleccion, numeroOperacion: valor } }))
-              }
-            />
-          }
-          campos={
-            metodoAbonoElegido && (
-              <>
-                <CurrencyInput
-                  name="montoAbonoUSD"
-                  label="Monto a abonar"
-                  moneda="USD"
-                  required
-                  value={lineaUnica.monto}
-                  onChange={(valorUSD) => {
-                    setLineaUnica((prev) => ({ ...prev, monto: valorUSD }));
-                    if (lineaUnica.seleccion.tasaCambio !== null) {
-                      const numero = Number(valorUSD);
-                      setMontoAbonoBsTexto(Number.isNaN(numero) || valorUSD === "" ? "" : String(numero * lineaUnica.seleccion.tasaCambio));
-                    }
-                  }}
-                />
-                {lineaUnica.seleccion.tasaCambio !== null && (
-                  <CurrencyInput
-                    name="montoAbonoBs"
-                    label="Monto a abonar (Bs)"
-                    moneda="Bs"
-                    value={montoAbonoBsTexto}
-                    onChange={(valorBs) => {
-                      setMontoAbonoBsTexto(valorBs);
-                      const numero = Number(valorBs);
-                      const tasa = lineaUnica.seleccion.tasaCambio ?? 0;
-                      setLineaUnica((prev) => ({
-                        ...prev,
-                        monto: Number.isNaN(numero) || valorBs === "" || tasa === 0 ? "" : String(numero / tasa),
-                      }));
-                    }}
-                  />
-                )}
-                {requiereNumeroOperacionAbono && (
-                  <CampoNumeroOperacion
-                    value={lineaUnica.seleccion.numeroOperacion}
-                    onChange={(valor) =>
-                      setLineaUnica((prev) => ({ ...prev, seleccion: { ...prev.seleccion, numeroOperacion: valor } }))
-                    }
-                  />
-                )}
-              </>
-            )
-          }
-        />
-      )}
-
       {/* La proyección + detalle de ciclos del abono ya NO se muestra acá
           dentro del modal — se desacopló al panel flotante (PanelRemanentePago),
           visible para las 3 modalidades sin saturar/refrescar el modal
           (ver diseño acordado). */}
 
-      {montoObjetivo > 0 && !esAbono && modalidad !== "combinado" && (
+      {montoObjetivo > 0 && !usaFracciones && (
         <MetodoYCampos
           vacio={lineaUnica.seleccion.metodoPagoId ? "Este método no requiere número de operación." : "Elegí un método de pago."}
           selector={
@@ -857,7 +768,7 @@ function ContenidoPaso3({
         />
       )}
 
-      {montoSugerido > 0 && modalidad === "combinado" && (
+      {montoSugerido > 0 && usaFracciones && (
         <div className="flex flex-col gap-3">
           <p className="text-sm font-medium" style={{ color: "var(--gx-muted)" }}>
             Distribución del pago

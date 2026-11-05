@@ -26,7 +26,6 @@ export interface ValoresFormularioMiembro {
   cedula: string;
   celular: string;
   fechaInscripcion: string; // yyyy-mm-dd, solo informativa (no se envía al guardar)
-  fechaNacimiento: string; // yyyy-mm-dd, "" si no tiene
   fechaVencimiento?: string; // yyyy-mm-dd, "" si no tiene
   fechaUltimoPago?: string; // yyyy-mm-dd, "" si no tiene
   sucursalId: string | null; // null = "Ambas"
@@ -171,7 +170,6 @@ export function FormularioMiembro({
   const [fechaVencimiento, setFechaVencimiento] = useState(valoresIniciales?.fechaVencimiento ?? "");
   // Fechas de pago y vencimiento: editables para cualquier miembro (p. ej. para corregir un error).
   const editaFechas = esEdicion;
-  const [fechaNacimiento, setFechaNacimiento] = useState(valoresIniciales?.fechaNacimiento ?? "");
   const [sucursalId, setSucursalId] = useState(
     valoresIniciales ? (valoresIniciales.sucursalId ?? ID_AMBAS_SEDES) : sucursalIdDefault ?? ""
   );
@@ -324,7 +322,6 @@ export function FormularioMiembro({
     !!valoresIniciales &&
     (nombre !== valoresIniciales.nombre ||
       celular !== valoresIniciales.celular ||
-      fechaNacimiento !== valoresIniciales.fechaNacimiento ||
       (editaFechas && fechaUltimoPago !== (valoresIniciales.fechaUltimoPago ?? "")) ||
       (editaFechas && fechaVencimiento !== (valoresIniciales.fechaVencimiento ?? "")) ||
       sucursalId !== (valoresIniciales.sucursalId ?? ID_AMBAS_SEDES) ||
@@ -424,10 +421,8 @@ export function FormularioMiembro({
         <span className="flex flex-wrap items-center gap-2">
           <Badge tono="ambar">Por regularizar</Badge>
           Las fechas de pago y de vencimiento vienen de una fuente externa (Excel/migración) y no están verificadas. Ajústalas o registra el último pago con su fecha real.
-          {(!fotoPreview || !fechaNacimiento) && (
-            <span style={{ color: "var(--gx-muted)" }}>
-              Pendiente además: {[!fotoPreview && "foto", !fechaNacimiento && "fecha de nacimiento"].filter(Boolean).join(" y ")} (no impide quitar el aviso).
-            </span>
+          {!fotoPreview && (
+            <span style={{ color: "var(--gx-muted)" }}>Pendiente además: foto (no impide quitar el aviso).</span>
           )}
         </span>
         <span className="flex flex-wrap gap-2">
@@ -557,13 +552,6 @@ export function FormularioMiembro({
                 />
               )
             )}
-
-            <InputFecha
-              name="fechaNacimiento"
-              label="Fecha de nacimiento"
-              value={fechaNacimiento}
-              onChange={setFechaNacimiento}
-            />
           </div>
 
           <Button type="button" className="mt-6 w-full" onClick={manejarClickGuardar} disabled={enviando}>

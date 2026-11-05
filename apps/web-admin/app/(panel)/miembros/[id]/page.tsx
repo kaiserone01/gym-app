@@ -122,7 +122,6 @@ export default async function PaginaEditarMiembro({ params }: { params: Promise<
           cedula: miembro.cedula,
           celular: miembro.celular ?? "",
           fechaInscripcion: formatearFechaISO(miembro.fechaInscripcion ?? miembro.createdAt),
-          fechaNacimiento: miembro.fechaNacimiento ? formatearFechaISO(miembro.fechaNacimiento) : "",
           fechaVencimiento: miembro.fechaVencimiento ? formatearFechaISO(miembro.fechaVencimiento) : "",
           fechaUltimoPago: miembro.fechaUltimoPago ? formatearFechaISO(miembro.fechaUltimoPago) : "",
           sucursalId: miembro.sucursalId,

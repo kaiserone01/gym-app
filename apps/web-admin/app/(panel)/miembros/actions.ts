@@ -158,7 +158,7 @@ export async function crearMiembroAction(
         // Viene del formulario (puede ser pasada: miembros anotados en cuaderno); si falta, hoy: el instante en
         // que empieza el día calendario de Caracas, que es la medianoche local de Venezuela sin depender de la zona del servidor.
         fechaInscripcion: leerFecha(formData.get("fechaInscripcion")) ?? inicioDelDiaCaracas(new Date()),
-        fechaNacimiento: leerFecha(formData.get("fechaNacimiento")),
+        fechaNacimiento: null,
         celular: formData.get("celular")?.toString() || null,
         fotoUrl,
         entrenadorId: formData.get("entrenadorId")?.toString() || null,
@@ -298,7 +298,6 @@ export async function actualizarMiembroAction(
           cedula,
           sucursalId: resolverSucursalId(sucursalId),
           celular: formData.get("celular")?.toString() || null,
-          fechaNacimiento: leerFecha(formData.get("fechaNacimiento")),
           entrenadorId: formData.get("entrenadorId")?.toString() || null,
           ...(planId ? { planId } : {}),
           precioPlan,

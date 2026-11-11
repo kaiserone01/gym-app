@@ -22,7 +22,13 @@ import {
   RolNoAutorizadoError as RolNoAutorizadoActualizar,
   UsuarioNoEncontradoError as UsuarioNoEncontradoActualizar,
 } from "@gym-app/domain/use-cases/ActualizarUsuarioAdmin";
-import { eliminarUsuarioAdmin } from "@gym-app/domain/use-cases/EliminarUsuarioAdmin";
+import {
+  eliminarUsuarioAdmin,
+  RolNoAutorizadoError as RolNoAutorizadoEliminar,
+  UsuarioNoEncontradoError as UsuarioNoEncontradoEliminar,
+  AutoEliminacionError,
+  UsuarioConHistorialError,
+} from "@gym-app/domain/use-cases/EliminarUsuarioAdmin";
 import {
   asignarSucursalesAUsuario,
   RolNoAutorizadoError as RolNoAutorizadoSucursales,
@@ -258,23 +264,36 @@ export async function actualizarPermisosUsuarioAction(id: string, formData: Form
 }
 
 // Sin redirect adentro a propósito: se llama desde un botón en el cliente
-// (papelera en la tarjeta del usuario), no desde un <form action>, así que
-// el error de dominio (mensaje en español, ya legible) se deja propagar
-// para que el cliente lo muestre con useFeedback en vez de navegar.
-export async function eliminarUsuarioAction(id: string): Promise<void> {
+// (papelera en la tarjeta del usuario). Los errores de dominio se devuelven
+// como valor (en producción Next oculta el mensaje de un error lanzado desde
+// una Server Action) para que el cliente los muestre con useFeedback.
+export async function eliminarUsuarioAction(id: string): Promise<{ error?: string }> {
   const sesion = await obtenerUsuarioDeSesionActual();
   if (!sesion) redirect("/login");
   const { usuario } = sesion;
 
-  await eliminarUsuarioAdmin(
-    { usuarios: new PrismaUsuarioAdminRepository(prisma) },
-    {
-      organizacionId: usuario.organizacionId,
-      rolSolicitante: usuario.rol,
-      usuarioIdSolicitante: usuario.id,
-      id,
+  try {
+    await eliminarUsuarioAdmin(
+      { usuarios: new PrismaUsuarioAdminRepository(prisma) },
+      {
+        organizacionId: usuario.organizacionId,
+        rolSolicitante: usuario.rol,
+        usuarioIdSolicitante: usuario.id,
+        id,
+      }
+    );
+  } catch (error) {
+    if (
+      error instanceof RolNoAutorizadoEliminar ||
+      error instanceof UsuarioNoEncontradoEliminar ||
+      error instanceof AutoEliminacionError ||
+      error instanceof UsuarioConHistorialError
+    ) {
+      return { error: error.message };
     }
-  );
+    throw error;
+  }
 
   revalidatePath("/usuarios");
+  return {};
 }

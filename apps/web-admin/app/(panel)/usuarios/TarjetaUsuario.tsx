@@ -34,9 +34,10 @@ export function TarjetaUsuario({ usuario, puedeEliminar }: { usuario: UsuarioAdm
 
     iniciarTransicion(async () => {
       try {
-        await eliminarUsuarioAction(usuario.id);
-      } catch (error) {
-        mostrarError(error instanceof Error ? error.message : "No se pudo eliminar el usuario.");
+        const { error } = await eliminarUsuarioAction(usuario.id);
+        if (error) mostrarError(error);
+      } catch {
+        mostrarError("No se pudo eliminar el usuario.");
       }
     });
   }

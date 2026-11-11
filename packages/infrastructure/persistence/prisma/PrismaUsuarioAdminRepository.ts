@@ -78,7 +78,14 @@ export class PrismaUsuarioAdminRepository implements IUsuarioAdminRepository {
   }
 
   async eliminar(id: string): Promise<void> {
-    await this.prisma.usuarioAdmin.delete({ where: { id } });
+    // Sucursales, permisos y sesiones son datos propios del usuario (FK en RESTRICT):
+    // se borran con él. El historial real (turnos, pagos, deudas) sí debe bloquear.
+    await this.prisma.$transaction([
+      this.prisma.usuarioSucursal.deleteMany({ where: { usuarioId: id } }),
+      this.prisma.permisoUsuario.deleteMany({ where: { usuarioId: id } }),
+      this.prisma.sesion.deleteMany({ where: { usuarioId: id } }),
+      this.prisma.usuarioAdmin.delete({ where: { id } }),
+    ]);
   }
 
   async buscarPasswordHashPorId(id: string): Promise<string | null> {

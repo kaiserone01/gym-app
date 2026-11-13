@@ -236,8 +236,8 @@ export function Calculadora() {
               type="button"
               onClick={() => setAbierta(false)}
               aria-label="Cerrar"
-              className="h-8 w-8 cursor-pointer rounded-md text-xl hover:bg-[var(--gx-surface-2)]"
-              style={{ color: "var(--gx-muted)" }}
+              className="h-10 w-10 cursor-pointer rounded-md text-4xl font-bold leading-none hover:bg-[var(--gx-surface-2)]"
+              style={{ color: "var(--gx-bad)" }}
             >
               ×
             </button>

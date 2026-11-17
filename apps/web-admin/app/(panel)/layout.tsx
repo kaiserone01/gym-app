@@ -8,7 +8,6 @@ import { FeedbackProvider } from "@gym-app/ui/components/FeedbackOverlay";
 import { FeedbackDesdeUrl } from "@gym-app/ui/components/FeedbackDesdeUrl";
 import { RelojYTasaConHistorial } from "./RelojYTasaConHistorial";
 import { Calculadora } from "./Calculadora";
-import { ControlFondo } from "./ControlFondo";
 import { BarraUsuario } from "./BarraUsuario";
 import { EncabezadoSidebar } from "./EncabezadoSidebar";
 import { NavegacionMobile } from "./NavegacionMobile";
@@ -58,7 +57,6 @@ export default async function PanelLayout({ children }: { children: React.ReactN
             despuesDeItems={
               <div className="mt-1">
                 <Calculadora variante="menu" />
-                <ControlFondo />
               </div>
             }
             pie={<BarraUsuario nombre={usuario.nombre} email={usuario.email} fotoUrl={usuario.fotoUrl} />}
@@ -72,9 +70,9 @@ export default async function PanelLayout({ children }: { children: React.ReactN
         <main
           className="flex-1 pt-16 pb-16 lg:pb-0"
           style={{
-            // Foto del gym con un velo oscuro; la opacidad del velo la fija ControlFondo (--velo-panel).
+            // Foto del gym con un velo oscuro fijo (84 %).
             background:
-              "linear-gradient(rgba(10,13,7,var(--velo-panel,0.84)), rgba(10,13,7,var(--velo-panel,0.84))), url('/branding/login-fondo.jpg') center / cover fixed",
+              "linear-gradient(rgba(10,13,7,0.84), rgba(10,13,7,0.84)), url('/branding/login-fondo.jpg') center / cover fixed",
           }}
         >
           {children}

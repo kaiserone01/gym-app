@@ -14,12 +14,15 @@ export function Sidebar({
   items,
   pie,
   encabezado,
+  despuesDeItems,
 }: {
   items: ItemNav[];
   pie?: React.ReactNode;
   // Contenido fijo arriba del menú (logo, nombre del gym, sucursal activa)
   // — opcional para no romper otros consumidores del Sidebar.
   encabezado?: React.ReactNode;
+  // Contenido opcional justo debajo de la lista (ej. un botón de acción).
+  despuesDeItems?: React.ReactNode;
 }) {
   const pathname = usePathname();
 
@@ -59,6 +62,7 @@ export function Sidebar({
             );
           })}
         </ul>
+        {despuesDeItems}
       </div>
       {pie && (
         <div className="border-t pt-4" style={{ borderColor: "var(--gx-edge)" }}>

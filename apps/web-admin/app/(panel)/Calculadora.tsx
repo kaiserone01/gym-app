@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 type Operador = "+" | "−" | "×" | "÷";
 
@@ -40,7 +41,8 @@ const CLASE_TECLA =
 
 const POSICION_INICIAL = { x: null as number | null, y: 72 };
 
-export function Calculadora() {
+// `variante="menu"`: botón de ancho completo para el menú lateral; `"boton"`: botón normal (Miembros, En sala).
+export function Calculadora({ variante = "boton" }: { variante?: "boton" | "menu" }) {
   const [abierta, setAbierta] = useState(false);
   const [actual, setActual] = useState("0");
   const [previo, setPrevio] = useState<number | null>(null);
@@ -196,7 +198,7 @@ export function Calculadora() {
         onClick={abrirOCerrar}
         aria-expanded={abierta}
         aria-controls="panel-calculadora"
-        className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-lg bg-[var(--gx-accent)] px-4 text-sm font-semibold text-[var(--gx-accent-ink)] outline-none transition-all duration-150 hover:opacity-90 focus-visible:ring-2 focus-visible:ring-[var(--gx-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--gx-surface)] active:scale-95"
+        className={`${variante === "menu" ? "flex w-full justify-center" : "inline-flex"} min-h-11 cursor-pointer items-center gap-2 rounded-lg bg-[var(--gx-accent)] px-4 text-sm font-semibold text-[var(--gx-accent-ink)] outline-none transition-all duration-150 hover:opacity-90 focus-visible:ring-2 focus-visible:ring-[var(--gx-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--gx-surface)] active:scale-95`}
       >
         <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
           <rect x="3" y="1.5" width="18" height="21" rx="3" fill="#2b3340" />
@@ -211,14 +213,20 @@ export function Calculadora() {
         CALCULADORA
       </button>
 
-      {abierta && (
+      {abierta &&
+        createPortal(
         <div
           ref={panel}
           id="panel-calculadora"
           role="dialog"
           aria-label="Calculadora"
-          className="fixed z-50 w-[560px] max-w-[calc(100vw-1rem)] rounded-2xl border shadow-2xl"
-          style={{ background: "var(--gx-surface)", borderColor: "var(--gx-edge)", ...estiloPanel }}
+          className="fixed z-50 w-[560px] max-w-[calc(100vw-1rem)] rounded-2xl border-2"
+          style={{
+            background: "var(--gx-surface)",
+            borderColor: "var(--gx-accent)",
+            boxShadow: "0 18px 48px rgba(0,0,0,.65), 0 0 22px color-mix(in srgb, var(--gx-accent) 40%, transparent)",
+            ...estiloPanel,
+          }}
         >
           <div
             onPointerDown={iniciarArrastre}
@@ -358,7 +366,8 @@ export function Calculadora() {
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

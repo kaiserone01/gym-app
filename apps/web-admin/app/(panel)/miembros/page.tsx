@@ -10,7 +10,7 @@ import { listarPlanes } from "@gym-app/domain/use-cases/ListarPlanes";
 import { listarSucursales } from "@gym-app/domain/use-cases/ListarSucursales";
 import { Button } from "@gym-app/ui/components/Button";
 import { ListaMiembros } from "./ListaMiembros";
-import { Calculadora } from "./Calculadora";
+import { Calculadora } from "../Calculadora";
 import { obtenerTurnoAbiertoParaUsuario } from "../caja/obtenerTurnoAbiertoParaUsuario";
 import { AvisoCajaCerrada } from "../caja/AvisoCajaCerrada";
 

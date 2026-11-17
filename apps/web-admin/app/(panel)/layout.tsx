@@ -7,6 +7,7 @@ import { Sidebar } from "@gym-app/ui/components/Sidebar";
 import { FeedbackProvider } from "@gym-app/ui/components/FeedbackOverlay";
 import { FeedbackDesdeUrl } from "@gym-app/ui/components/FeedbackDesdeUrl";
 import { RelojYTasaConHistorial } from "./RelojYTasaConHistorial";
+import { Calculadora } from "./Calculadora";
 import { BarraUsuario } from "./BarraUsuario";
 import { EncabezadoSidebar } from "./EncabezadoSidebar";
 import { NavegacionMobile } from "./NavegacionMobile";
@@ -53,6 +54,11 @@ export default async function PanelLayout({ children }: { children: React.ReactN
               // a ellas desde ahí.
               ...(puedeEditarKiosko(usuario.rol) ? [{ href: "/configuraciones", label: "Configuraciones" }] : []),
             ]}
+            despuesDeItems={
+              <div className="mt-1">
+                <Calculadora variante="menu" />
+              </div>
+            }
             pie={<BarraUsuario nombre={usuario.nombre} email={usuario.email} fotoUrl={usuario.fotoUrl} />}
           />
         </div>

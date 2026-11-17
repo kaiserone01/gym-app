@@ -2,8 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { Eye, EyeSlash } from "@phosphor-icons/react";
-import { LogoBadge } from "@gym-app/ui/components/LogoBadge";
+import { Envelope, Eye, EyeSlash, Lock, SignIn } from "@phosphor-icons/react";
 
 interface SucursalParaElegir {
   id: string;
@@ -11,6 +10,10 @@ interface SucursalParaElegir {
   cajaAbiertaPor: string | null;
   cajaAbiertaPorMi: boolean;
 }
+
+// Título con la rayita verde debajo (mismo en credenciales y en elegir sucursal).
+const ESTILO_TITULO = "text-4xl after:mt-2 after:block after:h-[3px] after:w-11 after:rounded-sm after:bg-[var(--gx-accent)]";
+const ESTILO_TITULO_FUENTE = { fontFamily: '"Bebas Neue", sans-serif', letterSpacing: "0.02em", fontWeight: 400 } as const;
 
 export default function LoginPage() {
   const router = useRouter();
@@ -77,36 +80,62 @@ export default function LoginPage() {
   return (
     <>
       <main
-        className="flex min-h-screen items-center justify-center p-6"
-        style={{ background: "var(--gx-ground)", color: "var(--gx-ink)" }}
+        className="relative grid min-h-screen place-items-center overflow-hidden p-4 pb-36 sm:p-6 sm:pb-6"
+        style={{
+          color: "var(--gx-ink)",
+          background:
+            "linear-gradient(90deg, rgba(10,13,7,.82) 0%, rgba(10,13,7,.45) 45%, rgba(10,13,7,.7) 100%), url('/branding/login-fondo.jpg') center / cover no-repeat, var(--gx-ground)",
+        }}
       >
         <div
-          className="grid w-full max-w-3xl overflow-hidden rounded-2xl border md:grid-cols-2"
-          style={{ borderColor: "var(--gx-edge)", boxShadow: "0 40px 80px -40px rgba(0,0,0,0.75)" }}
+          className="pointer-events-none absolute inset-0"
+          style={{ background: "radial-gradient(60% 70% at 70% 40%, color-mix(in srgb, var(--gx-accent) 14%, transparent), transparent 70%)" }}
+          aria-hidden="true"
+        />
+        <div
+          className="pointer-events-none absolute bottom-0 right-0 h-[min(22vw,300px)] w-[min(36vw,520px)]"
+          style={{ background: "var(--gx-accent)", clipPath: "polygon(100% 0, 100% 100%, 0 100%)" }}
+          aria-hidden="true"
+        />
+
+        <div
+          className="relative z-10 grid w-full max-w-4xl overflow-hidden rounded-[22px] border md:grid-cols-2"
+          style={{
+            borderColor: "color-mix(in srgb, var(--gx-accent) 35%, transparent)",
+            background: "rgba(10,13,7,.58)",
+            backdropFilter: "blur(14px)",
+            boxShadow: "0 40px 90px -30px rgba(0,0,0,.85), 0 0 40px -10px color-mix(in srgb, var(--gx-accent) 35%, transparent)",
+          }}
         >
-          <div className="flex flex-col items-center justify-center gap-6 p-10" style={{ background: "var(--gx-ground)" }}>
-            <LogoBadge src="/branding/logo-adrenalina-gym.jpg" alt="Adrenalina Xtreme Gym" />
-            <div className="text-center">
-              <div className="text-3xl" style={{ fontFamily: '"Bebas Neue", sans-serif', letterSpacing: "0.04em" }}>
-                ADRENALINA <span style={{ color: "var(--gx-accent)" }}>XTREME</span>
-              </div>
-              <div
-                className="mt-1 text-xs uppercase"
-                style={{
-                  fontFamily: '"Barlow Condensed", sans-serif',
-                  fontWeight: 700,
-                  letterSpacing: "0.24em",
-                  color: "var(--gx-muted-dim)",
-                }}
-              >
-                Gym · Panel de administración
-              </div>
+          <div
+            className="flex flex-col items-center justify-center gap-3.5 border-b px-5 py-7 text-center md:border-b-0 md:border-r md:px-7 md:py-12"
+            style={{ borderColor: "color-mix(in srgb, var(--gx-accent) 22%, transparent)" }}
+          >
+            <img
+              src="/branding/adrenalina-icono-login.png"
+              alt="Adrenalina Xtreme Gym"
+              className="h-24 w-24 md:h-36 md:w-36"
+              style={{ filter: "drop-shadow(0 0 18px color-mix(in srgb, var(--gx-accent) 45%, transparent))" }}
+            />
+            <div className="text-4xl leading-none md:text-5xl" style={{ fontFamily: '"Bebas Neue", sans-serif', letterSpacing: "0.04em" }}>
+              ADRENALINA <span style={{ color: "var(--gx-accent)" }}>XTREME</span>
             </div>
+            <div
+              className="text-[11px] uppercase"
+              style={{ fontFamily: '"Barlow Condensed", sans-serif', fontWeight: 700, letterSpacing: "0.3em", color: "var(--gx-muted)" }}
+            >
+              Gym · Panel de administración
+            </div>
+            <div
+              className="mt-1 h-px w-24"
+              style={{ background: "linear-gradient(90deg, transparent, var(--gx-accent), transparent)" }}
+              aria-hidden="true"
+            />
           </div>
 
           {sucursalesParaElegir === null ? (
-            <form onSubmit={manejarSubmitCredenciales} className="flex flex-col gap-4 p-10" style={{ background: "var(--gx-surface)" }}>
-              <h1 className="text-2xl" style={{ fontFamily: '"Bebas Neue", sans-serif', letterSpacing: "0.02em" }}>
+            <form onSubmit={manejarSubmitCredenciales} className="flex flex-col justify-center gap-4 px-6 py-8 md:px-10 md:py-12">
+              <h1 className={ESTILO_TITULO} style={ESTILO_TITULO_FUENTE}>
                 Iniciar sesión
               </h1>
 
@@ -121,24 +150,30 @@ export default function LoginPage() {
 
               <label className="flex flex-col gap-1 text-sm" style={{ color: "var(--gx-muted)" }}>
                 Email
-                <input
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="min-h-11 rounded-lg border px-3 gx-campo"
-                />
+                <div className="relative">
+                  <Envelope size={20} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: "var(--gx-muted)" }} />
+                  <input
+                    type="email"
+                    required
+                    autoComplete="username"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="min-h-12 w-full rounded-xl border pl-11 pr-3 gx-campo"
+                  />
+                </div>
               </label>
 
               <label className="flex flex-col gap-1 text-sm" style={{ color: "var(--gx-muted)" }}>
                 Contraseña
                 <div className="relative">
+                  <Lock size={20} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: "var(--gx-muted)" }} />
                   <input
                     type={verPassword ? "text" : "password"}
                     required
+                    autoComplete="current-password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="min-h-11 w-full rounded-lg border pl-3 pr-11 gx-campo"
+                    className="min-h-12 w-full rounded-xl border pl-11 pr-11 gx-campo"
                   />
                   <button
                     type="button"
@@ -155,15 +190,20 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={cargando}
-                className="min-h-11 cursor-pointer rounded-lg px-5 font-semibold transition-opacity hover:opacity-90 disabled:opacity-50"
-                style={{ background: "var(--gx-accent)", color: "var(--gx-accent-ink)" }}
+                className="mt-1 flex min-h-[52px] cursor-pointer items-center justify-center gap-2.5 rounded-xl px-5 text-lg font-bold transition-opacity hover:opacity-90 disabled:opacity-50"
+                style={{
+                  background: "var(--gx-accent)",
+                  color: "var(--gx-accent-ink)",
+                  boxShadow: "0 10px 28px -8px color-mix(in srgb, var(--gx-accent) 55%, transparent)",
+                }}
               >
+                <SignIn size={22} weight="bold" />
                 {cargando ? "Ingresando..." : "Ingresar"}
               </button>
             </form>
           ) : (
-            <div className="flex flex-col gap-4 p-10" style={{ background: "var(--gx-surface)" }}>
-              <h1 className="text-2xl" style={{ fontFamily: '"Bebas Neue", sans-serif', letterSpacing: "0.02em" }}>
+            <div className="flex flex-col justify-center gap-4 px-6 py-8 md:px-10 md:py-12">
+              <h1 className={ESTILO_TITULO} style={ESTILO_TITULO_FUENTE}>
                 Elige una sucursal
               </h1>
 
@@ -184,7 +224,7 @@ export default function LoginPage() {
                     disabled={cargando}
                     onClick={() => elegirSucursal(sucursal.id)}
                     className="flex flex-col gap-1 rounded-lg border px-4 py-3 text-left transition-opacity disabled:opacity-50"
-                    style={{ borderColor: "var(--gx-edge)", background: "var(--gx-surface-2)", color: "var(--gx-ink)" }}
+                    style={{ borderColor: "var(--gx-field-edge)", background: "color-mix(in srgb, var(--gx-surface-2) 72%, transparent)", color: "var(--gx-ink)" }}
                   >
                     <span className="flex items-center justify-between">
                       <span className="font-semibold">{sucursal.nombre}</span>
@@ -254,6 +294,20 @@ export default function LoginPage() {
               </button>
             </div>
           )}
+        </div>
+
+        <div className="absolute bottom-20 left-5 z-10 sm:bottom-8 sm:left-8">
+          <div className="text-base font-medium uppercase tracking-[0.28em] sm:text-2xl">Disciplina hoy,</div>
+          <div className="mt-1 text-lg font-bold uppercase italic tracking-[0.22em] sm:text-3xl" style={{ color: "var(--gx-accent)" }}>
+            Resultados siempre.
+          </div>
+          <div className="mt-1.5 h-0.5 w-72 max-w-[70vw]" style={{ background: "linear-gradient(90deg, var(--gx-accent), transparent)" }} aria-hidden="true" />
+        </div>
+        <div
+          className="absolute bottom-4 right-5 z-10 rounded-full border px-4 py-2 text-sm font-semibold sm:bottom-6 sm:right-8"
+          style={{ background: "rgba(10,13,7,.82)", borderColor: "color-mix(in srgb, var(--gx-accent) 30%, transparent)" }}
+        >
+          by zipnegocios
         </div>
       </main>
     </>

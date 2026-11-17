@@ -19,6 +19,7 @@ export interface Pago {
   fechaFinCiclo: Date | null;
   anuladoEn: Date | null;
   anuladoPorId: string | null;
+  anuladoPorNombre?: string;
   motivoAnulacion: string | null;
   // Correlaciona las N filas de un mismo pago combinado (ver
   // registrarPago) — null en pagos de una sola línea.

@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
@@ -21,6 +22,23 @@ function formatearRangoCiclo(inicio: Date | null, fin: Date | null): string {
   if (!inicio || !fin) return "—";
   const opciones: Intl.DateTimeFormatOptions = { day: "2-digit", month: "2-digit" };
   return `${new Date(inicio).toLocaleDateString("es-VE", opciones)} → ${new Date(fin).toLocaleDateString("es-VE", opciones)}`;
+}
+
+// Línea de detalle de un pago anulado: quién, cuándo y el motivo (null si el pago está vigente).
+function textoAnulacion(pago: Pago): string | null {
+  if (!pago.anuladoEn) return null;
+  return `Anulado por ${pago.anuladoPorNombre ?? "—"} el ${formatearFechaHora(pago.anuladoEn)} — Motivo: ${pago.motivoAnulacion ?? "—"}`;
+}
+
+function EtiquetaAnulado() {
+  return (
+    <span
+      className="ml-2 rounded px-1.5 py-0.5 text-xs font-bold"
+      style={{ background: "color-mix(in srgb, var(--gx-bad) 18%, transparent)", color: "var(--gx-bad)" }}
+    >
+      ANULADO
+    </span>
+  );
 }
 
 // Pagos fraccionados/mixtos: cuando varios Pago comparten el mismo ciclo
@@ -95,9 +113,14 @@ export default async function PaginaHistorialPagos({ params }: { params: Promise
             </thead>
             <tbody>
               {pagos.map((pago) => (
-                <tr key={pago.id} className="border-b" style={{ borderColor: "var(--gx-edge)" }}>
+                <Fragment key={pago.id}>
+                <tr
+                  className={pago.anuladoEn ? "line-through opacity-60" : undefined}
+                  style={{ borderBottom: pago.anuladoEn ? undefined : "1px solid var(--gx-edge)" }}
+                >
                   <td className="py-2" style={{ color: "var(--gx-ink)" }}>
                     {formatearFechaHora(pago.fechaPago)}
+                    {pago.anuladoEn && <EtiquetaAnulado />}
                   </td>
                   <td className="py-2" style={{ color: "var(--gx-ink)" }}>
                     ${pago.monto.toFixed(2)}
@@ -123,6 +146,14 @@ export default async function PaginaHistorialPagos({ params }: { params: Promise
                     {pago.registradoPorNombre ?? "—"}
                   </td>
                 </tr>
+                {pago.anuladoEn && (
+                  <tr className="border-b" style={{ borderColor: "var(--gx-edge)" }}>
+                    <td colSpan={7} className="pb-2 text-sm" style={{ color: "var(--gx-bad)" }}>
+                      {textoAnulacion(pago)}
+                    </td>
+                  </tr>
+                )}
+                </Fragment>
               ))}
 
               {pagos.length === 0 && (
@@ -139,9 +170,12 @@ export default async function PaginaHistorialPagos({ params }: { params: Promise
 
       <div className="flex flex-col gap-3 lg:hidden">
         {pagos.map((pago) => (
-          <Card key={pago.id} className="flex flex-col gap-2">
+          <Card key={pago.id} className={`flex flex-col gap-2 ${pago.anuladoEn ? "opacity-70" : ""}`}>
             <div className="flex items-center justify-between">
-              <span style={{ color: "var(--gx-ink)" }}>{formatearFechaHora(pago.fechaPago)}</span>
+              <span className={pago.anuladoEn ? "line-through" : undefined} style={{ color: "var(--gx-ink)" }}>
+                {formatearFechaHora(pago.fechaPago)}
+                {pago.anuladoEn && <EtiquetaAnulado />}
+              </span>
               <p className="font-semibold" style={{ color: "var(--gx-accent)" }}>
                 ${pago.monto.toFixed(2)}
               </p>
@@ -159,6 +193,7 @@ export default async function PaginaHistorialPagos({ params }: { params: Promise
               {pago.montoBs !== null && <span>Monto: Bs. {formatearBs(pago.montoBs)}</span>}
               <span>Tasa: {pago.tasaCambio !== null ? `Bs. ${pago.tasaCambio}` : "—"}</span>
               <span>Registró: {pago.registradoPorNombre ?? "—"}</span>
+              {pago.anuladoEn && <span style={{ color: "var(--gx-bad)" }}>{textoAnulacion(pago)}</span>}
             </div>
           </Card>
         ))}

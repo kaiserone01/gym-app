@@ -13,7 +13,7 @@ import { conceptoPago } from "./conceptoPago";
 import { formatearBs, formatearBsConRef } from "../tasaBcvFija";
 import { inicioDelDia, finDelDia } from "../fechas";
 import { FiltroFechasHistorico } from "./FiltroFechasHistorico";
-import { BotonImprimir } from "../BotonImprimir";
+import { PagosFueraDeTurno } from "./PagosFueraDeTurno";
 
 // El método se guarda como snapshot legible ("Pago Móvil - Banesco")
 // directo en Pago.metodo — no hay catálogo estático que traducir.
@@ -83,16 +83,29 @@ export default async function PaginaHistoricoPagos({
 
   return (
     <div className="flex flex-col gap-6 p-6 pb-24 lg:p-8 lg:pb-8">
-      <div className="flex items-center justify-between print:hidden">
+      <div className="print:hidden">
         <PageHeader>Histórico de Pagos</PageHeader>
-        <BotonImprimir />
       </div>
 
-      <div className="print:hidden">
+      <div className="flex flex-wrap items-center gap-3 print:hidden">
         <FiltroFechasHistorico
           desde={desde}
           hasta={hasta}
           diasConActividadISO={diasConActividad.map((d) => formatearFechaISO(d))}
+        />
+        <PagosFueraDeTurno
+          filas={reporte.ajustesFueraDeTurno
+            .filter((p) => !p.anuladoEn)
+            .sort((a, b) => b.fechaPago.getTime() - a.fechaPago.getTime())
+            .map((pago) => ({
+              id: pago.id,
+              fecha: pago.fechaPago.toLocaleString("es-VE", { dateStyle: "short", timeStyle: "short" }),
+              concepto: conceptoPago(pago),
+              metodo: nombreMetodo(pago.metodo),
+              monto: `$${pago.monto.toFixed(2)}`,
+              tasa: pago.tasaCambio !== null ? `Tasa ${pago.tasaCambio.toFixed(2)}` : "—",
+              montoBs: pago.montoBs !== null ? `Bs. ${formatearBs(pago.montoBs)}` : "—",
+            }))}
         />
       </div>
 
@@ -222,33 +235,6 @@ export default async function PaginaHistoricoPagos({
         </Card>
         );
       })}
-
-      {reporte.ajustesFueraDeTurno.length > 0 && (
-        <div
-          className="rounded-2xl border p-5 text-sm"
-          style={{ borderColor: "var(--gx-warn)", background: "color-mix(in srgb, var(--gx-warn) 12%, transparent)" }}
-        >
-          <h2 className="mb-3 font-semibold" style={{ color: "var(--gx-warn)" }}>
-            Ajustes fuera de turno
-          </h2>
-          {reporte.ajustesFueraDeTurno.map((pago) => (
-            <div
-              key={pago.id}
-              className="flex justify-between border-b py-2"
-              style={{ borderColor: "color-mix(in srgb, var(--gx-warn) 30%, transparent)" }}
-            >
-              <span style={{ color: "var(--gx-ink)" }}>
-                {conceptoPago(pago)} — {nombreMetodo(pago.metodo)}
-              </span>
-              <span className="flex gap-3" style={{ color: "var(--gx-ink)" }}>
-                <span>${pago.monto.toFixed(2)}</span>
-                <span>{pago.tasaCambio !== null ? `Tasa ${pago.tasaCambio.toFixed(2)}` : "—"}</span>
-                <span>{pago.montoBs !== null ? `Bs. ${formatearBs(pago.montoBs)}` : "—"}</span>
-              </span>
-            </div>
-          ))}
-        </div>
-      )}
 
       {reporte.turnos.length === 0 && reporte.ajustesFueraDeTurno.length === 0 && (
         <p style={{ color: "var(--gx-muted)" }}>Sin turnos en este período.</p>

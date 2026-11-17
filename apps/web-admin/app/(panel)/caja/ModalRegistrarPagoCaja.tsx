@@ -200,6 +200,11 @@ function ContenidoPaso2({
   // diseño acordado — reusa el mismo flujo que la ficha del miembro,
   // FormularioCambiarPlan) en vez de solo reasignarlo para este pago.
   const tieneCicloVigente = miembro.fechaVencimiento !== null && miembro.fechaVencimiento > new Date();
+  // Ciclo ya pagado que sigue en curso (el mismo que ve el miembro en Ciclos): termina en su vencimiento y empezó un ciclo del plan antes.
+  const cicloVigente =
+    tieneCicloVigente && miembro.fechaVencimiento && miembro.plan
+      ? { inicio: new Date(miembro.fechaVencimiento.getTime() - miembro.plan.diasCiclo * 86_400_000), fin: miembro.fechaVencimiento }
+      : null;
   const [cambiandoPlan, setCambiandoPlan] = useState(false);
   // Resultado exacto (calcularCambioPlan, único camino) del plan nuevo
   // elegido dentro de FormularioCambiarPlan — corrige E6: antes este
@@ -414,9 +419,11 @@ function ContenidoPaso2({
 
       {!cambiandoPlan && !abonoPrevio && proyeccionRenovacionNormal && (
         <div className="rounded-lg border p-4" style={{ borderColor: "var(--gx-edge)" }}>
-          <p style={{ color: "var(--gx-muted)" }}>Ciclo a pagar</p>
+          <p style={{ color: "var(--gx-muted)" }}>{cicloVigente ? "Ciclo vigente" : "Ciclo a pagar"}</p>
           <p className="mt-1" style={{ color: "var(--gx-ink)" }}>
-            {formatearFechaCorta(proyeccionRenovacionNormal.inicioCiclo)} → {formatearFechaCorta(proyeccionRenovacionNormal.fechaProximoVencimiento)}
+            {cicloVigente
+              ? `${formatearFechaCorta(cicloVigente.inicio)} → ${formatearFechaCorta(cicloVigente.fin)}`
+              : `${formatearFechaCorta(proyeccionRenovacionNormal.inicioCiclo)} → ${formatearFechaCorta(proyeccionRenovacionNormal.fechaProximoVencimiento)}`}
           </p>
         </div>
       )}

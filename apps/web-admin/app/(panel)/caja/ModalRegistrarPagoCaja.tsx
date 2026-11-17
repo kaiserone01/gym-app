@@ -414,15 +414,9 @@ function ContenidoPaso2({
 
       {!cambiandoPlan && !abonoPrevio && proyeccionRenovacionNormal && (
         <div className="rounded-lg border p-4" style={{ borderColor: "var(--gx-edge)" }}>
-          <p style={{ color: "var(--gx-ink)" }}>
-            Al pagar la renovación, disfrutará de <strong>{proyeccionRenovacionNormal.diasDelPlan} días</strong>
-            {proyeccionRenovacionNormal.adelantandoCuota && (
-              <> ({proyeccionRenovacionNormal.diasTotalesTrasPago} días en total, incluyendo los días restantes)</>
-            )}
-            .
-          </p>
-          <p className="mt-2" style={{ color: "var(--gx-muted)" }}>
-            Próximo vencimiento: {formatearFechaCorta(proyeccionRenovacionNormal.fechaProximoVencimiento)}
+          <p style={{ color: "var(--gx-muted)" }}>Ciclo a pagar</p>
+          <p className="mt-1" style={{ color: "var(--gx-ink)" }}>
+            {formatearFechaCorta(proyeccionRenovacionNormal.inicioCiclo)} → {formatearFechaCorta(proyeccionRenovacionNormal.fechaProximoVencimiento)}
           </p>
         </div>
       )}

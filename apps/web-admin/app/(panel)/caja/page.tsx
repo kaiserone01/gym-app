@@ -353,10 +353,7 @@ export default async function PaginaCaja({ searchParams }: { searchParams: Promi
     <div className="flex flex-col gap-6 p-6 pb-24 lg:p-8 lg:pb-8">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <PageHeader>Abrir turno</PageHeader>
-        <div className="flex flex-wrap gap-2">
-          {puedeAnular && <BotonAnularPago pagos={pagosAnulables} />}
-          <EnlaceHistoricoPagos />
-        </div>
+        <EnlaceHistoricoPagos />
       </div>
 
       <FormularioAbrirTurno

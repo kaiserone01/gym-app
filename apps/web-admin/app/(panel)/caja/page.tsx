@@ -32,6 +32,8 @@ import { BotonRegistrarPagoCaja } from "./BotonRegistrarPagoCaja";
 import { BotonRegistrarEgreso } from "./BotonRegistrarEgreso";
 import { BotonVenderProducto } from "./BotonVenderProducto";
 import { BotonCobrarDeudas } from "./BotonCobrarDeudas";
+import { BotonAnularPago, type PagoAnulable } from "./BotonAnularPago";
+import { PrismaPermisoRepository } from "@gym-app/infrastructure/persistence/prisma/PrismaPermisoRepository";
 import { listarAbonosPendientes } from "@gym-app/domain/use-cases/ListarAbonosPendientes";
 import { cambiarPlanAction } from "../pagos/actions";
 
@@ -83,6 +85,32 @@ export default async function PaginaCaja({ searchParams }: { searchParams: Promi
   // sucursalActivaId (ver obtenerTurnoAbiertoParaUsuario).
   const sucursalId = sucursalActivaId;
 
+  // "Anular pago": solo con el permiso Pagos → Eliminar (el socio siempre). Se ofrecen los pagos vigentes
+  // de los últimos 30 días de esta sucursal, aunque sean de un turno ya cerrado.
+  const puedeAnular =
+    usuario.rol === "SOCIO" || (await new PrismaPermisoRepository(prisma).tiene(usuario.id, "PAGOS", "ELIMINAR"));
+  const ahora = new Date();
+  const hace30Dias = new Date(ahora);
+  hace30Dias.setDate(hace30Dias.getDate() - 30);
+  const pagosAnulables: PagoAnulable[] = puedeAnular
+    ? (await new PrismaPagoRepository(prisma).listarPorOrganizacionYRango(usuario.organizacionId, hace30Dias, ahora))
+        .filter((p) => !p.anuladoEn && p.sucursalId === sucursalActivaId)
+        .sort((a, b) => b.fechaPago.getTime() - a.fechaPago.getTime())
+        .map((p) => ({
+          id: p.id,
+          fecha: p.fechaPago.toLocaleString("es-VE", { dateStyle: "short", timeStyle: "short" }),
+          concepto: conceptoPago(p),
+          metodo: nombreMetodo(p.metodo),
+          monto: `$${p.monto.toFixed(2)}`,
+          montoBs: p.montoBs !== null ? `Bs. ${formatearBs(p.montoBs)}` : null,
+          referencia: p.numeroOperacion,
+          ciclo:
+            p.fechaInicioCiclo && p.fechaFinCiclo
+              ? `${p.fechaInicioCiclo.toLocaleDateString("es-VE", { day: "2-digit", month: "2-digit" })} → ${p.fechaFinCiclo.toLocaleDateString("es-VE", { day: "2-digit", month: "2-digit" })}`
+              : null,
+        }))
+    : [];
+
   if (turnoAbierto) {
     const esPropio = turnoAbierto.esPropio;
     const [resumen, miembros, planes, productos, deudasPendientes, metodosPago, tasaCambio, reglasAbono, entrenadores] = await Promise.all([
@@ -126,19 +154,22 @@ export default async function PaginaCaja({ searchParams }: { searchParams: Promi
           <PageHeader>Turno activo</PageHeader>
           <div className="flex flex-wrap gap-2">
           {esPropio && (
+            <BotonRegistrarPagoCaja
+              miembros={miembrosActivos}
+              planes={planesActivos}
+              metodosPago={metodosPago}
+              tasaActual={tasaActual}
+              reglasAbono={reglasAbono}
+              entrenadores={entrenadores}
+              accionCambiarPlan={cambiarPlanAction}
+              miembroInicialId={cobrar}
+              deudas={deudasPendientes}
+              abonos={abonosPendientes}
+            />
+          )}
+          {puedeAnular && <BotonAnularPago pagos={pagosAnulables} />}
+          {esPropio && (
             <>
-              <BotonRegistrarPagoCaja
-                miembros={miembrosActivos}
-                planes={planesActivos}
-                metodosPago={metodosPago}
-                tasaActual={tasaActual}
-                reglasAbono={reglasAbono}
-                entrenadores={entrenadores}
-                accionCambiarPlan={cambiarPlanAction}
-                miembroInicialId={cobrar}
-                deudas={deudasPendientes}
-                abonos={abonosPendientes}
-              />
               <BotonVenderProducto
                 accion={venderProductoAction}
                 accionFiar={fiarProductoAction}
@@ -322,7 +353,10 @@ export default async function PaginaCaja({ searchParams }: { searchParams: Promi
     <div className="flex flex-col gap-6 p-6 pb-24 lg:p-8 lg:pb-8">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <PageHeader>Abrir turno</PageHeader>
-        <EnlaceHistoricoPagos />
+        <div className="flex flex-wrap gap-2">
+          {puedeAnular && <BotonAnularPago pagos={pagosAnulables} />}
+          <EnlaceHistoricoPagos />
+        </div>
       </div>
 
       <FormularioAbrirTurno

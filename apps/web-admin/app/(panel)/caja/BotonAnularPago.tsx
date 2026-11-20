@@ -78,7 +78,7 @@ function ModalAnularPago({ pagos, onCerrar }: { pagos: PagoAnulable[]; onCerrar:
         </div>
 
         <p className="text-sm" style={{ color: "var(--gx-muted)" }}>
-          Elige el pago a anular (últimos 30 días). No se borra: queda registrado con tu nombre y el motivo, pero deja de contar en los totales.
+          Elige el pago a anular (últimos 2 meses). No se borra: queda registrado con tu nombre y el motivo, pero deja de contar en los totales.
         </p>
 
         <input

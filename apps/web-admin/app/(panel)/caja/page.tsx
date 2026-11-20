@@ -86,14 +86,14 @@ export default async function PaginaCaja({ searchParams }: { searchParams: Promi
   const sucursalId = sucursalActivaId;
 
   // "Anular pago": solo con el permiso Pagos → Eliminar (el socio siempre). Se ofrecen los pagos vigentes
-  // de los últimos 30 días de esta sucursal, aunque sean de un turno ya cerrado.
+  // de los últimos 2 meses de esta sucursal, aunque sean de un turno ya cerrado.
   const puedeAnular =
     usuario.rol === "SOCIO" || (await new PrismaPermisoRepository(prisma).tiene(usuario.id, "PAGOS", "ELIMINAR"));
   const ahora = new Date();
-  const hace30Dias = new Date(ahora);
-  hace30Dias.setDate(hace30Dias.getDate() - 30);
+  const hace2Meses = new Date(ahora);
+  hace2Meses.setMonth(hace2Meses.getMonth() - 2);
   const pagosAnulables: PagoAnulable[] = puedeAnular
-    ? (await new PrismaPagoRepository(prisma).listarPorOrganizacionYRango(usuario.organizacionId, hace30Dias, ahora))
+    ? (await new PrismaPagoRepository(prisma).listarPorOrganizacionYRango(usuario.organizacionId, hace2Meses, ahora))
         .filter((p) => !p.anuladoEn && p.sucursalId === sucursalActivaId)
         .sort((a, b) => b.fechaPago.getTime() - a.fechaPago.getTime())
         .map((p) => ({

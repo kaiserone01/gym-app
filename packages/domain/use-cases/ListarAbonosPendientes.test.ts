@@ -48,6 +48,22 @@ describe("calcularAbonosPendientes", () => {
     expect(calcularAbonosPendientes([miembro()], [plan], [], ahora)).toEqual([]);
   });
 
+  test("el saldo de $4.50 de Gregori Rondón (ciclo hasta el 19/12/2026) no se cobra; otros saldos suyos o de otros sí", () => {
+    const planMensual = { id: "p1", nombre: "Mensual", diasCiclo: 30, precioUSD: 25 } as Plan;
+    const gregori = miembro({ nombre: "Gregori Rondón", precioPlan: 25 });
+    const finGregori = new Date("2026-12-19T16:00:00.000Z");
+    const inicioGregori = new Date(finGregori.getTime() - 30 * DIA);
+    const ciclo = (monto: number) => pago(monto, { fechaInicioCiclo: inicioGregori, fechaFinCiclo: finGregori });
+    const hoy = new Date("2026-11-21T16:00:00.000Z");
+
+    expect(calcularAbonosPendientes([gregori], [planMensual], [ciclo(20.5)], hoy)).toEqual([]);
+    // Otro monto pendiente del mismo miembro y ciclo: se sigue cobrando.
+    expect(calcularAbonosPendientes([gregori], [planMensual], [ciclo(15)], hoy)).toHaveLength(1);
+    // Mismo saldo de $4.50 en otro miembro: se sigue cobrando.
+    const otro = miembro({ nombre: "Otra Persona", precioPlan: 25 });
+    expect(calcularAbonosPendientes([otro], [planMensual], [ciclo(20.5)], hoy)).toHaveLength(1);
+  });
+
   test("un plan de cortesía ($0) nunca genera saldo", () => {
     expect(calcularAbonosPendientes([miembro({ precioPlan: 0 })], [plan], [pago(0)], ahora)).toEqual([]);
   });

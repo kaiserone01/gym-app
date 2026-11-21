@@ -19,6 +19,18 @@ export interface AbonoPendiente {
   fechaProximoAbono: Date;
 }
 
+// Saldos que el socio decidió no cobrar (caso aislado, sin tabla de condonaciones). Se identifican por miembro, día
+// de fin del ciclo y monto exacto: no afectan a otros miembros, otros ciclos ni otros montos. Caduca solo cuando
+// el ciclo termina; se puede borrar de acá después del 19/12/2026.
+const SALDOS_NO_COBRABLES = [{ nombre: "gregori rondón", finCiclo: "2026-12-19", saldoUSD: 4.5 }];
+
+function esSaldoNoCobrable(nombre: string, finCiclo: Date, saldoUSD: number): boolean {
+  const diaFin = finCiclo.toLocaleDateString("en-CA", { timeZone: "America/Caracas" });
+  return SALDOS_NO_COBRABLES.some(
+    (s) => s.nombre === nombre.trim().toLowerCase() && s.finCiclo === diaFin && s.saldoUSD === saldoUSD
+  );
+}
+
 // Puro: recibe los pagos con ciclo aún abierto de los miembros dados y arma sus saldos pendientes.
 export function calcularAbonosPendientes(
   miembros: Miembro[],
@@ -56,6 +68,9 @@ export function calcularAbonosPendientes(
       .sort((a, b) => a.getTime() - b.getTime())[0];
     if (!inicioCiclo) continue;
 
+    const saldoUSD = Math.round((miembro.precioPlan - pagado) * 100) / 100;
+    if (esSaldoNoCobrable(miembro.nombre, finCiclo, saldoUSD)) continue;
+
     const prorrateo = calcularProrrateoAbono(pagado, miembro.precioPlan, inicioCiclo, plan.diasCiclo);
     abonos.push({
       miembroId: miembro.id,
@@ -63,7 +78,7 @@ export function calcularAbonosPendientes(
       planNombre: plan.nombre,
       precioUSD: miembro.precioPlan,
       pagadoUSD: pagado,
-      saldoUSD: Math.round((miembro.precioPlan - pagado) * 100) / 100,
+      saldoUSD,
       inicioCiclo,
       finCiclo,
       fechaProximoAbono: prorrateo?.fechaTope ?? finCiclo,

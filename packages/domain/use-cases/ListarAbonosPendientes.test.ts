@@ -57,6 +57,11 @@ describe("calcularAbonosPendientes", () => {
     const hoy = new Date("2026-11-21T16:00:00.000Z");
 
     expect(calcularAbonosPendientes([gregori], [planMensual], [ciclo(20.5)], hoy)).toEqual([]);
+    // Nombre escrito sin tilde, con tilde descompuesta o con espacios de más: es la misma persona.
+    for (const nombre of ["Gregori Rondon", "Gregori Rondón", "  GREGORI   RONDÓN "]) {
+      const variante = miembro({ nombre, precioPlan: 25 });
+      expect(calcularAbonosPendientes([variante], [planMensual], [ciclo(20.5)], hoy)).toEqual([]);
+    }
     // Otro monto pendiente del mismo miembro y ciclo: se sigue cobrando.
     expect(calcularAbonosPendientes([gregori], [planMensual], [ciclo(15)], hoy)).toHaveLength(1);
     // Mismo saldo de $4.50 en otro miembro: se sigue cobrando.

@@ -22,12 +22,17 @@ export interface AbonoPendiente {
 // Saldos que el socio decidió no cobrar (caso aislado, sin tabla de condonaciones). Se identifican por miembro, día
 // de fin del ciclo y monto exacto: no afectan a otros miembros, otros ciclos ni otros montos. Caduca solo cuando
 // el ciclo termina; se puede borrar de acá después del 19/12/2026.
-const SALDOS_NO_COBRABLES = [{ nombre: "gregori rondón", finCiclo: "2026-12-19", saldoUSD: 4.5 }];
+const SALDOS_NO_COBRABLES = [{ nombre: "gregori rondon", finCiclo: "2026-12-19", saldoUSD: 4.5 }];
+
+// Sin tildes, mayúsculas ni espacios de más (el nombre puede venir escrito de varias formas).
+function simplificarNombre(nombre: string): string {
+  return nombre.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/\s+/g, " ").trim().toLowerCase();
+}
 
 function esSaldoNoCobrable(nombre: string, finCiclo: Date, saldoUSD: number): boolean {
   const diaFin = finCiclo.toLocaleDateString("en-CA", { timeZone: "America/Caracas" });
   return SALDOS_NO_COBRABLES.some(
-    (s) => s.nombre === nombre.trim().toLowerCase() && s.finCiclo === diaFin && s.saldoUSD === saldoUSD
+    (s) => s.nombre === simplificarNombre(nombre) && s.finCiclo === diaFin && Math.abs(s.saldoUSD - saldoUSD) < 0.005
   );
 }
 

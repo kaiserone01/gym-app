@@ -101,7 +101,6 @@ export function FormularioMiembro({
   accesoHastaAbono,
   totalPagos,
   valoresIniciales,
-  tieneCicloVigente,
   porRegularizar = false,
   vieneDelExcel = false,
 }: {
@@ -139,12 +138,6 @@ export function FormularioMiembro({
   // "Ver historial de pagos". Undefined en modo creación.
   totalPagos?: number;
   valoresIniciales?: ValoresFormularioMiembro;
-  // Mientras el ciclo actual esté vigente, cambiar de plan gratis desde acá
-  // quedaría pisado por "Cambiar de plan" del panel derecho (que sí cobra
-  // la diferencia) — se oculta el editor de plan acá para no tener dos
-  // botones "Cambiar plan" haciendo cosas distintas al mismo tiempo (ver
-  // diseño acordado). Solo relevante en edición; en alta siempre es true.
-  tieneCicloVigente?: boolean;
   // Fecha de vencimiento no confiable (migrada): aviso "Por regularizar" y campo de vencimiento que titila.
   porRegularizar?: boolean;
   // Miembro activado desde el padrón del Excel: sus fechas de pago y de vencimiento se editan siempre
@@ -217,11 +210,6 @@ export function FormularioMiembro({
     numeroOperacion: string;
   }>({ metodoPagoId: null, metodo: "", tasaCambio: null, numeroOperacion: "" });
   const [mostrarTicket, setMostrarTicket] = useState(false);
-  // Mientras el ciclo actual esté vigente, el cambio de plan gratis queda
-  // deshabilitado acá — usa "Cambiar de plan" del panel derecho, que cobra
-  // la diferencia correspondiente (ver diseño acordado). Quien viene del
-  // Excel lo tiene siempre: la regularización lo necesita y no mueve fechas.
-  const puedeCambiarPlanGratis = !esEdicion || !tieneCicloVigente || vieneDelExcel;
   // En edición, el plan asignado se ve de solo lectura hasta que se
   // confirma explícitamente que se quiere cambiar (ver diseño acordado:
   // evita cambios de plan por error, ya que dispara el prorrateo).
@@ -239,6 +227,8 @@ export function FormularioMiembro({
   const planSeleccionado = planesActivos.find((p) => p.id === planId);
 
   const requiereEntrenador = planSeleccionado?.incluyeEntrenador ?? false;
+  // En edición todos pueden ver y cambiar el entrenador, aunque su plan no lo incluya; en el alta solo si el plan lo incluye.
+  const mostrarEntrenador = esEdicion || requiereEntrenador;
   // Un plan de cortesía ($0 oficial en Configuración → Planes) fija el
   // precio en $0 y no se deja editar — no tiene sentido "negociar" el
   // precio de algo que ya se definió como gratuito.
@@ -568,12 +558,12 @@ export function FormularioMiembro({
               Plan de membresía
             </h2>
             <div className="flex gap-2">
-              {esEdicion && !editandoEntrenador && requiereEntrenador && (
+              {esEdicion && !editandoEntrenador && (
                 <Button type="button" variant="secundario" onClick={() => setEditandoEntrenador(true)}>
-                  Asignar entrenador
+                  Cambiar entrenador
                 </Button>
               )}
-              {esEdicion && !editandoPlan && puedeCambiarPlanGratis && (
+              {esEdicion && !editandoPlan && (
                 <Button type="button" variant="secundario" onClick={() => setConfirmandoCambioPlan(true)}>
                   Cambiar plan
                 </Button>
@@ -629,15 +619,9 @@ export function FormularioMiembro({
                   )}
                 </span>
               </div>
-              {requiereEntrenador && (
+              {mostrarEntrenador && (
                 <p className="mt-1 text-xs font-medium" style={{ color: "var(--gx-accent)" }}>
                   Entrenador: {nombreEntrenadorActual ?? "Sin asignar"}
-                </p>
-              )}
-              {!puedeCambiarPlanGratis && (
-                <p className="mt-2 text-xs" style={{ color: "var(--gx-muted)" }}>
-                  Este ciclo ya está pagado — para subir o bajar de plan usá &quot;Cambiar de plan&quot; en el panel
-                  de al lado.
                 </p>
               )}
             </div>
@@ -755,10 +739,10 @@ export function FormularioMiembro({
           </div>
           )}
 
-          <label className={`mt-4 flex flex-col gap-1.5 text-sm ${requiereEntrenador ? "" : "hidden"}`} style={{ color: "var(--gx-muted)" }}>
+          <label className={`mt-4 flex flex-col gap-1.5 text-sm ${mostrarEntrenador ? "" : "hidden"}`} style={{ color: "var(--gx-muted)" }}>
             Entrenador asignado
             {(() => {
-              const bloqueado = !requiereEntrenador || (esEdicion && !editandoPlan && !editandoEntrenador);
+              const bloqueado = !mostrarEntrenador || (esEdicion && !editandoPlan && !editandoEntrenador);
               return (
                 <>
                   {/* Un <select disabled> no se envía en el submit — cuando está
@@ -782,7 +766,7 @@ export function FormularioMiembro({
                 </>
               );
             })()}
-            {!requiereEntrenador && (
+            {!mostrarEntrenador && (
               <span className="text-xs" style={{ color: "var(--gx-muted)" }}>
                 Elegí un plan con entrenador para poder asignar uno.
               </span>

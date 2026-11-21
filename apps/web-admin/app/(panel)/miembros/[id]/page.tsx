@@ -111,7 +111,6 @@ export default async function PaginaEditarMiembro({ params }: { params: Promise<
         metodosPago={metodosPago}
         miembroId={id}
         ultimosCiclos={ultimosCiclos}
-        tieneCicloVigente={tieneCicloVigente}
         saldoPendiente={saldoPendiente}
         accesoHastaAbono={accesoHastaAbono}
         totalPagos={pagos.length}
